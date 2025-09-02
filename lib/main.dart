@@ -49,12 +49,12 @@ Future<void> main() async {
   /// Get an instance of your DatabaseHelper
   final dHelper = DatabaseHelper.instance;
 
-  try {
-    /// Initialize the database
-    await dHelper.database;
-  } catch (e) {
-    print('Error initializing database: $e');
-  }
+  // try {
+  //   /// Initialize the database
+  //   await dHelper.database;
+  // } catch (e) {
+  //   print('Error initializing database: $e');
+  // }
 
   /// Request multiple permissions
   Map<Permission, PermissionStatus> statuses = await [
