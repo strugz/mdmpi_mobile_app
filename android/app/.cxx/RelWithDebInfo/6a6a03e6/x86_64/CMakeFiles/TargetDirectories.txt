@@ -1,0 +1,2 @@
+D:/VuexJaysWayFile/MDMPIMobileApp/mdmpi_mobile_app/android/app/.cxx/RelWithDebInfo/6a6a03e6/x86_64/CMakeFiles/edit_cache.dir
+D:/VuexJaysWayFile/MDMPIMobileApp/mdmpi_mobile_app/android/app/.cxx/RelWithDebInfo/6a6a03e6/x86_64/CMakeFiles/rebuild_cache.dir

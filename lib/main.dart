@@ -1,69 +1,111 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:mdmpi_mobile_app/data/controllers/navigation_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'app.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'dart:io';
 
-void main() {
-  runApp(const MyApp());
-}
+import 'data/local/database_helper.dart';
+import 'firebase_options.dart';
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // This widget is the root of your application.
+class MyHttpOverrides extends HttpOverrides {
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-    final String title;
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
 
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+final navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> requestBatteryOptimizationPermission() async {
+  if (await Permission.ignoreBatteryOptimizations.isDenied) {
+    await Permission.ignoreBatteryOptimizations.request();
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+/// --  Entry point of Flutter App
+Future<void> main() async {
+  ///  Widgets binding
+  final WidgetsBinding widgetsBinding =
+      WidgetsFlutterBinding.ensureInitialized();
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  ///  Load .env file
+  await dotenv.load(fileName: ".env");
+
+  /// --  Init Local Storage
+  await GetStorage.init();
+
+  /// Get an instance of your DatabaseHelper
+  final dHelper = DatabaseHelper.instance;
+
+  try {
+    /// Initialize the database
+    await dHelper.database;
+  } catch (e) {
+    // print('Error initializing database: $e');
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
-    );
+  /// Request multiple permissions
+  Map<Permission, PermissionStatus> statuses = await [
+    Permission.manageExternalStorage,
+    Permission.location,
+    Permission.camera,
+    Permission.sms
+  ].request();
+
+  /// Check if all required permissions are granted
+  if (statuses[Permission.manageExternalStorage]?.isGranted == true &&
+      statuses[Permission.location]?.isGranted == true &&
+      statuses[Permission.camera]?.isGranted == true &&
+      statuses[Permission.sms]?.isGranted == true) {
+    /// -- Create storage folder
+    final mdmpiAppDir = Directory('/storage/emulated/0/MDMPIAPP');
+
+    if (!mdmpiAppDir.existsSync()) {
+      mdmpiAppDir.createSync(recursive: true);
+    }
+  } else {
+    print('One or more permissions were not granted.');
+    if (statuses[Permission.sms]?.isDenied == true ||
+        statuses[Permission.sms]?.isPermanentlyDenied == true) {
+      print('SMS permission was denied.');
+    }
   }
+
+  //  Todo: Init Payment Methods
+  /// --  Await Splash until other items Load
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  /// --  Initialize Firebase & Authentication Repository
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
+      .then((FirebaseApp value) => Get.put(AuthenticationRepository()));
+
+  HttpOverrides.global = MyHttpOverrides();
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/launcher_icon');
+
+  const InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+    final selectedPayload = Get.put(NavigationController());
+    selectedPayload.selectedIndex.value = 1;
+  });
+
+  //  Load all the Material Design / Themes / Localizations / Bindings
+  runApp(const App());
 }

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "748754171622",
+    "project_id": "mdmpi-app",
+    "storage_bucket": "mdmpi-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:748754171622:android:ee82154f0f400bbd786d27",
+        "android_client_info": {
+          "package_name": "com.mdmpi.mobile.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "748754171622-3vp95735va5o21rertne6bovllt231us.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mdmpi.mobile.app",
+            "certificate_hash": "2a736aaf75bc4e54a224d342a6d1076076b0b607"
+          }
+        },
+        {
+          "client_id": "748754171622-mig09b7em2ruvaje1674614o22rcs6cj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeo01xKO1XEnaUuDMiHogJPaaek0QktLU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "748754171622-mig09b7em2ruvaje1674614o22rcs6cj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

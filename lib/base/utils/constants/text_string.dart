@@ -1,0 +1,116 @@
+class BTexts {
+
+  // On boarding Texts
+  static const String onBoardingTitle1 = "Welcome to MDMPI APP!";
+  static const String onBoardingTitle2 = "Add Your Deliveries";
+  static const String onBoardingTitle3 = "Track Your Deliveries";
+
+  static const String onBoardingSubTitle1 = "We’re thrilled to have you on board. With MDMPI APP - Logistics, managing and tracking your day to day deliveries is a breeze.";
+  static const String onBoardingSubTitle2 = "Enter the details of the deliverable, including the requester, document reference and client information.";
+  static const String onBoardingSubTitle3= "Stay updated with real-time tracking and notifications for every step of the delivery process.";
+
+  // Home Texts
+  static const String homeTitle1 = "Dispatch an Item";
+  static const String homeTitle2 = "Good morning";
+
+  // Home
+  static const String homeSubTitle1 = "Awaiting to Dispatch";
+  static const String homeSubTitle2 = "Vehicles";
+
+  // Sign up Text
+  static const String signupTitle = "Let's create your account";
+  static const String firstname = "First name";
+  static const String middleinitial = "Middle Initial";
+  static const String lastname = "Last name";
+  static const String initial = "Initial";
+  static const String department = "Department";
+  static const String mobile = "Mobile Number";
+  static const String gender = "Gender";
+  static const String designation = "Designation";
+  static const String iAgreeTo = "I agree to";
+  static const String privacyPolicy = "Privacy Policy";
+  static const String and = "and";
+
+
+
+  // Generate Shipment Texts
+  static const String genShipmentTitle = "Generate \n Shipment Order";
+
+  // Current Deliver Texts
+  static const String currentDeliveryTitle = "Vehicle Activity";
+
+  // Profile Texts
+  static const String profileTitle = "Book Shipments";
+  static const String profileSubTitle1 = "Accumulated minutes";
+  static const String profileSubTitle2 = "Minutes accrued";
+
+  // Login Headings Texts
+  static const String loginTitle = "MDMPI APP";
+  static const String loginSubTitle = "Logistics";
+  static const String confirmEmail = "Verify your email address!";
+  static const String confirmEmailSubTitle = "Congratulations! Your Account Awaits: Verify Your Email to Start Shopping and Experience a World of Unrivaled Deals and Personalized Offers.";
+  // Login Authentication Texts
+  static const String username = "Username";
+  static const String password = "Password";
+  static const String email = "Email";
+  static const String signIn = "Sign In";
+  static const String rememberMe = "Remember Me?";
+  static const String forgetPassword = "Forget Password?";
+  static const String createAccount = "Create Account.";
+  static const String orSignInWith = "or sign in with";
+  static const String accountCreated = "Account Created Successfully!";
+  static const String accountLoginToYour = "You can now log in to your account.";
+  static const String tContinue = "Continue";
+  static const String resendEmail = "Resend Email";
+  static const String yourAccountCreatedTitle = "Your account successfully created!";
+  static const String yourAccountCreatedSubTitle = "Welcome to Your Ultimate Shopping Destination: Your Account is Created, Unleash the Joy of Seamless Online Shopping!";
+  static const String forgetPasswordTitle = "Forget password";
+  static const String forgetPasswordSubTitle = "Don’t worry sometimes people can forget too, enter your email and we will send you a password reset link.";
+  static const String changeYourPasswordTitle = "Password Reset Email Sent";
+  static const String changeYourPasswordSubTitle = "Your Account Security is Our Priority! We've Sent You a Secure Link to Safely Change Your Password and Keep Your Account Protected.";
+  /// AppBar Texts
+  static const String homeAppbarTitle = "Logistics Dashboard";
+  static const String homeAppbarSubTitle = "Good Day!";
+
+  /// Request Texts
+  static const String requestPackageIconText = "Request";
+
+  /// Global Texts
+  static const String skip = "Skip";
+  static const String done = "Done";
+  static const String submit = "Submit";
+  static const String appName = "T-Store";
+
+  /// Request Form Texts
+  static const String requestFormTitle = "Let's Create Request";
+  static const String client = "Client";
+  static const String address = "Address";
+  static const String phoneAddress = "Phone Number";
+  static const String shippingMethod = "Shipping Method";
+  static const String deliveryTerms = "Delivery Terms";
+  static const String deliveryDate = "Delivery Date";
+
+  /// Constants for status strings
+  static const String statusGettingSuppliesReady = "Getting supplies ready";
+  static const String statusForDelivery = "For Delivery";
+  static const String statusItemPrepared = "Item Prepared";
+  static const String statusDoneDelivery = "Delivered";
+  static const String statusNewRequest = "New Request";
+
+  /// Request Modal Specific Texts
+  static const String requestModalDeliveryShotTitle = "Delivery Shot";
+  static const String requestModalCloseButtonText = "Close";
+  static const String requestModalImageNotFoundError = "Error: Delivery shot image not found.";
+  static const String requestModalViewItemDeliveredText = "View Item Delivered";
+  static const String requestModalPrepareItemButtonText = "Prepare Item";
+  static const String requestModalPackedAndReadyButtonText = "Packed and Ready to Ship";
+  static const String requestModalDropOffButtonText = "Drop Off";
+
+  /// User Role
+  static const String roleViewer = "Viewer";
+  static const String roleRequest = "Request";
+  static const String roleRelease = "Release";
+  static const String roleCourier = "Courier";
+  static const String roleAdmin = "Admin";
+
+}

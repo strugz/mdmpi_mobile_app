@@ -1,0 +1,43 @@
+import 'package:flutter/material.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+
+import '../../../../../../base/utils/constants/colors.dart';
+import '../../../../../../common/widgets/texts/product_title_text.dart';
+import '../../../../models/request_model.dart';
+
+class RequestModalFooter extends StatelessWidget {
+  const RequestModalFooter({super.key, required this.requestModel});
+
+  final RequestModel requestModel;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    final bool isSame =
+        requestModel.deliveredBy == requestModel.helper ? true : false;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            /// Dispatcher
+            if (requestModel.deliveredBy.isNotEmpty)
+              BProductTitleText(
+                  title: "Delivered By: ${requestModel.deliveredBy}",
+                  maxLines: 2,
+                  smallSize: true,
+                  fontColor: dark ? BColors.light : BColors.black),
+            if (requestModel.helper.isNotEmpty)
+              BProductTitleText(
+                  title: "Helper: ${requestModel.helper}",
+                  maxLines: 2,
+                  smallSize: true,
+                  fontColor: dark ? BColors.light : BColors.black)
+          ],
+        ),
+      ],
+    );
+  }
+}

@@ -1,5 +1,4 @@
-package com.mdmpi.mdmpi_mobile_app
-
+package com.mdmpi.mobile.app
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity: FlutterActivity()

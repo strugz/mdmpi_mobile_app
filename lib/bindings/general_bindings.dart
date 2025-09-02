@@ -1,0 +1,92 @@
+import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
+import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/user/user_mdmpi_repository.dart';
+import 'package:mdmpi_mobile_app/features/authentication/controllers/loading_screen/loading_screen_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/controllers/login/login_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/controllers/signup/signup_controller.dart';
+
+import '../base/utils/helpers/network_manager.dart';
+import '../common/services/abstracts/i_camera_service.dart';
+import '../common/services/abstracts/i_text_extractor.dart';
+import '../common/services/abstracts/i_text_recognition_service.dart';
+import '../common/services/implementations/flutter_camera_service.dart';
+import '../common/services/implementations/google_ml_kit_text_recognizer.dart';
+import '../data/controllers/app_data/user_mdmpi_controller.dart';
+import '../data/controllers/client_controller.dart';
+import '../data/repositories/app_data/department_repository.dart';
+import '../data/repositories/app_data/mobile_repository.dart';
+import '../data/repositories/app_data/role_repository.dart';
+import '../data/repositories/app_data/user_initial_repository.dart';
+import '../data/repositories/client/client_repository.dart';
+import '../data/repositories/delivery_vehicle/delivery_vehicle_repository.dart';
+import '../data/repositories/request/request_repository.dart';
+import '../data/repositories/user/user_repository.dart';
+import '../data/services/messaging_controller.dart';
+import '../features/authentication/controllers/forget_password/forget_password_controller.dart';
+import '../features/authentication/controllers/onboarding/onboarding_controller.dart';
+import '../features/authentication/controllers/signup/verify_email_controller.dart';
+import '../common/controllers/camera_controller.dart';
+import '../features/logistics/controllers/chart_controller.dart';
+import '../features/logistics/controllers/delivery_location_controller.dart';
+import '../features/logistics/controllers/delivery_vehicle_controller.dart';
+import '../features/logistics/controllers/request_controller.dart';
+import '../features/logistics/controllers/request_transport_controller.dart';
+import '../features/logistics/controllers/web_socket_delivery_controller.dart';
+import '../features/logistics/controllers/web_socket_dispatcher_controller.dart';
+import '../features/logistics/controllers/web_socket_notification_controller.dart';
+import '../features/personalization/controller/update_name_controller.dart';
+import '../features/personalization/controller/user_controller.dart';
+
+class GeneralBindings extends Bindings {
+  @override
+  void dependencies() {
+    Get.put(NetworkManager());
+    Get.put(WebSocketNotificationController());
+    Get.put(MessagingController());
+    Get.put(UserController(), permanent: true);
+    /// Controllers
+    Get.lazyPut(() => UserInitialController(), fenix: true);
+    Get.lazyPut(() => RequestController(), fenix: true);
+
+    Get.lazyPut(() => LoginController(), fenix: true);
+    Get.lazyPut(() => LoadingScreenController(), fenix: true);
+    Get.lazyPut(() => WebSocketDispatcherController(), fenix: true);
+    Get.lazyPut(() => RequestTransportController(), fenix: true);
+    Get.lazyPut(() => DeliveryVehicleController(), fenix: true);
+    Get.lazyPut(() => ClientController(), fenix: true);
+    Get.lazyPut(() => UserMdmpiController(), fenix: true);
+    Get.lazyPut(() => WebSocketDeliveryController(), fenix: true);
+    Get.lazyPut(() => DeliveryLocationController(), fenix: true);
+    Get.lazyPut(() => SignupController(), fenix: true);
+    Get.lazyPut(() => VerifyEmailController(), fenix: true);
+    Get.lazyPut(() => OnBoardingController(), fenix: true);
+    Get.lazyPut(() => ForgetPasswordController(), fenix: true);
+    Get.lazyPut(() => UpdateNameController(), fenix: true);
+    Get.lazyPut(() => ChartController(), fenix: true);
+    Get.lazyPut(() => MobileController(), fenix: true);
+    Get.lazyPut(
+        () => CameraHandlerController(
+              cameraService: Get.find<ICameraService>(),
+              textRecognitionService: Get.find<ITextRecognitionService>(),
+              textExtractor: Get.find<ITextExtractor>(),
+            ),
+        fenix: true);
+    Get.lazyPut<ICameraService>(() => FlutterCameraService(), fenix: true);
+    Get.lazyPut<ITextRecognitionService>(() => GoogleMlKitTextRecognizer(),
+        fenix: true);
+    Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
+        fenix: true);
+
+    /// Repositories
+    Get.lazyPut(() => RequestRepository(), fenix: true);
+    Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
+    Get.lazyPut(() => UserRepository());
+    Get.lazyPut(() => UserInitialRepository(), fenix: true);
+    Get.lazyPut(() => ClientRepository(), fenix: true);
+    Get.lazyPut(() => MobileRepository(), fenix: true);
+    Get.lazyPut(() => RoleRepository(), fenix: true);
+    Get.lazyPut(() => DepartmentRepository(), fenix: true);
+    Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+  }
+}
