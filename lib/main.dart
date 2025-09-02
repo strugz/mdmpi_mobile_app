@@ -53,7 +53,7 @@ Future<void> main() async {
     /// Initialize the database
     await dHelper.database;
   } catch (e) {
-    // print('Error initializing database: $e');
+    print('Error initializing database: $e');
   }
 
   /// Request multiple permissions
