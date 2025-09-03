@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 
@@ -64,9 +62,6 @@ class RequestFilterManager {
       if (!currentUser.role.contains(',')) {
         if (currentUser.role.contains(BTexts.roleCourier)) {
           userMatches = item.helper == currentUser.initial || item.deliveredBy == currentUser.initial;
-          print(item.helper);
-          print(item.deliveredBy);
-
         }
       }
       return dateMatches && statusMatches && userMatches;

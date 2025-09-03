@@ -54,6 +54,7 @@ class BProductCardVertical extends StatelessWidget {
                     left: 10,
                     child: BRoundedContainer(
                       radius: BSizes.sm,
+                      // ignore: deprecated_member_use
                       backgroundColor: BColors.secondary.withOpacity(0.8),
                       padding: const EdgeInsets.symmetric(
                           horizontal: BSizes.sm, vertical: BSizes.xs),

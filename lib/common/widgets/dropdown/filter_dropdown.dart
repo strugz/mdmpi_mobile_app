@@ -33,7 +33,7 @@ class FilterDropdown<T extends Enum> extends StatelessWidget {
       backgroundColor: dark ? BColors.darkerGrey : BColors.white,
       child: Obx(
         () => DropdownButtonFormField<T>(
-          value: selectedFilter.value,
+          initialValue: selectedFilter.value,
           onChanged: (T? newValue) {
             if (newValue != null) {
               onFilterChanged(newValue);

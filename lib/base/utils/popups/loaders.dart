@@ -8,7 +8,7 @@ class BLoaders {
   static void hideSnackBar() =>
       ScaffoldMessenger.of(Get.context!).hideCurrentSnackBar();
 
-  static void customToast({required message}) {
+  static void customToast({required String message}) {
     ScaffoldMessenger.of(Get.context!).showSnackBar(SnackBar(
       elevation: 0,
       duration: const Duration(seconds: 3),
@@ -29,7 +29,7 @@ class BLoaders {
     ));
   }
 
-  static void successSnackBar({required title, message = '', duration = 3}) {
+  static void successSnackBar({required String title, String message = '', duration = 3}) {
     Get.snackbar(
       title,
       message,
@@ -44,7 +44,7 @@ class BLoaders {
     );
   }
 
-  static void warningSnackBar({required title, message = '', duration = 3}) {
+  static void warningSnackBar({required String title, String message = '', duration = 3}) {
     Get.snackbar(
       title,
       message,
@@ -59,7 +59,7 @@ class BLoaders {
     );
   }
 
-  static void errorSnackBar({required title, message = '', duration = 3}) {
+  static void errorSnackBar({required String title, String message = '', duration = 3}) {
     Get.snackbar(
       title,
       message,

@@ -107,6 +107,7 @@ class DeliveryLocationController extends GetxController {
                     'Dispatcher phone number not available.');
               }
             }),
+        // ignore: deprecated_member_use
         icon: await BitmapDescriptor.fromAssetImage(
           ImageConfiguration(size: Size(100, 100)),
           BImages.riderCar,
@@ -141,6 +142,7 @@ class DeliveryLocationController extends GetxController {
     }
 
     Position position = await Geolocator.getCurrentPosition(
+        // ignore: deprecated_member_use
         desiredAccuracy: LocationAccuracy.high);
     currentLocation.value = LatLng(position.latitude, position.longitude);
 

@@ -4,6 +4,7 @@ class BChipTheme {
   BChipTheme._();
 
   static ChipThemeData lightChipTheme = ChipThemeData(
+    // ignore: deprecated_member_use
     disabledColor: Colors.grey.withOpacity(0.4),
     labelStyle: const TextStyle(color: Colors.black),
     selectedColor: Colors.blue,

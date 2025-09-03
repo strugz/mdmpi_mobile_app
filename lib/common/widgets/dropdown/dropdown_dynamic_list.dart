@@ -1,4 +1,6 @@
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -34,7 +36,7 @@ class BDropDownDynamicList extends StatelessWidget {
     return DropdownButtonFormField<String>(
       // Specify the type for DropdownButtonFormField
       menuMaxHeight: 200.0,
-      value: controller.text.isEmpty ? null : controller.text,
+      initialValue: controller.text.isEmpty ? null : controller.text,
       onChanged: (String? newValue) {
         if (newValue != null) {
           controller.text = newValue;

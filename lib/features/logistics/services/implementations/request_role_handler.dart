@@ -25,13 +25,6 @@ abstract class RequestActionHandler {
     BFullScreenLoader.showRequestForReleasingDialog(
         context, request, onConfirm ?? () {}, canEdit);
   }
-
-  // Helper to navigate
-  void _navigateToRequestTransport(BuildContext context, RequestModel request,
-      RequestController requestController) {
-    Get.to(() => RequestTransport(
-        request: request, requestController: requestController));
-  }
 }
 
 class RequestRoleHandler extends RequestActionHandler {
