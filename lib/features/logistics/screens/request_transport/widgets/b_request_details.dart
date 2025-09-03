@@ -4,8 +4,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_document_reference.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_drop_off_capture.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_document_reference.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
@@ -15,8 +15,8 @@ import '../../../../personalization/controller/user_controller.dart';
 import '../../../controllers/request_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
-class BRequestTransportRequestDetails extends StatelessWidget {
-  const BRequestTransportRequestDetails(
+class BRequestDetails extends StatelessWidget {
+  const BRequestDetails(
       {super.key,
       required this.requestController,
       required this.requestTransportController,
@@ -57,7 +57,7 @@ class BRequestTransportRequestDetails extends StatelessWidget {
               smallSize: true,
               fontColor: textColor),
           const SizedBox(height: BSizes.xs),
-          BRequestTransportDocumentReference(
+          BDocumentReference(
               request: requestController.currentSelectedRequest.value!),
           const SizedBox(height: BSizes.md),
           if (requestController.currentSelectedRequest.value!.status ==
@@ -73,7 +73,7 @@ class BRequestTransportRequestDetails extends StatelessWidget {
                         children: [
                           IconButton(
                             onPressed: () => Get.to(
-                              () => BRequestTransportDropOffCapture(
+                              () => BDropOffCapture(
                                   request: requestController
                                       .currentSelectedRequest.value!,
                                   requestController: requestController),

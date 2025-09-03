@@ -7,8 +7,8 @@ import '../../../../../base/utils/helpers/helper_functions.dart';
 import '../../../controllers/request_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
-class BRequestTransportActionButton extends StatelessWidget {
-  const BRequestTransportActionButton(
+class BActionButton extends StatelessWidget {
+  const BActionButton(
       {super.key,
       required this.requestController,
       required this.requestTransportController});

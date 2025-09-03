@@ -10,8 +10,8 @@ import '../../../../../base/utils/helpers/helper_functions.dart';
 import '../../../controllers/request_controller.dart';
 import '../../../models/request_model.dart';
 
-class BRequestTransportDropOffCapture extends StatelessWidget {
-  const BRequestTransportDropOffCapture(
+class BDropOffCapture extends StatelessWidget {
+  const BDropOffCapture(
       {super.key, required this.request, required this.requestController});
 
   final RequestModel request;

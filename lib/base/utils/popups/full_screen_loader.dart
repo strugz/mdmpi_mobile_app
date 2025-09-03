@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
@@ -79,7 +80,7 @@ class BFullScreenLoader {
                           maxLines: 2,
                           smallSize: true),
                       const SizedBox(height: BSizes.xs),
-                      requestModel.status != "New Request"
+                      requestModel.status != BTexts.statusNewRequest
                           ? BProductTitleText(
                               title: "Item Prepared By: CLC",
                               maxLines: 2,
@@ -104,15 +105,15 @@ class BFullScreenLoader {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          requestModel.status == "For Delivery" ||
-                                  requestModel.status == "Done Delivery"
+                          requestModel.status == BTexts.statusForDelivery ||
+                                  requestModel.status == BTexts.statusDoneDelivery
                               ? BProductTitleText(
                                   title: "Delivered By: MAR",
                                   maxLines: 2,
                                   smallSize: true)
                               : Container(),
                           const SizedBox(height: BSizes.xs),
-                          requestModel.status == "Done Delivery"
+                          requestModel.status == BTexts.statusDoneDelivery
                               ? BProductTitleText(
                                   title: "Received By: MDD",
                                   maxLines: 2,
@@ -126,13 +127,13 @@ class BFullScreenLoader {
                     bottom: 20.0,
                     left: 0,
                     right: 0,
-                    child: requestModel.status == "Done Delivery"
+                    child: requestModel.status == BTexts.statusDoneDelivery
                         ? Container()
                         : SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: onPressed,
-                              child: requestModel.status == "New Request"
+                              child: requestModel.status == BTexts.statusNewRequest
                                   ? Text("Prepare Item")
                                   : requestModel.status == "Dispatch Items"
                                       ? Text("Dispatch")

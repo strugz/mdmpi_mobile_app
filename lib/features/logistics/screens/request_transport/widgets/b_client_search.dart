@@ -6,8 +6,8 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../controllers/request_transport_controller.dart';
 
-class BRequestTransportClientSearch extends StatelessWidget {
-  const BRequestTransportClientSearch({super.key});
+class BClientSearch extends StatelessWidget {
+  const BClientSearch({super.key});
 
   @override
   Widget build(BuildContext context) {

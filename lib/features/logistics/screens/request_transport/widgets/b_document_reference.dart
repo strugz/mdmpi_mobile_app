@@ -6,8 +6,8 @@ import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 
-class BRequestTransportDocumentReference extends StatelessWidget {
-  const BRequestTransportDocumentReference({super.key, required this.request});
+class BDocumentReference extends StatelessWidget {
+  const BDocumentReference({super.key, required this.request});
 
   final RequestModel request;
 
