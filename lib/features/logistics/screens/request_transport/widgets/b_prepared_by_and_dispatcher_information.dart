@@ -6,9 +6,9 @@ import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import '../../../models/request_model.dart';
 
-class BRequestTransportPreparedByAndDispatcherInformation
+class BPreparedByAndDispatcherInformation
     extends StatelessWidget {
-  const BRequestTransportPreparedByAndDispatcherInformation(
+  const BPreparedByAndDispatcherInformation(
       {super.key, required this.request, required this.userController});
 
   final RequestModel request;

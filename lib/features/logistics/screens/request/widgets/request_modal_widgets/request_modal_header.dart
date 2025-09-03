@@ -7,7 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_mobile.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_mobile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
 import '../../../../../../base/utils/constants/colors.dart';
@@ -170,7 +170,7 @@ class RequestModalHeader extends StatelessWidget {
                       ),
               ),
               const SizedBox(height: BSizes.sm),
-              BRequestTransportMobile(requestController: requestController)
+              BMobile(requestController: requestController)
             ],
           ),
       ],

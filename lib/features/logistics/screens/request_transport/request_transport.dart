@@ -3,9 +3,10 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transport_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_client_search.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_dispatcher.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_client_search.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_dispatcher.dart';
 
 import '../../controllers/request_controller.dart';
 import '../../models/request_model.dart';
@@ -96,7 +97,7 @@ class RequestTransport extends StatelessWidget {
                       markers: reqTranController.buildMarkers(),
                       polylines: reqTranController.polyLines.value,
                       onTap: (LatLng tappedPoint) {
-                        if (request.status != "For Delivery") {
+                        if (request.status != BTexts.statusForDelivery) {
                           reqTranController.selectedDestinationMarkerId.value =
                               null;
                           reqTranController.destination.value = tappedPoint;
@@ -115,7 +116,7 @@ class RequestTransport extends StatelessWidget {
                 top: 30.0, //changed from 10 to 0
                 left: 10.0, //changed from 10 to 0
                 right: 10.0,
-                child: BRequestTransportClientSearch(),
+                child: BClientSearch(),
               ),
 
               /// Floating user location button
@@ -137,7 +138,7 @@ class RequestTransport extends StatelessWidget {
           ),
         ),
         resizeToAvoidBottomInset: true,
-        bottomSheet: BRequestTransportDispatcher(key: _bottomSheetKey),
+        bottomSheet: BDispatcher(key: _bottomSheetKey),
       ),
     );
   }
