@@ -25,7 +25,7 @@ class DropdownList<T> extends StatelessWidget {
         labelText: label,
         border: const OutlineInputBorder(),
       ),
-      value: dropdownList.isNotEmpty &&
+      initialValue: dropdownList.isNotEmpty &&
               dropdownList.any((item) => getValue(item) == controller.text)
           ? dropdownList.firstWhere((item) => getValue(item) == controller.text)
           : null,

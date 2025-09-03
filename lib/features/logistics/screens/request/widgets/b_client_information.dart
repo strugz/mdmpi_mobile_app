@@ -11,8 +11,8 @@ import '../../../../../common/widgets/texts/product_title_text.dart';
 import '../../../../../data/controllers/client_controller.dart';
 import '../../../controllers/request_controller.dart';
 
-class RequestClientInformation extends StatelessWidget {
-  const RequestClientInformation({super.key});
+class BClientInformation extends StatelessWidget {
+  const BClientInformation({super.key});
 
   @override
   Widget build(BuildContext context) {

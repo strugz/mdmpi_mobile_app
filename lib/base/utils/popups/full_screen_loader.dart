@@ -10,7 +10,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/request_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_modal.dart';
 
 import '../../../common/widgets/signature/signature_pad.dart';
 import '../../../common/widgets/texts/product_title_text.dart';
@@ -402,7 +402,7 @@ class BFullScreenLoader {
       isScrollControlled: true,
       builder: (BuildContext context) {
         return SafeArea(
-          child: RequestModal(
+          child: BModal(
             requestModel: requestModel,
             onPressed: onPressed,
             status: status,
