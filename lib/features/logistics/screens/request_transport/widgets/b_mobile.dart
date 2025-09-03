@@ -6,8 +6,8 @@ import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.d
 import '../../../../../data/controllers/app_data/mobile_controller.dart';
 import '../../../controllers/request_controller.dart';
 
-class BRequestTransportMobile extends StatelessWidget {
-  const BRequestTransportMobile({
+class BMobile extends StatelessWidget {
+  const BMobile({
     super.key,
     required this.requestController,
   });

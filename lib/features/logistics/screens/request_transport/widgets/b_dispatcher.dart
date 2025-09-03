@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_action_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_prepared_by_and_dispatcher_information.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_transport_request_details.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_action_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_prepared_by_and_dispatcher_information.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_details.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
@@ -11,8 +11,8 @@ import '../../../../personalization/controller/user_controller.dart';
 import '../../../controllers/request_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
-class BRequestTransportDispatcher extends StatelessWidget {
-  const BRequestTransportDispatcher({super.key});
+class BDispatcher extends StatelessWidget {
+  const BDispatcher({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,7 @@ class BRequestTransportDispatcher extends StatelessWidget {
                   child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: BSizes.defaultSpace),
-                      child: BRequestTransportRequestDetails(
+                      child: BRequestDetails(
                         requestController: requestController,
                         userController: userController,
                         requestTransportController: requestTransportController,
@@ -53,14 +53,14 @@ class BRequestTransportDispatcher extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                child: BRequestTransportPreparedByAndDispatcherInformation(
+                child: BPreparedByAndDispatcherInformation(
                     request: requestController.currentSelectedRequest.value!,
                     userController: userController),
               ),
               Padding(
                 padding: const EdgeInsets.all(
                     BSizes.defaultSpace), // Adjust padding as needed
-                child: BRequestTransportActionButton(
+                child: BActionButton(
                   requestController: requestController,
                   requestTransportController: requestTransportController,
                 ),
