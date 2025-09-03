@@ -30,6 +30,7 @@ class BColors {
 
   // Background Container Colors
   static const Color lightContainer = Color(0xFFF6F6F6);
+  // ignore: deprecated_member_use
   static Color darkContainer = Colors.white.withOpacity(0.1);
 
   //Button Colors

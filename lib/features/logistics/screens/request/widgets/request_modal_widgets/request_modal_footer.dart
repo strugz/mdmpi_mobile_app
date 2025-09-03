@@ -13,9 +13,6 @@ class RequestModalFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final bool isSame =
-        requestModel.deliveredBy == requestModel.helper ? true : false;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
