@@ -16,12 +16,12 @@ import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import '../../../models/request_model.dart';
 
-class RequestModal extends StatelessWidget {
+class BModal extends StatelessWidget {
   final RequestModel requestModel;
   final VoidCallback onPressed;
   final bool status;
 
-  const RequestModal({
+  const BModal({
     super.key,
     required this.requestModel,
     required this.onPressed,
@@ -80,8 +80,6 @@ class RequestModal extends StatelessWidget {
     final Color textColor = dark ? BColors.light : BColors.black;
     final bool isDoneDelivery =
         requestModel.status == BTexts.statusDoneDelivery; // USE BTexts
-    final isForDelivery = requestModel.status == BTexts.statusForDelivery;
-
     /// Request Details
     return BRoundedContainer(
       backgroundColor: dark ? BColors.black : BColors.light,

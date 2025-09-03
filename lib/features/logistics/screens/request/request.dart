@@ -4,9 +4,9 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_request_filter_dropdown.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_request_floating_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_request_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_filter_dropdown.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_floating_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_list.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../controllers/request_controller.dart';
@@ -40,7 +40,7 @@ class RequestScreen extends StatelessWidget {
                       requestController.toggleStoragePreference(value);
                     },
                     activeTrackColor: Colors.lightGreenAccent,
-                    activeColor: Colors.green,
+                    activeThumbColor: Colors.green,
                   ),
                 ],
               ),
@@ -50,7 +50,7 @@ class RequestScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          const BRequestFilterDropdown(),
+          const BFilterDropdown(),
           const SizedBox(height: BSizes.spaceBtwItems),
           FilterDropdown(
               selectedFilter:
@@ -62,14 +62,14 @@ class RequestScreen extends StatelessWidget {
               }),
           const SizedBox(
               height: BSizes.spaceBtwSections / 2), // Added some spacing
-          const BRequestList()
+          const BList()
         ],
       ),
       floatingActionButton: Obx(() {
         if (!userController.user.value.role.contains(BTexts.roleRequest)) {
           return Container();
         } else {
-          return const RequestFloatingButton();
+          return const BFloatingButton();
         }
       }),
     );

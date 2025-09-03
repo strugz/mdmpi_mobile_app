@@ -5,7 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
-import 'b_request_text_scanner.dart';
+import 'b_text_scanner.dart';
 import '../../../controllers/request_controller.dart';
 
 class BDocumentReference extends StatelessWidget {
@@ -27,7 +27,7 @@ class BDocumentReference extends StatelessWidget {
                   child: TextFormField(
                     onTap: () {
                       if (controller.text.isEmpty) {
-                        Get.to(() => TextScanner(controller: controller));
+                        Get.to(() => BTextScanner(controller: controller));
                       }
                     },
                     controller: controller,

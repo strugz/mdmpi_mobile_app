@@ -7,15 +7,15 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request/request_controller_components.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_request_client_information.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_request_document_reference.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_client_information.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_document_reference.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
 import '../../../controllers/request_controller.dart';
 
-class RequestForm extends StatelessWidget {
-  const RequestForm({super.key});
+class BRequestForm extends StatelessWidget {
+  const BRequestForm({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +51,7 @@ class RequestForm extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           /// Search Client
-                          const RequestClientInformation(),
+                          const BClientInformation(),
                           const Divider(),
                           const SizedBox(height: BSizes.sm),
 
