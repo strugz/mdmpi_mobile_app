@@ -7,8 +7,8 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controll
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
 
-class BRequestFilterDropdown extends StatelessWidget {
-  const BRequestFilterDropdown({super.key});
+class BFilterDropdown extends StatelessWidget {
+  const BFilterDropdown({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +20,7 @@ class BRequestFilterDropdown extends StatelessWidget {
       backgroundColor: dark ? BColors.darkerGrey : BColors.white,
       child: Obx(
         () => DropdownButtonFormField<RequestFilter>(
-          value:
+          initialValue:
           controller.filterManager.selectedFilter.value, // Now uses the enum value directly
           onChanged: (RequestFilter? newValue) {
             // Changed to RequestFilter?

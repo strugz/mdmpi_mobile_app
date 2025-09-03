@@ -5,8 +5,8 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/camera/camera_preview.dart';
 import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 
-class TextScanner extends StatelessWidget {
-  const TextScanner({super.key, required this.controller});
+class BTextScanner extends StatelessWidget {
+  const BTextScanner({super.key, required this.controller});
 
   final TextEditingController controller;
 

@@ -5,8 +5,8 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_re
 
 import '../../../../../base/utils/constants/colors.dart';
 
-class RequestFloatingButton extends StatelessWidget {
-  const RequestFloatingButton({
+class BFloatingButton extends StatelessWidget {
+  const BFloatingButton({
     super.key,
   });
 
@@ -18,7 +18,7 @@ class RequestFloatingButton extends StatelessWidget {
         decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(100), color: BColors.primary),
         child: IconButton(
-          onPressed: () => Get.to(() => const RequestForm()),
+          onPressed: () => Get.to(() => const BRequestForm()),
           icon: Icon(Iconsax.add),
           color: BColors.white,
         ));
