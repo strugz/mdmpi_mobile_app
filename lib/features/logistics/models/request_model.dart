@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 
 class RequestModel {
   String requestID;
@@ -28,6 +29,7 @@ class RequestModel {
   String signature;
   String image;
   String tripTicketNumber;
+  CancelRemarksModel cancelRemarks;
 
   RequestModel(
       {this.requestID = '',
@@ -56,7 +58,8 @@ class RequestModel {
       this.receiver = '',
       this.signature = '',
       this.image = '',
-      this.tripTicketNumber = ''});
+      this.tripTicketNumber = '',
+      this.cancelRemarks = CancelRemarksModel.empty});
 
   // --- copyWith METHOD ---
   RequestModel copyWith({
@@ -114,7 +117,8 @@ class RequestModel {
         signature: signature ?? this.signature,
         mobileID: mobileID ?? this.mobileID,
         image: image ?? this.image,
-        tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber);
+        tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber,
+        cancelRemarks: CancelRemarksModel.empty);
   }
 
   /// Create Empty func to clean code
@@ -144,7 +148,8 @@ class RequestModel {
       helper: '',
       receiver: '',
       signature: '',
-      image: '');
+      image: '',
+      cancelRemarks: CancelRemarksModel.empty);
 
   /// Json Format
   Map<String, dynamic> toJson() {
@@ -195,72 +200,56 @@ class RequestModel {
   /// Map Json oriented from API to Model
   factory RequestModel.fromJson(Map<String, dynamic> json) {
     return RequestModel(
-      requestID: json['ID'],
-      clientID: json['ClientID'],
-      shippingMethod: json['ShippingMethod'],
-      deliveryTerms: json['DeliveryTerms'],
-      targetDate: json['DeliveryDate'],
-      requestedBy: json['RequestBy'],
-      documentReference: List<String>.from(json['DocumentReference']),
-      preference: json['Preference'],
-      client: ClientModel.fromJson(json['Client']),
-      status: json['Status'],
-      createdBy: json['CreatedBy'] ?? '',
-      itemPreparedBy: json['ItemPreparedBy'] ?? '',
-      deliveredBy: json['DeliveredBy'] ?? '',
-      itemPreparedAt: json['ItemPreparedAt'] ?? '',
-      itemPreparedEndAt: json['ItemPreparedEndAt'] ?? '',
-      deliveredAt: json['DeliveredAt'] ?? '',
-      deliveredEndAt: json['DeliveredEndAt'] ?? '',
-      createdAt: json['CreatedAt'] ?? '',
-      locationStartedAt: json['LocationStartedAt'] ?? '',
-      locationEndAt: json['LocationEndAt'] ?? '',
-      mobileID: json['MobileID'] ?? '',
-      mobileName: json['MobileName'] ?? '',
-      helper: json['Helper'] ?? '',
-      receiver: json['Receiver'] ?? '',
-      tripTicketNumber: json['TripTicketNumber'] ?? '',
-    );
+        requestID: json['ID'],
+        clientID: json['ClientID'],
+        shippingMethod: json['ShippingMethod'],
+        deliveryTerms: json['DeliveryTerms'],
+        targetDate: json['DeliveryDate'],
+        requestedBy: json['RequestBy'],
+        documentReference: List<String>.from(json['DocumentReference']),
+        preference: json['Preference'],
+        client: ClientModel.fromJson(json['Client']),
+        status: json['Status'],
+        createdBy: json['CreatedBy'] ?? '',
+        itemPreparedBy: json['ItemPreparedBy'] ?? '',
+        deliveredBy: json['DeliveredBy'] ?? '',
+        itemPreparedAt: json['ItemPreparedAt'] ?? '',
+        itemPreparedEndAt: json['ItemPreparedEndAt'] ?? '',
+        deliveredAt: json['DeliveredAt'] ?? '',
+        deliveredEndAt: json['DeliveredEndAt'] ?? '',
+        createdAt: json['CreatedAt'] ?? '',
+        locationStartedAt: json['LocationStartedAt'] ?? '',
+        locationEndAt: json['LocationEndAt'] ?? '',
+        mobileID: json['MobileID'] ?? '',
+        mobileName: json['MobileName'] ?? '',
+        helper: json['Helper'] ?? '',
+        receiver: json['Receiver'] ?? '',
+        tripTicketNumber: json['TripTicketNumber'] ?? '',
+        cancelRemarks: json['CancelRemarks'] == null
+            ? CancelRemarksModel.empty
+            : CancelRemarksModel.fromJson(json['CancelRemarks']));
   }
 
   factory RequestModel.fromDbJson(Map<String, dynamic> json) {
     try {
-      // Attempt to parse RequestID as an int.
-      // If json['RequestID'] is already an int, it will be fine.
-      // If it's a String, int.tryParse will attempt to convert it.
-      // If it's null or not a valid integer string, it will result in an error
-      // or return null depending on how you want to handle it.
-      // For simplicity, this example assumes it will be a valid representation or you want an error.
       String requestIdValue;
       String requestMobileID;
 
       if (json['MobileID'] is int) {
         requestMobileID = json['MobileID'].toString();
       } else if (json['MobileID'] is String) {
-        // Ensure it's a string representation of an int before assigning
-        // You might want to add more robust validation if needed
-        int.parse(
-            json['MobileID']); // This will throw if not a valid int string
+        int.parse(json['MobileID']);
         requestMobileID = json['MobileID'];
       } else {
-        // Handle cases where RequestID is null or not a String/int
-        // You could throw an error, or assign a default, or make requestID nullable
-        // For this example, let's throw an error if it's not what we expect
         throw FormatException(
             "RequestID is not a valid integer or string representation of an integer.");
       }
       if (json['RequestID'] is int) {
         requestIdValue = json['RequestID'].toString();
       } else if (json['RequestID'] is String) {
-        // Ensure it's a string representation of an int before assigning
-        // You might want to add more robust validation if needed
-        int.parse(
-            json['RequestID']); // This will throw if not a valid int string
+        int.parse(json['RequestID']);
         requestIdValue = json['RequestID'];
       } else {
-        // Handle cases where RequestID is null or not a String/int
-        // You could throw an error, or assign a default, or make requestID nullable
-        // For this example, let's throw an error if it's not what we expect
         throw FormatException(
             "RequestID is not a valid integer or string representation of an integer.");
       }
@@ -291,7 +280,8 @@ class RequestModel {
           client: ClientModel.empty(),
           documentReference: [],
           image: json['Image'] ?? '',
-          tripTicketNumber: json['TripTicketNumber'] ?? '');
+          tripTicketNumber: json['TripTicketNumber'] ?? '',
+          cancelRemarks: CancelRemarksModel.empty);
     } catch (e) {
       return RequestModel.empty();
     }
@@ -313,19 +303,16 @@ class RequestModel {
       throw ArgumentError('Client ID and Client information cannot be null.');
     }
     return RequestModel(
-      clientID: clientId,
-      shippingMethod: shippingMethod,
-      deliveryTerms: deliveryTerms,
-      targetDate: targetDate,
-      requestedBy: requestedBy,
-      documentReference: documentReference,
-      preference: preference,
-      client: client, // The full ClientModel object
-      status: 'New Request', // Default status for new requests
-      createdBy: createdBy,
-      createdAt: DateTime.now().toString(),
-      // Initialize other fields with default or empty values as needed
-      // e.g., requestID, itemPreparedBy, deliveredBy etc. might be null or empty initially
-    );
+        clientID: clientId,
+        shippingMethod: shippingMethod,
+        deliveryTerms: deliveryTerms,
+        targetDate: targetDate,
+        requestedBy: requestedBy,
+        documentReference: documentReference,
+        preference: preference,
+        client: client, // The full ClientModel object
+        status: 'New Request', // Default status for new requests
+        createdBy: createdBy,
+        createdAt: DateTime.now().toString());
   }
 }
