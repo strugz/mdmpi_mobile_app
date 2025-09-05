@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
@@ -21,7 +22,9 @@ class BRequestCardHorizontal extends StatelessWidget {
       width: 310,
       padding: const EdgeInsets.all(1),
       decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(BSizes.cardRadiusMd)),
+          borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
+          color: requestModel.status == BTexts.statusCancelled
+              ? BColors.cancelledBackground : null),
       child: Padding(
         padding: const EdgeInsets.all(BSizes.xs),
         child: Column(

@@ -61,7 +61,7 @@ class RequestScreen extends StatelessWidget {
                 requestController.selectStatusFilter(filter);
               }),
           const SizedBox(
-              height: BSizes.spaceBtwSections / 2), // Added some spacing
+              height: BSizes.spaceBtwSections / 3), // Added some spacing
           const BList()
         ],
       ),

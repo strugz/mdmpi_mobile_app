@@ -17,6 +17,7 @@ class RequestFormState {
   final TextEditingController receiver = TextEditingController();
   final TextEditingController mobile = TextEditingController();
   final TextEditingController tripTicketNumber = TextEditingController();
+  final TextEditingController remarks = TextEditingController();
   final RxList<TextEditingController> documentReferenceControllers = <TextEditingController>[].obs;
   final Rx<DateTime?> deliveryDate = Rx<DateTime?>(null);
   final Rx<ClientModel?> clientInformation = Rx<ClientModel?>(ClientModel.empty());

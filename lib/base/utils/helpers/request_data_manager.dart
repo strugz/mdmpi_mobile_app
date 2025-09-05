@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/request_filter_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/request_form_state.dart';
@@ -38,12 +40,12 @@ class RequestDataManager {
   }
 
   Future<void> saveRequest(RequestFormState formState) async {
+    BFullScreenLoader.openLoadingDialog(
+        'Saving on process...', BImages.docerAnimation);
+
+    if (!await validateConnectivity()) return;
+
     try {
-      BFullScreenLoader.openLoadingDialog(
-          'Saving on process...', BImages.docerAnimation);
-
-      if (!await validateConnectivity()) return;
-
       if (formState.requestedBy.text.isEmpty) {
         BLoaders.errorSnackBar(
             title: 'Request', message: 'Please select a requested by.');
@@ -102,15 +104,15 @@ class RequestDataManager {
   }
 
   Future<void> updateRequestStatus(
-    RequestModel requestModel,
-    String newStatus,
-    String userInitial,
-    RequestFormState formState,
-    Rx<RequestModel?> currentSelectedRequest,
-    bool useLocalStorage,
-  ) async {
+      RequestModel requestModel,
+      String newStatus,
+      String userInitial,
+      RequestFormState formState,
+      Rx<RequestModel?> currentSelectedRequest,
+      bool useLocalStorage) async {
     try {
       final nowString = DateTime.now().toString();
+
       final updatedRequest = requestModel.copyWith(
         status: newStatus,
         itemPreparedBy: newStatus == BTexts.statusGettingSuppliesReady &&
@@ -237,9 +239,7 @@ class RequestDataManager {
     }
 
     try {
-
       final apiRequests = await _requestRepository.getAllPendingRequestAPI();
-
       allPendingRequests.assignAll(apiRequests);
 
       await _dbHelper.insertRequests(apiRequests);
@@ -283,6 +283,43 @@ class RequestDataManager {
       BLoaders.errorSnackBar(
           title: 'Fetch Failed',
           message: "Could not load requests: ${e.toString()}");
+    }
+  }
+
+  Future<void> cancelRequestWithRemarks(
+      String requestID, String remarks, bool userLocalStorage) async {
+    BFullScreenLoader.openLoadingDialog(
+        'Saving on process...', BImages.docerAnimation);
+
+    if (!await validateConnectivity()) return;
+
+    try {
+      if (!userLocalStorage) {
+        _dbHelper.cancelRequestWithRemarks(requestID: requestID,remarks: remarks, newStatus: BTexts.statusCancelled);
+      } else {
+        final isConnected = await validateConnectivity();
+        if (isConnected) {
+          await _requestRepository.cancelRequest(requestID, remarks);
+          _dbHelper.cancelRequestWithRemarks(
+              requestID: requestID, remarks: remarks,newStatus: BTexts.statusCancelled);
+        } else {
+          _dbHelper.cancelRequestWithRemarks(
+              requestID: requestID, remarks: remarks,newStatus: BTexts.statusCancelled);
+          BLoaders.warningSnackBar(
+            title: 'No Internet',
+            message:
+                'Request updated locally. Sync with server when connection returns.',
+          );
+        }
+      }
+
+      _webSocketController.sendNotificationMessage(
+        NotificationModel(
+            title: 'Request Cancelled!', body: 'Reason: $remarks'),
+      );
+    } catch (e) {
+      BLoaders.errorSnackBar(
+          title: 'Save Failed', message: "An error occurred: ${e.toString()}");
     }
   }
 }

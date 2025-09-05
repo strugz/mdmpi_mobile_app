@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_action_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/request_modal_widgets/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/request_modal_widgets/b_captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/request_modal_widgets/b_document_reference_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/request_modal_widgets/b_view_delivered_item_button.dart';
@@ -78,8 +79,9 @@ class BModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
-    final bool isDoneDelivery =
-        requestModel.status == BTexts.statusDoneDelivery; // USE BTexts
+    final bool isDoneDelivery = requestModel.status == BTexts.statusDoneDelivery;
+    final bool isCancelled = requestModel.status == BTexts.statusCancelled;
+
     /// Request Details
     return BRoundedContainer(
       backgroundColor: dark ? BColors.black : BColors.light,
@@ -118,6 +120,8 @@ class BModal extends StatelessWidget {
                     textColor: textColor,
                     onPressed: () => _showImageDialog(context),
                   ),
+                if (isCancelled)
+                  BCancelRemarks(remarks: requestModel.cancelRemarks.remarks, date: requestModel.cancelRemarks.date),
                 RequestModalFooter(requestModel: requestModel),
                 ActionButton(
                   status: requestModel.status,

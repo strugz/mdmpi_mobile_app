@@ -53,29 +53,29 @@ class RequestFilterManager {
           break;
       }
 
+      // Apply status filter
       bool statusMatches =
-          statusFilter.displayName == RequestStatusFilter.all.displayName || item.status == statusFilter.displayName;
-
-
+          statusFilter.displayName == RequestStatusFilter.all.displayName ||
+              item.status == statusFilter.displayName;
+      // Apply user role filter
       userMatches = true;
-
       if (!currentUser.role.contains(',')) {
         if (currentUser.role.contains(BTexts.roleCourier)) {
-          userMatches = item.helper == currentUser.initial || item.deliveredBy == currentUser.initial;
+          userMatches = item.helper == currentUser.initial ||
+              item.deliveredBy == currentUser.initial;
         }
       }
+
+
       return dateMatches && statusMatches && userMatches;
     }).toList();
-
-    // Sort by targetDate in descending order
     tempList.sort((a, b) {
       try {
         final dateA = DateTime.parse(a.targetDate);
         final dateB = DateTime.parse(b.targetDate);
-        return dateB.compareTo(dateA); // Newest first
+        return dateB.compareTo(dateA);
       } catch (e) {
-        // Handle invalid dates during sorting
-        return 0; // Or define a fallback sorting logic
+        return 0;
       }
     });
 
@@ -86,42 +86,6 @@ class RequestFilterManager {
   void applyStatusFilter(RxList<RequestModel> allPendingRequests) {
     applyFilter(allPendingRequests.toList());
   }
-
-  /// Filter the list based on the selected status filter
-  /*void applyStatusFilter(RxList<RequestModel> allPendingRequests) {
-    final filter = selectedFilter.value;
-    final statusFilter = selectedStatusFilter.value;
-
-    /// Filter the list based on both date and status filters
-    var tempList = allPendingRequests.where((item) {
-      final targetDate = DateTime.parse(item.targetDate);
-
-      final matchesDate = switch (filter) {
-        RequestFilter.today => BFormatter.isToday(targetDate),
-        RequestFilter.yesterday => BFormatter.isYesterday(targetDate),
-        RequestFilter.tomorrow => BFormatter.isTomorrow(targetDate),
-        RequestFilter.fiveDaysAgo =>
-          BFormatter.isWithinLastNDays(targetDate, 5),
-        RequestFilter.thirtyDaysAgo =>
-          BFormatter.isWithinLastNDays(targetDate, 30),
-        RequestFilter.all => true,
-      };
-
-      final matchesStatus = statusFilter == RequestStatusFilter.all ||
-          item.status == statusFilter.displayName;
-
-      return matchesDate && matchesStatus;
-    }).toList();
-
-    // Sort the list by targetDate in ascending order
-    tempList.sort((a, b) {
-      final dateA = DateTime.parse(a.targetDate);
-      final dateB = DateTime.parse(b.targetDate);
-      return dateB.compareTo(dateA);
-    });
-
-    filteredRequests.assignAll(tempList);
-  }*/
 
   void selectFilter(
       RequestFilter filter, RxList<RequestModel> allPendingRequests) {
