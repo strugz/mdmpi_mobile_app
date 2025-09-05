@@ -54,6 +54,7 @@ class RequestController extends GetxController {
   final allPendingRequests = <RequestModel>[].obs;
   final currentSelectedRequest = Rx<RequestModel?>(null);
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final isAdvancedFilterExpanded = false.obs; // Added for collapsible filter
   // Managers
   late final RequestFormState formState;
   late final RequestDataManager dataManager;
@@ -176,6 +177,13 @@ class RequestController extends GetxController {
       useLocalStorage.value,
     );
     await loadRequests();
+  }
+
+  Future<void> updateRequestForCancellation(
+      String requestID, String remarks) async {
+    await dataManager.cancelRequestWithRemarks(
+        requestID, remarks, useLocalStorage.value);
+    // await loadRequests();
   }
 
   void toggleStoragePreference(bool value) {

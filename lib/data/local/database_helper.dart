@@ -1,9 +1,11 @@
+import 'dart:convert';
 
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
 import '../../features/logistics/models/client_model.dart';
+import '../../features/logistics/models/cancel_remarks_model.dart';
 import '../../features/logistics/models/request_model.dart';
 import '../../features/personalization/models/user_model.dart';
 import '../models/cnstmst_model.dart';
@@ -59,7 +61,8 @@ class DatabaseHelper {
         LocationEndAt TEXT,
         MobileID INTEGER DEFAULT 0,
         RequestDriverHelper TEXT,
-        Receiver TEXT
+        Receiver TEXT,
+        TripTicketNumber TEXT
       )
     ''');
 
@@ -91,6 +94,14 @@ class DatabaseHelper {
         FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
       )
     ''');
+
+    // Table: a_tblRequestRemarks
+    await db.execute('''
+        CREATE TABLE a_tblRequestRemarks (
+        RequestID TEXT PRIMARY KEY,
+        Remarks TEXT,
+        Date TEXT)
+        ''');
 
     // Table: ACCMST_
     await db.execute('''
@@ -163,7 +174,6 @@ class DatabaseHelper {
 
   /// --- CRUD Operation for CNTMST ---
 
-  // Insert a list of Cntmst records
   Future<void> insertCntmstList(List<CNTMSTModel> cntmstList) async {
     final db = await instance.database;
     Batch batch = db.batch();
@@ -179,7 +189,6 @@ class DatabaseHelper {
     await batch.commit(noResult: true);
   }
 
-  // Get all Cntmst records by Department
   Future<List<CNTMSTModel>> getAllCntmstRequester() async {
     final db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query('CNTMST',
@@ -197,7 +206,6 @@ class DatabaseHelper {
     });
   }
 
-  // Get user Phone Number and their reporting manager's Phone Number
   Future<List<String>> getUserAndManagerPhoneNumbers(String cntmnn) async {
     final db = await instance.database;
     List<String> phoneNumbers = [];
@@ -245,7 +253,6 @@ class DatabaseHelper {
     return phoneNumbers;
   }
 
-  // Get User full name by initial
   Future<String> getUserFullName(String cntmnn) async {
     final db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -264,7 +271,6 @@ class DatabaseHelper {
   }
 
   /// --- CRUD Operations for Users ---
-  // Insert a single user
   Future<void> insertUser(UserModel user) async {
     final db = await instance.database;
     await db.insert(
@@ -274,7 +280,6 @@ class DatabaseHelper {
     );
   }
 
-  // Insert multiple users
   Future<void> insertUsers(List<UserModel> users) async {
     final db = await instance.database;
     Batch batch = db.batch();
@@ -292,7 +297,6 @@ class DatabaseHelper {
             true); // Use noResult: true if you don't need the results of individual operations
   }
 
-  // Get users
   Future<List<UserModel>> getUsers() async {
     final db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query('Users');
@@ -305,7 +309,6 @@ class DatabaseHelper {
     });
   }
 
-  // Get user Phone Number by initial
   Future<String> getUserPhoneNumberByUsername(String initial) async {
     final db = await instance.database;
     final List<Map<String, dynamic>> maps = await db.query(
@@ -320,8 +323,49 @@ class DatabaseHelper {
     return maps.first['PhoneNumber'] as String;
   }
 
-  /// --- CRUD Operations for Request ---
+  /// --- CRUD Operations for Request remarks ---
+  Future<int> cancelRequestWithRemarks({
+    required String requestID,
+    required String remarks,
+    required String newStatus,
+  }) async {
+    final db = await instance.database;
+    final nowString = DateTime.now().toString();
+    return await db.transaction((txn) async {
+      await txn.insert(
+        'a_tblRequestRemarks',
+        {
+          'RequestID': requestID,
+          'Remarks': remarks,
+          'Date': nowString,
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+      return await txn.update(
+        'a_tblRequest',
+        {'RequestStatus': newStatus},
+        where: 'RequestID = ?',
+        whereArgs: [int.parse(requestID)],
+      );
+    });
+  }
 
+  Future<CancelRemarksModel> getRequestRemarks(String requestID) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'a_tblRequestRemarks',
+      where: 'RequestID = ?',
+      whereArgs: [requestID],
+      orderBy: 'Date DESC', // Orders remarks by date, newest first
+    );
+
+    if (maps.isEmpty) {
+      throw Exception('No remarks found for request ID: $requestID');
+    }
+    return CancelRemarksModel.fromJson(maps.first);
+  }
+
+  /// --- CRUD Operations for Request ---
   // Load Requests
   Future<List<RequestModel>> getRequests() async {
     final db = await instance.database;
@@ -357,12 +401,11 @@ class DatabaseHelper {
         request.image = imageString;
       }
 
-      // Fetch Client Information (ACCMST_ or DLRMST)
-      // This is less efficient than a JOIN if possible, but mimics your C# loop.
-      // For better performance, consider if client info can be simplified or if a different
-      // DB structure or more complex JOIN could retrieve this in the main query.
+      if (request.status == BTexts.statusCancelled) {
+        request.cancelRemarks = await getRequestRemarks(request.requestID);
+      }
+
       if (request.clientID.isNotEmpty) {
-        // Try ACCMST_ first
         List<Map<String, dynamic>> clientMaps = await db.query(
           'ACCMST_',
           where: 'ACCMID = ?',
@@ -371,10 +414,9 @@ class DatabaseHelper {
         if (clientMaps.isNotEmpty) {
           request.client = ClientModel.fromJson(clientMaps.first);
         } else {
-          // Try DLRMST if not found in ACCMST_
           clientMaps = await db.query(
             'DLRMST',
-            where: 'DLRMID = ?', // Assuming DLRMID is the column name
+            where: 'DLRMID = ?',
             whereArgs: [request.clientID],
           );
           if (clientMaps.isNotEmpty) {
@@ -519,13 +561,12 @@ class DatabaseHelper {
       'LocationEndAt': requestModel.locationEndAt,
       'MobileID': requestModel.mobileID,
       'RequestDriverHelper': requestModel.helper,
-      'Receiver': requestModel.receiver
+      'Receiver': requestModel.receiver,
+      'TripTicketNumber': requestModel.tripTicketNumber
     };
 
     await db.update('a_tblRequest', requestData,
         where: 'RequestID = ?', whereArgs: [requestModel.requestID]);
-
-    // Conditionally insert into a_tblRequestReceiverSignature
     if (requestModel.status == BTexts.statusDoneDelivery &&
         requestModel.signature.isNotEmpty) {
       Map<String, dynamic> signatureData = {
@@ -662,19 +703,10 @@ class DatabaseHelper {
   Future<List<ClientModel>> searchClients(String query) async {
     try {
       final db = await instance.database;
-      print(
-          'DATABASE HELPER: Database object is valid. Searching for: "$query"');
-
       if (query.isEmpty) {
-        // If the query is empty, you might want to return all clients
-        // or an empty list, depending on your desired behavior.
-        // For this example, let's return all clients.
         final List<Map<String, dynamic>> maps = await db.query('ACCMST_');
-        print(
-            'DATABASE HELPER: Search query executed. Number of results: ${maps.length}');
         return List.generate(maps.length, (i) {
-          return ClientModel.fromJson(
-              maps[i]); // Assuming ClientModel.fromJson exists
+          return ClientModel.fromJson(maps[i]);
         });
       } else {
         final List<Map<String, dynamic>> maps = await db.query(
@@ -682,12 +714,7 @@ class DatabaseHelper {
           where: 'ACCMNM LIKE ? OR ACCMSC LIKE ?',
           whereArgs: ['%$query%', '%$query%'],
         );
-
-        print(
-            'DATABASE HELPER: Search query executed. Number of results: ${maps.length}');
         if (maps.isEmpty) {
-          // This condition should ideally never be true with sqflite
-          print('DATABASE HELPER: maps IS NULL - THIS IS UNEXPECTED!');
           return [];
         }
 
@@ -696,9 +723,7 @@ class DatabaseHelper {
         });
       }
     } catch (e, stackTrace) {
-      print('DATABASE HELPER: ERROR in searchClients: $e');
-      print('DATABASE HELPER: StackTrace: $stackTrace');
-      return []; // Return empty list or rethrow depending on error handling strategy
+      return [];
     }
   }
 
@@ -722,7 +747,7 @@ const Map<String, int> statusStringToInt = {
   'Getting Supplies Ready': 2,
   'Item Prepared': 3,
   'For Delivery': 4,
-  'Delivered': 5, // Assuming 'Done Delivery' is 5 based on your sequence
+  'Delivered': 5,
 };
 
 const Map<int, String> statusIntToString = {

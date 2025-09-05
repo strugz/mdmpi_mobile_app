@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/request_model.dart';
 import 'dart:convert';
 
 import '../../../base/utils/exceptions/platform_exceptions.dart';
+import '../../../features/logistics/models/cancel_remarks_model.dart';
 
 class RequestRepository extends GetxController {
   static RequestRepository get instance => Get.find();
@@ -81,11 +82,64 @@ class RequestRepository extends GetxController {
   }
 
   /// -- WEB API HTTPS
+  Future<void> cancelRequest(String requestID, String remarks) async {
+    try {
+      final response = await http
+          .patch(
+            Uri.parse(
+                "${dotenv.env['API_URL']!}/api3/request/cancel/$requestID"),
+            headers: <String, String>{
+              'Content-Type':
+                  'application/json; charset=UTF-8', // Specify JSON content type
+            },
+            body: jsonEncode(remarks), // Encode the request data as JSON
+          )
+          .timeout(const Duration(seconds: 60));
+      if (response.statusCode == 200) {
+        BLoaders.successSnackBar(
+            title: 'Information', message: 'Success saving...');
+      } else {
+        BLoaders.errorSnackBar(
+            title: 'Error',
+            message:
+                'Failed to insert request. Status code: ${response.statusCode}');
+      }
+    } on TFormatException catch (_) {
+      throw TFormatException();
+    } on PlatformException catch (e) {
+      throw TPlatformException(e.code).message;
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred1: $e');
+    }
+  }
+
+  Future<CancelRemarksModel> getCancelRequestRemarks(String requestID) async {
+    try {
+      final response = await http.get(Uri.parse(
+          "${dotenv.env['API_URL']!}/api3/request/cancel/$requestID"));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonResponse = json.decode(response.body);
+        if (jsonResponse.isNotEmpty) {
+          return CancelRemarksModel.fromJson(
+              jsonResponse[0] as Map<String, dynamic>);
+        } else {
+          throw Exception('No cancel remarks found for request ID: $requestID');
+        }
+      } else {
+        throw Exception(
+            'Failed to load cancel remarks. Status: ${response.statusCode}, Body: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('An error occurred while fetching cancel remarks: $e');
+    }
+  }
+
+  /// -- WEB API HTTPS
   Future<List<RequestModel>> getAllPendingRequestAPI() async {
     try {
       final response =
           await http.get(Uri.parse("${dotenv.env['API_URL']}/api3/request"));
-
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = json.decode(response.body);
         return jsonResponse.map((data) => RequestModel.fromJson(data)).toList();
