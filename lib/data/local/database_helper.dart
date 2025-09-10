@@ -28,12 +28,24 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(
-      path,
-      version: 1, // Increment this if you change the schema later
-      onCreate: _createDB,
-      // onConfigure: _onConfigure, // Optional: for enabling foreign keys if not enabled by default
-    );
+    return await openDatabase(path,
+        version: 2, // Increment this if you change the schema later
+        onCreate: _createDB,
+        onUpgrade: _onUpgrade);
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Check if the database is older than version 2
+      // Create the new a_tblRequestRemarks table
+      await db.execute('''
+      CREATE TABLE a_tblRequestRemarks (
+        RequestID TEXT PRIMARY KEY,
+        Remarks TEXT,
+        Date TEXT
+      )
+    ''');
+    }
   }
 
   Future _createDB(Database db, int version) async {
@@ -323,6 +335,7 @@ class DatabaseHelper {
   }
 
   /// --- CRUD Operations for Request remarks ---
+  ///
   Future<int> cancelRequestWithRemarks({
     required String requestID,
     required String remarks,
@@ -362,6 +375,18 @@ class DatabaseHelper {
       throw Exception('No remarks found for request ID: $requestID');
     }
     return CancelRemarksModel.fromJson(maps.first);
+  }
+
+  /// Checks if a request remark exists for the given RequestID.
+  Future<bool> isRequestRemarkExisting(String requestID) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'a_tblRequestRemarks',
+      where: 'RequestID = ?',
+      whereArgs: [requestID],
+      limit: 1, // We only need to know if at least one exists
+    );
+    return maps.isNotEmpty;
   }
 
   /// --- CRUD Operations for Request ---
@@ -478,10 +503,20 @@ class DatabaseHelper {
       conflictAlgorithm: ConflictAlgorithm
           .ignore, // Or ConflictAlgorithm.fail if you don't want to replace
     );
+
     if (requestId == 0) {
       updateRequest(requestModel: requestModel);
       return 0; // Or handle as appropriate
     }
+    
+    if (requestModel.cancelRemarks != null) {
+      await cancelRequestWithRemarks(
+        requestID: requestModel.requestID,
+        remarks: requestModel.cancelRemarks.remarks,
+        newStatus: requestModel.status,
+      );
+    }
+
 
     // Insert Document References
     if (requestModel.documentReference.isNotEmpty) {
@@ -500,6 +535,7 @@ class DatabaseHelper {
         }
       }
     }
+
     return int.parse(requestModel.requestID);
   }
 
