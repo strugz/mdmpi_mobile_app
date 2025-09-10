@@ -180,9 +180,9 @@ class RequestController extends GetxController {
   }
 
   Future<void> updateRequestForCancellation(
-      String requestID, String remarks) async {
+      RequestModel requestModel, String remarks) async {
     await dataManager.cancelRequestWithRemarks(
-        requestID, remarks, useLocalStorage.value);
+        requestModel, remarks, useLocalStorage.value);
     await loadRequests();
   }
 

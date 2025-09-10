@@ -286,7 +286,7 @@ class RequestDataManager {
   }
 
   Future<void> cancelRequestWithRemarks(
-      String requestID, String remarks, bool userLocalStorage) async {
+      RequestModel requestModel, String remarks, bool userLocalStorage) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -294,16 +294,24 @@ class RequestDataManager {
 
     try {
       if (!userLocalStorage) {
-        _dbHelper.cancelRequestWithRemarks(requestID: requestID,remarks: remarks, newStatus: BTexts.statusCancelled);
+        _dbHelper.cancelRequestWithRemarks(
+            requestID: requestModel.requestID,
+            remarks: remarks,
+            newStatus: BTexts.statusCancelled);
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _requestRepository.cancelRequest(requestID, remarks);
+          await _requestRepository.cancelRequest(
+              requestModel.requestID, remarks);
           _dbHelper.cancelRequestWithRemarks(
-              requestID: requestID, remarks: remarks,newStatus: BTexts.statusCancelled);
+              requestID: requestModel.requestID,
+              remarks: remarks,
+              newStatus: BTexts.statusCancelled);
         } else {
           _dbHelper.cancelRequestWithRemarks(
-              requestID: requestID, remarks: remarks,newStatus: BTexts.statusCancelled);
+              requestID: requestModel.requestID,
+              remarks: remarks,
+              newStatus: BTexts.statusCancelled);
           BLoaders.warningSnackBar(
             title: 'No Internet',
             message:
@@ -316,6 +324,24 @@ class RequestDataManager {
         NotificationModel(
             title: 'Request Cancelled!', body: 'Reason: $remarks'),
       );
+
+      List<String> managersPhoneNumber = [];
+
+      managersPhoneNumber
+          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
+
+      if (requestModel.itemPreparedBy == 'LNA') {
+        managersPhoneNumber
+            .add(await _dbHelper.getUserPhoneNumberByUsername('MEO'));
+      }
+
+      if (requestModel.itemPreparedBy == 'RPT') {
+        managersPhoneNumber
+            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
+      }
+
+      await _messageController.sendSmsMessage(
+          managersPhoneNumber, BTexts.statusCancelled, requestModel);
     } catch (e) {
       BLoaders.errorSnackBar(
           title: 'Save Failed', message: "An error occurred: ${e.toString()}");
