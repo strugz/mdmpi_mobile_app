@@ -1,3 +1,4 @@
+import 'dart:convert';
 
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:sqflite/sqflite.dart';
@@ -757,7 +758,7 @@ class DatabaseHelper {
           return ClientModel.fromJson(maps[i]);
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       return [];
     }
   }
