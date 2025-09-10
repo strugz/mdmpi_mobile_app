@@ -36,7 +36,7 @@ class BDialog {
                       labelText: "Reason for cancellation",
                       border: OutlineInputBorder(),
                     ),
-                    value: selectedTerm,
+                    initialValue: selectedTerm,
                     hint: const Text("Select a reason"),
                     isExpanded: true,
                     onChanged: (String? newValue) {

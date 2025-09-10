@@ -3,10 +3,10 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import 'b_text_scanner.dart';
-import '../../../controllers/request_controller.dart';
 
 class BDocumentReference extends StatelessWidget {
   const BDocumentReference({super.key});

@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../../base/utils/constants/text_string.dart';
 
-class ActionButton extends StatelessWidget {
+class BActionButton extends StatelessWidget {
   final String? status;
   final VoidCallback onPressed;
   final bool isVisible;
 
-  const ActionButton({
+  const BActionButton({
     super.key,
     required this.status,
     required this.onPressed,

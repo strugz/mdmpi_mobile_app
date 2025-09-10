@@ -1,22 +1,21 @@
-import 'dart:convert';
 
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/helpers/request_filter_manager.dart';
-import 'package:mdmpi_mobile_app/base/utils/helpers/request_form_state.dart';
 import 'package:mdmpi_mobile_app/base/utils/image_utils/image_conversion_base_64_to_string.dart';
 
 import '../../../data/local/database_helper.dart';
 import '../../../data/repositories/request/request_repository.dart';
 import '../../../data/services/messaging_controller.dart';
-import '../../../features/logistics/controllers/web_socket_notification_controller.dart';
-import '../../../features/logistics/models/notification_model.dart';
-import '../../../features/logistics/models/request_model.dart';
-import '../../../features/personalization/controller/user_controller.dart';
-import '../constants/image_strings.dart';
-import '../constants/text_string.dart';
-import '../popups/full_screen_loader.dart';
-import '../popups/loaders.dart';
-import 'network_manager.dart';
+import '../controllers/web_socket_notification_controller.dart';
+import '../models/notification_model.dart';
+import '../models/request_model.dart';
+import '../../personalization/controller/user_controller.dart';
+import '../../../base/utils/constants/image_strings.dart';
+import '../../../base/utils/constants/text_string.dart';
+import '../../../base/utils/popups/full_screen_loader.dart';
+import '../../../base/utils/popups/loaders.dart';
+import '../../../base/utils/helpers/network_manager.dart';
+import 'request_filter_manager.dart';
+import 'request_form_state.dart';
 
 class RequestDataManager {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;

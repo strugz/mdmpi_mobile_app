@@ -7,15 +7,15 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request/request_controller_components.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_client_information.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_document_reference.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
 import '../../../controllers/request_controller.dart';
 
-class BRequestForm extends StatelessWidget {
-  const BRequestForm({super.key});
+class HotlineDirectForm extends StatelessWidget {
+  const HotlineDirectForm({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +85,7 @@ class BRequestForm extends StatelessWidget {
                             TextFormField(
                               onTap: () => RequestControllerComponents
                                   .showDateTimerPicker(
-                                      context, requestController.formState.targetDate),
+                                  context, requestController.formState.targetDate),
                               controller: requestController.formState.targetDate,
                               decoration: InputDecoration(
                                 prefixIcon: Icon(Iconsax.clock),
@@ -114,7 +114,7 @@ class BRequestForm extends StatelessWidget {
                       /// Requested By
                       Center(
                         child: Obx(
-                          () => Column(
+                              () => Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
                               BDropDownDynamicList(

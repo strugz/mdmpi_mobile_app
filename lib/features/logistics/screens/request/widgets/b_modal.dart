@@ -123,7 +123,7 @@ class BModal extends StatelessWidget {
                 if (isCancelled)
                   BCancelRemarks(remarks: requestModel.cancelRemarks.remarks, date: requestModel.cancelRemarks.date),
                 RequestModalFooter(requestModel: requestModel),
-                ActionButton(
+                BActionButton(
                   status: requestModel.status,
                   onPressed: onPressed,
                   isVisible: status,

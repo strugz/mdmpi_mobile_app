@@ -114,4 +114,14 @@ class BTexts {
   static const String roleCourier = "Courier";
   static const String roleAdmin = "Admin";
 
+  // Labels
+  static List<String> requestFormLabels = [
+    'Standard Delivery',
+    'Air / Sea',
+    'Hotline Direct',
+    'Pick up',
+    'Pull out',
+    'Stock receive',
+  ];
+
 }

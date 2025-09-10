@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_request_form.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart'; // Assuming this exists
+import '../../../../base/utils/constants/image_strings.dart';
+import '../../../../base/utils/constants/text_string.dart';
+import '../../../../base/utils/routes/app_routes.dart';
 import '../../../../common/widgets/custom_shapes/containers/primary_header_container.dart';
 import '../../controllers/request_controller.dart'; // Assuming this exists
 
@@ -28,11 +32,25 @@ class HomeScreen extends StatelessWidget {
             ),
 
             /// Body
-            const SizedBox(height: BSizes.defaultSpace),
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+              child: BSectionHeading(
+                  title: 'How would you like to start?',
+                  showActionButton: false),
+            ),
+            BRequestForm(
+                labels: BTexts.requestFormLabels,
+                pages: AppRoutes.requestFormPages,
+                iconPaths: BImages.requestFormIconPaths),
+            const SizedBox(height: BSizes.spaceBtwItemsLight),
+            const Divider(),
+            const SizedBox(height: BSizes.spaceBtwItemsLight),
             Obx(
               () => Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: BSizes.defaultSpace), // Added horizontal padding
+                    horizontal:
+                        BSizes.spaceBtwItems), // Added horizontal padding
                 child: Column(
                   crossAxisAlignment:
                       CrossAxisAlignment.start, // Align items to the start
@@ -40,17 +58,19 @@ class HomeScreen extends StatelessWidget {
                     BSectionHeading(
                         title: 'Activity Dashboard', showActionButton: false),
                     BSectionHeading(
-                        title: DateTime.now().year.toString(), showActionButton: false),
+                        title: DateTime.now().year.toString(),
+                        showActionButton: false),
                     const SizedBox(height: BSizes.spaceBtwItems),
+
                     /// Create a Dashboard
-                    _buildDashboardItem(
-                        context, 'Total Requests:', controller.totalRequest.toString()),
+                    _buildDashboardItem(context, 'Total Requests:',
+                        controller.totalRequest.toString()),
                     _buildDashboardItem(context, 'Getting Supplies Ready:',
                         controller.gettingSuppliesReady.toString()),
-                    _buildDashboardItem(
-                        context, 'Items Prepared:', controller.itemPrepared.toString()),
-                    _buildDashboardItem(
-                        context, 'For Delivery:', controller.forDelivery.toString()),
+                    _buildDashboardItem(context, 'Items Prepared:',
+                        controller.itemPrepared.toString()),
+                    _buildDashboardItem(context, 'For Delivery:',
+                        controller.forDelivery.toString()),
                     _buildDashboardItem(
                         context, 'Delivered:', controller.delivered.toString()),
                     const SizedBox(
