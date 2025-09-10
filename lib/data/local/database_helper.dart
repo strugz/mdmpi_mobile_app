@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -29,10 +28,12 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path,
-        version: 2, // Increment this if you change the schema later
-        onCreate: _createDB,
-        onUpgrade: _onUpgrade);
+    return await openDatabase(
+      path,
+      version: 2, // Increment this if you change the schema later
+      onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+    );
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -509,7 +510,7 @@ class DatabaseHelper {
       updateRequest(requestModel: requestModel);
       return 0; // Or handle as appropriate
     }
-    
+
     if (requestModel.cancelRemarks != null) {
       await cancelRequestWithRemarks(
         requestID: requestModel.requestID,
@@ -517,7 +518,6 @@ class DatabaseHelper {
         newStatus: requestModel.status,
       );
     }
-
 
     // Insert Document References
     if (requestModel.documentReference.isNotEmpty) {
