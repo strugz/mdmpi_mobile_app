@@ -31,10 +31,22 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1, // Increment this if you change the schema later
+      version: 2, // Increment this if you change the schema later
       onCreate: _createDB,
-      // onConfigure: _onConfigure, // Optional: for enabling foreign keys if not enabled by default
+      onUpgrade: _onUpgrade
     );
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Table: a_tblRequestRemarks
+      await db.execute('''
+        CREATE TABLE a_tblRequestRemarks (
+        RequestID TEXT PRIMARY KEY,
+        Remarks TEXT,
+        Date TEXT)
+        ''');
+    }
   }
 
   Future _createDB(Database db, int version) async {
