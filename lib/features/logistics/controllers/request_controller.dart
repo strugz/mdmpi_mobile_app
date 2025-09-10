@@ -183,7 +183,7 @@ class RequestController extends GetxController {
       String requestID, String remarks) async {
     await dataManager.cancelRequestWithRemarks(
         requestID, remarks, useLocalStorage.value);
-    // await loadRequests();
+    await loadRequests();
   }
 
   void toggleStoragePreference(bool value) {
