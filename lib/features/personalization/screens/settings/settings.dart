@@ -119,7 +119,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   BSettingsMenuTile(
                       icon: Iconsax.refresh,
-                      title: 'Retrieve Data',
+                      title: 'Retrieve Request Data',
                       subTitle: 'Retrieve data from the server',
                       onTap: () {
                         // Show a confirmation dialog

@@ -256,7 +256,6 @@ class RequestDataManager {
       RequestFilterManager filterManager) async {
     try {
       final requestsFromDb = await _dbHelper.getRequests();
-
       if (requestsFromDb.isEmpty) {
         await fetchPendingRequestsAPI(allPendingRequests, filterManager);
       } else {

@@ -14,6 +14,7 @@ import '../../../base/utils/helpers/request_data_manager.dart';
 import '../../../base/utils/helpers/request_filter_manager.dart';
 import '../../../base/utils/helpers/request_form_state.dart';
 
+
 enum RequestFilter {
   today('Today'),
   yesterday('Yesterday'),
@@ -112,7 +113,6 @@ class RequestController extends GetxController {
   Future<void> loadRequests() async {
     try {
       isLoading.value = true;
-
       if (useLocalStorage.value) {
         await dataManager.fetchPendingRequestsAPI(
             allPendingRequests, filterManager);
