@@ -90,6 +90,22 @@ class RequestDataManager {
       managersPhoneNumber
           .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
 
+
+      if (newRequest.createdBy == 'MEO') {
+        managersPhoneNumber
+            .add(await _dbHelper.getUserPhoneNumberByUsername('LNA'));
+      }
+
+      if (newRequest.createdBy == 'AVS') {
+        managersPhoneNumber
+            .add(await _dbHelper.getUserPhoneNumberByUsername('RPT'));
+      }
+
+      if (newRequest.createdBy == 'RPT') {
+        managersPhoneNumber
+            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
+      }
+
       await _messageController.sendSmsMessage(
           managersPhoneNumber, BTexts.statusNewRequest, newRequest);
 
