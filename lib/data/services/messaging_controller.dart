@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
+import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 
 import '../../features/logistics/models/request_model.dart';
 
@@ -27,6 +28,7 @@ class MessagingController extends GetxController {
   static MessagingController get instance => Get.find();
 
   final Telephony _telephony;
+  final _dbHelper = DatabaseHelper.instance;
 
   MessagingController({Telephony? telephony})
       : _telephony = telephony ?? Telephony.instance;
@@ -94,6 +96,17 @@ class MessagingController extends GetxController {
             '${_formatDocumentReferencesForSms(requestModel.documentReference)}\n'
             'Status: ${_formatDocumentReferencesForSms(requestModel.documentReference).contains('PULL OUT') == true ? 'PULLED OUT' : 'DELIVERED'}.';
         break;
+      case BTexts.statusCancelled:
+        final cancelRemarks =
+            await _dbHelper.getRequestRemarks(requestModel.requestID);
+        message = '${requestModel.client.name} \n'
+            'Document References:\n'
+            '${_formatDocumentReferencesForSms(requestModel.documentReference)}\n'
+            'Status: Cancelled.\n'
+            'Remarks: ${cancelRemarks.remarks}';
+        break;
+      default:
+        message = '';
     }
     return message;
   }

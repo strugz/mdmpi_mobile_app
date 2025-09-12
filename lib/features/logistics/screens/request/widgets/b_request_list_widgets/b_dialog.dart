@@ -90,11 +90,11 @@ class BDialog {
                         return;
                       }
                       requestController.updateRequestForCancellation(
-                          requestModel.requestID, finalReason);
+                          requestModel, finalReason);
                     } else if (selectedTerm != null) {
                       finalReason = selectedTerm!;
                       requestController.updateRequestForCancellation(
-                          requestModel.requestID, finalReason);
+                          requestModel, finalReason);
                     } else {
                       BLoaders.warningSnackBar(
                           title: 'Please enter a reason',

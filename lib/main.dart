@@ -42,8 +42,6 @@ Future<void> main() async {
 
   ///  Load .env file
   await dotenv.load(fileName: ".env");
-
-  /// --  Init Local Storage
   await GetStorage.init();
 
   /// Get an instance of your DatabaseHelper
@@ -64,6 +62,8 @@ Future<void> main() async {
     Permission.sms
   ].request();
 
+  await requestBatteryOptimizationPermission();
+
   /// Check if all required permissions are granted
   if (statuses[Permission.manageExternalStorage]?.isGranted == true &&
       statuses[Permission.location]?.isGranted == true &&
@@ -76,7 +76,6 @@ Future<void> main() async {
       mdmpiAppDir.createSync(recursive: true);
     }
   } else {
-    print('One or more permissions were not granted.');
     if (statuses[Permission.sms]?.isDenied == true ||
         statuses[Permission.sms]?.isPermanentlyDenied == true) {
       print('SMS permission was denied.');

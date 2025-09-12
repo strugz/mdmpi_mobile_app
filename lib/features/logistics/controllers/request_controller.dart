@@ -182,10 +182,10 @@ class RequestController extends GetxController {
   }
 
   Future<void> updateRequestForCancellation(
-      String requestID, String remarks) async {
+      RequestModel requestModel, String remarks) async {
     await dataManager.cancelRequestWithRemarks(
-        requestID, remarks, useLocalStorage.value);
-    // await loadRequests();
+        requestModel, remarks, useLocalStorage.value);
+    await loadRequests();
   }
 
   void toggleStoragePreference(bool value) {
