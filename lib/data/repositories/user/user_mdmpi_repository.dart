@@ -13,7 +13,7 @@ class UserMDMPIRepository extends GetxController {
   Future<List<CNTMSTModel>> getAllClientAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api2/cntmst"));
+          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api3/cntmst"));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = json.decode(response.body);

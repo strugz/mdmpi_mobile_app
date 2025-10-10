@@ -35,6 +35,7 @@ enum RequestStatusFilter {
   statusItemPrepared('Item Prepared'),
   statusForDelivery('For Delivery'),
   statusDoneDelivery('Delivered'),
+  statusCancelled('Cancelled'),
   all('All');
 
   const RequestStatusFilter(this.displayName);

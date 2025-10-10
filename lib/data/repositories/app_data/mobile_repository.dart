@@ -14,7 +14,7 @@ class MobileRepository {
     // Return List<Mobile>
     try {
       final response = await http.get(
-        Uri.parse("${dotenv.env['API_URL']!}/api2/request/mobile"),
+        Uri.parse("${dotenv.env['API_URL']!}/api3/request/mobile"),
       );
       if (response.statusCode == 200) {
         final List<dynamic> jsonData = jsonDecode(response.body);

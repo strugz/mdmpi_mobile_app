@@ -12,7 +12,7 @@ class ClientRepository extends GetxController {
   Future<List<ClientModel>> getAllClientAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api2/accmst"));
+          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api3/accmst"));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = json.decode(response.body);
