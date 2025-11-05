@@ -1,7 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
-import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/authentication/screens/login/login.dart';
 import 'package:mdmpi_mobile_app/features/authentication/screens/password_configuration/forget_password.dart';
 import 'package:mdmpi_mobile_app/features/authentication/screens/signup/signup.dart';
@@ -45,42 +43,4 @@ class AppRoutes {
     const PullOutForm(),
     const StockReceiveForm(),
   ];
-}
-
-
-// Example placeholder pages
-class PageTwo extends StatelessWidget {
-  const PageTwo({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: BAppBar(title: const Text("Page Two"), showBackArrow: true),
-    body: const Center(child: Text("This is Page Two")),
-  );
-}
-
-class PageFour extends StatelessWidget {
-  const PageFour({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: BAppBar(title: const Text("Page Four"), showBackArrow: true),
-    body: const Center(child: Text("This is Page Four")),
-  );
-}
-
-class PageFive extends StatelessWidget {
-  const PageFive({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: BAppBar(title: const Text("Page Five"), showBackArrow: true),
-    body: const Center(child: Text("This is Page Five")),
-  );
-}
-
-class PageSix extends StatelessWidget {
-  const PageSix({super.key});
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: BAppBar(title: const Text("Page Six"), showBackArrow: true),
-    body: const Center(child: Text("This is Page Six")),
-  );
 }

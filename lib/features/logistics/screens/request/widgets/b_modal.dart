@@ -32,7 +32,7 @@ class BModal extends StatelessWidget {
   /// Show an image dialog with the captured signature.
   Future<void> _showImageDialog(BuildContext context) async {
     final String imageRequestUrl =
-        '${dotenv.env['API_URL']!}/api3/request/images/${requestModel.requestID}';
+        '${dotenv.env['API_URL']!}/api4/request/images/${requestModel.requestID}';
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {

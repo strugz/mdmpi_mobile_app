@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:sqflite/sqflite.dart';
@@ -509,14 +508,12 @@ class DatabaseHelper {
       updateRequest(requestModel: requestModel);
       return 0; // Or handle as appropriate
     }
-    
-    if (requestModel.cancelRemarks != null) {
-      await cancelRequestWithRemarks(
-        requestID: requestModel.requestID,
-        remarks: requestModel.cancelRemarks.remarks,
-        newStatus: requestModel.status,
-      );
-    }
+
+    await cancelRequestWithRemarks(
+      requestID: requestModel.requestID,
+      remarks: requestModel.cancelRemarks.remarks,
+      newStatus: requestModel.status,
+    );
 
 
     // Insert Document References
@@ -758,7 +755,7 @@ class DatabaseHelper {
           return ClientModel.fromJson(maps[i]);
         });
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       return [];
     }
   }

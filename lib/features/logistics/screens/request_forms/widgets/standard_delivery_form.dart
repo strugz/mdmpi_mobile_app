@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request/request_controller_components.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/request/components/request_controller_components.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 

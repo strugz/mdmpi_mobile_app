@@ -12,7 +12,7 @@ class CapturedSignatureImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String imageRequestUrl =
-        '${dotenv.env['API_URL']!}/api3/request/signature/$requestId';
+        '${dotenv.env['API_URL']!}/api4/request/signature/$requestId';
     try {
       return Center(
         child: Container(

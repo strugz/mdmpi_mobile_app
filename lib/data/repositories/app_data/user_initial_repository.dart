@@ -13,7 +13,7 @@ class UserInitialRepository {
   Future<List<UserInitialModel>> getAllUserInitial() async {
     try {
       final response = await http.get(
-        Uri.parse("${dotenv.env['API_URL']!}/api3/CNTMST/initial"),
+        Uri.parse("${dotenv.env['API_URL']!}/api4/CNTMST/initial"),
       );
       if (response.statusCode == 200) {
         final List<dynamic> jsonData = json.decode(response.body);
