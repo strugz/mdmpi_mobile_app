@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -151,6 +153,56 @@ class DatabaseHelper {
     await db.delete('a_tblRequestDocumentReference');
     await db.delete('a_tblRequestReceiverSignature');
     await db.delete('a_tblRequestImage');
+  }
+
+  // --- Signature/image helpers delegated to RequestDao ---
+  Future<String?> getReceiverSignatureByRequestId(dynamic requestID) async {
+    final dao = await requestDao;
+    return await dao.getReceiverSignatureByRequestId(requestID);
+  }
+
+  Future<String?> getRequestImageByRequestId(dynamic requestID) async {
+    final dao = await requestDao;
+    return await dao.getRequestImageByRequestId(requestID);
+  }
+
+  Future<bool> hasReceiverSignature(dynamic requestID) async {
+    final dao = await requestDao;
+    return await dao.hasReceiverSignature(requestID);
+  }
+
+  Future<bool> hasRequestImage(dynamic requestID) async {
+    final dao = await requestDao;
+    return await dao.hasRequestImage(requestID);
+  }
+
+  /// Persist signature and/or image for a request via the RequestDao
+  Future<void> saveRequestMedia({required dynamic requestID, String? signature, String? image}) async {
+    final dao = await requestDao;
+    return await dao.saveRequestMedia(requestID: requestID, signature: signature, image: image);
+  }
+
+  /// Load saved request image as bytes (Uint8List) or null if not found/invalid.
+  Future<Uint8List?> loadSavedRequestImageBytes(dynamic requestID) async {
+    try {
+      final base64Str = await getRequestImageByRequestId(requestID);
+      if (base64Str == null || base64Str.isEmpty) return null;
+      return base64Decode(base64Str);
+    } catch (e) {
+      // If decoding fails, return null to let caller handle fallback
+      return null;
+    }
+  }
+
+  /// Load saved receiver signature as bytes (Uint8List) or null if not found/invalid.
+  Future<Uint8List?> loadSavedSignatureBytes(dynamic requestID) async {
+    try {
+      final base64Str = await getReceiverSignatureByRequestId(requestID);
+      if (base64Str == null || base64Str.isEmpty) return null;
+      return base64Decode(base64Str);
+    } catch (e) {
+      return null;
+    }
   }
 
   // --- CNTMST helpers (delegated) ---

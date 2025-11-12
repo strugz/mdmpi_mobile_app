@@ -258,7 +258,6 @@ class RequestDataManager {
         }
       }
 
-      /// YOU ARE HERE
       if (!useLocalStorage) {
         await _dbHelper.updateRequest(requestModel: updatedRequest);
       } else {
@@ -275,6 +274,17 @@ class RequestDataManager {
           );
         }
       }
+
+      // Local-only save
+      await _dbHelper.updateRequest(requestModel: updatedRequest);
+      // Persist any media captured (signature/image) locally
+      await _dbHelper.saveRequestMedia(
+        requestID: updatedRequest.id.isNotEmpty ? updatedRequest.id : updatedRequest.requestID,
+        signature: formState.receiverSignatureBase64.value.isNotEmpty
+            ? formState.receiverSignatureBase64.value
+            : null,
+        image: finalImageBase64.isNotEmpty ? finalImageBase64 : null,
+      );
 
       _webSocketController.sendNotificationMessage(
         NotificationModel(title: 'Update', body: updatedRequest.status),

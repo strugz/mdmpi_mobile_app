@@ -235,13 +235,9 @@ class RequestDao {
 
     await db.update('a_tblRequest', requestData, where: 'RequestID = ?', whereArgs: [requestModel.id]);
 
-    // Handle signature/image insertion on done delivery
-    if (requestModel.status == BTexts.statusDoneDelivery && requestModel.signature.isNotEmpty) {
-      await db.insert('a_tblRequestReceiverSignature', {'RequestID': requestModel.requestID, 'RequestReceiverSignature': requestModel.signature}, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-    if (requestModel.status == BTexts.statusDoneDelivery && requestModel.image.isNotEmpty) {
-      await db.insert('a_tblRequestImage', {'RequestID': requestModel.requestID, 'RequestImage': requestModel.image}, conflictAlgorithm: ConflictAlgorithm.replace);
-    }
+    // NOTE: media (signature/image) persistence is handled via saveRequestMedia()
+    // which is invoked by the caller (RequestDataManager) to centralize upload
+    // and local-save logic. This keeps updateRequest focused on the main row.
   }
 
   Future<bool> isRequestTableNotEmpty() async {
@@ -258,6 +254,81 @@ class RequestDao {
     await db.delete('a_tblRequestDocumentReference');
     await db.delete('a_tblRequestReceiverSignature');
     await db.delete('a_tblRequestImage');
+  }
+
+  /// --- Receiver signature / image helpers ---
+  /// Returns the base64 signature string stored for a request, or null if none.
+  Future<String?> getReceiverSignatureByRequestId(dynamic requestID) async {
+    final parsedId = int.tryParse(requestID.toString()) ?? requestID;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'a_tblRequestReceiverSignature',
+      columns: ['RequestReceiverSignature'],
+      where: 'RequestID = ?',
+      whereArgs: [parsedId],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    final value = maps.first['RequestReceiverSignature'] as String?;
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  /// Returns the base64 image string stored for a request, or null if none.
+  Future<String?> getRequestImageByRequestId(dynamic requestID) async {
+    final parsedId = int.tryParse(requestID.toString()) ?? requestID;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'a_tblRequestImage',
+      columns: ['RequestImage'],
+      where: 'RequestID = ?',
+      whereArgs: [parsedId],
+      limit: 1,
+    );
+    if (maps.isEmpty) return null;
+    final value = maps.first['RequestImage'] as String?;
+    return value == null || value.isEmpty ? null : value;
+  }
+
+  /// Convenience checks
+  Future<bool> hasReceiverSignature(dynamic requestID) async {
+    final sig = await getReceiverSignatureByRequestId(requestID);
+    return sig != null;
+  }
+
+  Future<bool> hasRequestImage(dynamic requestID) async {
+    final img = await getRequestImageByRequestId(requestID);
+    return img != null;
+  }
+
+  /// Return all receiver signature rows (RequestID, RequestReceiverSignature)
+  Future<List<Map<String, dynamic>>> getAllReceiverSignatures() async {
+    final List<Map<String, dynamic>> maps = await db.query('a_tblRequestReceiverSignature');
+    return maps;
+  }
+
+  /// Return all request image rows (RequestID, RequestImage)
+  Future<List<Map<String, dynamic>>> getAllRequestImages() async {
+    final List<Map<String, dynamic>> maps = await db.query('a_tblRequestImage');
+    return maps;
+  }
+
+  /// Persist signature and/or image for a request.
+  /// If a non-empty signature is provided, it will be inserted into
+  /// `a_tblRequestReceiverSignature` (REPLACE on conflict). Same for image.
+  Future<void> saveRequestMedia({required dynamic requestID, String? signature, String? image}) async {
+    final parsedId = int.tryParse(requestID.toString()) ?? requestID;
+    if (signature != null && signature.isNotEmpty) {
+      await db.insert(
+        'a_tblRequestReceiverSignature',
+        {'RequestID': parsedId, 'RequestReceiverSignature': signature},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+    if (image != null && image.isNotEmpty) {
+      await db.insert(
+        'a_tblRequestImage',
+        {'RequestID': parsedId, 'RequestImage': image},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
   }
 
   // Remarks helpers
