@@ -17,7 +17,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/address/add_ne
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 
-import '../../../features/logistics/screens/request/request.dart';
+import '../../../features/logistics/screens/standard_delivery/request.dart';
 
 class AppRoutes {
   static final pages = [

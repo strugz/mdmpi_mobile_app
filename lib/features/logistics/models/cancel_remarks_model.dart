@@ -26,9 +26,18 @@ class CancelRemarksModel {
   // Factory constructor for fromJson
   factory CancelRemarksModel.fromJson(Map<String, dynamic> json) {
     return CancelRemarksModel(
-      requestId: json['RequestID'],
-      remarks: json['Remarks'],
-      date: json['Date'],
+      requestId: (json['RequestID']?.toString() ?? ''),
+      remarks: (json['Remarks']?.toString() ?? ''),
+      date: (json['Date']?.toString() ?? ''),
+    );
+  }
+
+  /// Return a copy with optional overrides
+  CancelRemarksModel copyWith({String? requestId, String? remarks, String? date}) {
+    return CancelRemarksModel(
+      requestId: requestId ?? this.requestId,
+      remarks: remarks ?? this.remarks,
+      date: date ?? this.date,
     );
   }
 }

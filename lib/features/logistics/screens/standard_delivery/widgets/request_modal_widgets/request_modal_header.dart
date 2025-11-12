@@ -6,7 +6,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_mobile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
@@ -14,7 +14,7 @@ import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../base/utils/constants/sizes.dart';
 import '../../../../../../common/widgets/texts/product_title_text.dart';
 import '../../../../../../data/controllers/app_data/user_initial_controller.dart';
-import '../../../../models/request_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 class RequestModalHeader extends StatelessWidget {
   const RequestModalHeader({
@@ -22,13 +22,13 @@ class RequestModalHeader extends StatelessWidget {
     required this.requestModel,
   });
 
-  final RequestModel requestModel;
+  final StandardDeliveryModel requestModel;
 
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     final userController = Get.find<UserInitialController>();
-    final requestController = Get.find<RequestController>();
+    final requestController = Get.find<StandardDeliveryController>();
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -100,7 +100,7 @@ class RequestModalHeader extends StatelessWidget {
                 requestModel.tripTicketNumber.isEmpty)
               TextFormField(
                 controller:
-                    RequestController.instance.formState.tripTicketNumber,
+                    StandardDeliveryController.instance.formState.tripTicketNumber,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Trip Ticket No',

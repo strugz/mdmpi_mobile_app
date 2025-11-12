@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
 import '../../models/mobile_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class MobileRepository {
   static MobileRepository get instance => Get.find();
@@ -25,9 +26,8 @@ class MobileRepository {
             'Failed to load mobiles. Status Code: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error in getAllMobile: $e');
-      throw Exception(
-          'Something went wrong while fetching mobiles. Please try again!');
+      logDebug('Error in getAllMobile: $e');
+      return [];
     }
   }
 }

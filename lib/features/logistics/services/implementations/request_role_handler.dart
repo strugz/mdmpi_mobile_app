@@ -7,20 +7,20 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/re
 import '../../../../base/utils/constants/text_string.dart';
 import '../../../../base/utils/popups/full_screen_loader.dart';
 import '../../../personalization/controller/user_controller.dart';
-import '../../controllers/request_controller.dart';
-import '../../models/request_model.dart';
+import '../../controllers/standard_delivery_controller.dart';
+import '../../models/standard_delivery_model.dart';
 
 abstract class RequestActionHandler {
   void handleAction(
     BuildContext context,
-    RequestModel request,
-    RequestController requestController,
+    StandardDeliveryModel request,
+    StandardDeliveryController requestController,
     UserController userController,
     String userInitial, // Pass userInitial directly
   );
 
   // Helper to show the dialog, can be part of the abstract class or a utility
-  void _showDialog(BuildContext context, RequestModel request,
+  void _showDialog(BuildContext context, StandardDeliveryModel request,
       VoidCallback? onConfirm, bool canEdit) {
     BFullScreenLoader.showRequestForReleasingDialog(
         context, request, onConfirm ?? () {}, canEdit);
@@ -31,8 +31,8 @@ class RequestRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
     BuildContext context,
-    RequestModel request,
-    RequestController requestController,
+    StandardDeliveryModel request,
+    StandardDeliveryController requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -65,8 +65,8 @@ class ReleaseRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
     BuildContext context,
-    RequestModel request,
-    RequestController requestController,
+    StandardDeliveryModel request,
+    StandardDeliveryController requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -110,8 +110,8 @@ class CourierRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
     BuildContext context,
-    RequestModel request,
-    RequestController requestController,
+    StandardDeliveryModel request,
+    StandardDeliveryController requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -128,8 +128,7 @@ class CourierRoleHandler extends RequestActionHandler {
       BFullScreenLoader.showRequestForReleasingDialog(
           context, request, () {}, false);
     } else if (request.status == BTexts.statusForDelivery &&
-            request.deliveredBy == userInitial ||
-        request.helper == userInitial) {
+        (request.deliveredBy == userInitial || request.helper == userInitial)) {
       Get.to(() => RequestTransport(
           request: request, requestController: requestController));
     }
@@ -140,8 +139,8 @@ class ViewerRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
     BuildContext context,
-    RequestModel request,
-    RequestController requestController,
+    StandardDeliveryModel request,
+    StandardDeliveryController requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -155,8 +154,8 @@ class DefaultRequestHandler extends RequestActionHandler {
   @override
   void handleAction(
     BuildContext context,
-    RequestModel request,
-    RequestController requestController,
+    StandardDeliveryModel request,
+    StandardDeliveryController requestController,
     UserController userController,
     String userInitial,
   ) {

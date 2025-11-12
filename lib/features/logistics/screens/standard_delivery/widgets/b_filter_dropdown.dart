@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
@@ -13,7 +13,7 @@ class BFilterDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final controller = Get.find<RequestController>();
+    final controller = Get.find<StandardDeliveryController>();
     return BRoundedContainer(
       radius: 18,
       height: 50,

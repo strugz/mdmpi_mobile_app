@@ -8,14 +8,11 @@ import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/request_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 import '../helpers/request_data_manager.dart';
 import '../helpers/request_filter_manager.dart';
 import '../helpers/request_form_state.dart';
-
-
-
 
 enum RequestFilter {
   today('Today'),
@@ -42,8 +39,8 @@ enum RequestStatusFilter {
   final String displayName;
 }
 
-class RequestController extends GetxController {
-  static RequestController get instance => Get.find();
+class StandardDeliveryController extends GetxController {
+  static StandardDeliveryController get instance => Get.find();
 
   // State
   final isLoading = false.obs;
@@ -55,8 +52,8 @@ class RequestController extends GetxController {
   final itemPrepared = 0.obs;
   final forDelivery = 0.obs;
   final delivered = 0.obs;
-  final allPendingRequests = <RequestModel>[].obs;
-  final currentSelectedRequest = Rx<RequestModel?>(null);
+  final allPendingRequests = <StandardDeliveryModel>[].obs;
+  final currentSelectedRequest = Rx<StandardDeliveryModel?>(null);
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   final isAdvancedFilterExpanded = false.obs; // Added for collapsible filter
   // Managers
@@ -170,7 +167,7 @@ class RequestController extends GetxController {
   }
 
   Future<void> updateRequestStatus(
-      RequestModel requestModel, String newStatus, String userInitial) async {
+      StandardDeliveryModel requestModel, String newStatus, String userInitial) async {
     await dataManager.updateRequestStatus(
       requestModel,
       newStatus,
@@ -183,7 +180,7 @@ class RequestController extends GetxController {
   }
 
   Future<void> updateRequestForCancellation(
-      RequestModel requestModel, String remarks) async {
+      StandardDeliveryModel requestModel, String remarks) async {
     await dataManager.cancelRequestWithRemarks(
         requestModel, remarks, useLocalStorage.value);
     await loadRequests();

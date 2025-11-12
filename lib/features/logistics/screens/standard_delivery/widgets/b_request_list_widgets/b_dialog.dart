@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
-import '../../../../controllers/request_controller.dart';
-import '../../../../models/request_model.dart';
+import '../../../../controllers/standard_delivery_controller.dart';
+import '../../../../models/standard_delivery_model.dart';
 
 class BDialog {
   static void showRemarksDialog(
-      BuildContext context, RequestModel requestModel) {
+      BuildContext context, StandardDeliveryModel requestModel) {
     final List<String> cancelledDeliveryTerms = [
       "Customer unavailable",
       "Customer refused delivery",
@@ -23,7 +23,7 @@ class BDialog {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
-        final requestController = Get.find<RequestController>();
+        final requestController = Get.find<StandardDeliveryController>();
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(

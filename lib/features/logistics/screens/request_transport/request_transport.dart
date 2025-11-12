@@ -8,15 +8,15 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transpor
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_client_search.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_dispatcher.dart';
 
-import '../../controllers/request_controller.dart';
-import '../../models/request_model.dart';
+import '../../controllers/standard_delivery_controller.dart';
+import '../../models/standard_delivery_model.dart';
 
 class RequestTransport extends StatelessWidget {
   RequestTransport(
       {super.key, required this.request, required this.requestController});
 
-  final RequestModel request;
-  final RequestController requestController;
+  final StandardDeliveryModel request;
+  final StandardDeliveryController requestController;
 
   final GlobalKey _bottomSheetKey = GlobalKey();
 
@@ -25,7 +25,7 @@ class RequestTransport extends StatelessWidget {
     final reqTranController = Get.find<RequestTransportController>();
 
     final box = GetStorage();
-    final destination = box.read('destination${request.requestID}');
+    final destination = box.read('destination${request.id}');
 
     if (destination != null) {
       reqTranController.addressTextController.text = destination;

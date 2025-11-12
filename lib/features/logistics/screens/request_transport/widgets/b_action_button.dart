@@ -4,7 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../base/utils/helpers/helper_functions.dart';
-import '../../../controllers/request_controller.dart';
+import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
 class BActionButton extends StatelessWidget {
@@ -13,7 +13,7 @@ class BActionButton extends StatelessWidget {
       required this.requestController,
       required this.requestTransportController});
 
-  final RequestController requestController;
+  final StandardDeliveryController requestController;
   final RequestTransportController requestTransportController;
 
   @override

@@ -20,7 +20,8 @@ import '../data/repositories/app_data/role_repository.dart';
 import '../data/repositories/app_data/user_initial_repository.dart';
 import '../data/repositories/client/client_repository.dart';
 import '../data/repositories/delivery_vehicle/delivery_vehicle_repository.dart';
-import '../data/repositories/request/request_repository.dart';
+import '../data/repositories/standard_delivery/standard_delivery_repository.dart';
+import '../data/repositories/image/image_repository.dart';
 import '../data/repositories/user/user_repository.dart';
 import '../data/services/messaging_controller.dart';
 import '../features/authentication/controllers/forget_password/forget_password_controller.dart';
@@ -30,7 +31,7 @@ import '../common/controllers/camera_controller.dart';
 import '../features/logistics/controllers/chart_controller.dart';
 import '../features/logistics/controllers/delivery_location_controller.dart';
 import '../features/logistics/controllers/delivery_vehicle_controller.dart';
-import '../features/logistics/controllers/request_controller.dart';
+import '../features/logistics/controllers/standard_delivery_controller.dart';
 import '../features/logistics/controllers/request_transport_controller.dart';
 import '../features/logistics/controllers/web_socket_delivery_controller.dart';
 import '../features/logistics/controllers/web_socket_dispatcher_controller.dart';
@@ -47,7 +48,7 @@ class GeneralBindings extends Bindings {
     Get.put(UserController(), permanent: true);
     /// Controllers
     Get.lazyPut(() => UserInitialController(), fenix: true);
-    Get.lazyPut(() => RequestController(), fenix: true);
+    Get.lazyPut(() => StandardDeliveryController(), fenix: true);
 
     Get.lazyPut(() => LoginController(), fenix: true);
     Get.lazyPut(() => LoadingScreenController(), fenix: true);
@@ -79,7 +80,9 @@ class GeneralBindings extends Bindings {
         fenix: true);
 
     /// Repositories
-    Get.lazyPut(() => RequestRepository(), fenix: true);
+    Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
+    // Image repository used across request flow (upload/download); register globally
+    Get.lazyPut(() => ImageRepository(), fenix: true);
     Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
     Get.lazyPut(() => UserRepository());
     Get.lazyPut(() => UserInitialRepository(), fenix: true);

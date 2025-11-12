@@ -8,12 +8,12 @@ import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 
 import '../../../../../../base/utils/constants/sizes.dart';
-import '../../../../models/request_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 class BRequestCardHorizontal extends StatelessWidget {
   const BRequestCardHorizontal({super.key, required this.requestModel});
 
-  final RequestModel requestModel;
+  final StandardDeliveryModel requestModel;
 
   @override
   Widget build(BuildContext context) {
@@ -42,14 +42,14 @@ class BRequestCardHorizontal extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 BProductTitleText(
-                    title: 'Requested By: ${requestModel.requestedBy}',
+                    title: 'Requested By: ${requestModel.requestBy}',
                     maxLines: 1,
                     smallSize: true,
                     fontColor: dark ? BColors.light : BColors.darkerGrey),
                 const SizedBox(height: BSizes.xs),
                 BProductTitleText(
                     title:
-                        'Delivery Date: ${requestModel.targetDate.substring(0, 10)}',
+                        'Delivery Date: ${requestModel.deliveryDate.substring(0, 10)}',
                     maxLines: 1,
                     smallSize: true,
                     fontColor: dark ? BColors.light : BColors.darkerGrey),

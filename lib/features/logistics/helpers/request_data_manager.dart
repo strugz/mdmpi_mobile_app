@@ -1,13 +1,13 @@
-
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/image_utils/image_conversion_base_64_to_string.dart';
 
 import '../../../data/local/database_helper.dart';
-import '../../../data/repositories/request/request_repository.dart';
+import '../../../data/repositories/standard_delivery/standard_delivery_repository.dart';
+import '../../../data/repositories/image/image_repository.dart';
 import '../../../data/services/messaging_controller.dart';
 import '../controllers/web_socket_notification_controller.dart';
 import '../models/notification_model.dart';
-import '../models/request_model.dart';
+import '../models/standard_delivery_model.dart' as sd;
 import '../../personalization/controller/user_controller.dart';
 import '../../../base/utils/constants/image_strings.dart';
 import '../../../base/utils/constants/text_string.dart';
@@ -19,7 +19,8 @@ import 'request_form_state.dart';
 
 class RequestDataManager {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  final RequestRepository _requestRepository = Get.find<RequestRepository>();
+  final StandardDeliveryRepository _requestRepository =
+      Get.find<StandardDeliveryRepository>();
   final MessagingController _messageController =
       Get.find<MessagingController>();
   final WebSocketNotificationController _webSocketController =
@@ -68,12 +69,12 @@ class RequestDataManager {
         return;
       }
 
-      final newRequest = RequestModel.fromFormInputs(
+      final newRequest = sd.StandardDeliveryModel.fromFormInputs(
         clientId: formState.clientInformation.value?.id,
         shippingMethod: formState.shippingMethod.text,
         deliveryTerms: formState.deliveryTerms.text,
-        targetDate: formState.targetDate.text,
-        requestedBy: formState.requestedBy.text,
+        deliveryDate: formState.targetDate.text,
+        requestBy: formState.requestedBy.text,
         documentReference: documentReferences,
         preference: formState.preference.text,
         client: formState.clientInformation.value,
@@ -88,7 +89,6 @@ class RequestDataManager {
 
       managersPhoneNumber
           .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
 
       if (newRequest.createdBy == 'MEO') {
         managersPhoneNumber
@@ -108,7 +108,8 @@ class RequestDataManager {
       await _messageController.sendSmsMessage(
           managersPhoneNumber, BTexts.statusNewRequest, newRequest);
 
-      await _requestRepository.insertRequest(newRequest);
+      // use domain repository
+      await _requestRepository.insertDelivery(newRequest);
       formState.reset();
     } catch (e) {
       BLoaders.errorSnackBar(
@@ -119,14 +120,36 @@ class RequestDataManager {
   }
 
   Future<void> updateRequestStatus(
-      RequestModel requestModel,
+      sd.StandardDeliveryModel requestModel,
       String newStatus,
       String userInitial,
       RequestFormState formState,
-      Rx<RequestModel?> currentSelectedRequest,
+      Rx<sd.StandardDeliveryModel?> currentSelectedRequest,
       bool useLocalStorage) async {
     try {
       final nowString = DateTime.now().toString();
+
+      // Resolve mobileID safely (the form stores text, DB/model uses int?)
+      int? resolvedMobileID;
+      if (newStatus == BTexts.statusItemPrepared) {
+        // if model has no mobile assigned or is zero, try to parse from form input
+        if (requestModel.mobileID == null || requestModel.mobileID == 0) {
+          resolvedMobileID =
+              int.tryParse(formState.mobile.text) ?? requestModel.mobileID;
+        } else {
+          resolvedMobileID = requestModel.mobileID;
+        }
+      } else {
+        resolvedMobileID = requestModel.mobileID;
+      }
+
+      String finalImageBase64 = requestModel.image;
+      if (newStatus == BTexts.statusDoneDelivery &&
+          requestModel.image.isEmpty) {
+        finalImageBase64 = await BImageHelperFunctions.getDeliveryImageAsBase64(
+                newStatus, requestModel) ??
+            formState.cameraPickUpPicture.value;
+      }
 
       final updatedRequest = requestModel.copyWith(
         status: newStatus,
@@ -170,25 +193,70 @@ class RequestDataManager {
                 requestModel.receiver.isEmpty
             ? formState.receiver.text
             : requestModel.receiver,
-        signature: newStatus == BTexts.statusDoneDelivery &&
-                requestModel.signature.isEmpty
-            ? formState.receiverSignatureBase64.value
-            : requestModel.signature,
-        mobileID: newStatus == BTexts.statusItemPrepared &&
-                (requestModel.mobileID == '0' || requestModel.mobileID.isEmpty)
-            ? formState.mobile.text
-            : requestModel.mobileID,
-        image:
-            newStatus == BTexts.statusDoneDelivery && requestModel.image.isEmpty
-                ? await BImageHelperFunctions.getDeliveryImageAsBase64(
-                        newStatus, requestModel) ??
-                    formState.cameraPickUpPicture.value
-                : requestModel.image,
+        mobileID: resolvedMobileID,
         tripTicketNumber: newStatus == BTexts.statusItemPrepared &&
                 requestModel.tripTicketNumber.isEmpty
             ? formState.tripTicketNumber.text
             : requestModel.tripTicketNumber,
       );
+
+      final bool signatureWasAdded = newStatus == BTexts.statusDoneDelivery &&
+          requestModel.signature.isEmpty &&
+          formState.receiverSignatureBase64.value.isNotEmpty;
+
+      if (signatureWasAdded) {
+        // Try uploading signature if online. If upload fails, continue but notify user.
+        final isConnectedForUpload =
+            await NetworkManager.instance.isConnected();
+        if (isConnectedForUpload) {
+          // call repository upload (non-blocking for DB update but await to propagate errors)
+          await ImageRepository.instance.uploadFile(
+            requestId: updatedRequest.id.isNotEmpty
+                ? updatedRequest.id
+                : requestModel.id,
+            base64Image: formState.receiverSignatureBase64.string,
+            type: 'Signature',
+          );
+        } else {
+          BLoaders.warningSnackBar(
+              title: 'No Internet',
+              message:
+                  'Signature saved locally. It will be uploaded when internet connection is available.');
+        }
+      }
+
+      // Upload image proof when a delivery image was just added (type: 'Proof').
+      final bool imageProofWasAdded = newStatus == BTexts.statusDoneDelivery &&
+          requestModel.image.isEmpty &&
+          finalImageBase64.isNotEmpty;
+
+      if (imageProofWasAdded) {
+        final isConnectedForUpload =
+            await NetworkManager.instance.isConnected();
+        if (isConnectedForUpload) {
+          try {
+            await ImageRepository.instance.uploadFile(
+              requestId: updatedRequest.id.isNotEmpty
+                  ? updatedRequest.id
+                  : requestModel.id,
+              base64Image: finalImageBase64,
+              type: 'Proof',
+            );
+          } catch (e) {
+            // Non-fatal: notify user that upload failed and will be retried later
+            BLoaders.warningSnackBar(
+              title: 'Upload Failed',
+              message:
+                  'Image proof could not be uploaded. It will be synced when connection is available.',
+            );
+          }
+        } else {
+          BLoaders.warningSnackBar(
+              title: 'No Internet',
+              message:
+                  'Image saved locally. It will be uploaded when internet connection is available.');
+        }
+      }
 
       /// YOU ARE HERE
       if (!useLocalStorage) {
@@ -196,7 +264,7 @@ class RequestDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _requestRepository.updateRequest(updatedRequest);
+          await _requestRepository.updateDelivery(updatedRequest);
           await _dbHelper.updateRequest(requestModel: updatedRequest);
         } else {
           await _dbHelper.updateRequest(requestModel: updatedRequest);
@@ -213,7 +281,7 @@ class RequestDataManager {
       );
 
       final managersPhoneNumber = await _dbHelper
-          .getUserAndManagerPhoneNumbers(updatedRequest.requestedBy);
+          .getUserAndManagerPhoneNumbers(updatedRequest.requestBy);
 
       managersPhoneNumber
           .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
@@ -247,19 +315,21 @@ class RequestDataManager {
     }
   }
 
-  Future<void> fetchPendingRequestsAPI(RxList<RequestModel> allPendingRequests,
+  Future<void> fetchPendingRequestsAPI(
+      RxList<sd.StandardDeliveryModel> allPendingRequests,
       RequestFilterManager filterManager) async {
     if (!await validateConnectivity()) {
       return;
     }
 
     try {
-      final apiRequests = await _requestRepository.getAllPendingRequestAPI();
+      final apiRequests = await _requestRepository.getAllPending();
+
       allPendingRequests.assignAll(apiRequests);
 
       await _dbHelper.insertRequests(apiRequests);
 
-      filterManager.applyFilter(allPendingRequests);
+      filterManager.applyFilter(allPendingRequests.toList());
     } catch (e) {
       BLoaders.errorSnackBar(
           title: 'API Fetch Failed',
@@ -267,7 +337,8 @@ class RequestDataManager {
     }
   }
 
-  Future<void> loadDataFromSqfLite(RxList<RequestModel> allPendingRequests,
+  Future<void> loadDataFromSqfLite(
+      RxList<sd.StandardDeliveryModel> allPendingRequests,
       RequestFilterManager filterManager) async {
     try {
       final requestsFromDb = await _dbHelper.getRequests();
@@ -276,7 +347,7 @@ class RequestDataManager {
       } else {
         allPendingRequests.assignAll(requestsFromDb);
 
-        filterManager.applyFilter(allPendingRequests);
+        filterManager.applyFilter(allPendingRequests.toList());
       }
     } catch (e) {
       BLoaders.errorSnackBar(
@@ -290,7 +361,7 @@ class RequestDataManager {
       final requests = await _dbHelper.getRequests();
       for (var request in requests) {
         if (request.status != BTexts.statusNewRequest) {
-          await _requestRepository.updateRequest(request);
+          await _requestRepository.updateDelivery(request);
         }
       }
     } catch (e) {
@@ -300,8 +371,8 @@ class RequestDataManager {
     }
   }
 
-  Future<void> cancelRequestWithRemarks(
-      RequestModel requestModel, String remarks, bool userLocalStorage) async {
+  Future<void> cancelRequestWithRemarks(sd.StandardDeliveryModel requestModel,
+      String remarks, bool userLocalStorage) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -310,21 +381,20 @@ class RequestDataManager {
     try {
       if (!userLocalStorage) {
         _dbHelper.cancelRequestWithRemarks(
-            requestID: requestModel.requestID,
+            requestID: requestModel.id,
             remarks: remarks,
             newStatus: BTexts.statusCancelled);
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _requestRepository.cancelRequest(
-              requestModel.requestID, remarks);
+          await _requestRepository.cancelDelivery(requestModel.id, remarks);
           _dbHelper.cancelRequestWithRemarks(
-              requestID: requestModel.requestID,
+              requestID: requestModel.id,
               remarks: remarks,
               newStatus: BTexts.statusCancelled);
         } else {
           _dbHelper.cancelRequestWithRemarks(
-              requestID: requestModel.requestID,
+              requestID: requestModel.id,
               remarks: remarks,
               newStatus: BTexts.statusCancelled);
           BLoaders.warningSnackBar(

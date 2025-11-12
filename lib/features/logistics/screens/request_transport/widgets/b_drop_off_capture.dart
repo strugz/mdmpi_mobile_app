@@ -7,15 +7,15 @@ import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
-import '../../../controllers/request_controller.dart';
-import '../../../models/request_model.dart';
+import '../../../controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 class BDropOffCapture extends StatelessWidget {
   const BDropOffCapture(
       {super.key, required this.request, required this.requestController});
 
-  final RequestModel request;
-  final RequestController requestController;
+  final StandardDeliveryModel request;
+  final StandardDeliveryController requestController;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,7 @@ class BDropOffCapture extends StatelessWidget {
           alignment: Alignment.bottomCenter,
           child: IconButton(
               onPressed: () {
-                cameraController.takePictureWithAnimation(request.requestID);
+                cameraController.takePictureWithAnimation(request.id);
               },
               icon: Icon(Icons.camera, size: 52, color: iconColor)),
         ),

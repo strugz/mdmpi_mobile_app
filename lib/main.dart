@@ -13,6 +13,7 @@ import 'dart:io';
 
 import 'data/local/database_helper.dart';
 import 'firebase_options.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -51,7 +52,7 @@ Future<void> main() async {
     /// Initialize the database
     await dHelper.database;
   } catch (e) {
-    print('Error initializing database: $e');
+    logDebug('Error initializing database: $e');
   }
 
   /// Request multiple permissions
@@ -78,7 +79,7 @@ Future<void> main() async {
   } else {
     if (statuses[Permission.sms]?.isDenied == true ||
         statuses[Permission.sms]?.isPermanentlyDenied == true) {
-      print('SMS permission was denied.');
+      logDebug('SMS permission was denied.');
     }
   }
 

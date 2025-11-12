@@ -8,6 +8,7 @@ import '../../../../base/utils/constants/image_strings.dart';
 import '../../../../base/utils/helpers/network_manager.dart';
 import '../../../../data/controllers/client_controller.dart';
 import '../../../../data/repositories/authentication/authentication_repository.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class LoadingScreenController extends GetxController {
   var isLoading = false.obs; // Observable boolean to track loading state
@@ -44,7 +45,7 @@ class LoadingScreenController extends GetxController {
 
       AuthenticationRepository.instance.screenRedirect();
     } catch (e) {
-      print("Error loading initial data: $e");
+      logDebug("Error loading initial data: $e");
     }
   }
 }

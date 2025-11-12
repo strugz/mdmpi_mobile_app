@@ -54,7 +54,7 @@ class BCancelRemarks extends StatelessWidget {
             ),
             subtitle: Text(
               formattedDate,
-              style: TextStyle(color: textColor.withOpacity(0.7)),
+              style: TextStyle(color: textColor.withAlpha((0.7 * 255).round())),
             ),
             dense: true,
           ),

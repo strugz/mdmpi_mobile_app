@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/home.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/request.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/request.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 
 class NavigationController extends GetxController {

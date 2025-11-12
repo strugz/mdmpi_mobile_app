@@ -12,14 +12,14 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
-import '../../../controllers/request_controller.dart';
+import '../../../controllers/standard_delivery_controller.dart';
 
 class StandardDelivery extends StatelessWidget {
   const StandardDelivery({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final requestController = Get.find<RequestController>();
+    final requestController = Get.find<StandardDeliveryController>();
     final userCNTMSTController = Get.find<UserMdmpiController>();
     userCNTMSTController.filterUserFromLocal();
 

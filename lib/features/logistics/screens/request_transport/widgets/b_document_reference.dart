@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/request_model.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 class BDocumentReference extends StatelessWidget {
   const BDocumentReference({super.key, required this.request});
 
-  final RequestModel request;
+  final StandardDeliveryModel request;
 
   @override
   Widget build(BuildContext context) {

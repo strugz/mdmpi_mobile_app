@@ -15,14 +15,14 @@ import '../../../../data/controllers/app_data/mobile_controller.dart';
 import '../../../../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../../../../data/controllers/client_controller.dart';
 import '../../../../data/repositories/authentication/authentication_repository.dart';
-import '../../../logistics/controllers/request_controller.dart';
+import '../../../logistics/controllers/standard_delivery_controller.dart';
 import '../../controller/user_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   Future<void> _fetchAndLoadToLocal() async {
-    final RequestController requestController = Get.find<RequestController>();
+    final StandardDeliveryController requestController = Get.find<StandardDeliveryController>();
 
     try {
       await DatabaseHelper.instance.deleteRequest();
@@ -40,7 +40,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final requestController = Get.find<RequestController>();
+    final requestController = Get.find<StandardDeliveryController>();
     final clientController = Get.find<ClientController>();
     final userController = Get.find<UserController>();
     final mobileController = Get.find<MobileController>();

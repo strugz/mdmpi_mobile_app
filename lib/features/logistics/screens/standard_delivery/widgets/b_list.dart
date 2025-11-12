@@ -1,17 +1,17 @@
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_request_list_widgets/b_dialog.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_request_list_widgets/b_request_card_horizontal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_list_widgets/b_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_list_widgets/b_request_card_horizontal.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
 import '../../../../../base/utils/popups/shimmer.dart';
-import '../../../models/request_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+
 import '../../../services/implementations/request_role_handler.dart';
 
 class BList extends StatelessWidget {
@@ -21,7 +21,7 @@ class BList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final requestController = Get.find<RequestController>();
+    final requestController = Get.find<StandardDeliveryController>();
     final userController = Get.find<UserController>();
     return Obx(() {
       if (requestController.filterManager.filteredRequests.isNotEmpty) {
@@ -113,8 +113,8 @@ class BList extends StatelessWidget {
   /// It utilizes a [RequestActionHandler] to perform role-specific actions.
   void _handleRequestLongPress(
     BuildContext context,
-    RequestModel request,
-    RequestController requestController,
+    StandardDeliveryModel request,
+      StandardDeliveryController requestController,
     UserController userController,
   ) {
     final userRolesString = userController.user.value.role;

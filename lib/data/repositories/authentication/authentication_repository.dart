@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/features/authentication/screens/login/login.dar
 import 'package:mdmpi_mobile_app/features/authentication/screens/signup/verify_email.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/onboarding.dart';
 import 'package:mdmpi_mobile_app/navigation_menu.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class AuthenticationRepository extends GetxController {
   static AuthenticationRepository get instance => Get.find();
@@ -182,7 +183,7 @@ class AuthenticationRepository extends GetxController {
     } on PlatformException catch (e) {
       throw TPlatformException(e.code).message;
     } catch (e) {
-      if (kDebugMode) print('Something went wrong: $e');
+      if (kDebugMode) logDebug('Something went wrong: $e');
       return null;
     }
   }

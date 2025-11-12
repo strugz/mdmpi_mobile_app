@@ -4,19 +4,19 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_filter_dropdown.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_floating_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_filter_dropdown.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_floating_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_list.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
-import '../../controllers/request_controller.dart';
+import '../../controllers/standard_delivery_controller.dart';
 
 class RequestScreen extends StatelessWidget {
   const RequestScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final requestController = Get.find<RequestController>();
+    final requestController = Get.find<StandardDeliveryController>();
     final userController = Get.find<UserController>();
 
     return Scaffold(

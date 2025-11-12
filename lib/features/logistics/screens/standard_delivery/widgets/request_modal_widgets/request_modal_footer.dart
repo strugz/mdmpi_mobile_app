@@ -3,12 +3,12 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
 import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../common/widgets/texts/product_title_text.dart';
-import '../../../../models/request_model.dart';
+import '../../../../models/standard_delivery_model.dart';
 
 class RequestModalFooter extends StatelessWidget {
   const RequestModalFooter({super.key, required this.requestModel});
 
-  final RequestModel requestModel;
+  final StandardDeliveryModel requestModel;
 
   @override
   Widget build(BuildContext context) {

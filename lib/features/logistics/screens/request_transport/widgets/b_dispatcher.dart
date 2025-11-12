@@ -8,7 +8,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/wi
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../personalization/controller/user_controller.dart';
-import '../../../controllers/request_controller.dart';
+import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
 class BDispatcher extends StatelessWidget {
@@ -17,7 +17,7 @@ class BDispatcher extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final requestController = Get.find<RequestController>();
+    final requestController = Get.find<StandardDeliveryController>();
     final userController = Get.find<UserController>();
     final requestTransportController = Get.find<RequestTransportController>();
 

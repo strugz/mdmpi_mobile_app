@@ -1,19 +1,19 @@
-
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../../base/utils/formatters/formatters.dart';
-import '../../../features/logistics/controllers/request_controller.dart';
-import '../../../features/logistics/models/request_model.dart';
+import '../../../features/logistics/controllers/standard_delivery_controller.dart';
+import '../../../features/logistics/models/standard_delivery_model.dart';
 import '../../../features/personalization/controller/user_controller.dart';
 
 class RequestFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
   final Rx<RequestStatusFilter> selectedStatusFilter =
       RequestStatusFilter.all.obs;
-  final RxList<RequestModel> filteredRequests = <RequestModel>[].obs;
+  final RxList<StandardDeliveryModel> filteredRequests = <StandardDeliveryModel>[].obs;
 
-  void applyFilter(List<RequestModel> allPendingRequests) {
+  void applyFilter(List<StandardDeliveryModel> allPendingRequests) {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
@@ -24,7 +24,7 @@ class RequestFilterManager {
       // Parse targetDate once and handle potential errors
       DateTime? targetDate;
       try {
-        targetDate = DateTime.parse(item.targetDate);
+        targetDate = DateTime.parse(item.deliveryDate);
       } catch (e) {
         // Skip items with invalid dates
         return false;
@@ -63,8 +63,7 @@ class RequestFilterManager {
       if (!currentUser.role.contains(',')) {
         if (currentUser.role.contains(BTexts.roleCourier)) {
           userMatches = item.helper == currentUser.initial || item.deliveredBy == currentUser.initial;
-          print(item.helper);
-          print(item.deliveredBy);
+          logDebug('Filter: helper=${item.helper}, deliveredBy=${item.deliveredBy}');
 
         }
       }
@@ -74,8 +73,8 @@ class RequestFilterManager {
     // Sort by targetDate in descending order
     tempList.sort((a, b) {
       try {
-        final dateA = DateTime.parse(a.targetDate);
-        final dateB = DateTime.parse(b.targetDate);
+        final dateA = DateTime.parse(a.deliveryDate);
+        final dateB = DateTime.parse(b.deliveryDate);
         return dateB.compareTo(dateA); // Newest first
       } catch (e) {
         // Handle invalid dates during sorting
@@ -87,7 +86,7 @@ class RequestFilterManager {
   }
 
   /// Filter the list based on the selected status filter
-  void applyStatusFilter(RxList<RequestModel> allPendingRequests) {
+  void applyStatusFilter(RxList<StandardDeliveryModel> allPendingRequests) {
     applyFilter(allPendingRequests.toList());
   }
 
@@ -128,13 +127,13 @@ class RequestFilterManager {
   }*/
 
   void selectFilter(
-      RequestFilter filter, RxList<RequestModel> allPendingRequests) {
+      RequestFilter filter, RxList<StandardDeliveryModel> allPendingRequests) {
     selectedFilter.value = filter;
     applyFilter(allPendingRequests);
   }
 
   void selectStatusFilter(RequestStatusFilter statusFilter,
-      RxList<RequestModel> allPendingRequests) {
+      RxList<StandardDeliveryModel> allPendingRequests) {
     selectedStatusFilter.value = statusFilter;
     applyStatusFilter(allPendingRequests);
   }

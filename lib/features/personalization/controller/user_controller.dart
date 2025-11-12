@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/profile/widget
 
 import '../../../data/local/database_helper.dart';
 import '../models/user_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class UserController extends GetxController {
   static UserController get instance => Get.find();
@@ -92,7 +93,7 @@ class UserController extends GetxController {
       /// Update Rx User
       profileLoading.value = false;
     } catch (e) {
-      print('Error ${e.toString()}');
+      logDebug('Error ${e.toString()}');
     } finally {
       profileLoading.value = false;
     }
