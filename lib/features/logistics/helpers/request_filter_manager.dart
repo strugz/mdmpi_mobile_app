@@ -1,37 +1,31 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-
-import '../../../features/logistics/controllers/request_controller.dart';
-import '../../../features/logistics/models/request_model.dart';
-import '../../../features/personalization/controller/user_controller.dart';
-import '../formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 
 class RequestFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
-  final Rx<RequestStatusFilter> selectedStatusFilter =
-      RequestStatusFilter.all.obs;
-  final RxList<RequestModel> filteredRequests = <RequestModel>[].obs;
+  final Rx<RequestStatusFilter> selectedStatusFilter = RequestStatusFilter.all.obs;
+  final RxList<StandardDeliveryModel> filteredRequests = <StandardDeliveryModel>[].obs;
 
-  void applyFilter(List<RequestModel> allPendingRequests) {
+  void applyFilter(List<StandardDeliveryModel> allPendingRequests) {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
-
     final currentUser = userController.user.value;
 
-    var tempList = allPendingRequests.where((item) {
-      // Parse targetDate once and handle potential errors
-      DateTime? targetDate;
+    final tempList = allPendingRequests.where((item) {
+      if (item.targetDate.isEmpty) return false;
+      DateTime targetDate;
       try {
         targetDate = DateTime.parse(item.targetDate);
-      } catch (e) {
-        // Skip items with invalid dates
-        return false;
+      } catch (_) {
+        return false; // skip invalid date format
       }
 
-      // Apply date filter
-      bool dateMatches;
-      bool userMatches;
+      bool dateMatches = false;
       switch (filter) {
         case RequestFilter.today:
           dateMatches = BFormatter.isToday(targetDate);
@@ -53,32 +47,26 @@ class RequestFilterManager {
           break;
       }
 
-      // Apply status filter
-      bool statusMatches =
+      final bool statusMatches =
           statusFilter.displayName == RequestStatusFilter.all.displayName ||
-              item.status == statusFilter.displayName;
-      // Apply user role filter
-      userMatches = true;
+          item.status == statusFilter.displayName;
+
+      bool userMatches = true;
       if (!currentUser.role.contains(',')) {
         if (currentUser.role.contains(BTexts.roleCourier)) {
-<<<<<<<<< Temporary merge branch 1
           userMatches = item.helper == currentUser.initial || item.deliveredBy == currentUser.initial;
-=========
-          userMatches = item.helper == currentUser.initial ||
-              item.deliveredBy == currentUser.initial;
->>>>>>>>> Temporary merge branch 2
         }
       }
 
-
       return dateMatches && statusMatches && userMatches;
     }).toList();
+
     tempList.sort((a, b) {
       try {
         final dateA = DateTime.parse(a.targetDate);
         final dateB = DateTime.parse(b.targetDate);
         return dateB.compareTo(dateA);
-      } catch (e) {
+      } catch (_) {
         return 0;
       }
     });
@@ -86,19 +74,16 @@ class RequestFilterManager {
     filteredRequests.assignAll(tempList);
   }
 
-  /// Filter the list based on the selected status filter
-  void applyStatusFilter(RxList<RequestModel> allPendingRequests) {
+  void applyStatusFilter(RxList<StandardDeliveryModel> allPendingRequests) {
     applyFilter(allPendingRequests.toList());
   }
 
-  void selectFilter(
-      RequestFilter filter, RxList<RequestModel> allPendingRequests) {
+  void selectFilter(RequestFilter filter, RxList<StandardDeliveryModel> allPendingRequests) {
     selectedFilter.value = filter;
     applyFilter(allPendingRequests);
   }
 
-  void selectStatusFilter(RequestStatusFilter statusFilter,
-      RxList<RequestModel> allPendingRequests) {
+  void selectStatusFilter(RequestStatusFilter statusFilter, RxList<StandardDeliveryModel> allPendingRequests) {
     selectedStatusFilter.value = statusFilter;
     applyStatusFilter(allPendingRequests);
   }
