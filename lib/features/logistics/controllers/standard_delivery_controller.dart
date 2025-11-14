@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notif
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 
 import '../helpers/request_data_manager.dart';
 import '../helpers/request_filter_manager.dart';
@@ -55,7 +56,10 @@ class StandardDeliveryController extends GetxController {
   final allPendingRequests = <StandardDeliveryModel>[].obs;
   final currentSelectedRequest = Rx<StandardDeliveryModel?>(null);
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  final isAdvancedFilterExpanded = false.obs; // Added for collapsible filter
+  /// Cache of cancel remarks keyed by request ID
+  final RxMap<String, CancelRemarksModel> cancelRemarksCache = <String, CancelRemarksModel>{}.obs;
+  /// Loading flags per request id to avoid duplicate fetches
+  final RxMap<String, bool> cancelRemarksLoading = <String, bool>{}.obs;
   // Managers
   late final RequestFormState formState;
   late final RequestDataManager dataManager;
@@ -180,9 +184,10 @@ class StandardDeliveryController extends GetxController {
   }
 
   Future<void> updateRequestForCancellation(
-      StandardDeliveryModel requestModel, String remarks) async {
+      StandardDeliveryModel requestModel, String remarks,
+      {bool showLoader = true}) async {
     await dataManager.cancelRequestWithRemarks(
-        requestModel, remarks, useLocalStorage.value);
+        requestModel, remarks, useLocalStorage.value && showLoader);
     await loadRequests();
   }
 
@@ -197,5 +202,31 @@ class StandardDeliveryController extends GetxController {
 
   void selectStatusFilter(RequestStatusFilter statusFilter) {
     filterManager.selectStatusFilter(statusFilter, allPendingRequests);
+  }
+
+  /// Fetch cancel remarks for a request ID. Prefer local DB; if missing call API.
+  /// Stores the result in [cancelRemarksCache] and persists API results to local DB when available.
+  Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
+    // Avoid duplicate fetches
+    if (cancelRemarksCache.containsKey(requestId)) return cancelRemarksCache[requestId]!;
+    if (cancelRemarksLoading[requestId] == true) {
+      // Wait until loading finishes
+      while (cancelRemarksLoading[requestId] == true) {
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+      return cancelRemarksCache[requestId] ?? CancelRemarksModel.empty;
+    }
+
+    cancelRemarksLoading[requestId] = true;
+    try {
+      final result = await dataManager.fetchCancelRemarks(requestId);
+      cancelRemarksCache[requestId] = result;
+      return result;
+    } catch (_) {
+      cancelRemarksCache[requestId] = CancelRemarksModel.empty;
+      return CancelRemarksModel.empty;
+    } finally {
+      cancelRemarksLoading.remove(requestId);
+    }
   }
 }

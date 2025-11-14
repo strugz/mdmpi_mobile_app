@@ -10,14 +10,19 @@ import '../base/utils/helpers/network_manager.dart';
 import '../common/services/abstracts/i_camera_service.dart';
 import '../common/services/abstracts/i_text_extractor.dart';
 import '../common/services/abstracts/i_text_recognition_service.dart';
+import '../common/services/abstracts/i_notification_service.dart';
+import '../common/services/abstracts/i_permission_service.dart';
 import '../common/services/implementations/flutter_camera_service.dart';
 import '../common/services/implementations/google_ml_kit_text_recognizer.dart';
+import '../common/services/implementations/notification_service.dart';
+import '../common/services/implementations/permission_service.dart';
 import '../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../data/controllers/client_controller.dart';
 import '../data/repositories/app_data/department_repository.dart';
 import '../data/repositories/app_data/mobile_repository.dart';
 import '../data/repositories/app_data/role_repository.dart';
 import '../data/repositories/app_data/user_initial_repository.dart';
+import '../data/repositories/app_data/cancel_remarks_repository.dart';
 import '../data/repositories/client/client_repository.dart';
 import '../data/repositories/delivery_vehicle/delivery_vehicle_repository.dart';
 import '../data/repositories/standard_delivery/standard_delivery_repository.dart';
@@ -90,6 +95,9 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => MobileRepository(), fenix: true);
     Get.lazyPut(() => RoleRepository(), fenix: true);
     Get.lazyPut(() => DepartmentRepository(), fenix: true);
+    Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
     Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+    Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
+    Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
   }
 }

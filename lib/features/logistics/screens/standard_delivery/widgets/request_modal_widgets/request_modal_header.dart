@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -24,11 +22,23 @@ class RequestModalHeader extends StatelessWidget {
 
   final StandardDeliveryModel requestModel;
 
+  /// Safely returns a truncated string (no exceptions if [s] is null).
+  String _shortString(String? s, [int length = 16]) {
+    final v = s ?? '';
+    return v.length <= length ? v : v.substring(0, length);
+  }
+
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     final userController = Get.find<UserInitialController>();
     final requestController = Get.find<StandardDeliveryController>();
+
+    // Show 'Prepared/Preparing By' only when status is not New and there's a non-empty name
+    final showPreparedBy = requestModel.status != BTexts.statusNewRequest && requestModel.itemPreparedBy.isNotEmpty;
+    final preparedByTitle = requestModel.status == BTexts.statusGettingSuppliesReady
+        ? 'Preparing By: ${requestModel.itemPreparedBy}'
+        : 'Prepared By: ${requestModel.itemPreparedBy}';
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -53,30 +63,25 @@ class RequestModalHeader extends StatelessWidget {
         const SizedBox(height: BSizes.xs),
 
         /// Request status
-        requestModel.status != BTexts.statusNewRequest
+        showPreparedBy
             ? BProductTitleText(
-                title: requestModel.status != BTexts.statusNewRequest &&
-                        requestModel.status == BTexts.statusGettingSuppliesReady
-                    ? "Preparing By: ${requestModel.itemPreparedBy}"
-                    : "Prepared By: ${requestModel.itemPreparedBy}",
+                title: preparedByTitle,
                 maxLines: 2,
                 smallSize: true,
                 fontColor: dark ? BColors.light : BColors.black)
-            : Container(),
+            : const SizedBox.shrink(),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (requestModel.itemPreparedAt.isNotEmpty)
               BProductTitleText(
-                  title:
-                      'From: ${requestModel.itemPreparedAt.substring(0, 16)}',
+                  title: 'From: ${_shortString(requestModel.itemPreparedAt, 16)}',
                   maxLines: 2,
                   smallSize: true,
                   fontColor: dark ? BColors.light : BColors.black),
             if (requestModel.itemPreparedEndAt.isNotEmpty)
               BProductTitleText(
-                  title:
-                      'To: ${requestModel.itemPreparedEndAt.substring(0, 16)}',
+                  title: 'To: ${_shortString(requestModel.itemPreparedEndAt, 16)}',
                   maxLines: 2,
                   smallSize: true,
                   fontColor: dark ? BColors.light : BColors.black)
@@ -89,8 +94,7 @@ class RequestModalHeader extends StatelessWidget {
             /// Trip ticket number label
             if (requestModel.tripTicketNumber.isNotEmpty)
               BProductTitleText(
-                title:
-                    'Trip Ticket No: ${requestModel.tripTicketNumber.substring(0, min(16, requestModel.tripTicketNumber.length))}',
+                title: 'Trip Ticket No: ${_shortString(requestModel.tripTicketNumber, 16)}',
                 maxLines: 2,
                 fontColor: dark ? BColors.light : BColors.black,
               ),
@@ -99,8 +103,7 @@ class RequestModalHeader extends StatelessWidget {
             if (requestModel.status == BTexts.statusGettingSuppliesReady &&
                 requestModel.tripTicketNumber.isEmpty)
               TextFormField(
-                controller:
-                    StandardDeliveryController.instance.formState.tripTicketNumber,
+                controller: requestController.formState.tripTicketNumber,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Trip Ticket No',

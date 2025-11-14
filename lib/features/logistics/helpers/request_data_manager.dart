@@ -5,9 +5,11 @@ import '../../../data/local/database_helper.dart';
 import '../../../data/repositories/standard_delivery/standard_delivery_repository.dart';
 import '../../../data/repositories/image/image_repository.dart';
 import '../../../data/services/messaging_controller.dart';
+import '../../../data/repositories/app_data/cancel_remarks_repository.dart';
 import '../controllers/web_socket_notification_controller.dart';
 import '../models/notification_model.dart';
 import '../models/standard_delivery_model.dart' as sd;
+import '../models/cancel_remarks_model.dart';
 import '../../personalization/controller/user_controller.dart';
 import '../../../base/utils/constants/image_strings.dart';
 import '../../../base/utils/constants/text_string.dart';
@@ -21,6 +23,8 @@ class RequestDataManager {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   final StandardDeliveryRepository _requestRepository =
       Get.find<StandardDeliveryRepository>();
+  final CancelRemarksRepository _cancelRemarksRepository =
+      Get.find<CancelRemarksRepository>();
   final MessagingController _messageController =
       Get.find<MessagingController>();
   final WebSocketNotificationController _webSocketController =
@@ -386,11 +390,19 @@ class RequestDataManager {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
-    if (!await validateConnectivity()) return;
+    if (!await validateConnectivity()) {
+      // No connectivity: stop loader and inform the user, then return.
+      BFullScreenLoader.stopLoading();
+      BLoaders.warningSnackBar(
+        title: 'No Internet',
+        message: 'Request updated locally. Sync with server when connection returns.',
+      );
+      return;
+    }
 
     try {
       if (!userLocalStorage) {
-        _dbHelper.cancelRequestWithRemarks(
+        await _dbHelper.cancelRequestWithRemarks(
             requestID: requestModel.id,
             remarks: remarks,
             newStatus: BTexts.statusCancelled);
@@ -398,12 +410,12 @@ class RequestDataManager {
         final isConnected = await validateConnectivity();
         if (isConnected) {
           await _requestRepository.cancelDelivery(requestModel.id, remarks);
-          _dbHelper.cancelRequestWithRemarks(
+          await _dbHelper.cancelRequestWithRemarks(
               requestID: requestModel.id,
               remarks: remarks,
               newStatus: BTexts.statusCancelled);
         } else {
-          _dbHelper.cancelRequestWithRemarks(
+          await _dbHelper.cancelRequestWithRemarks(
               requestID: requestModel.id,
               remarks: remarks,
               newStatus: BTexts.statusCancelled);
@@ -440,6 +452,45 @@ class RequestDataManager {
     } catch (e) {
       BLoaders.errorSnackBar(
           title: 'Save Failed', message: "An error occurred: ${e.toString()}");
+    } finally {
+      // Ensure the full-screen loader is stopped on all paths.
+      BFullScreenLoader.stopLoading();
+    }
+  }
+
+  /// Fetch cancel remarks for a request. Prefers local DB, falls back to API.
+  /// Persists API results to local DB when available.
+  Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
+    try {
+      // Try local DB first
+      try {
+        final bool exists = await _dbHelper.isRequestRemarkExisting(requestId);
+        if (exists) {
+          return await _dbHelper.getRequestRemarks(requestId);
+        }
+      } catch (_) {
+        // ignore local DB read failures
+      }
+
+      // Fallback to API
+      try {
+        final apiResult = await _cancelRemarksRepository.getCancelRemarksByRequestId(requestId);
+        if (apiResult != CancelRemarksModel.empty) {
+          // persist to local DB
+          try {
+            final remarksDao = await _dbHelper.remarksDao;
+            await remarksDao.insertRemark(requestId, apiResult.remarks, apiResult.date);
+          } catch (_) {
+            // ignore persistence errors
+          }
+          return apiResult;
+        }
+        return CancelRemarksModel.empty;
+      } catch (_) {
+        return CancelRemarksModel.empty;
+      }
+    } catch (_) {
+      return CancelRemarksModel.empty;
     }
   }
 }

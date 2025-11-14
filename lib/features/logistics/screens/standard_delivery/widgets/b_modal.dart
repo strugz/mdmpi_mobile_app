@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_action_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_document_reference_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_view_delivered_item_button.dart';
@@ -16,6 +16,8 @@ import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_cancel_remarks_loader.dart';
 
 class BModal extends StatelessWidget {
   final StandardDeliveryModel requestModel;
@@ -74,19 +76,20 @@ class BModal extends StatelessWidget {
                   ViewDeliveredItemButton(
                     textColor: textColor,
                     onPressed: () {
-                      final requestIdForDb = requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
+                      final requestIdForDb = requestModel.id.isNotEmpty
+                          ? requestModel.id
+                          : requestModel.requestID;
                       showRequestImageDialog(
                         context,
                         requestId: requestIdForDb,
                         fetchIfMissing: true,
-                        semanticsLabel: 'Delivered item image for request ${requestModel.id}',
+                        semanticsLabel:
+                            'Delivered item image for request ${requestModel.id}',
                       );
                     },
                   ),
                 if (isCancelled)
-                  BCancelRemarks(
-                      remarks: requestModel.cancelRemarks.remarks,
-                      date: requestModel.cancelRemarks.date),
+                  BCancelRemarksLoader(requestModel: requestModel),
                 RequestModalFooter(requestModel: requestModel),
                 BActionButton(
                   status: requestModel.status,

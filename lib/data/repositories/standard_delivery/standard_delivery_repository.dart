@@ -105,7 +105,7 @@ class StandardDeliveryRepository extends GetxController {
     try {
       final response = await http
           .patch(
-            Uri.parse("${dotenv.env['API_URL']!}/api3/request/cancel/$requestID"),
+            Uri.parse("${dotenv.env['API_URL']!}/api4/request/cancel/$requestID"),
             headers: <String, String>{
               'Content-Type': 'application/json; charset=UTF-8',
             },
