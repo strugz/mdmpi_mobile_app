@@ -153,13 +153,13 @@ QA Test Plan — MDMPI Mobile App
 
 20. Compact Test Case Index (IDs)
 - See docs/test_cases_index.csv for a living list. Initial seed (IDs imply area):
-  - AUTH-001 Signup valid inputs → verify email sent
-  - AUTH-002 Signup invalid email/password → validation
-  - AUTH-003 Login valid → lands on Home
-  - AUTH-004 Login wrong password → lockout
-  - AUTH-005 Email verification deep link verifies
-  - AUTH-006 Forgot password flow completes
-  - AUTH-007 Session persists and refreshes token
+  - AUTH-001 Signup with email verification required
+  - AUTH-002 Email verification link completes and returns to app
+  - AUTH-003 First login after successful verification lands on Home
+  - AUTH-004 Login with invalid credentials and lockout behavior
+  - AUTH-005 Login before email is verified is blocked until verification
+  - AUTH-006 Forgot password reset and subsequent login
+  - AUTH-007 Session persistence, token refresh, and logout clears session
   - ONB-001 Onboarding completes with permissions granted
   - ONB-002 Deny location then grant via Settings
   - HOME-001 Home loads data with skeleton
@@ -214,4 +214,3 @@ Appendix A — How to run basic checks (optional)
 
 Notes
 - Keep this plan in sync with feature changes. Update docs/test_cases_index.csv as scenarios evolve.
-

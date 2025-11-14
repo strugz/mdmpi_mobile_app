@@ -1,11 +1,11 @@
 ID,Area,Title,Preconditions,Steps,Expected Result
-AUTH-001,Authentication,Signup valid inputs,"App installed; network available","Open app; Navigate to Signup; Enter valid email/password; Submit; Check inbox; Verify email via link; Return to app",Account created; verification email sent; on verification, app confirms and allows login
-AUTH-002,Authentication,Signup invalid data,,"Open app; Navigate to Signup; Enter invalid email/weak password; Submit",Inline validation messages; submission blocked
-AUTH-003,Authentication,Login valid credentials,"User verified exists","Open app; Navigate to Sign In; Enter valid credentials; Submit",Lands on Home screen; session stored
-AUTH-004,Authentication,Login wrong password,"Existing account","Open Sign In; Enter wrong password 5x","Lockout message after threshold; cooldown or captcha if configured"
-AUTH-005,Authentication,Email verification deep link,"Pending verification user","Tap link from email with app closed; Allow to open app",User verified; routed to success/login
-AUTH-006,Authentication,Forgot password flow,"Existing account","Open Forget Password; Enter email; Submit; Open reset link; Set new password; Login",Password reset successful
-AUTH-007,Authentication,Session persistence,,"Login; Close app; Reopen app",User still logged in; token refreshed
+AUTH-001,Authentication,Signup with email verification required,"App installed; network available","Open app; Navigate to Signup; Enter valid email/password; Submit; Check inbox; Verify email via link; Return to app",Account created; verification email sent; app shows verify-your-email state
+AUTH-002,Authentication,Email verification link completes and returns to app,"Pending verification user; verification email received","From email, tap verification link with app closed; Repeat with app in background; Repeat with app in foreground",Account marked verified; app opens to verification success/continue screen
+AUTH-003,Authentication,First login after successful verification lands on Home,"User account verified","Open app; Navigate to Sign In; Enter valid credentials; Submit",Login succeeds; user lands on Home; no unverified warnings shown
+AUTH-004,Authentication,Login with invalid credentials and lockout behavior,"Existing account; lockout rules configured","Open Sign In; Enter wrong password repeatedly (e.g., 5x); Observe errors and any cooldown/captcha",Appropriate error messages; after threshold, lockout or throttling applied with clear feedback
+AUTH-005,Authentication,Login before email is verified is blocked until verification,"Pending verification user exists","Open Sign In; Enter correct email/password; Submit",Login to Home blocked; app shows verify-your-email message and option to resend verification email
+AUTH-006,Authentication,Forgot password reset and subsequent login,"Existing account","Open Forgot Password; Enter registered email; Submit; Open reset link; Set new password; Login with new password; Try old password",Password reset successful; login works only with new password; old password rejected
+AUTH-007,Authentication,Session persistence, token refresh, and logout clears session,"User logged in","Login; Close app; Reopen app; Wait token refresh interval or trigger refresh; Logout; Reopen app",User remains logged in across restart while session valid; token refresh succeeds; after logout, app requires login and no previous session data shown
 ONB-001,Onboarding,Complete onboarding with permissions,,"Install and open app; Swipe through pages; Grant requested permissions",Lands on Home; permissions granted
 ONB-002,Onboarding,Deny then grant location via settings,,"Deny location permission; Proceed; Open Settings; Grant",Map features work after return
 HOME-001,Home,Initial data load,,"Open Home",Skeleton shows; data renders; errors handled
@@ -49,46 +49,3 @@ SEC-002,Security,Storage rules owner-only,,"Authenticated","Try to access others
 ACC-001,Accessibility,TalkBack focus + labels,,"TalkBack on","Navigate key screens",Accessible order and labels
 PERF-001,Performance,Cold start time,,"Fresh launch","Measure startup time",Within target threshold
 PERF-002,Performance,Scroll smoothness,,"List with many items","Scroll rapidly",Stable FPS; minimal jank
-
-
-LOG-M01,Module,Happy path flow,,,Works end-to-end without errors
-LOG-M02,Module,Validation error states,,,Inline messages shown; submit blocked
-LOG-M03,Module,Offline flow,,,Queued and syncs on reconnect
-LOG-M04,Module,Permission denied path,,,Graceful fallback with guidance
-LOG-M05,Module,Notification/Realtime updates,,,Updates reflected correctly
-LOG-M06,Module,Performance on low-end device,,,Within acceptable limits
-
-LOG-M01,Module,Happy path flow,,,Works end-to-end without errors
-LOG-M02,Module,Validation error states,,,Inline messages shown; submit blocked
-LOG-M03,Module,Offline flow,,,Queued and syncs on reconnect
-LOG-M04,Module,Permission denied path,,,Graceful fallback with guidance
-LOG-M05,Module,Notification/Realtime updates,,,Updates reflected correctly
-LOG-M06,Module,Performance on low-end device,,,Within acceptable limits
-
-LOG-M01,Module,Happy path flow,,,Works end-to-end without errors
-LOG-M02,Module,Validation error states,,,Inline messages shown; submit blocked
-LOG-M03,Module,Offline flow,,,Queued and syncs on reconnect
-LOG-M04,Module,Permission denied path,,,Graceful fallback with guidance
-LOG-M05,Module,Notification/Realtime updates,,,Updates reflected correctly
-LOG-M06,Module,Performance on low-end device,,,Within acceptable limits
-
-LOG-M01,Module,Happy path flow,,,Works end-to-end without errors
-LOG-M02,Module,Validation error states,,,Inline messages shown; submit blocked
-LOG-M03,Module,Offline flow,,,Queued and syncs on reconnect
-LOG-M04,Module,Permission denied path,,,Graceful fallback with guidance
-LOG-M05,Module,Notification/Realtime updates,,,Updates reflected correctly
-LOG-M06,Module,Performance on low-end device,,,Within acceptable limits
-
-LOG-M01,Module,Happy path flow,,,Works end-to-end without errors
-LOG-M02,Module,Validation error states,,,Inline messages shown; submit blocked
-LOG-M03,Module,Offline flow,,,Queued and syncs on reconnect
-LOG-M04,Module,Permission denied path,,,Graceful fallback with guidance
-LOG-M05,Module,Notification/Realtime updates,,,Updates reflected correctly
-LOG-M06,Module,Performance on low-end device,,,Within acceptable limits
-
-LOG-M01,Module,Happy path flow,,,Works end-to-end without errors
-LOG-M02,Module,Validation error states,,,Inline messages shown; submit blocked
-LOG-M03,Module,Offline flow,,,Queued and syncs on reconnect
-LOG-M04,Module,Permission denied path,,,Graceful fallback with guidance
-LOG-M05,Module,Notification/Realtime updates,,,Updates reflected correctly
-LOG-M06,Module,Performance on low-end device,,,Within acceptable limits
