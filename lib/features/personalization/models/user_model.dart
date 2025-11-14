@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 
@@ -38,16 +37,15 @@ class UserModel {
   String get formattedPhoneNo => BFormatter.formatPhoneNumber(phoneNumber);
 
   /// Static function to split full name into first and last name.
-  static List<String> nameParts(fullName) => fullName.split(" ");
+  static List<String> nameParts(String fullName) => fullName.split(" ");
 
   /// Static function to generate a username from the full name.
-  static String generateUsername(fullName) {
+  static String generateUsername(String fullName) {
     List<String> nameParts = fullName.split(" ");
-    String firstName = nameParts[0].toLowerCase();
-    String lastName = nameParts.length > 1 ? nameParts[1].toLowerCase() : "";
+    String firstName = nameParts.isNotEmpty ? nameParts[0].toLowerCase() : '';
+    String lastName = nameParts.length > 1 ? nameParts.sublist(1).join('').toLowerCase() : "";
 
-    String camelCaseUsername =
-        "$firstName$lastName"; // Combine first and last name
+    String camelCaseUsername = "$firstName$lastName"; // Combine first and last name
     String usernameWithPrefix = "cwt_$camelCaseUsername"; //  Add "cwt_" prefix
     return usernameWithPrefix;
   }

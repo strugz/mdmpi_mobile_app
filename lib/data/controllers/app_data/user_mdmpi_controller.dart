@@ -23,7 +23,7 @@ class UserMdmpiController extends GetxController {
 
       if (apiUser.isNotEmpty) {
         final dbHelper = DatabaseHelper.instance;
-        await dbHelper.insertCntmstList(apiUser);
+        await dbHelper.insertCntmsts(apiUser);
       } else {
         BLoaders.errorSnackBar(
             title: 'Oh Snap!', message: 'No User fetched from API');
@@ -40,7 +40,7 @@ class UserMdmpiController extends GetxController {
       isLoading.value = true;
       final dbHelper = DatabaseHelper.instance;
       final userListFromDb =
-          await dbHelper.getAllCntmstRequester();
+          await dbHelper.getCntmstRequesters();
       userList.assignAll(userListFromDb);
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());

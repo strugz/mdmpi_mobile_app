@@ -1,75 +1,99 @@
-
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../base/utils/constants/colors.dart';
 import '../../../base/utils/helpers/helper_functions.dart';
 
-class BDropDownDynamicList extends StatelessWidget {
+/// Dynamic Dropdown that accepts either a list of strings or a list of maps.
+/// When using a list of maps, provide [valueKey] and [displayKey] to extract
+/// the stored value (e.g. id) and the visible label respectively.
+class BDropDownDynamicList extends StatefulWidget {
+  final List<dynamic> dropdownList;
+  final TextEditingController? controller; // Stores selected value (id)
+  final String? valueKey; // key in map to use as value
+  final String? displayKey; // key in map to show as label
+  final ValueChanged<String?>? onChanged;
+  /// icon may be either an IconData or a Widget. If IconData is provided,
+  /// it will be wrapped with Icon(...).
+  final Object? icon;
+  final String? label;
+  final String? hint;
+  final bool isExpanded;
+
   const BDropDownDynamicList({
     super.key,
-    required this.label,
     required this.dropdownList,
-    this.icon = Iconsax.airplane,
-    required this.controller, // This will now store the selected ID
-    required this.valueKey, // Key to use for the value (e.g., 'Initial' or 'id')
-    required this.displayKey, // Key to use for display (e.g., 'FullName')
-    required this.onChanged,
+    this.controller,
+    this.valueKey,
+    this.displayKey,
+    this.onChanged,
+    this.icon,
+    this.label,
+    this.hint,
+    this.isExpanded = true,
   });
 
-  final String label;
-  final List<Map<String, dynamic>> dropdownList;
-  final IconData icon;
-  final TextEditingController
-      controller; // Assuming controller stores the selected ID as a String
-  final String valueKey;
-  final String displayKey;
-  final ValueChanged<String?> onChanged; // Callback for when selection changes
+  @override
+  State<BDropDownDynamicList> createState() => _BDropDownDynamicListState();
+}
 
+class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
+  String? _selectedValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedValue = widget.controller?.text.isNotEmpty == true ? widget.controller!.text : null;
+  }
+
+  String _getItemValue(dynamic item) {
+    if (item is Map && widget.valueKey != null) {
+      return (item[widget.valueKey] ?? '').toString();
+    }
+    return item?.toString() ?? '';
+  }
+
+  String _getItemLabel(dynamic item) {
+    if (item is Map && widget.displayKey != null) {
+      return (item[widget.displayKey] ?? '').toString();
+    }
+    return item?.toString() ?? '';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final dark = BHelperFunctions.isDarkMode(
-        context); // Assuming BHelperFunctions is available
+    final textStyle = Theme.of(context).textTheme.labelSmall;
+
+    final items = widget.dropdownList.map((item) {
+      final value = _getItemValue(item);
+      final label = _getItemLabel(item);
+      return DropdownMenuItem<String>(
+        value: value,
+        child: Text(label, style: textStyle),
+      );
+    }).toList();
+
     return DropdownButtonFormField<String>(
-      // Specify the type for DropdownButtonFormField
-      menuMaxHeight: 200.0,
-      initialValue: controller.text.isEmpty ? null : controller.text,
-      onChanged: (String? newValue) {
-        if (newValue != null) {
-          controller.text = newValue;
-          onChanged(newValue); // Notify parent about the change
-        }
-      },
+      value: _selectedValue != null && items.any((it) => it.value == _selectedValue) ? _selectedValue : null,
+      isExpanded: widget.isExpanded,
       decoration: InputDecoration(
-        prefixIcon: Icon(
-          icon,
-          color: dark
-              ? BColors.white.withOpacity(0.9)
-              : BColors.black.withOpacity(0.9), // Assuming BColors is available
-        ),
-        labelText: label,
-        labelStyle: TextStyle(color: BColors.darkGrey), // Assuming BColors is available
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        prefixIcon: widget.icon is IconData
+            ? Icon(widget.icon as IconData, size: 20, color: BColors.grey)
+            : (widget.icon is Widget ? widget.icon as Widget : const Icon(Iconsax.arrow_down_1, size: 20, color: BColors.grey)),
+        labelText: widget.label,
+        hintText: widget.hint ?? 'Select',
       ),
-      items: dropdownList.map((option) {
-        return DropdownMenuItem<String>(
-          value: option[valueKey] as String, // Use the unique ID as the value
-          child: Text(
-            option[displayKey] as String, // Use the display key for the text
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
-        );
-      }).toList(),
-      // Ensure no duplicate values in items
-      validator: (value) {
-        if (value == null && dropdownList.isNotEmpty) {
-          // if you want to make it required
-          // return 'Please select an option';
+      items: items,
+      onChanged: (String? newValue) {
+        setState(() => _selectedValue = newValue);
+        if (widget.controller != null && newValue != null) {
+          widget.controller!.text = newValue;
         }
-        return null;
+        if (widget.onChanged != null) widget.onChanged!(newValue);
       },
+      style: textStyle,
+      dropdownColor: Colors.white,
     );
   }
 }

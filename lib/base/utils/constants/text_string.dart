@@ -97,6 +97,8 @@ class BTexts {
   static const String statusDoneDelivery = "Delivered";
   static const String statusNewRequest = "New Request";
   static const String statusCancelled = "Cancelled";
+  static const String statusInTransit = "In Transit";
+  static const String statusAll = "All";
 
   /// Request Modal Specific Texts
   static const String requestModalDeliveryShotTitle = "Delivery Shot";
@@ -113,5 +115,15 @@ class BTexts {
   static const String roleRelease = "Release";
   static const String roleCourier = "Courier";
   static const String roleAdmin = "Admin";
+
+  // Labels
+  static List<String> requestFormLabels = [
+    'Standard Delivery',
+    'Air / Sea',
+    'Hotline Direct',
+    'Pick up',
+    'Pull out',
+    'Stock receive',
+  ];
 
 }

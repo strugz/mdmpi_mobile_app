@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_notification_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
+import 'package:mdmpi_mobile_app/common/services/implementations/notification_service.dart';
+import 'package:mdmpi_mobile_app/common/services/implementations/permission_service.dart';
 import 'package:mdmpi_mobile_app/data/controllers/navigation_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -13,6 +16,7 @@ import 'dart:io';
 
 import 'data/local/database_helper.dart';
 import 'firebase_options.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -22,9 +26,6 @@ class MyHttpOverrides extends HttpOverrides {
           (X509Certificate cert, String host, int port) => true;
   }
 }
-
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -42,8 +43,6 @@ Future<void> main() async {
 
   ///  Load .env file
   await dotenv.load(fileName: ".env");
-
-  /// --  Init Local Storage
   await GetStorage.init();
 
   /// Get an instance of your DatabaseHelper
@@ -53,22 +52,25 @@ Future<void> main() async {
     /// Initialize the database
     await dHelper.database;
   } catch (e) {
-    print('Error initializing database: $e');
+    logDebug('Error initializing database: $e');
   }
 
-  /// Request multiple permissions
-  Map<Permission, PermissionStatus> statuses = await [
-    Permission.manageExternalStorage,
-    Permission.location,
-    Permission.camera,
-    Permission.sms
-  ].request();
+  /// Request multiple permissions using service
+  final permissionService = Get.put<IPermissionService>(PermissionService());
+  final statuses = await permissionService.ensureAll([
+    PermissionType.storage,
+    PermissionType.location,
+    PermissionType.camera,
+    PermissionType.sms,
+  ]);
+
+  await requestBatteryOptimizationPermission();
 
   /// Check if all required permissions are granted
-  if (statuses[Permission.manageExternalStorage]?.isGranted == true &&
-      statuses[Permission.location]?.isGranted == true &&
-      statuses[Permission.camera]?.isGranted == true &&
-      statuses[Permission.sms]?.isGranted == true) {
+  if (statuses[PermissionType.storage] == true &&
+      statuses[PermissionType.location] == true &&
+      statuses[PermissionType.camera] == true &&
+      statuses[PermissionType.sms] == true) {
     /// -- Create storage folder
     final mdmpiAppDir = Directory('/storage/emulated/0/MDMPIAPP');
 
@@ -76,10 +78,8 @@ Future<void> main() async {
       mdmpiAppDir.createSync(recursive: true);
     }
   } else {
-    print('One or more permissions were not granted.');
-    if (statuses[Permission.sms]?.isDenied == true ||
-        statuses[Permission.sms]?.isPermanentlyDenied == true) {
-      print('SMS permission was denied.');
+    if (statuses[PermissionType.sms] == false) {
+      logDebug('SMS permission was denied.');
     }
   }
 
@@ -93,15 +93,9 @@ Future<void> main() async {
 
   HttpOverrides.global = MyHttpOverrides();
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/launcher_icon');
-
-  const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
-  );
-
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
+  // Initialize notifications via service and set tap handler
+  final notificationService = Get.put<INotificationService>(NotificationService());
+  await notificationService.init(onSelectNotification: (payload) {
     final selectedPayload = Get.put(NavigationController());
     selectedPayload.selectedIndex.value = 1;
   });

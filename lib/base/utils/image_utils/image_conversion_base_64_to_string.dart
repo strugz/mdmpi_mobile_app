@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:mdmpi_mobile_app/base/utils/paths/path.dart';
 
-import '../../../features/logistics/models/request_model.dart';
+import '../../../features/logistics/models/standard_delivery_model.dart';
 import '../constants/text_string.dart';
 
 class BImageHelperFunctions {
@@ -52,7 +52,7 @@ class BImageHelperFunctions {
 
   /// Get delivery image as base64 string
   static Future<String?> getDeliveryImageAsBase64(
-      String newStatus, RequestModel requestModel) async {
+      String newStatus, StandardDeliveryModel requestModel) async {
     String? imageBase64;
     if (newStatus == BTexts.statusDoneDelivery) {
       const deliveryShotsDirPath = BPaths.deliveryShots;
@@ -60,7 +60,7 @@ class BImageHelperFunctions {
       await Directory(deliveryShotsDirPath).create(recursive: true);
 
       final imageFilePath =
-          '$deliveryShotsDirPath/${requestModel.requestID}.jpg';
+          '$deliveryShotsDirPath/${requestModel.id}.jpg';
       final imageFile = File(imageFilePath);
       if (await imageFile.exists()) {
         final imageBytes = await imageFile.readAsBytes();

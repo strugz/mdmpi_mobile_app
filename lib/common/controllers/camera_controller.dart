@@ -4,8 +4,9 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 
 import '../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../services/abstracts/i_camera_service.dart';
@@ -19,7 +20,7 @@ class CameraHandlerController extends GetxController
   final ICameraService _cameraService;
   final ITextRecognitionService _textRecognitionService;
   final ITextExtractor _textExtractor;
-  final RequestController requestController = Get.find<RequestController>();
+  final StandardDeliveryController requestController = Get.find<StandardDeliveryController>();
   late AnimationController _flashAnimController;
   late Animation<double> flashOpacity;
 
@@ -69,9 +70,9 @@ class CameraHandlerController extends GetxController
     isCameraLoading.value = true;
     try {
       await _cameraService.initialize();
-      print('Camera initialized successfully (via service in controller)');
+      logDebug('Camera initialized successfully (via service in controller)');
     } catch (e) {
-      print('Error initializing camera (via service in controller): $e');
+      logDebug('Error initializing camera (via service in controller): $e');
     }
     isCameraLoading.value = false;
   }
@@ -108,7 +109,7 @@ class CameraHandlerController extends GetxController
       }
       Get.back(); // Consider if Get.back() should be conditional
     } catch (e) {
-      print('Error recognizing text: $e');
+      logDebug('Error recognizing text: $e');
       recognizedText.value = 'Error processing text.';
     } finally {
       isProcessing.value = false;

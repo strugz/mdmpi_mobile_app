@@ -12,7 +12,7 @@ import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/controllers/camera_controller.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import '../../../../personalization/controller/user_controller.dart';
-import '../../../controllers/request_controller.dart';
+import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
 class BRequestDetails extends StatelessWidget {
@@ -22,7 +22,7 @@ class BRequestDetails extends StatelessWidget {
       required this.requestTransportController,
       required this.userController});
 
-  final RequestController requestController;
+  final StandardDeliveryController requestController;
   final RequestTransportController requestTransportController;
   final UserController userController;
 

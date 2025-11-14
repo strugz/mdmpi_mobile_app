@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/combined_message_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -25,11 +26,11 @@ class WebSocketDispatcherController extends GetxController {
 
   void connectWebSocket() async {
     if (isConnected.value) {
-      print('WebSocket: Already connected or connecting.');
+      logDebug('WebSocket: Already connected or connecting.');
       return;
     }
 
-    print('WebSocket: Attempting to connect...');
+    logDebug('WebSocket: Attempting to connect...');
     connectionAttempted.value = true;
     // We are about to connect, so optimistically set isConnected to true.
     // The onError or onDone will set it to false if connection fails or closes.
@@ -43,11 +44,11 @@ class WebSocketDispatcherController extends GetxController {
             'wss://inventory.mdmpi.com.ph/api/ws?apiKey=mdmpiIMSmdmpiIMSmdmpiIMS'), // Your actual URL
       );
 
-      print('WebSocket: Connection initiated. Listening to stream...');
+      logDebug('WebSocket: Connection initiated. Listening to stream...');
 
       channel!.stream.listen(
         (data) {
-          print('WebSocket: Data received: $data');
+          logDebug('WebSocket: Data received: $data');
           message.value = data.toString(); // Ensure data is a string
           if (!isConnected.value) {
             // If it was marked as disconnected by onDone/onError
@@ -56,13 +57,13 @@ class WebSocketDispatcherController extends GetxController {
           }
         },
         onError: (error) {
-          print('WebSocket: Error in stream: $error');
+          logDebug('WebSocket: Error in stream: $error');
           // Check if the error is a WebSocketChannelException for more details
           if (error is WebSocketChannelException) {
-            print('WebSocket: Channel Exception - ${error.message}');
+            logDebug('WebSocket: Channel Exception - ${error.message}');
             // Access the inner error and its stack trace if it exists
             if (error.inner != null) {
-              print('WebSocket: Inner error: ${error.inner}');
+              logDebug('WebSocket: Inner error: ${error.inner}');
               // Try to get the stack trace of the inner error.
               // Note: Not all error objects will have a stackTrace property,
               // or it might be null if not captured.
@@ -73,11 +74,9 @@ class WebSocketDispatcherController extends GetxController {
               if (error.inner is Error) {
                 final innerError = error.inner as Error;
                 if (innerError.stackTrace != null) {
-                  print(
-                      'WebSocket: Inner StackTrace - ${innerError.stackTrace}');
+                  logDebug('WebSocket: Inner StackTrace - ${innerError.stackTrace}');
                 } else {
-                  print(
-                      'WebSocket: Inner error does not have a separate stack trace object, check its string representation above.');
+                  logDebug('WebSocket: Inner error does not have a separate stack trace object, check its string representation above.');
                 }
               }
             }
@@ -89,7 +88,7 @@ class WebSocketDispatcherController extends GetxController {
           reconnectWebSocket();
         },
         onDone: () {
-          print(
+          logDebug(
               'WebSocket: Stream done (closed). Status code: ${channel?.closeCode}, Reason: ${channel?.closeReason}');
           isConnected.value = false;
           // channel = null; // Good practice to nullify the channel when it's definitively closed
@@ -97,7 +96,7 @@ class WebSocketDispatcherController extends GetxController {
           // For example, if closeCode is not a normal closure (like 1000 or 1001)
           if (channel?.closeCode != status.normalClosure &&
               channel?.closeCode != status.goingAway) {
-            print(
+            logDebug(
                 'WebSocket: Connection closed unexpectedly. Attempting to reconnect...');
             // Be careful with immediate reconnection to avoid tight loops if the server is down.
             // Consider a delay, as you have in your reconnectWebSocket method.
@@ -109,7 +108,7 @@ class WebSocketDispatcherController extends GetxController {
       );
     } catch (e) {
       // This catch block handles errors during the WebSocketChannel.connect() call itself.
-      print('WebSocket: Connection failed to establish: $e');
+      logDebug('WebSocket: Connection failed to establish: $e');
       isConnected.value = false;
       channel = null; // Ensure channel is null if connection fails
     }
@@ -117,10 +116,10 @@ class WebSocketDispatcherController extends GetxController {
 
   void reconnectWebSocket() async {
     if (isConnected.value) {
-      print('WebSocket: Reconnect called, but already connected.');
+      logDebug('WebSocket: Reconnect called, but already connected.');
       return;
     }
-    print('WebSocket: Attempting to reconnect in 5 seconds...');
+    logDebug('WebSocket: Attempting to reconnect in 5 seconds...');
     await Future.delayed(Duration(seconds: 5));
     connectWebSocket(); // Call the main connect method
   }
@@ -143,7 +142,7 @@ class WebSocketDispatcherController extends GetxController {
           ),
         );
 
-        print(jsonEncode(combinedMessage));
+        logDebug(jsonEncode(combinedMessage));
         channel!.sink.add(message);
       } else {
         connectWebSocket(); // This might try to connect even if already attempting
@@ -154,26 +153,26 @@ class WebSocketDispatcherController extends GetxController {
             if (channel != null && isConnected.value) {
               channel!.sink.add(msg);
             } else {
-              print(
+              logDebug(
                   'WebSocket: Still not connected after attempting reconnect. Message not sent.');
             }
           },
         );
 
         // Option 2: Just log and don't send, or notify user
-        print(
+        logDebug(
             'WebSocket: Message "$msg" not sent because connection is not active.');
         // You might want to queue the message and send it once reconnected.
       }
     } catch (e) {
-      print('WebSocket: Error sending message: $e');
+      logDebug('WebSocket: Error sending message: $e');
     }
   }
 
   @override
   void onClose() {
     // GetX lifecycle method
-    print('WebSocket: Controller closing. Closing sink.');
+    logDebug('WebSocket: Controller closing. Closing sink.');
     // It's important to close the sink to inform the server.
     // The stream's onDone will be called as a result.
     channel?.sink.close(status.goingAway); // Use a status code if appropriate

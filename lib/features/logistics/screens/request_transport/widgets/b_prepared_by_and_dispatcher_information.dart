@@ -4,14 +4,14 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
-import '../../../models/request_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 class BPreparedByAndDispatcherInformation
     extends StatelessWidget {
   const BPreparedByAndDispatcherInformation(
       {super.key, required this.request, required this.userController});
 
-  final RequestModel request;
+  final StandardDeliveryModel request;
   final UserController userController;
 
   @override

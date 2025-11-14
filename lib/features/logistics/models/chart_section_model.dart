@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class ChartSectionData {
   final double value;
@@ -29,7 +30,7 @@ class ChartSectionData {
       return Color(int.parse(colorString.replaceFirst('#', '0xFF')));
     } catch (e) {
       // Return a default color if parsing fails
-      print('Error parsing color: $colorString. Error: $e');
+      logDebug('Error parsing color: $colorString. Error: $e');
       return Colors.grey;
     }
   }

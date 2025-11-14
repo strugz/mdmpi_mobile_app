@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 
 import '../../../../../data/controllers/app_data/mobile_controller.dart';
-import '../../../controllers/request_controller.dart';
+import '../../../controllers/standard_delivery_controller.dart';
 
 class BMobile extends StatelessWidget {
   const BMobile({
@@ -12,7 +12,7 @@ class BMobile extends StatelessWidget {
     required this.requestController,
   });
 
-  final RequestController requestController;
+  final StandardDeliveryController requestController;
 
   @override
   Widget build(BuildContext context) {

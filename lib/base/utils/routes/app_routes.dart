@@ -7,11 +7,17 @@ import 'package:mdmpi_mobile_app/features/authentication/screens/signup/verify_e
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/home.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/onboarding.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/air_sea_form.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/hotline_direct_form.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/pick_up_form.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/pull_out_form.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/standard_delivery_form.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/stock_receive_form.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/address/add_new_address.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 
-import '../../../features/logistics/screens/request/request.dart';
+import '../../../features/logistics/screens/request.dart';
 
 class AppRoutes {
   static final pages = [
@@ -26,5 +32,15 @@ class AppRoutes {
     GetPage(name: BRoutes.onBoarding, page: () => const OnboardingScreen()),
     GetPage(name: BRoutes.request, page: () => const RequestScreen()),
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
+  ];
+
+  // Pages to navigate to
+  static final requestFormPages = [
+    const StandardDelivery(),
+    const AirSeaForm(),
+    const HotlineDirectForm(),
+    const PickUpForm(),
+    const PullOutForm(),
+    const StockReceiveForm(),
   ];
 }

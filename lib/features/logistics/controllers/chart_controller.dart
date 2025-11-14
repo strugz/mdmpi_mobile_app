@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../models/chart_section_model.dart';
 
@@ -35,11 +36,11 @@ class ChartController extends GetxController {
             .toList();
       } else {
         errorMessage('Failed to load chart data. Status code: ${response.statusCode}');
-        print('Failed to load chart data: ${response.body}');
+        logDebug('Failed to load chart data: ${response.body}');
       }
     } catch (e) {
       errorMessage('Error fetching chart data: $e');
-      print('Error fetching chart data: $e');
+      logDebug('Error fetching chart data: $e');
     } finally {
       isLoading(false); // Set loading to false regardless of outcome
     }

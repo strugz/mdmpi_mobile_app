@@ -10,11 +10,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/request_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 import '../models/rider_location_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class RequestTransportController extends GetxController {
   static RequestTransportController get instance => Get.find();
@@ -47,7 +48,7 @@ class RequestTransportController extends GetxController {
   final webSocketController = Get.find<WebSocketDispatcherController>();
 
 // You'll need access to RequestController if it's separate
-  final RequestController _requestController = Get.find(); // Or inject it
+  final StandardDeliveryController _requestController = Get.find<StandardDeliveryController>(); // Or inject it
   // Add a new RxBool for loading state
   final RxBool isLoadingAction = false.obs; // <--- New loading state
 
@@ -100,7 +101,7 @@ class RequestTransportController extends GetxController {
           final riderLocation = RiderLocationModel(
             type: 'location_update',
             requestId:
-                _requestController.currentSelectedRequest.value!.requestID,
+                _requestController.currentSelectedRequest.value!.id,
             latitude: position.latitude,
             longitude: position.longitude,
             timestamp: position.timestamp,
@@ -113,7 +114,7 @@ class RequestTransportController extends GetxController {
             client:
                 _requestController.currentSelectedRequest.value!.client.name,
           );
-          print('1${jsonEncode(riderLocation)}');
+          logDebug('1${jsonEncode(riderLocation)}');
           webSocketController.sendMessage(jsonEncode(riderLocation.toJson()));
         } else {
           webSocketController.reconnectWebSocket();
@@ -145,15 +146,15 @@ class RequestTransportController extends GetxController {
         if (data['status'] == 'OK') {
           suggestions.value = data['predictions'];
         } else {
-          print('Error fetching suggestions: ${data['status']}');
+          logDebug('Error fetching suggestions: ${data['status']}');
           suggestions.clear();
         }
       } else {
-        print('HTTP error: ${response.statusCode}');
+        logDebug('HTTP error: ${response.statusCode}');
         suggestions.clear();
       }
     } catch (e) {
-      print('Error during API call: $e');
+      logDebug('Error during API call: $e');
       suggestions.clear();
     }
   }
@@ -256,7 +257,7 @@ class RequestTransportController extends GetxController {
 
       addressTextController.text = address;
     } else {
-      print("Error: ${data["status"]}");
+      logDebug("Error: ${data["status"]}");
     }
   }
 
@@ -304,7 +305,7 @@ class RequestTransportController extends GetxController {
     // When we reach here, permissions are granted and we can
     // continue accessing the position of the device.
     Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high);
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
     currentLocation.value = LatLng(position.latitude, position.longitude);
 
     mapController.value
@@ -423,7 +424,7 @@ class RequestTransportController extends GetxController {
   }
 
   Future<void> processRequestDispatchOrDropOff(
-      RequestModel currentRequest, userInitial) async {
+      StandardDeliveryModel currentRequest, userInitial) async {
     if (isLoadingAction.value) return;
     isLoadingAction.value = true; // <--- Start loading
 

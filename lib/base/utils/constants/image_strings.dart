@@ -59,5 +59,16 @@ class BImages {
 
   /// Google Map Icons
   static String riderCar = "assets/icons/principal/car.png";
+
+
+  // Icon paths
+  static List<String> requestFormIconPaths = [
+    'assets/icons/request/delivery.png',
+    'assets/icons/request/seaAir.png',
+    'assets/icons/request/hotlineDirect.png',
+    'assets/icons/request/pickUp.png',
+    'assets/icons/request/pullOut.png',
+    'assets/icons/request/inventoryStock.png',
+  ];
 }
 

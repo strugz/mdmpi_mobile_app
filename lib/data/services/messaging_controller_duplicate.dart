@@ -2,7 +2,7 @@ import 'package:another_telephony/telephony.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 
-import '../../features/logistics/models/request_model.dart';
+import '../../features/logistics/models/standard_delivery_model.dart';
 
 sealed class SmsResult {}
 
@@ -30,7 +30,7 @@ class MessagingControllerDuplicate extends GetxController {
       : _telephony = telephony ?? Telephony.instance;
 
   Future<SmsResult> sendSmsMessage(List<String> phoneNumbers, String status,
-      RequestModel requestModel) async {
+      StandardDeliveryModel requestModel) async {
     try {
       bool? permissionsGranted = await _telephony.requestSmsPermissions;
       if (permissionsGranted != true) {
@@ -62,7 +62,7 @@ class MessagingControllerDuplicate extends GetxController {
     }
   }
 
-  Future<String> createMessage(String status, RequestModel requestModel) async {
+  Future<String> createMessage(String status, StandardDeliveryModel requestModel) async {
     String message = '';
     switch (status) {
       case BTexts.statusNewRequest:
@@ -70,14 +70,14 @@ class MessagingControllerDuplicate extends GetxController {
             'Document References:\n'
             '${_formatDocumentReferencesForSms(requestModel.documentReference)}\n'
             'Status: Allocated and for Preparation.\n'
-            'Target Date: ${requestModel.targetDate}.';
+            'Target Date: ${requestModel.deliveryDate}.';
         break;
       case BTexts.statusItemPrepared:
         message = '${requestModel.client.name} \n'
             'Document References:\n'
             '${_formatDocumentReferencesForSms(requestModel.documentReference)}\n'
             'Status: Ready for Delivery.\n'
-            'Target Date: ${requestModel.targetDate}.';
+            'Target Date: ${requestModel.deliveryDate}.';
         break;
       case BTexts.statusDoneDelivery:
         message = '${requestModel.client.name} \n'

@@ -10,17 +10,23 @@ import '../base/utils/helpers/network_manager.dart';
 import '../common/services/abstracts/i_camera_service.dart';
 import '../common/services/abstracts/i_text_extractor.dart';
 import '../common/services/abstracts/i_text_recognition_service.dart';
+import '../common/services/abstracts/i_notification_service.dart';
+import '../common/services/abstracts/i_permission_service.dart';
 import '../common/services/implementations/flutter_camera_service.dart';
 import '../common/services/implementations/google_ml_kit_text_recognizer.dart';
+import '../common/services/implementations/notification_service.dart';
+import '../common/services/implementations/permission_service.dart';
 import '../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../data/controllers/client_controller.dart';
 import '../data/repositories/app_data/department_repository.dart';
 import '../data/repositories/app_data/mobile_repository.dart';
 import '../data/repositories/app_data/role_repository.dart';
 import '../data/repositories/app_data/user_initial_repository.dart';
+import '../data/repositories/app_data/cancel_remarks_repository.dart';
 import '../data/repositories/client/client_repository.dart';
 import '../data/repositories/delivery_vehicle/delivery_vehicle_repository.dart';
-import '../data/repositories/request/request_repository.dart';
+import '../data/repositories/standard_delivery/standard_delivery_repository.dart';
+import '../data/repositories/image/image_repository.dart';
 import '../data/repositories/user/user_repository.dart';
 import '../data/services/messaging_controller.dart';
 import '../features/authentication/controllers/forget_password/forget_password_controller.dart';
@@ -30,13 +36,14 @@ import '../common/controllers/camera_controller.dart';
 import '../features/logistics/controllers/chart_controller.dart';
 import '../features/logistics/controllers/delivery_location_controller.dart';
 import '../features/logistics/controllers/delivery_vehicle_controller.dart';
-import '../features/logistics/controllers/request_controller.dart';
+import '../features/logistics/controllers/standard_delivery_controller.dart';
 import '../features/logistics/controllers/request_transport_controller.dart';
 import '../features/logistics/controllers/web_socket_delivery_controller.dart';
 import '../features/logistics/controllers/web_socket_dispatcher_controller.dart';
 import '../features/logistics/controllers/web_socket_notification_controller.dart';
 import '../features/personalization/controller/update_name_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
+import '../data/repositories/pull_out/pull_out_repository.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -47,7 +54,7 @@ class GeneralBindings extends Bindings {
     Get.put(UserController(), permanent: true);
     /// Controllers
     Get.lazyPut(() => UserInitialController(), fenix: true);
-    Get.lazyPut(() => RequestController(), fenix: true);
+    Get.lazyPut(() => StandardDeliveryController(), fenix: true);
 
     Get.lazyPut(() => LoginController(), fenix: true);
     Get.lazyPut(() => LoadingScreenController(), fenix: true);
@@ -77,9 +84,11 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
-
+    // Feature toggles service (used to gate unfinished modules)
     /// Repositories
-    Get.lazyPut(() => RequestRepository(), fenix: true);
+    Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
+    // Image repository used across request flow (upload/download); register globally
+    Get.lazyPut(() => ImageRepository(), fenix: true);
     Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
     Get.lazyPut(() => UserRepository());
     Get.lazyPut(() => UserInitialRepository(), fenix: true);
@@ -87,6 +96,11 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => MobileRepository(), fenix: true);
     Get.lazyPut(() => RoleRepository(), fenix: true);
     Get.lazyPut(() => DepartmentRepository(), fenix: true);
+    Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
     Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+    Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
+    Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
+    // Register PullOutRepository
+    Get.lazyPut(() => PullOutRepository(), fenix: true);
   }
 }

@@ -12,11 +12,25 @@ class ClientRepository extends GetxController {
   Future<List<ClientModel>> getAllClientAPI() async {
     try {
       final response =
-          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api2/accmst"));
+          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api3/accmst"));
 
       if (response.statusCode == 200) {
+        // Debug: print raw response body (helps confirm whether API sends uppercase)
+        print('-- getAllClientAPI: RAW RESPONSE BODY START --');
+        print(response.body);
+        print('-- getAllClientAPI: RAW RESPONSE BODY END --');
+
         final List<dynamic> jsonResponse = json.decode(response.body);
-        return jsonResponse.map((data) => ClientModel.fromJson(data)).toList();
+
+        // Map into models while logging the parsed name for each client so we can
+        // determine whether the casing change happens here or earlier/later.
+        final clients = jsonResponse.map((data) {
+          final model = ClientModel.fromJson(data);
+          print('-- Parsed client: id=${model.id}, name="${model.name}" --');
+          return model;
+        }).toList();
+
+        return clients;
       } else {
         throw Exception('Failed to load Client');
       }

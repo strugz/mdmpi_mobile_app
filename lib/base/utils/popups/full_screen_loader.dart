@@ -10,14 +10,14 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 
 import '../../../common/widgets/signature/signature_pad.dart';
 import '../../../common/widgets/texts/product_title_text.dart';
 import '../../../data/controllers/app_data/user_initial_controller.dart';
 import '../../../features/authentication/controllers/signup/signup_controller.dart';
-import '../../../features/logistics/controllers/request_controller.dart';
-import '../../../features/logistics/models/request_model.dart';
+import '../../../features/logistics/controllers/standard_delivery_controller.dart';
+import '../../../features/logistics/models/standard_delivery_model.dart';
 
 /// A utility class for managing a full-screen loading dialog.
 class BFullScreenLoader {
@@ -52,7 +52,7 @@ class BFullScreenLoader {
 
   /// Open a half screen dialog for Pick and Dispatch Items and Delivery of Items
   static void showRequestForReleasingDialog1(
-      BuildContext context, RequestModel requestModel, VoidCallback onPressed) {
+      BuildContext context, StandardDeliveryModel requestModel, VoidCallback onPressed) {
     showModalBottomSheet<void>(
         enableDrag: true,
         context: context,
@@ -157,7 +157,7 @@ class BFullScreenLoader {
 
   /// Open a half screen dialog with a text and list to search for a client to select
   static void showSearchSheet(BuildContext context,
-      ClientController clientController, RequestController requestController) {
+      ClientController clientController, StandardDeliveryController requestController) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true, // Important for height
@@ -356,7 +356,7 @@ class BFullScreenLoader {
   }
 
   static void showRequestTransportSignatureDialog(
-      BuildContext context, RequestController requestController) {
+      BuildContext context, StandardDeliveryController requestController) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -394,7 +394,7 @@ class BFullScreenLoader {
   }
 
   static void showRequestForReleasingDialog(BuildContext context,
-      RequestModel requestModel, VoidCallback onPressed, bool status) {
+      StandardDeliveryModel requestModel, VoidCallback onPressed, bool status) {
     final dark = BHelperFunctions.isDarkMode(context);
     showModalBottomSheet<void>(
       backgroundColor: dark ? BColors.black : BColors.light,
