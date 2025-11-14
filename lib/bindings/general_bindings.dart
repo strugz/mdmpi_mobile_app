@@ -44,6 +44,7 @@ import '../features/logistics/controllers/web_socket_notification_controller.dar
 import '../features/personalization/controller/update_name_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
 import '../data/repositories/pull_out/pull_out_repository.dart';
+import '../features/logistics/controllers/pull_out_controller.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -72,6 +73,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UpdateNameController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);
     Get.lazyPut(() => MobileController(), fenix: true);
+    // Register PullOutController
+    Get.lazyPut(() => PullOutController(), fenix: true);
     Get.lazyPut(
         () => CameraHandlerController(
               cameraService: Get.find<ICameraService>(),

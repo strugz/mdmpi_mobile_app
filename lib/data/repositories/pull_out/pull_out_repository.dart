@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 
@@ -21,15 +22,20 @@ class PullOutRepository extends GetxController {
   Uri _uri(String path) => Uri.parse("$_baseUrl$path");
 
   // Endpoint base (adjust if backend uses a different route)
-  static const String _resource = '/api4/pullout';
+  static const String _resource = '/api4/RequestPullOutReturnPickUp';
 
   /// Fetch all pull-out requests
   Future<List<PullOutModel>> getAll() async {
     try {
-      final response = await http.get(_uri(_resource));
+      final url = _uri(_resource);
+      logDebug('PullOutRepository.getAll: GET $url');
+      final response = await http.get(url).timeout(const Duration(seconds: 60));
+      logDebug('PullOutRepository.getAll: status=${response.statusCode}');
       if (response.statusCode == 200) {
         final body = response.body;
         final decoded = jsonDecode(body);
+        logDebug('PullOutRepository.getAll: decoded=${decoded.runtimeType}');
+
         List<dynamic> items;
         if (decoded is List) {
           items = decoded;
@@ -54,10 +60,10 @@ class PullOutRepository extends GetxController {
                 : PullOutModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       } else {
+        logDebug('PullOutRepository.getAll: error body=${response.body}');
         throw Exception('Failed to load pull-out requests (${response.statusCode})');
       }
     } catch (e, st) {
-      // Keep debug prints minimal in production per project style; using snackbars for user feedback
       BLoaders.errorSnackBar(title: 'Error', message: 'Failed to fetch pull-out list');
       throw Exception('getAll pull-out error: $e\n$st');
     }
@@ -67,11 +73,14 @@ class PullOutRepository extends GetxController {
   Future<void> insert(PullOutModel data) async {
     try {
       final payload = data.toJsonInsert();
+      final url = _uri(_resource);
+      logDebug('PullOutRepository.insert: POST $url payload=$payload');
       final response = await http.post(
-        _uri(_resource),
+        url,
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
-      );
+      ).timeout(const Duration(seconds: 60));
+      logDebug('PullOutRepository.insert: status=${response.statusCode} body=${response.body}');
       if (response.statusCode == 200) {
         BLoaders.successSnackBar(title: 'Information', message: 'Success saving...');
       } else {
@@ -92,11 +101,14 @@ class PullOutRepository extends GetxController {
   Future<void> updatePullOut(PullOutModel data) async {
     try {
       final payload = _buildUpdatePayload(data);
+      final url = _uri(_resource);
+      logDebug('PullOutRepository.update: PATCH $url payload=$payload');
       final response = await http.patch(
-        _uri(_resource),
+        url,
         headers: const {'Content-Type': 'application/json; charset=UTF-8'},
         body: jsonEncode(payload),
-      );
+      ).timeout(const Duration(seconds: 60));
+      logDebug('PullOutRepository.update: status=${response.statusCode} body=${response.body}');
 
       if (response.statusCode == 200) {
         final raw = response.body;

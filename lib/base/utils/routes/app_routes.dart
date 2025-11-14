@@ -32,6 +32,7 @@ class AppRoutes {
     GetPage(name: BRoutes.onBoarding, page: () => const OnboardingScreen()),
     GetPage(name: BRoutes.request, page: () => const RequestScreen()),
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
+    GetPage(name: BRoutes.pullOutForm, page: () => const PullOutForm()),
   ];
 
   // Pages to navigate to

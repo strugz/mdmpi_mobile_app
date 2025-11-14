@@ -2,42 +2,39 @@
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 /// Pull-out request model.
-///
-/// Notes:
-/// - Keep date/time fields as String to match API payloads (ISO strings) and avoid
-///   premature parsing in UI code.
-/// - JSON keys follow backend casing (e.g., `RequestID`, `ClientID`).
 class PullOutModel {
   // Identifiers and client
-  String id; // maps to JSON 'RequestID'
-  String clientId; // maps to JSON 'ClientID'
-  String clientContactPerson; // 'ClientContactPerson'
-  String formCategoryId; // 'FormCategoryID'
-  String itemCategoryId; // 'ItemCategoryID'
+  String id;
+  String clientId;
+  String clientContactPerson;
+  String formCategoryId;
+  String itemCategoryId;
 
   // Document/IRRF and reason
-  String slipNo; // 'SlipNo'
-  String irrfNumber; // 'IRRFNumber'
-  String irrfDate; // 'IRRFDate'
-  String reasonForReturn; // 'ReasonForReturn'
+  String slipNo;
+  String irrfNumber;
+  String irrfDate;
+  String reasonForReturn;
 
   // Logistics details
-  String releasedBy; // 'ReleasedBy'
-  String pullOutDate; // 'PullOutDate'
-  String pullOutDateStartAt; // 'PullOutDateStartAt'
-  String pullOutDateEndAt; // 'PullOutDateEndAt'
-  String requestStatus; // 'RequestStatus'
-  String tripTicketNumber; // 'TripTicketNumber'
-  String driver; // 'Driver'
-  String helper; // 'Helper'
+  String releasedBy;
+  String pullOutDate;
+  String pullOutDateStartAt;
+  String pullOutDateEndAt;
+  String requestStatus;
+  String tripTicketNumber;
+  String driver;
+  String helper;
 
   // Audit
-  String createdAt; // 'CreatedAt'
-  String updatedAt; // 'UpdatedAt'
+  String createdAt;
+  String updatedAt;
+  String createdBy;
+  String requestedBy;
 
   // Aggregates
-  ClientModel client; // 'Client'
-  List<String> documentReference; // 'DocumentReference'
+  ClientModel client;
+  List<String> documentReference;
 
   PullOutModel({
     this.id = '',
@@ -59,6 +56,8 @@ class PullOutModel {
     this.helper = '',
     this.createdAt = '',
     this.updatedAt = '',
+    this.createdBy = '',
+    this.requestedBy = '',
     ClientModel? client,
     List<String>? documentReference,
   })  : client = client ?? ClientModel.empty(),
@@ -87,6 +86,8 @@ class PullOutModel {
     String? helper,
     String? createdAt,
     String? updatedAt,
+    String? createdBy,
+    String? requestedBy,
     ClientModel? client,
     List<String>? documentReference,
   }) {
@@ -110,6 +111,8 @@ class PullOutModel {
       helper: helper ?? this.helper,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
+      requestedBy: requestedBy ?? this.requestedBy,
       client: client ?? this.client,
       documentReference: documentReference ?? this.documentReference,
     );
@@ -137,6 +140,8 @@ class PullOutModel {
       'Helper': helper,
       'CreatedAt': createdAt,
       'UpdatedAt': updatedAt,
+      'CreatedBy': createdBy,
+      'RequestedBy': requestedBy,
       'Client': client.toJson(),
       'DocumentReference': documentReference,
     };
@@ -159,38 +164,51 @@ class PullOutModel {
       'TripTicketNumber': tripTicketNumber,
       'Driver': driver,
       'Helper': helper,
+      'CreatedBy': createdBy,
+      'RequestedBy': requestedBy,
     };
   }
 
   /// Parse from API JSON
   factory PullOutModel.fromJson(Map<String, dynamic> json) {
+    // Helper to retrieve the first non-null value from a list of possible keys
+    String _firstPresent(Map<String, dynamic> m, List<String> keys, {String fallback = ''}) {
+      for (final k in keys) {
+        if (m.containsKey(k) && m[k] != null) return m[k].toString();
+      }
+      return fallback;
+    }
+
+    String _safeListFirst(Map<String, dynamic> m, String key) {
+      final v = m.containsKey(key) ? m[key] : null;
+      if (v is List && v.isNotEmpty) return v.first?.toString() ?? '';
+      return '';
+    }
+
     return PullOutModel(
-      id: (json['RequestID']?.toString() ?? ''),
-      clientId: (json['ClientID']?.toString() ?? ''),
-      clientContactPerson: (json['ClientContactPerson']?.toString() ?? ''),
-      formCategoryId: (json['FormCategoryID']?.toString() ?? ''),
-      itemCategoryId: (json['ItemCategoryID']?.toString() ?? ''),
-      slipNo: (json['SlipNo']?.toString() ?? ''),
-      irrfNumber: (json['IRRFNumber']?.toString() ?? ''),
-      irrfDate: (json['IRRFDate']?.toString() ?? ''),
-      reasonForReturn: (json['ReasonForReturn']?.toString() ?? ''),
-      releasedBy: (json['ReleasedBy']?.toString() ?? ''),
-      pullOutDate: (json['PullOutDate']?.toString() ?? ''),
-      pullOutDateStartAt: (json['PullOutDateStartAt']?.toString() ?? ''),
-      pullOutDateEndAt: (json['PullOutDateEndAt']?.toString() ?? ''),
-      requestStatus: (json['RequestStatus']?.toString() ?? ''),
-      tripTicketNumber: (json['TripTicketNumber']?.toString() ?? ''),
-      driver: (json['Driver']?.toString() ?? ''),
-      helper: (json['Helper']?.toString() ?? ''),
-      createdAt: (json['CreatedAt']?.toString() ?? ''),
-      updatedAt: (json['UpdatedAt']?.toString() ?? ''),
-      client: json['Client'] != null
-          ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
-          : ClientModel.empty(),
-      documentReference: json['DocumentReference'] != null
-          ? List<String>.from((json['DocumentReference'] as List).map((e) => e?.toString() ?? ''))
-          : <String>[],
+      id: _firstPresent(json, ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
+      clientId: _firstPresent(json, ['ClientID', 'clientID', 'clientId', 'ClientId', 'clientId']),
+      clientContactPerson: _firstPresent(json, ['ClientContactPerson', 'clientContactPerson', 'ClientContactperson', 'clientcontactperson']),
+      formCategoryId: _firstPresent(json, ['FormCategoryID', 'formCategoryID', 'FormCategoryId', 'formCategoryId']),
+      itemCategoryId: _firstPresent(json, ['ItemCategoryID', 'itemCategoryID', 'ItemCategoryId', 'itemCategoryId']),
+      slipNo: _firstPresent(json, ['SlipNo', 'slipNo', 'Slipno', 'slipno']),
+      irrfNumber: _firstPresent(json, ['IRRFNumber', 'irrfNumber', 'IrrfNumber', 'irrfnumber']),
+      irrfDate: _firstPresent(json, ['IRRFDate', 'irrfDate', 'IrrfDate', 'irrfdate']),
+      reasonForReturn: _firstPresent(json, ['ReasonForReturn', 'reasonForReturn', 'ReasonforReturn', 'reasonforreturn']),
+      releasedBy: _firstPresent(json, ['ReleasedBy', 'releasedBy', 'Releasedby', 'releasedby']),
+      pullOutDate: _firstPresent(json, ['PullOutDate', 'pullOutDate', 'PulloutDate', 'pulloutDate']),
+      pullOutDateStartAt: _firstPresent(json, ['PullOutDateStartAt', 'pullOutDateStartAt', 'PullOutDateStartat', 'pulloutdatestartat']),
+      pullOutDateEndAt: _firstPresent(json, ['PullOutDateEndAt', 'pullOutDateEndAt', 'PullOutDateEndat', 'pulloutdateendat']),
+      requestStatus: _firstPresent(json, ['RequestStatus', 'requestStatus', 'Requeststatus', 'requeststatus']),
+      tripTicketNumber: _firstPresent(json, ['TripTicketNumber', 'tripTicketNumber', 'TripTicketnumber', 'tripticketnumber']),
+      driver: _firstPresent(json, ['Driver', 'driver']),
+      helper: _firstPresent(json, ['Helper', 'helper']),
+      createdAt: _firstPresent(json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
+      updatedAt: _firstPresent(json, ['UpdatedAt', 'updatedAt', 'Updatedat', 'updatedat']),
+      createdBy: _firstPresent(json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
+      requestedBy: _firstPresent(json, ['RequestedBy', 'requestedBy', 'Requestedby', 'requestedby']),
+      client: json['Client'] != null ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client'])) : ClientModel.empty(),
+      documentReference: json['DocumentReference'] != null && json['DocumentReference'] is List ? List<String>.from((json['DocumentReference'] as List).map((e) => e?.toString() ?? '')) : <String>[],
     );
   }
 }
-

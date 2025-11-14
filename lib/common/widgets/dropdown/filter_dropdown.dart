@@ -5,7 +5,7 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
-class FilterDropdown<T extends Enum> extends StatelessWidget {
+class FilterDropdown<T> extends StatelessWidget {
   final Rx<T> selectedFilter; // Observable for the selected filter
   final List<T> filterValues; // List of all possible filter values
   final String Function(T)

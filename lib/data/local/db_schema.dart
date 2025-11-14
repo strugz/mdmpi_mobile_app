@@ -77,7 +77,7 @@ Future<void> createAllTables(Database db) async {
 
   // Table: a_tblRequestRemarks
   await db.execute('''
-    CREATE TABLE a_tblRequestRemarks (
+    CREATE TABLE  D (
       RequestID TEXT PRIMARY KEY,
       Remarks TEXT,
       Date TEXT
