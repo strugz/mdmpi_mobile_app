@@ -83,7 +83,7 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
-
+    // Feature toggles service (used to gate unfinished modules)
     /// Repositories
     Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
     // Image repository used across request flow (upload/download); register globally
