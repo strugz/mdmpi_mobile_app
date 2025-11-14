@@ -43,6 +43,7 @@ import '../features/logistics/controllers/web_socket_dispatcher_controller.dart'
 import '../features/logistics/controllers/web_socket_notification_controller.dart';
 import '../features/personalization/controller/update_name_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
+import '../data/repositories/pull_out/pull_out_repository.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -99,5 +100,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
+    // Register PullOutRepository
+    Get.lazyPut(() => PullOutRepository(), fenix: true);
   }
 }
