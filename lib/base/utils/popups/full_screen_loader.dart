@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
 
 import '../../../common/widgets/signature/signature_pad.dart';
 import '../../../common/widgets/texts/product_title_text.dart';
@@ -18,6 +19,7 @@ import '../../../data/controllers/app_data/user_initial_controller.dart';
 import '../../../features/authentication/controllers/signup/signup_controller.dart';
 import '../../../features/logistics/controllers/standard_delivery_controller.dart';
 import '../../../features/logistics/models/standard_delivery_model.dart';
+import '../../../features/logistics/models/pull_out_model.dart';
 
 /// A utility class for managing a full-screen loading dialog.
 class BFullScreenLoader {
@@ -406,6 +408,29 @@ class BFullScreenLoader {
             requestModel: requestModel,
             onPressed: onPressed,
             status: status,
+          ),
+        );
+      },
+    );
+  }
+
+  static void showPullOutDialog(
+    BuildContext context,
+    PullOutModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: PullOutModal(
+            requestModel: requestModel,
+            onPressed: onPressed,
+            isActionVisible: isActionVisible,
           ),
         );
       },

@@ -109,7 +109,6 @@ class BHelperFunctions {
     return wrappedList;
   }
 
-  //url = sr / inventory / fwms
   static String getUrl(String url) {
     if (url == 'sr') {
       return 'https://sr.mdmpi.com.ph';
@@ -135,4 +134,28 @@ class BHelperFunctions {
         return currentStatus; // Or handle error/unknown status
     }
   }
+
+  static Future<String?> pickDateString(BuildContext context, {bool includeTime = true}) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (pickedDate == null) return null;
+    if (includeTime) {
+      final TimeOfDay? pickedTime = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+      final DateTime combined = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime?.hour ?? 0,
+        pickedTime?.minute ?? 0,
+      );
+      return combined.toIso8601String();
+    } else {
+      return pickedDate.toIso8601String().split('T').first;
+    }
+  }
+
 }

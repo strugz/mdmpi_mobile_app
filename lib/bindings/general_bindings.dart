@@ -45,6 +45,9 @@ import '../features/personalization/controller/update_name_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
 import '../data/repositories/pull_out/pull_out_repository.dart';
 import '../features/logistics/controllers/pull_out_controller.dart';
+// Add repositories for categories
+import '../data/repositories/common/item_category_repository.dart';
+import '../data/repositories/common/form_category_repository.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -53,7 +56,6 @@ class GeneralBindings extends Bindings {
     Get.put(WebSocketNotificationController());
     Get.put(MessagingController());
     Get.put(UserController(), permanent: true);
-    /// Controllers
     Get.lazyPut(() => UserInitialController(), fenix: true);
     Get.lazyPut(() => StandardDeliveryController(), fenix: true);
 
@@ -87,8 +89,6 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
-    // Feature toggles service (used to gate unfinished modules)
-    /// Repositories
     Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
     // Image repository used across request flow (upload/download); register globally
     Get.lazyPut(() => ImageRepository(), fenix: true);
@@ -103,7 +103,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
-    // Register PullOutRepository
     Get.lazyPut(() => PullOutRepository(), fenix: true);
+    Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
+    Get.lazyPut(() => FormCategoryRepository(), fenix: true);
   }
 }
