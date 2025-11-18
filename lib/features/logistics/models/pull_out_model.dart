@@ -1,4 +1,3 @@
-// filepath: c:\Users\JayBryanCAbaoag\Documents\VuexJaysWayFile\VuexJaysWayFile\MDMPIMobileApp\mdmpi_mobile_app\lib\features\logistics\models\pull_out_model.dart
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 /// Pull-out request model.
@@ -160,6 +159,7 @@ class PullOutModel {
       'ReasonForReturn': reasonForReturn,
       'ReleasedBy': releasedBy,
       'PullOutDate': pullOutDate,
+      'DocumentReference': documentReference,
       'RequestStatus': requestStatus,
       'TripTicketNumber': tripTicketNumber,
       'Driver': driver,
@@ -171,44 +171,90 @@ class PullOutModel {
 
   /// Parse from API JSON
   factory PullOutModel.fromJson(Map<String, dynamic> json) {
-    // Helper to retrieve the first non-null value from a list of possible keys
-    String _firstPresent(Map<String, dynamic> m, List<String> keys, {String fallback = ''}) {
+    String firstPresent(Map<String, dynamic> m, List<String> keys,
+        {String fallback = ''}) {
       for (final k in keys) {
         if (m.containsKey(k) && m[k] != null) return m[k].toString();
       }
       return fallback;
     }
 
-    String _safeListFirst(Map<String, dynamic> m, String key) {
-      final v = m.containsKey(key) ? m[key] : null;
-      if (v is List && v.isNotEmpty) return v.first?.toString() ?? '';
-      return '';
-    }
-
     return PullOutModel(
-      id: _firstPresent(json, ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
-      clientId: _firstPresent(json, ['ClientID', 'clientID', 'clientId', 'ClientId', 'clientId']),
-      clientContactPerson: _firstPresent(json, ['ClientContactPerson', 'clientContactPerson', 'ClientContactperson', 'clientcontactperson']),
-      formCategoryId: _firstPresent(json, ['FormCategoryID', 'formCategoryID', 'FormCategoryId', 'formCategoryId']),
-      itemCategoryId: _firstPresent(json, ['ItemCategoryID', 'itemCategoryID', 'ItemCategoryId', 'itemCategoryId']),
-      slipNo: _firstPresent(json, ['SlipNo', 'slipNo', 'Slipno', 'slipno']),
-      irrfNumber: _firstPresent(json, ['IRRFNumber', 'irrfNumber', 'IrrfNumber', 'irrfnumber']),
-      irrfDate: _firstPresent(json, ['IRRFDate', 'irrfDate', 'IrrfDate', 'irrfdate']),
-      reasonForReturn: _firstPresent(json, ['ReasonForReturn', 'reasonForReturn', 'ReasonforReturn', 'reasonforreturn']),
-      releasedBy: _firstPresent(json, ['ReleasedBy', 'releasedBy', 'Releasedby', 'releasedby']),
-      pullOutDate: _firstPresent(json, ['PullOutDate', 'pullOutDate', 'PulloutDate', 'pulloutDate']),
-      pullOutDateStartAt: _firstPresent(json, ['PullOutDateStartAt', 'pullOutDateStartAt', 'PullOutDateStartat', 'pulloutdatestartat']),
-      pullOutDateEndAt: _firstPresent(json, ['PullOutDateEndAt', 'pullOutDateEndAt', 'PullOutDateEndat', 'pulloutdateendat']),
-      requestStatus: _firstPresent(json, ['RequestStatus', 'requestStatus', 'Requeststatus', 'requeststatus']),
-      tripTicketNumber: _firstPresent(json, ['TripTicketNumber', 'tripTicketNumber', 'TripTicketnumber', 'tripticketnumber']),
-      driver: _firstPresent(json, ['Driver', 'driver']),
-      helper: _firstPresent(json, ['Helper', 'helper']),
-      createdAt: _firstPresent(json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
-      updatedAt: _firstPresent(json, ['UpdatedAt', 'updatedAt', 'Updatedat', 'updatedat']),
-      createdBy: _firstPresent(json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
-      requestedBy: _firstPresent(json, ['RequestedBy', 'requestedBy', 'Requestedby', 'requestedby']),
-      client: json['Client'] != null ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client'])) : ClientModel.empty(),
-      documentReference: json['DocumentReference'] != null && json['DocumentReference'] is List ? List<String>.from((json['DocumentReference'] as List).map((e) => e?.toString() ?? '')) : <String>[],
+      id: firstPresent(json,
+          ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
+      clientId: firstPresent(
+          json, ['ClientID', 'clientID', 'clientId', 'ClientId', 'clientId']),
+      clientContactPerson: firstPresent(json, [
+        'ClientContactPerson',
+        'clientContactPerson',
+        'ClientContactperson',
+        'clientcontactperson'
+      ]),
+      formCategoryId: firstPresent(json, [
+        'FormCategoryID',
+        'formCategoryID',
+        'FormCategoryId',
+        'formCategoryId'
+      ]),
+      itemCategoryId: firstPresent(json, [
+        'ItemCategoryID',
+        'itemCategoryID',
+        'ItemCategoryId',
+        'itemCategoryId'
+      ]),
+      slipNo: firstPresent(json, ['SlipNo', 'slipNo', 'Slipno', 'slipno']),
+      irrfNumber: firstPresent(
+          json, ['IRRFNumber', 'irrfNumber', 'IrrfNumber', 'irrfnumber']),
+      irrfDate:
+          firstPresent(json, ['IRRFDate', 'irrfDate', 'IrrfDate', 'irrfdate']),
+      reasonForReturn: firstPresent(json, [
+        'ReasonForReturn',
+        'reasonForReturn',
+        'ReasonforReturn',
+        'reasonforreturn'
+      ]),
+      releasedBy: firstPresent(
+          json, ['ReleasedBy', 'releasedBy', 'Releasedby', 'releasedby']),
+      pullOutDate: firstPresent(
+          json, ['PullOutDate', 'pullOutDate', 'PulloutDate', 'pulloutDate']),
+      pullOutDateStartAt: firstPresent(json, [
+        'PullOutDateStartAt',
+        'pullOutDateStartAt',
+        'PullOutDateStartat',
+        'pulloutdatestartat'
+      ]),
+      pullOutDateEndAt: firstPresent(json, [
+        'PullOutDateEndAt',
+        'pullOutDateEndAt',
+        'PullOutDateEndat',
+        'pulloutdateendat'
+      ]),
+      requestStatus: firstPresent(json,
+          ['RequestStatus', 'requestStatus', 'Requeststatus', 'requeststatus']),
+      tripTicketNumber: firstPresent(json, [
+        'TripTicketNumber',
+        'tripTicketNumber',
+        'TripTicketnumber',
+        'tripticketnumber'
+      ]),
+      driver: firstPresent(json, ['Driver', 'driver']),
+      helper: firstPresent(json, ['Helper', 'helper']),
+      createdAt: firstPresent(
+          json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
+      updatedAt: firstPresent(
+          json, ['UpdatedAt', 'updatedAt', 'Updatedat', 'updatedat']),
+      createdBy: firstPresent(
+          json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
+      requestedBy: firstPresent(
+          json, ['RequestedBy', 'requestedBy', 'Requestedby', 'requestedby']),
+      client: json['Client'] != null
+          ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
+          : ClientModel.empty(),
+      documentReference:
+          json['DocumentReference'] != null && json['DocumentReference'] is List
+              ? List<String>.from((json['DocumentReference'] as List)
+                  .map((e) => e?.toString() ?? ''))
+              : <String>[],
     );
   }
 }

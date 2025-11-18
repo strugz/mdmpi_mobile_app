@@ -1,4 +1,3 @@
-// filepath: c:\Users\JayBryanCAbaoag\Documents\VuexJaysWayFile\VuexJaysWayFile\MDMPIMobileApp\mdmpi_mobile_app\lib\data\repositories\pull_out\pull_out_repository.dart
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -10,18 +9,14 @@ import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart'
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/mappers/pull_out_mapper.dart';
 
-/// Repository for Pull-Out requests. Handles API communication for
-/// - GetAll
-/// - Insert
-/// - Update
 class PullOutRepository extends GetxController {
   static PullOutRepository get instance => Get.find();
 
   String get _baseUrl => dotenv.env['API_URL'] ?? '';
   Uri _uri(String path) => Uri.parse("$_baseUrl$path");
 
-  // Endpoint base (adjust if backend uses a different route)
   static const String _resource = '/api4/RequestPullOutReturnPickUp';
 
   /// Fetch all pull-out requests
@@ -61,10 +56,12 @@ class PullOutRepository extends GetxController {
             .toList();
       } else {
         logDebug('PullOutRepository.getAll: error body=${response.body}');
-        throw Exception('Failed to load pull-out requests (${response.statusCode})');
+        throw Exception(
+            'Failed to load pull-out requests (${response.statusCode})');
       }
     } catch (e, st) {
-      BLoaders.errorSnackBar(title: 'Error', message: 'Failed to fetch pull-out list');
+      BLoaders.errorSnackBar(
+          title: 'Error', message: 'Failed to fetch pull-out list');
       throw Exception('getAll pull-out error: $e\n$st');
     }
   }
@@ -72,21 +69,27 @@ class PullOutRepository extends GetxController {
   /// Insert a new pull-out request
   Future<void> insert(PullOutModel data) async {
     try {
-      final payload = data.toJsonInsert();
+      final dto = PullOutMapper.toInsertDto(data);
+      final payload = dto.toJson();
       final url = _uri(_resource);
       logDebug('PullOutRepository.insert: POST $url payload=$payload');
-      final response = await http.post(
-        url,
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 60));
-      logDebug('PullOutRepository.insert: status=${response.statusCode} body=${response.body}');
+      final response = await http
+          .post(
+            url,
+            headers: const {'Content-Type': 'application/json'},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 60));
+      logDebug(
+          'PullOutRepository.insert: status=${response.statusCode} body=${response.body}');
       if (response.statusCode == 200) {
-        BLoaders.successSnackBar(title: 'Information', message: 'Success saving...');
+        BLoaders.successSnackBar(
+            title: 'Information', message: 'Success saving...');
       } else {
         BLoaders.errorSnackBar(
             title: 'Error',
-            message: 'Failed to insert pull-out. Status code: ${response.statusCode}');
+            message:
+                'Failed to insert pull-out. Status code: ${response.statusCode}');
       }
     } on TFormatException catch (_) {
       throw TFormatException();
@@ -103,12 +106,15 @@ class PullOutRepository extends GetxController {
       final payload = _buildUpdatePayload(data);
       final url = _uri(_resource);
       logDebug('PullOutRepository.update: PATCH $url payload=$payload');
-      final response = await http.patch(
-        url,
-        headers: const {'Content-Type': 'application/json; charset=UTF-8'},
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 60));
-      logDebug('PullOutRepository.update: status=${response.statusCode} body=${response.body}');
+      final response = await http
+          .patch(
+            url,
+            headers: const {'Content-Type': 'application/json; charset=UTF-8'},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 60));
+      logDebug(
+          'PullOutRepository.update: status=${response.statusCode} body=${response.body}');
 
       if (response.statusCode == 200) {
         final raw = response.body;
@@ -137,12 +143,41 @@ class PullOutRepository extends GetxController {
       } else {
         BLoaders.errorSnackBar(
             title: 'Error',
-            message: 'Failed to update pull-out. Status code: ${response.statusCode}');
+            message:
+                'Failed to update pull-out. Status code: ${response.statusCode}');
       }
     } on TFormatException catch (_) {
       throw TFormatException();
     } on PlatformException catch (e) {
       throw TPlatformException(e.code).message;
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred: $e');
+    }
+  }
+
+  /// Cancel a pull-out request using the same cancel endpoint as standard delivery.
+  /// This sends the remark as the request body (same shape used by StandardDeliveryRepository.cancelDelivery).
+  Future<void> cancelPullOut(String requestID, String remarks) async {
+    try {
+      final response = await http
+          .patch(
+            Uri.parse(
+                "${dotenv.env['API_URL']!}/api4/RequestPullOutReturnPickUp/cancel/$requestID"),
+            headers: <String, String>{
+              'Content-Type': 'application/json; charset=UTF-8',
+            },
+            body: jsonEncode(remarks),
+          )
+          .timeout(const Duration(seconds: 60));
+      if (response.statusCode == 200) {
+        BLoaders.successSnackBar(
+            title: 'Information', message: 'Success saving...');
+      } else {
+        BLoaders.errorSnackBar(
+            title: 'Error',
+            message:
+                'Failed to cancel pull-out. Status code: ${response.statusCode}');
+      }
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred: $e');
     }
