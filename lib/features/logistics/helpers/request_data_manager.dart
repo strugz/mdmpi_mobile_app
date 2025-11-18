@@ -283,7 +283,9 @@ class RequestDataManager {
       await _dbHelper.updateRequest(requestModel: updatedRequest);
       // Persist any media captured (signature/image) locally
       await _dbHelper.saveRequestMedia(
-        requestID: updatedRequest.id.isNotEmpty ? updatedRequest.id : updatedRequest.requestID,
+        requestID: updatedRequest.id.isNotEmpty
+            ? updatedRequest.id
+            : updatedRequest.requestID,
         signature: formState.receiverSignatureBase64.value.isNotEmpty
             ? formState.receiverSignatureBase64.value
             : null,
@@ -395,7 +397,8 @@ class RequestDataManager {
       BFullScreenLoader.stopLoading();
       BLoaders.warningSnackBar(
         title: 'No Internet',
-        message: 'Request updated locally. Sync with server when connection returns.',
+        message:
+            'Request updated locally. Sync with server when connection returns.',
       );
       return;
     }
@@ -474,12 +477,14 @@ class RequestDataManager {
 
       // Fallback to API
       try {
-        final apiResult = await _cancelRemarksRepository.getCancelRemarksByRequestId(requestId);
+        final apiResult = await _cancelRemarksRepository
+            .getCancelRemarksByRequestId(requestId);
         if (apiResult != CancelRemarksModel.empty) {
           // persist to local DB
           try {
             final remarksDao = await _dbHelper.remarksDao;
-            await remarksDao.insertRemark(requestId, apiResult.remarks, apiResult.date);
+            await remarksDao.insertRemark(
+                requestId, apiResult.remarks, apiResult.date);
           } catch (_) {
             // ignore persistence errors
           }
