@@ -7,36 +7,53 @@ import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
-import '../../../controllers/standard_delivery_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
+/// Generic reusable camera capture screen.
+///
+/// Responsibilities:
+/// - Displays a full-screen [CameraPreview].
+/// - Shows a capture button overlay that triggers the provided [onCapture] callback.
+/// - Handles a flash overlay animation driven by [CameraHandlerController].
+///
+/// Usage:
+///   Get.to(() => BDropOffCapture(
+///     title: 'Proof Picture',
+///     onCapture: (camera) => camera.takePictureWithAnimation(requestId),
+///   ));
+///
+/// The widget expects a registered [CameraHandlerController] via GetX DI:
+///   Get.lazyPut(() => CameraHandlerController(), fenix: true);
 class BDropOffCapture extends StatelessWidget {
-  const BDropOffCapture(
-      {super.key, required this.request, required this.requestController});
+  const BDropOffCapture({
+    super.key,
+    this.title = 'Capture',
+    required this.onCapture,
+  });
 
-  final StandardDeliveryModel request;
-  final StandardDeliveryController requestController;
+  /// App bar title.
+  final String title;
+
+  /// Callback invoked when the capture button is pressed. Receives the active
+  /// [CameraHandlerController]. Return a Future if you need async handling.
+  final Future<void> Function(CameraHandlerController camera) onCapture;
 
   @override
   Widget build(BuildContext context) {
-    final CameraHandlerController cameraController =
-        Get.find<CameraHandlerController>();
+    final cameraController = Get.find<CameraHandlerController>();
     final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final bool isGestureNavigation = bottomPadding > 0.0;
     final dark = BHelperFunctions.isDarkMode(context);
     final iconColor = dark ? BColors.light : BColors.black;
 
-    // Define the overlay for this specific screen
-    Widget buildScanTextOverlay() {
+    Widget buildCaptureOverlay() {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: BSizes.defaultSpace),
         child: Align(
           alignment: Alignment.bottomCenter,
           child: IconButton(
-              onPressed: () {
-                cameraController.takePictureWithAnimation(request.id);
-              },
-              icon: Icon(Icons.camera, size: 52, color: iconColor)),
+            onPressed: () => onCapture(cameraController),
+            icon: Icon(Icons.camera, size: 52, color: iconColor),
+          ),
         ),
       );
     }
@@ -45,7 +62,7 @@ class BDropOffCapture extends StatelessWidget {
       bottom: !isGestureNavigation,
       child: Scaffold(
         appBar: BAppBar(
-          title: const Text('Proof Picture'),
+          title: Text(title),
           showBackArrow: true,
         ),
         body: Obx(
@@ -53,16 +70,13 @@ class BDropOffCapture extends StatelessWidget {
             children: [
               CameraPreview(
                 cameraController: cameraController,
-                overlayWidget:
-                    buildScanTextOverlay(), // Pass the specific overlay
+                overlayWidget: buildCaptureOverlay(),
               ),
               if (cameraController.isFlashing.value)
                 FadeTransition(
                   opacity: cameraController.flashOpacity,
-                  child: Container(
-                    color: Colors.white,
-                  ),
-                )
+                  child: Container(color: Colors.white),
+                ),
             ],
           ),
         ),

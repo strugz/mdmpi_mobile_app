@@ -30,7 +30,8 @@ class BModal extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
-    final bool isDoneDelivery = requestModel.status == BTexts.statusDoneDelivery;
+    final bool isDoneDelivery =
+        requestModel.status == BTexts.statusDoneDelivery;
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
 
     return RequestModalScaffold(
@@ -52,8 +53,7 @@ class BModal extends StatelessWidget {
                 smallSize: true,
                 fontColor: dark ? BColors.light : BColors.black),
           ),
-        if (isDoneDelivery)
-          CapturedSignatureImage(requestId: requestModel.id),
+        if (isDoneDelivery) CapturedSignatureImage(requestId: requestModel.id),
         const SizedBox(height: BSizes.xs),
         if (isDoneDelivery)
           ViewDeliveredItemButton(
@@ -62,13 +62,12 @@ class BModal extends StatelessWidget {
               final requestIdForDb = requestModel.id.isNotEmpty
                   ? requestModel.id
                   : requestModel.requestID;
-              showRequestImageDialog(
-                context,
-                requestId: requestIdForDb,
-                fetchIfMissing: true,
-                semanticsLabel:
-                    'Delivered item image for request ${requestModel.id}',
-              );
+              showRequestImageDialog(context,
+                  requestId: requestIdForDb,
+                  fetchIfMissing: true,
+                  semanticsLabel:
+                      'Delivered item image for request ${requestModel.id}',
+                  apiController: 'Request');
             },
           ),
         if (isCancelled) BCancelRemarksLoader(requestModel: requestModel),
