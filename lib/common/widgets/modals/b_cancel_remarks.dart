@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import '../../../../../../base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
+/// Displays cancel remarks with formatted date in a Card widget.
+///
+/// This is a pure UI widget that shows cancellation information for
+/// any logistics request (standard delivery, pull-out, etc.).
+///
+/// Supports multiple date formats and automatically formats them
+/// to a user-friendly display format (MM/dd/yyyy hh:mm a).
 class BCancelRemarks extends StatelessWidget {
   const BCancelRemarks({
     super.key,
@@ -63,3 +70,4 @@ class BCancelRemarks extends StatelessWidget {
     );
   }
 }
+

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
@@ -11,7 +15,6 @@ import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_cancel_remarks_loader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_header.dart';
 
 class BModal extends StatelessWidget {
@@ -33,6 +36,14 @@ class BModal extends StatelessWidget {
     final bool isDoneDelivery =
         requestModel.status == BTexts.statusDoneDelivery;
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
+    final controller = Get.find<StandardDeliveryController>();
+
+    // Load cancel remarks if cancelled
+    if (isCancelled) {
+      final requestIdForRemarks =
+          requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
+      controller.loadCancelRemarks(requestIdForRemarks);
+    }
 
     return RequestModalScaffold(
       header: RequestModalHeader(requestModel: requestModel),
@@ -80,7 +91,19 @@ class BModal extends StatelessWidget {
                   apiController: 'Request');
             },
           ),
-        if (isCancelled) BCancelRemarksLoader(requestModel: requestModel),
+        if (isCancelled)
+          Obx(() {
+            controller.loadCancelRemarks(requestModel.id);
+            final remarks = controller.cancelRemarks.value;
+            if (remarks == null || remarks.remarks.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            BTextDivider(text: 'Cancel Remarks');
+            return BCancelRemarks(
+              remarks: remarks.remarks,
+              date: remarks.date,
+            );
+          }),
         RequestModalFooter(requestModel: requestModel),
       ],
     );

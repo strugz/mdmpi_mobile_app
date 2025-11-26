@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
@@ -56,10 +57,10 @@ class StandardDeliveryController extends GetxController {
   final allPendingRequests = <StandardDeliveryModel>[].obs;
   final currentSelectedRequest = Rx<StandardDeliveryModel?>(null);
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  /// Cache of cancel remarks keyed by request ID
-  final RxMap<String, CancelRemarksModel> cancelRemarksCache = <String, CancelRemarksModel>{}.obs;
-  /// Loading flags per request id to avoid duplicate fetches
-  final RxMap<String, bool> cancelRemarksLoading = <String, bool>{}.obs;
+
+  /// Cancel remarks data
+  final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
+
   // Managers
   late final RequestFormState formState;
   late final RequestDataManager dataManager;
@@ -204,29 +205,17 @@ class StandardDeliveryController extends GetxController {
     filterManager.selectStatusFilter(statusFilter, allPendingRequests);
   }
 
-  /// Fetch cancel remarks for a request ID. Prefer local DB; if missing call API.
-  /// Stores the result in [cancelRemarksCache] and persists API results to local DB when available.
-  Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
-    // Avoid duplicate fetches
-    if (cancelRemarksCache.containsKey(requestId)) return cancelRemarksCache[requestId]!;
-    if (cancelRemarksLoading[requestId] == true) {
-      // Wait until loading finishes
-      while (cancelRemarksLoading[requestId] == true) {
-        await Future.delayed(const Duration(milliseconds: 50));
-      }
-      return cancelRemarksCache[requestId] ?? CancelRemarksModel.empty;
-    }
-
-    cancelRemarksLoading[requestId] = true;
+  /// Load cancel remarks for a request ID
+  Future<void> loadCancelRemarks(String requestId) async {
     try {
-      final result = await dataManager.fetchCancelRemarks(requestId);
-      cancelRemarksCache[requestId] = result;
-      return result;
-    } catch (_) {
-      cancelRemarksCache[requestId] = CancelRemarksModel.empty;
-      return CancelRemarksModel.empty;
-    } finally {
-      cancelRemarksLoading.remove(requestId);
+      final repo = Get.find<CancelRemarksRepository>();
+      final result = await repo.getCancelRemarksByRequestId(
+        requestId,
+        module: RequestModule.standardDelivery,
+      );
+      cancelRemarks.value = result;
+    } catch (e) {
+      cancelRemarks.value = CancelRemarksModel.empty;
     }
   }
 }

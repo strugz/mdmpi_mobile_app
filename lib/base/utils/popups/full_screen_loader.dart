@@ -385,6 +385,7 @@ class BFullScreenLoader {
   static void showRequestForReleasingDialog(BuildContext context,
       StandardDeliveryModel requestModel, VoidCallback onPressed, bool status) {
     final dark = BHelperFunctions.isDarkMode(context);
+
     showModalBottomSheet<void>(
       backgroundColor: dark ? BColors.black : BColors.light,
       context: context,

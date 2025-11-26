@@ -26,7 +26,6 @@ abstract class RequestActionHandler {
         context, request, onConfirm ?? () {}, canEdit);
   }
 }
-
 class RequestRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
@@ -70,6 +69,7 @@ class ReleaseRoleHandler extends RequestActionHandler {
     UserController userController,
     String userInitial,
   ) {
+
     if (request.status == BTexts.statusNewRequest) {
       _showDialog(
         context,
@@ -161,6 +161,7 @@ class DefaultRequestHandler extends RequestActionHandler {
     UserController userController,
     String userInitial,
   ) {
+
     BFullScreenLoader.showRequestForReleasingDialog(
         context, request, () {}, false);
   }

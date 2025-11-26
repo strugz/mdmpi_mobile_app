@@ -23,6 +23,7 @@ class BList extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final requestController = Get.find<StandardDeliveryController>();
     final userController = Get.find<UserController>();
+
     return Obx(() {
       if (requestController.filterManager.filteredRequests.isNotEmpty) {
         return Expanded(
@@ -128,7 +129,6 @@ class BList extends StatelessWidget {
       'Courier': CourierRoleHandler(),
       'Viewer': ViewerRoleHandler(),
     };
-
     for (String role in userRoles) {
       if (!roleHandlers.containsKey(role)) {
         continue;
