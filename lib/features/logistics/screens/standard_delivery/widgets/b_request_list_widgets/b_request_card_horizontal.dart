@@ -18,26 +18,26 @@ class BRequestCardHorizontal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
+
     return Container(
       width: 310,
       padding: const EdgeInsets.all(1),
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           color: requestModel.status == BTexts.statusCancelled
-              ? BColors.cancelledBackground : null),
+              ? BColors.cancelledBackground
+              : null),
       child: Padding(
         padding: const EdgeInsets.all(BSizes.xs),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Client and Request Details
             BProductTitleText(
                 title: requestModel.client.name,
                 maxLines: 1,
                 bold: true,
                 fontColor: dark ? BColors.light : BColors.darkerGrey),
             const SizedBox(height: BSizes.xxs),
-            // Requester and Target Date
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -55,8 +55,6 @@ class BRequestCardHorizontal extends StatelessWidget {
                     fontColor: dark ? BColors.light : BColors.darkerGrey),
               ],
             ),
-
-            /// Shipping Method / Delivery Terms / Preference
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [

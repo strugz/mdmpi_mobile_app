@@ -124,7 +124,9 @@ class CourierRoleHandler extends RequestActionHandler {
     } else if (request.status == BTexts.statusItemPrepared) {
       Get.to(() => RequestTransport(
           request: request, requestController: requestController));
-    } else if (request.status == BTexts.statusForDelivery && request.deliveredBy != userInitial && request.helper != userInitial) {
+    } else if (request.status == BTexts.statusForDelivery &&
+        request.deliveredBy != userInitial &&
+        request.helper != userInitial) {
       BFullScreenLoader.showRequestForReleasingDialog(
           context, request, () {}, false);
     } else if (request.status == BTexts.statusForDelivery &&

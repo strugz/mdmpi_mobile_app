@@ -151,7 +151,7 @@ class RequestDataManager {
       if (newStatus == BTexts.statusDoneDelivery &&
           requestModel.image.isEmpty) {
         finalImageBase64 = await BImageHelperFunctions.getDeliveryImageAsBase64(
-                newStatus, requestModel) ??
+                newStatus, requestModel.id) ??
             formState.cameraPickUpPicture.value;
       }
 
@@ -209,11 +209,9 @@ class RequestDataManager {
           formState.receiverSignatureBase64.value.isNotEmpty;
 
       if (signatureWasAdded) {
-        // Try uploading signature if online. If upload fails, continue but notify user.
         final isConnectedForUpload =
             await NetworkManager.instance.isConnected();
         if (isConnectedForUpload) {
-          // call repository upload (non-blocking for DB update but await to propagate errors)
           await ImageRepository.instance.uploadFile(
             requestId: updatedRequest.id.isNotEmpty
                 ? updatedRequest.id
@@ -229,7 +227,6 @@ class RequestDataManager {
         }
       }
 
-      // Upload image proof when a delivery image was just added (type: 'Proof').
       final bool imageProofWasAdded = newStatus == BTexts.statusDoneDelivery &&
           requestModel.image.isEmpty &&
           finalImageBase64.isNotEmpty;
@@ -247,7 +244,6 @@ class RequestDataManager {
               type: 'Proof',
             );
           } catch (e) {
-            // Non-fatal: notify user that upload failed and will be retried later
             BLoaders.warningSnackBar(
               title: 'Upload Failed',
               message:
@@ -279,9 +275,7 @@ class RequestDataManager {
         }
       }
 
-      // Local-only save
       await _dbHelper.updateRequest(requestModel: updatedRequest);
-      // Persist any media captured (signature/image) locally
       await _dbHelper.saveRequestMedia(
         requestID: updatedRequest.id.isNotEmpty
             ? updatedRequest.id

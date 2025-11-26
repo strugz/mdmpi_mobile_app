@@ -213,18 +213,18 @@ class StandardDeliveryModel {
     };
   }
 
-  /// Json Format to Insert
-  Map<String, dynamic> toJsonInsert() {
-    return {
-      'ClientID': clientId,
-      'ShippingMethod': shippingMethod,
-      'DeliveryTerms': deliveryTerms,
-      'DeliveryDate': deliveryDate,
-      'RequestBy': requestBy,
-      'Preference': preference,
-      'Status': status,
-    };
-  }
+  // /// Json Format to Insert
+  // Map<String, dynamic> toJsonInsert() {
+  //   return {
+  //     'ClientID': clientId,
+  //     'ShippingMethod': shippingMethod,
+  //     'DeliveryTerms': deliveryTerms,
+  //     'DeliveryDate': deliveryDate,
+  //     'RequestBy': requestBy,
+  //     'Preference': preference,
+  //     'Status': status,
+  //   };
+  // }
 
   /// Map Json oriented from API to Model
   factory StandardDeliveryModel.fromJson(Map<String, dynamic> json) {

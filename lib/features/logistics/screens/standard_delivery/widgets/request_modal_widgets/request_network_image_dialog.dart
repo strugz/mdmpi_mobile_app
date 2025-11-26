@@ -38,11 +38,13 @@ class RequestNetworkImageDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(BTexts.requestModalDeliveryShotTitle, style: Theme.of(context).textTheme.titleMedium),
+                  Text(BTexts.requestModalDeliveryShotTitle,
+                      style: Theme.of(context).textTheme.titleMedium),
                   IconButton(
                     tooltip: BTexts.requestModalCloseButtonText,
                     icon: const Icon(Icons.close),
@@ -62,7 +64,8 @@ class RequestNetworkImageDialog extends StatelessWidget {
                   child: CachedNetworkImage(
                     imageUrl: imageUrl,
                     fit: BoxFit.contain,
-                    placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                    placeholder: (context, url) =>
+                        const Center(child: CircularProgressIndicator()),
                     errorWidget: (context, url, error) => Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -83,55 +86,88 @@ class RequestNetworkImageDialog extends StatelessWidget {
                               TextButton(
                                 onPressed: () async {
                                   // Attempt to fetch raw bytes and show them
-                                  final bytes = await BProofImage.instance.loadRequestImageBytes(requestId, fetchIfMissing: true);
+                                  final bytes = await BProofImage.instance
+                                      .loadRequestImageBytes(requestId,'Request',
+                                          fetchIfMissing: true);
                                   if (bytes != null) {
                                     Navigator.of(context).pop();
                                     await showDialog(
                                       context: context,
                                       builder: (_) => Dialog(
-                                        insetPadding: const EdgeInsets.all(12.0),
+                                        insetPadding:
+                                            const EdgeInsets.all(12.0),
                                         child: ConstrainedBox(
                                           constraints: BoxConstraints(
-                                            maxWidth: MediaQuery.of(context).size.width,
-                                            maxHeight: MediaQuery.of(context).size.height * 0.9,
+                                            maxWidth: MediaQuery.of(context)
+                                                .size
+                                                .width,
+                                            maxHeight: MediaQuery.of(context)
+                                                    .size
+                                                    .height *
+                                                0.9,
                                           ),
                                           child: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 12.0,
+                                                        vertical: 8.0),
                                                 child: Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceBetween,
                                                   children: [
-                                                    Text(BTexts.requestModalDeliveryShotTitle, style: Theme.of(context).textTheme.titleMedium),
+                                                    Text(
+                                                        BTexts
+                                                            .requestModalDeliveryShotTitle,
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .titleMedium),
                                                     IconButton(
-                                                      tooltip: BTexts.requestModalCloseButtonText,
-                                                      icon: const Icon(Icons.close),
-                                                      onPressed: () => Navigator.of(context).pop(),
+                                                      tooltip: BTexts
+                                                          .requestModalCloseButtonText,
+                                                      icon: const Icon(
+                                                          Icons.close),
+                                                      onPressed: () =>
+                                                          Navigator.of(context)
+                                                              .pop(),
                                                     )
                                                   ],
                                                 ),
                                               ),
                                               Expanded(
                                                 child: Padding(
-                                                  padding: const EdgeInsets.all(8.0),
+                                                  padding:
+                                                      const EdgeInsets.all(8.0),
                                                   child: InteractiveViewer(
                                                     panEnabled: true,
-                                                    boundaryMargin: const EdgeInsets.all(20.0),
+                                                    boundaryMargin:
+                                                        const EdgeInsets.all(
+                                                            20.0),
                                                     minScale: 0.5,
                                                     maxScale: 4.0,
-                                                    child: Image.memory(bytes, fit: BoxFit.contain),
+                                                    child: Image.memory(bytes,
+                                                        fit: BoxFit.contain),
                                                   ),
                                                 ),
                                               ),
                                               Padding(
-                                                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 8.0,
+                                                        horizontal: 12.0),
                                                 child: Row(
-                                                  mainAxisAlignment: MainAxisAlignment.end,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.end,
                                                   children: [
                                                     TextButton(
-                                                      child: const Text(BTexts.requestModalCloseButtonText),
-                                                      onPressed: () => Navigator.of(context).pop(),
+                                                      child: const Text(BTexts
+                                                          .requestModalCloseButtonText),
+                                                      onPressed: () =>
+                                                          Navigator.of(context)
+                                                              .pop(),
                                                     ),
                                                   ],
                                                 ),
@@ -155,7 +191,8 @@ class RequestNetworkImageDialog extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [

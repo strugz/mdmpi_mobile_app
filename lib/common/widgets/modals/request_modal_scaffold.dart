@@ -3,6 +3,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_document_reference_list.dart';
 
@@ -47,17 +48,21 @@ class RequestModalScaffold extends StatelessWidget {
             // Header
             Padding(
               padding: const EdgeInsets.symmetric(vertical: BSizes.sm),
-              child: header ?? _DefaultHeader(title: title ?? '', subtitle: subtitle ?? '', textColor: textColor),
+              child: header ??
+                  _DefaultHeader(
+                      title: title ?? '',
+                      subtitle: subtitle ?? '',
+                      textColor: textColor),
             ),
-            const SizedBox(height: BSizes.xs),
-            const Divider(),
             const SizedBox(height: BSizes.xs),
             // Document references
             if (documentReferences.isNotEmpty)
-              DocumentReferenceList(
-                documentReferences: documentReferences,
-                textColor: textColor,
-              ),
+              BTextDivider(text: 'Document References'),
+            const SizedBox(height: BSizes.xs),
+            DocumentReferenceList(
+              documentReferences: documentReferences,
+              textColor: textColor,
+            ),
             if (documentReferences.isNotEmpty)
               docsBottomDivider
                   ? Column(
@@ -85,7 +90,8 @@ class RequestModalScaffold extends StatelessWidget {
 }
 
 class _DefaultHeader extends StatelessWidget {
-  const _DefaultHeader({required this.title, required this.subtitle, required this.textColor});
+  const _DefaultHeader(
+      {required this.title, required this.subtitle, required this.textColor});
   final String title;
   final String subtitle;
   final Color textColor;
