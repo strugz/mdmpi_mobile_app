@@ -7,7 +7,7 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded
 import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 
-import '../../../../../../base/utils/constants/sizes.dart';
+import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 class BRequestCardHorizontal extends StatelessWidget {

@@ -9,7 +9,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/pull_out_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/implementations/pull_out_role_handler.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_list_widgets/b_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
 

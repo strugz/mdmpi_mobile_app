@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_list_widgets/b_dialog.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_list_widgets/b_request_card_horizontal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_card_horizontal.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../base/utils/constants/colors.dart';

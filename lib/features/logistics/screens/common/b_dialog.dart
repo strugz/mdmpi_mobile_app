@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
-import '../../../../controllers/standard_delivery_controller.dart';
-import '../../../../models/standard_delivery_model.dart';
+import '../../controllers/standard_delivery_controller.dart';
+import '../../models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/cancel_reason_dialog.dart';

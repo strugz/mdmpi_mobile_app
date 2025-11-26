@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_action_button.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_view_delivered_item_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import '../../../../../base/utils/constants/sizes.dart';
@@ -38,10 +38,20 @@ class BModal extends StatelessWidget {
       header: RequestModalHeader(requestModel: requestModel),
       documentReferences: requestModel.documentReference,
       docsBottomDivider: true,
-      bottomAction: BActionButton(
+      bottomAction: StatusActionButton(
         status: requestModel.status,
         onPressed: onPressed,
         isVisible: status,
+        statusToTextMapper: (status) {
+          switch (status) {
+            case BTexts.statusNewRequest:
+              return BTexts.requestModalPrepareItemButtonText;
+            case BTexts.statusGettingSuppliesReady:
+              return BTexts.requestModalPackedAndReadyButtonText;
+            default:
+              return '';
+          }
+        },
       ),
       children: [
         const SizedBox(height: BSizes.spaceBtwSections),

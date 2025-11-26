@@ -17,7 +17,7 @@ import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dar
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_view_delivered_item_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
 import '../../../../../common/widgets/dialogs/request_image_dialog.dart';

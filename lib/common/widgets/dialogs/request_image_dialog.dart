@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_network_image_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/request_network_image_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_proof_image.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 
