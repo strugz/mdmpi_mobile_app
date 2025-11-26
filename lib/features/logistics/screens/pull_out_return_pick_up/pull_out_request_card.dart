@@ -1,117 +1,197 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
+import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
+import 'package:mdmpi_mobile_app/common/widgets/icons/icon_value.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
+import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 
-/// Card widget for a single Pull-Out / Return Pick-up request.
+/// Card widget displaying a pull-out request summary.
 ///
-/// Shows a compact view with the following fields:
-/// - Client
-/// - RequestedBy
-/// - Pull-Out Date
-/// - CreatedBy
-/// - RequestStatus
+/// Visual hierarchy:
+/// - Header: Client name / Slip reference + optional trailing actions.
+/// - Meta lines: Requested by, Pull-out date, Created by.
+/// - Footer: Status chip.
+///
+/// Interaction: Provide [onTap] / [onLongPress] / [menuItems]. If all are null
+/// card renders without InkWell overhead. Overflow text is truncated.
 class PullOutRequestCard extends StatelessWidget {
-  const PullOutRequestCard({super.key, required this.item});
+  const PullOutRequestCard({
+    super.key,
+    required this.item,
+    this.onTap,
+    this.onLongPress,
+    this.menuItems,
+    this.trailing,
+  });
 
   final PullOutModel item;
+  final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final List<PopupMenuEntry>? menuItems;
+  final Widget? trailing;
+
+  bool get _isInteractive =>
+      onTap != null || onLongPress != null || menuItems != null;
+
+  String get _title {
+    if (item.client.name.isNotEmpty) return item.client.name;
+    if (item.slipNo.isNotEmpty) return 'Slip: ${item.slipNo}';
+    return 'Pull-out Request';
+  }
+
+  String _safe(String v) => v.isNotEmpty ? v : '-';
+
+  String get _formattedPullOutDate {
+    final raw = item.pullOutDate.trim();
+    if (raw.isEmpty) return '-';
+    String datePart;
+    if (raw.contains('T')) {
+      datePart = raw.split('T').first;
+    } else if (raw.length >= 10) {
+      datePart = raw.substring(0, 10);
+    } else {
+      datePart = raw;
+    }
+    return datePart;
+  }
+
+  Widget _metaLine(
+      {required String label, required String value, required Color color}) {
+    return BProductTitleText(
+      title: '$label: ${_safe(value)}',
+      maxLines: 1,
+      smallSize: true,
+      fontColor: color,
+    );
+  }
+
+  bool get _showDriver {
+    final d = item.driver.trim();
+    return d.isNotEmpty && d.toLowerCase() != 'none';
+  }
 
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
+    final textColorPrimary = dark ? BColors.light : BColors.darkerGrey;
 
-    return Container(
-      width: 310,
-      padding: const EdgeInsets.all(1),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
-        color: item.requestStatus.toLowerCase() == 'cancelled'
-            ? BColors.cancelledBackground
-            : null,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(BSizes.xs),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Client name (title)
-            BProductTitleText(
-              title: item.client.name.isNotEmpty
-                  ? item.client.name
-                  : (item.slipNo.isNotEmpty ? 'Slip: ${item.slipNo}' : 'Pull-out Request'),
-              maxLines: 1,
-              bold: true,
-              fontColor: dark ? BColors.light : BColors.darkerGrey,
-            ),
-            const SizedBox(height: BSizes.xxs),
-
-            // Requested By + Pull-Out Date
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: BProductTitleText(
-                    title: 'Requested By: ${item.requestedBy.isNotEmpty ? item.requestedBy : '-'}',
-                    maxLines: 1,
-                    smallSize: true,
-                    fontColor: dark ? BColors.light : BColors.darkerGrey,
-                  ),
+    Widget content = Padding(
+      padding: const EdgeInsets.all(BSizes.xs),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: BProductTitleText(
+                  title: _title,
+                  maxLines: 2,
+                  bold: true,
+                  fontColor: textColorPrimary,
                 ),
-                const SizedBox(width: BSizes.xs),
-                BProductTitleText(
-                  title: 'Pull-Out Date: ${_safeDate(item.pullOutDate)}',
-                  maxLines: 1,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.darkerGrey,
+              ),
+              if (trailing != null) ...[
+                const SizedBox(width: BSizes.xxs),
+                trailing!,
+              ] else if (menuItems != null) ...[
+                PopupMenuButton(
+                  icon:
+                      Icon(Icons.more_vert, size: 18, color: textColorPrimary),
+                  itemBuilder: (_) => menuItems!,
                 ),
               ],
-            ),
-            const SizedBox(height: BSizes.xs),
-
-            // Created By + Status badge
+            ],
+          ),
+          const SizedBox(height: BSizes.xxs),
+          Row(
+            children: [
+              Expanded(
+                child: _metaLine(
+                    label: 'Requested By',
+                    value: item.requestedBy,
+                    color: textColorPrimary),
+              ),
+              const SizedBox(width: BSizes.xs),
+              _metaLine(
+                  label: 'Pull-Out Date',
+                  value: _formattedPullOutDate,
+                  color: textColorPrimary),
+            ],
+          ),
+          const SizedBox(height: BSizes.xxs),
+          Row(
+            children: [
+              _metaLine(
+                  label: 'Created By',
+                  value: item.createdBy,
+                  color: textColorPrimary),
+              BCircularIcon(
+                backgroundColor: Colors.transparent,
+                icon: Iconsax.add_circle1,
+                color: dark ? BColors.white : BColors.black,
+                size: 5,
+                width: 20,
+                height: 20,
+              ),
+              // Footer status chip
+              StatusChip(status: item.requestStatus),
+            ],
+          ),
+          if (_showDriver) ...[
             Row(
               children: [
-                Expanded(
-                  child: BProductTitleText(
-                    title: 'Created By: ${item.createdBy.isNotEmpty ? item.createdBy : '-'}',
-                    maxLines: 1,
-                    smallSize: true,
-                    fontColor: dark ? BColors.light : BColors.darkerGrey,
-                  ),
+                _metaLine(
+                  label: 'Driver',
+                  value: item.driver,
+                  color: textColorPrimary,
                 ),
-                const SizedBox(width: BSizes.xs),
-                BRoundedContainer(
-                  radius: 100,
-                  width: 110,
-                  backgroundColor: dark ? BColors.darkerGrey : BColors.light,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: BSizes.md,
-                        vertical: BSizes.xxs,
-                      ),
-                      child: BProductTitleText(
-                        title: item.requestStatus.isNotEmpty ? item.requestStatus : 'Pending',
-                        maxLines: 1,
-                        smallSize: true,
-                        fontColor: dark ? BColors.light : BColors.darkerGrey,
-                      ),
-                    ),
-                  ),
+                SizedBox(width: BSizes.xs),
+                BCircularIcon(
+                  backgroundColor: Colors.transparent,
+                  icon: Iconsax.add_circle1,
+                  color: dark ? BColors.white : BColors.black,
+                  size: 5,
+                  width: 20,
+                  height: 20,
                 ),
+                _metaLine(
+                  label: 'Helper',
+                  value: item.helper,
+                  color: textColorPrimary,
+                ),
+                BIconValue(icon: Iconsax.truck, value: item.mobileName),
               ],
             ),
           ],
-        ),
+        ],
       ),
     );
-  }
 
-  String _safeDate(String value) {
-    if (value.isEmpty) return '';
-    return value.length >= 10 ? value.substring(0, 10) : value;
+    final card = Container(
+      // Removed fixed width; let parent layout decide.
+      padding: const EdgeInsets.all(1),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
+        color: item.requestStatus == BTexts.statusCancelled
+            ? BColors.cancelledBackground
+            : null,
+      ),
+      child: content,
+    );
+
+    if (!_isInteractive) return card;
+
+    return InkWell(
+      onTap: onTap,
+      onLongPress: onLongPress,
+      borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
+      child: card,
+    );
   }
 }

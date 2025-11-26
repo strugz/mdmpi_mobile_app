@@ -9,6 +9,13 @@ class PullOutInsertDto {
   final String? reasonForReturn;
   final List<String>? documentReference;
   final String? pullOutDate;
+  final int? mobileID;
+  final String? releasedBy;
+  final String? pullOutDateStartAt;
+  final String? pullOutDateEndAt;
+  final String? tripTicketNumber;
+  final String? driver;
+  final String? helper;
   final String? requestStatus;
   final String? createdBy;
   final String? requestedBy;
@@ -24,6 +31,13 @@ class PullOutInsertDto {
     this.reasonForReturn,
     this.documentReference,
     this.pullOutDate,
+    this.mobileID,
+    this.releasedBy,
+    this.pullOutDateStartAt,
+    this.pullOutDateEndAt,
+    this.tripTicketNumber,
+    this.driver,
+    this.helper,
     this.requestStatus,
     this.createdBy,
     this.requestedBy,
@@ -45,6 +59,13 @@ class PullOutInsertDto {
     put('ReasonForReturn', reasonForReturn);
     put('DocumentReference', documentReference);
     put('PullOutDate', pullOutDate);
+    put('MobileID', mobileID);
+    put('ReleasedBy', releasedBy);
+    put('PullOutDateStartAt', pullOutDateStartAt);
+    put('PullOutDateEndAt', pullOutDateEndAt);
+    put('TripTicketNumber', tripTicketNumber);
+    put('Driver', driver);
+    put('Helper', helper);
     put('RequestStatus', requestStatus);
     put('CreatedBy', createdBy);
     put('RequestedBy', requestedBy);

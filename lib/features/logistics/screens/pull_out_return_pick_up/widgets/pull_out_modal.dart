@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/request_modal_header.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal_header.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/b_pull_out_action_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_request_modal_footer.dart';
 
@@ -29,7 +28,6 @@ class PullOutModal extends StatelessWidget {
         isVisible: isActionVisible,
       ),
       children: [
-        const SizedBox(height: BSizes.xs),
         PullOutRequestModalFooter(requestModel: requestModel),
       ],
     );

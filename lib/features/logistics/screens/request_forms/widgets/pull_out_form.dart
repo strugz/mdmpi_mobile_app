@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
@@ -15,6 +14,9 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/text_formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_submit_button.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 class PullOutForm extends StatelessWidget {
   const PullOutForm({super.key});
@@ -27,7 +29,6 @@ class PullOutForm extends StatelessWidget {
 
     userController.filterUserFromLocal();
 
-    // Ensure there's at least one document reference field when opening the form
     final stdFormRefs = stdController.formState.documentReferenceControllers;
     if (stdFormRefs.isEmpty) {
       stdController.addDocumentReferenceField();
@@ -35,10 +36,35 @@ class PullOutForm extends StatelessWidget {
 
     Future<void> onSave() async {
       await controller.submitFromForm();
-      Get.back();
+
+      if ((controller.errorMessage.value ?? '').isEmpty) {
+        // Explicitly clear fields from this widget after a successful save
+        // Pull-Out specific text fields
+        controller.formState.slipNoController.clear();
+        controller.formState.clientContactPersonController.clear();
+        controller.formState.irrfNumberController.clear();
+        controller.formState.irrfDateController.clear();
+        controller.formState.reasonController.clear();
+        controller.formState.pullOutDateController.clear();
+
+        // Clear requested by
+        stdController.formState.requestedBy.clear();
+
+        // Reload categories to re-apply defaults (Form/Item Category)
+        await controller.loadCategories();
+
+        // Reset shared Standard Delivery form state used by common widgets
+        stdController.formState.reset();
+        stdController.addDocumentReferenceField(); // ensure a fresh field
+
+        BLoaders.successSnackBar(title: 'Success', message: 'Request created');
+      } else {
+        BLoaders.errorSnackBar(
+            title: 'Error',
+            message: controller.errorMessage.value ?? 'Failed to add request');
+      }
     }
 
-    // Get the bottom padding of the device
     final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final bool isGestureNavigation = bottomPadding > 0.0;
 
@@ -78,66 +104,60 @@ class PullOutForm extends StatelessWidget {
 
                       const SizedBox(height: BSizes.spaceBtwItems),
 
-                      /// Form Category
-                      Obx(() => BDropdown(
-                            controller: controller.formCategoryController,
+                      /// Form Category (display name, store ID)
+                      Obx(() => BDropDownDynamicList(
+                            controller: controller.formState.formCategoryController,
                             label: 'Form Category',
-                            dropdownList: controller.formCategories
-                                    .map((e) => e.name)
-                                    .toList()
-                                    .isEmpty
-                                ? ['']
-                                : controller.formCategories
-                                    .map((e) => e.name)
+                            icon: null,
+                            dropdownList: controller.formState.formCategories
+                                    .map((e) => e.toJson())
                                     .toList(),
+                            valueKey: 'FormCategoryID',
+                            displayKey: 'FormCategoryName',
                             validator: (v) =>
-                                (v == null || v.toString().trim().isEmpty)
+                                (v == null || v.trim().isEmpty)
                                     ? 'Please select a form category'
                                     : null,
                           )),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
-                      /// Item Category
-                      Obx(() => BDropdown(
-                            controller: controller.itemCategoryController,
+                      /// Item Category (display name, store ID)
+                      Obx(() => BDropDownDynamicList(
+                            controller: controller.formState.itemCategoryController,
                             label: 'Item Category',
-                            dropdownList: controller.itemCategories
-                                    .map((e) => e.name)
-                                    .toList()
-                                    .isEmpty
-                                ? ['']
-                                : controller.itemCategories
-                                    .map((e) => e.name)
+                            dropdownList: controller.formState.itemCategories
+                                    .map((e) => e.toJson())
                                     .toList(),
+                            valueKey: 'ItemCategoryID',
+                            displayKey: 'ItemCategoryName',
                             validator: (v) =>
-                                (v == null || v.toString().trim().isEmpty)
+                                (v == null || v.trim().isEmpty)
                                     ? 'Please select an item category'
                                     : null,
                           )),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Slip No
-                      TextFormField(
-                        controller: controller.slipNoController,
-                        decoration: const InputDecoration(labelText: 'Slip No'),
+                      BTextFormField(
+                        controller: controller.formState.slipNoController,
+                        label: 'Slip No',
                         textCapitalization: TextCapitalization.characters,
                         inputFormatters: [UpperCaseTextFormatter()],
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Client Contact Person
-                      TextFormField(
-                        controller: controller.clientContactPersonController,
-                        decoration: const InputDecoration(
-                            labelText: 'Client Contact Person'),
+                      BTextFormField(
+                        controller:
+                            controller.formState.clientContactPersonController,
+                        label: 'Client Contact Person',
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// IRRF Number
-                      TextFormField(
-                        controller: controller.irrfNumberController,
-                        decoration:
-                            const InputDecoration(labelText: 'IRRF Number'),
+                      BTextFormField(
+                        controller: controller.formState.irrfNumberController,
+                        label: 'IRRF Number',
                         keyboardType: TextInputType.number,
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly
@@ -147,7 +167,7 @@ class PullOutForm extends StatelessWidget {
 
                       /// IRRF Date
                       ReadOnlyDateFormField(
-                        controller: controller.irrfDateController,
+                        controller: controller.formState.irrfDateController,
                         label: 'IRRF Date',
                         includeTime: false,
                         icon: Iconsax.calendar,
@@ -155,17 +175,16 @@ class PullOutForm extends StatelessWidget {
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Reason for Return
-                      TextFormField(
-                        controller: controller.reasonController,
-                        decoration: const InputDecoration(
-                            labelText: 'Reason for Return'),
+                      BTextFormField(
+                        controller: controller.formState.reasonController,
+                        label: 'Reason for Return',
                         maxLines: 3,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Pull Out Date (date only)
                       ReadOnlyDateFormField(
-                        controller: controller.pullOutDateController,
+                        controller: controller.formState.pullOutDateController,
                         label: 'Pull Out Date',
                         includeTime: false,
                         icon: Iconsax.clock,
@@ -190,6 +209,10 @@ class PullOutForm extends StatelessWidget {
                                     .toList(),
                                 valueKey: 'CNTMNN',
                                 displayKey: 'CNTMCN',
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Please select requestor'
+                                        : null,
                               ),
                             ],
                           ),
@@ -208,23 +231,16 @@ class PullOutForm extends StatelessWidget {
           padding: const EdgeInsets.all(BSizes.sm),
           child: Obx(() {
             final isSaving = controller.isSaving.value;
-            return ElevatedButton(
-              onPressed: isSaving
-                  ? null
-                  : () async {
-                      // Trigger form validation and submit
-                      if (controller.formState.formKey.currentState
-                              ?.validate() ??
-                          false) {
-                        await onSave();
-                      }
-                    },
-              child: isSaving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Create Request'),
+            return BSubmitButton(
+              isLoading: isSaving,
+              label: 'Create Request',
+              onPressed: () async {
+                if (isSaving) return;
+                if (controller.formState.formKey.currentState?.validate() ??
+                    false) {
+                  await onSave();
+                }
+              },
             );
           }),
         ),

@@ -1,24 +1,16 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/logger.dart';
-import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_filter_manager.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart'; // For RequestFilter reuse
-import 'package:mdmpi_mobile_app/data/models/item_category_model.dart';
-import 'package:mdmpi_mobile_app/data/models/form_category_model.dart';
-import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
-import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
-import 'package:mdmpi_mobile_app/features/logistics/helpers/request_form_state.dart';
-import 'package:flutter/material.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_data_manager.dart';
 
 /// Controller for managing pull-out requests state and operations.
 class PullOutController extends GetxController {
-  final PullOutRepository _repository = Get.find();
-
-  static PullOutController get instance => Get.find();
-
   /// Raw list of pull-out requests.
   final RxList<PullOutModel> pullOuts = <PullOutModel>[].obs;
 
@@ -36,77 +28,28 @@ class PullOutController extends GetxController {
 
   /// Manager for date & status filtering.
   late final PullOutFilterManager filterManager;
+  late final PullOutDataManager dataManager;
 
   /// --- Form state and controllers ---
-  late final RequestFormState formState;
-
-  final TextEditingController slipNoController = TextEditingController();
-  final TextEditingController clientContactPersonController =
-      TextEditingController();
-  final TextEditingController irrfNumberController = TextEditingController();
-  final TextEditingController irrfDateController = TextEditingController();
-  final TextEditingController reasonController = TextEditingController();
-  final TextEditingController releasedByController = TextEditingController();
-  final TextEditingController pullOutDateController = TextEditingController();
-  final TextEditingController pullOutStartController = TextEditingController();
-  final TextEditingController pullOutEndController = TextEditingController();
-  final TextEditingController tripTicketController = TextEditingController();
-  final TextEditingController driverController = TextEditingController();
-  final TextEditingController helperController = TextEditingController();
+  late final PullOutFormState formState;
 
   /// CreatedBy is derived from the logged-in user and stored here (not exposed as an editable UI field).
   String createdBy = '';
 
-  final TextEditingController formCategoryController = TextEditingController();
-  final TextEditingController itemCategoryController = TextEditingController();
-
-  // Category caches
-  final RxList<ItemCategoryModel> itemCategories = <ItemCategoryModel>[].obs;
-  final RxList<FormCategoryModel> formCategories = <FormCategoryModel>[].obs;
-
-  Map<String, String> get _itemNameToId =>
-      {for (var e in itemCategories) e.name: e.id};
-  Map<String, String> get _formNameToId =>
-      {for (var e in formCategories) e.name: e.id};
-
   /// Load categories from repositories (safe to call repeatedly)
   Future<void> loadCategories() async {
-    try {
-      final items = await Get.find<ItemCategoryRepository>().getAll();
-      final forms = await Get.find<FormCategoryRepository>().getAll();
-      itemCategories.assignAll(items);
-      formCategories.assignAll(forms);
-
-      if (formCategoryController.text.trim().isEmpty &&
-          formCategories.isNotEmpty) {
-        final defaultForm = formCategories.firstWhere(
-          (e) => e.name.toLowerCase().contains('pull'),
-          orElse: () => formCategories.first,
-        );
-        formCategoryController.text = defaultForm.name;
-      }
-
-      if (itemCategoryController.text.trim().isEmpty &&
-          itemCategories.isNotEmpty) {
-        final defaultItem = itemCategories.firstWhere(
-          (e) => e.name.toLowerCase().contains('reagent'),
-          orElse: () => itemCategories.first,
-        );
-        itemCategoryController.text = defaultItem.name;
-      }
-    } catch (e) {
-      logDebug('PullOutController.loadCategories failed: $e');
-    }
+    await dataManager.loadCategories(this);
   }
 
   @override
   void onInit() {
     super.onInit();
     filterManager = PullOutFilterManager();
-    formState = RequestFormState();
+    dataManager = PullOutDataManager();
+    formState = PullOutFormState();
     formState.initializeDefaultDate();
-    loadCategories();
-    loadPullOuts();
+    dataManager.loadCategories(this);
+    dataManager.fetchPullOuts(this);
 
     final userCtrl = Get.find<UserController>();
     createdBy = userCtrl.user.value.initial;
@@ -127,138 +70,43 @@ class PullOutController extends GetxController {
 
   /// Fetch all pull-out requests from repository.
   Future<void> loadPullOuts() async {
-    if (isLoading.value) return;
-    isLoading.value = true;
-    errorMessage.value = null;
-    try {
-      logDebug('PullOutController: loading pull-outs...');
-      final results = await _repository.getAll();
-      pullOuts.assignAll(results);
-      filterManager.applyFilter(pullOuts.toList());
-    } catch (e) {
-      errorMessage.value = e.toString();
-      logDebug('PullOutController: failed to load pull-outs: $e');
-    } finally {
-      isLoading.value = false;
-    }
+    await dataManager.fetchPullOuts(this);
   }
 
   /// Insert a new pull-out request and refresh the list.
   Future<void> addPullOut(PullOutModel model) async {
-    if (isSaving.value) return;
-    isSaving.value = true;
-    errorMessage.value = null;
-    try {
-      logDebug('PullOutController: inserting pull-out...');
-      await _repository.insert(model);
-      await loadPullOuts();
-    } catch (e) {
-      errorMessage.value = e.toString();
-      logDebug('PullOutController: failed to insert pull-out: $e');
-    } finally {
-      isSaving.value = false;
-    }
-  }
-
-  /// Update an existing pull-out request and refresh the list.
-  Future<void> updatePullOut(PullOutModel model) async {
-    if (isSaving.value) return;
-    isSaving.value = true;
-    errorMessage.value = null;
-    try {
-      await _repository.updatePullOut(model);
-      await loadPullOuts();
-    } catch (e) {
-      errorMessage.value = e.toString();
-    } finally {
-      isSaving.value = false;
-    }
+    await dataManager.insertPullOutModel(model, this);
   }
 
   /// Cancel a pull-out request with remarks.
   Future<void> cancelPullOut(String requestId, String remarks) async {
-    if (isSaving.value) return;
-    isSaving.value = true;
-    try {
-      await _repository.cancelPullOut(requestId, remarks);
-      await loadPullOuts();
-    } catch (e) {
-      errorMessage.value = e.toString();
-      logDebug('PullOutController.cancelPullOut failed: $e');
-    } finally {
-      isSaving.value = false;
-    }
+    await dataManager.cancelPullOutById(requestId, remarks, this);
   }
 
   /// Build a PullOutModel from the controllers and submit.
   Future<void> submitFromForm() async {
-    if (isSaving.value) return;
+    await dataManager.saveRequestFromForm(this);
+    // Do not reset here; the screen's onSave handles visual clearing to keep
+    // behavior localized to the widget as requested.
+  }
 
-    final stdController = Get.find<StandardDeliveryController>();
-    final client = stdController.formState.clientInformation.value;
-    final documentReferences = stdController
-        .formState.documentReferenceControllers
-        .map((c) => c.text)
-        .toList();
-    if (documentReferences.isEmpty) {
-      documentReferences.add('');
-    }
+  /// Update status using data manager to merge UI inputs.
+  Future<void> updateStatusWithInputs(
+      PullOutModel request, String newStatus) async {
+    await dataManager.updateRequestStatus(request, newStatus, this, formState);
+  }
 
-    final requestedByValue = Get.find<UserController>().user.value.initial;
-
-    if (client == null || client.id.isEmpty) {
-      BLoaders.errorSnackBar(
-          title: 'Validation', message: 'Please select a client');
-      return;
-    }
-    if (pullOutDateController.text.trim().isEmpty) {
-      BLoaders.errorSnackBar(
-          title: 'Validation', message: 'Please pick a pull out date');
-      return;
-    }
-
-    final model = PullOutModel(
-      clientId: client.id,
-      client: client,
-      clientContactPerson: clientContactPersonController.text,
-      createdBy: createdBy.isNotEmpty ? createdBy : '',
-      requestStatus: 'New Request',
-      formCategoryId: _formNameToId[formCategoryController.text] ?? '',
-      itemCategoryId: _itemNameToId[itemCategoryController.text] ?? '',
-      slipNo: slipNoController.text,
-      irrfNumber: irrfNumberController.text,
-      irrfDate: irrfDateController.text,
-      reasonForReturn: reasonController.text,
-      releasedBy: releasedByController.text,
-      pullOutDate: pullOutDateController.text,
-      pullOutDateStartAt: pullOutStartController.text,
-      pullOutDateEndAt: pullOutEndController.text,
-      tripTicketNumber: tripTicketController.text,
-      driver: driverController.text,
-      helper: helperController.text,
-      requestedBy: requestedByValue,
-      documentReference: documentReferences,
-    );
-    await addPullOut(model);
+  void setSignature(Uint8List? signature) {
+    formState.receiverSignatureBytes.value = signature;
+    formState.receiverSignatureBase64.value =
+        signature != null && signature.isNotEmpty
+            ? base64Encode(signature)
+            : "";
   }
 
   @override
   void onClose() {
     try {
-      slipNoController.dispose();
-      clientContactPersonController.dispose();
-      irrfNumberController.dispose();
-      irrfDateController.dispose();
-      reasonController.dispose();
-      releasedByController.dispose();
-      pullOutDateController.dispose();
-      pullOutStartController.dispose();
-      pullOutEndController.dispose();
-      tripTicketController.dispose();
-      driverController.dispose();
-      helperController.dispose();
-      formCategoryController.dispose();
-      itemCategoryController.dispose();
       formState.dispose();
     } catch (_) {}
     super.onClose();

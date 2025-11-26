@@ -40,7 +40,7 @@ class PullOutReturnPickUpList extends StatelessWidget {
                   scrollDirection: Axis.vertical,
                   physics: const AlwaysScrollableScrollPhysics(),
                   separatorBuilder: (_, __) =>
-                      const SizedBox(height: BSizes.spaceBtwItems),
+                      const SizedBox(height: BSizes.xxs),
                   itemCount: items.length,
                   itemBuilder: (_, index) {
                     final item = items[index];
@@ -48,7 +48,8 @@ class PullOutReturnPickUpList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
                       onTap: () {
                         controller.currentSelectedPullOut.value = item;
-                        _handlePullOutTap(context, item, controller, userController);
+                        _handlePullOutTap(
+                            context, item, controller, userController);
                       },
                       onLongPress: () async {
                         if (item.requestStatus != 'Picked-up' &&
@@ -83,11 +84,13 @@ class PullOutReturnPickUpList extends StatelessWidget {
                   return SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
                       child: Center(
                         child: Text(
                           'No Data Found!',
-                          style: TextStyle(color: dark ? BColors.white : BColors.dark),
+                          style: TextStyle(
+                              color: dark ? BColors.white : BColors.dark),
                         ),
                       ),
                     ),
@@ -128,11 +131,12 @@ void _handlePullOutTap(
 
     if (request.requestStatus.toLowerCase() == 'cancelled' ||
         request.requestStatus.toLowerCase() == 'picked-up') {
-      PullOutDefaultHandler().handleAction(context, request, controller, userController, userInitial);
+      PullOutDefaultHandler().handleAction(
+          context, request, controller, userController, userInitial);
       break;
     }
-
-    handler.handleAction(context, request, controller, userController, userInitial);
+    handler.handleAction(
+        context, request, controller, userController, userInitial);
     break;
   }
 }

@@ -24,6 +24,8 @@ class PullOutModel {
   String tripTicketNumber;
   String driver;
   String helper;
+  int? mobileID;
+  String mobileName;
 
   // Audit
   String createdAt;
@@ -53,6 +55,8 @@ class PullOutModel {
     this.tripTicketNumber = '',
     this.driver = '',
     this.helper = '',
+    this.mobileID,
+    this.mobileName = '',
     this.createdAt = '',
     this.updatedAt = '',
     this.createdBy = '',
@@ -83,6 +87,8 @@ class PullOutModel {
     String? tripTicketNumber,
     String? driver,
     String? helper,
+    int? mobileID,
+    String? mobileName,
     String? createdAt,
     String? updatedAt,
     String? createdBy,
@@ -108,6 +114,8 @@ class PullOutModel {
       tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber,
       driver: driver ?? this.driver,
       helper: helper ?? this.helper,
+      mobileID: mobileID ?? this.mobileID,
+      mobileName: mobileName ?? this.mobileName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       createdBy: createdBy ?? this.createdBy,
@@ -137,35 +145,14 @@ class PullOutModel {
       'TripTicketNumber': tripTicketNumber,
       'Driver': driver,
       'Helper': helper,
+      'MobileID': mobileID,
+      'MobileName': mobileName,
       'CreatedAt': createdAt,
       'UpdatedAt': updatedAt,
       'CreatedBy': createdBy,
       'RequestedBy': requestedBy,
       'Client': client.toJson(),
       'DocumentReference': documentReference,
-    };
-  }
-
-  /// Minimal JSON for inserts; adjust to backend-required fields
-  Map<String, dynamic> toJsonInsert() {
-    return {
-      'ClientID': clientId,
-      'ClientContactPerson': clientContactPerson,
-      'FormCategoryID': formCategoryId,
-      'ItemCategoryID': itemCategoryId,
-      'SlipNo': slipNo,
-      'IRRFNumber': irrfNumber,
-      'IRRFDate': irrfDate,
-      'ReasonForReturn': reasonForReturn,
-      'ReleasedBy': releasedBy,
-      'PullOutDate': pullOutDate,
-      'DocumentReference': documentReference,
-      'RequestStatus': requestStatus,
-      'TripTicketNumber': tripTicketNumber,
-      'Driver': driver,
-      'Helper': helper,
-      'CreatedBy': createdBy,
-      'RequestedBy': requestedBy,
     };
   }
 
@@ -177,6 +164,18 @@ class PullOutModel {
         if (m.containsKey(k) && m[k] != null) return m[k].toString();
       }
       return fallback;
+    }
+
+    int? firstPresentInt(Map<String, dynamic> m, List<String> keys) {
+      for (final k in keys) {
+        if (m.containsKey(k) && m[k] != null) {
+          final v = m[k];
+          if (v is int) return v;
+          final parsed = int.tryParse(v.toString());
+          if (parsed != null) return parsed;
+        }
+      }
+      return null;
     }
 
     return PullOutModel(
@@ -239,6 +238,8 @@ class PullOutModel {
       ]),
       driver: firstPresent(json, ['Driver', 'driver']),
       helper: firstPresent(json, ['Helper', 'helper']),
+      mobileID: firstPresentInt(json, ['MobileID', 'mobileID', 'Mobileid', 'mobileid']),
+      mobileName: firstPresent(json, ['MobileName', 'mobileName', 'Mobile', 'mobile']),
       createdAt: firstPresent(
           json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
       updatedAt: firstPresent(

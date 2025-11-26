@@ -24,6 +24,19 @@ class PullOutFilterManager {
 
   final RxList<PullOutModel> filteredPullOuts = <PullOutModel>[].obs;
 
+  /// Reset filter manager to default state.
+  ///
+  /// If [allPullOuts] is provided the default filter is immediately applied
+  /// to repopulate `filteredPullOuts`.
+  void reset([List<PullOutModel>? allPullOuts]) {
+    selectedFilter.value = RequestFilter.today;
+    selectedStatusFilter.value = PullOutStatusFilter.all;
+    filteredPullOuts.clear();
+    if (allPullOuts != null) {
+      applyFilter(allPullOuts);
+    }
+  }
+
   void applyFilter(List<PullOutModel> allPullOuts) {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
