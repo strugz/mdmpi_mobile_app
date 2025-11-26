@@ -23,11 +23,24 @@ class BDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
+    final List<String> options = [];
+    final seen = <String>{};
+    for (final option in dropdownList) {
+      if (!seen.contains(option)) {
+        seen.add(option);
+        options.add(option);
+      }
+    }
+    if (options.isEmpty) {
+      options.add('');
+    }
     return SingleChildScrollView(
       child: Column(
         children: [
           DropdownButtonFormField(
-              value: controller.text.isEmpty ? null : controller.text,
+              value: (controller.text.isEmpty || !options.contains(controller.text))
+                  ? null
+                  : controller.text,
               onChanged: (value) {
                 controller.text = value!;
               },
@@ -40,7 +53,7 @@ class BDropdown extends StatelessWidget {
                 labelText: label,
                 labelStyle: TextStyle(color: BColors.darkGrey),
               ),
-              items: dropdownList
+              items: options
                   .map(
                     (option) => DropdownMenuItem(
                       value: option,

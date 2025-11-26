@@ -98,6 +98,7 @@ class BTexts {
   static const String statusNewRequest = "New Request";
   static const String statusCancelled = "Cancelled";
   static const String statusInTransit = "In Transit";
+  static const String statusTakenOut = "Taken Out";
   static const String statusAll = "All";
 
   /// Request Modal Specific Texts

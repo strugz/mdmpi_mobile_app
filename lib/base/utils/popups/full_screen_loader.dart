@@ -10,10 +10,11 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
-import '../../../common/widgets/signature/signature_pad.dart';
 import '../../../common/widgets/texts/product_title_text.dart';
 import '../../../data/controllers/app_data/user_initial_controller.dart';
 import '../../../features/authentication/controllers/signup/signup_controller.dart';
@@ -53,8 +54,8 @@ class BFullScreenLoader {
   }
 
   /// Open a half screen dialog for Pick and Dispatch Items and Delivery of Items
-  static void showRequestForReleasingDialog1(
-      BuildContext context, StandardDeliveryModel requestModel, VoidCallback onPressed) {
+  static void showRequestForReleasingDialog1(BuildContext context,
+      StandardDeliveryModel requestModel, VoidCallback onPressed) {
     showModalBottomSheet<void>(
         enableDrag: true,
         context: context,
@@ -108,7 +109,8 @@ class BFullScreenLoader {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           requestModel.status == BTexts.statusForDelivery ||
-                                  requestModel.status == BTexts.statusDoneDelivery
+                                  requestModel.status ==
+                                      BTexts.statusDoneDelivery
                               ? BProductTitleText(
                                   title: "Delivered By: MAR",
                                   maxLines: 2,
@@ -135,11 +137,12 @@ class BFullScreenLoader {
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: onPressed,
-                              child: requestModel.status == BTexts.statusNewRequest
-                                  ? Text("Prepare Item")
-                                  : requestModel.status == "Dispatch Items"
-                                      ? Text("Dispatch")
-                                      : Text("Drop Off"),
+                              child:
+                                  requestModel.status == BTexts.statusNewRequest
+                                      ? Text("Prepare Item")
+                                      : requestModel.status == "Dispatch Items"
+                                          ? Text("Dispatch")
+                                          : Text("Drop Off"),
                             ),
                           ),
                   )
@@ -158,8 +161,10 @@ class BFullScreenLoader {
   }
 
   /// Open a half screen dialog with a text and list to search for a client to select
-  static void showSearchSheet(BuildContext context,
-      ClientController clientController, StandardDeliveryController requestController) {
+  static void showSearchSheet(
+      BuildContext context,
+      ClientController clientController,
+      StandardDeliveryController requestController) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true, // Important for height
@@ -359,38 +364,20 @@ class BFullScreenLoader {
 
   static void showRequestTransportSignatureDialog(
       BuildContext context, StandardDeliveryController requestController) {
-    showDialog(
+    BSignatureCaptureDialog.show(
       context: context,
-      builder: (BuildContext dialogContext) {
-        final dark = BHelperFunctions.isDarkMode(context);
-        return AlertDialog(
-          backgroundColor: dark ? BColors.black : BColors.light,
-          contentPadding: EdgeInsets.zero, // Remove default padding
-          titlePadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: 400,
-            height: 345, // Give it a fixed size
-            child: SingleChildScrollView(
-              // To handle potential overflow if content is too tall
-              child: Column(
-                children: [
-                  SignaturePadWidget(
-                    onSave: (Uint8List? signatureBytes) {
-                      requestController.setSignature(signatureBytes);
-                      Navigator.of(dialogContext).pop(); // Close the dialog
-                      if (signatureBytes != null) {
-                        BHelperFunctions.showSnackBar("Signature saved!");
-                      } else {
-                        BHelperFunctions.showSnackBar(
-                            "Signature pad was empty.");
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+      onSave: (Uint8List? signatureBytes) {
+        requestController.setSignature(signatureBytes);
+      },
+    );
+  }
+
+  static void showSignatureDialogForPullOut(
+      BuildContext context, PullOutController requestController) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (Uint8List? signatureBytes) {
+        requestController.setSignature(signatureBytes);
       },
     );
   }

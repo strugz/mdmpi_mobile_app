@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../base/utils/constants/colors.dart';
-import '../../../base/utils/helpers/helper_functions.dart';
 
 /// Dynamic Dropdown that accepts either a list of strings or a list of maps.
 /// When using a list of maps, provide [valueKey] and [displayKey] to extract
@@ -19,6 +18,7 @@ class BDropDownDynamicList extends StatefulWidget {
   final String? label;
   final String? hint;
   final bool isExpanded;
+  final String? Function(String?)? validator; // NEW: optional validator
 
   const BDropDownDynamicList({
     super.key,
@@ -31,6 +31,7 @@ class BDropDownDynamicList extends StatefulWidget {
     this.label,
     this.hint,
     this.isExpanded = true,
+    this.validator,
   });
 
   @override
@@ -39,11 +40,37 @@ class BDropDownDynamicList extends StatefulWidget {
 
 class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
   String? _selectedValue;
+  VoidCallback? _controllerListener;
 
   @override
   void initState() {
     super.initState();
-    _selectedValue = widget.controller?.text.isNotEmpty == true ? widget.controller!.text : null;
+    // Initialize from controller if provided
+    _selectedValue = widget.controller?.text.isNotEmpty == true
+        ? widget.controller!.text
+        : null;
+    _attachControllerListener();
+  }
+
+  void _attachControllerListener() {
+    if (widget.controller != null) {
+      _controllerListener ??= () {
+        final text = widget.controller!.text;
+        if (text != _selectedValue) {
+          setState(() {
+            _selectedValue = text.isEmpty ? null : text;
+          });
+        }
+      };
+      widget.controller!.addListener(_controllerListener!);
+    }
+  }
+
+  void _detachControllerListener() {
+    if (widget.controller != null && _controllerListener != null) {
+      widget.controller!.removeListener(_controllerListener!);
+    }
+    _controllerListener = null;
   }
 
   String _getItemValue(dynamic item) {
@@ -61,6 +88,32 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
   }
 
   @override
+  void didUpdateWidget(covariant BDropDownDynamicList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the controller instance changes, rewire the listener
+    if (oldWidget.controller != widget.controller) {
+      _detachControllerListener();
+      _attachControllerListener();
+      // Sync selection from the new controller
+      final text = widget.controller?.text ?? '';
+      if (text != _selectedValue) {
+        _selectedValue = text.isEmpty ? null : text;
+      }
+    }
+    // If dropdown items changed and current selection is no longer valid, clear it
+    final currentItems = widget.dropdownList.map(_getItemValue).toSet();
+    if (_selectedValue != null && !currentItems.contains(_selectedValue)) {
+      _selectedValue = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _detachControllerListener();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final textStyle = Theme.of(context).textTheme.labelSmall;
 
@@ -73,8 +126,11 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
       );
     }).toList();
 
+    final containsSelected = _selectedValue != null &&
+        items.any((it) => it.value == _selectedValue);
+
     return DropdownButtonFormField<String>(
-      value: _selectedValue != null && items.any((it) => it.value == _selectedValue) ? _selectedValue : null,
+      value: containsSelected ? _selectedValue : null,
       isExpanded: widget.isExpanded,
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -87,13 +143,14 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
       items: items,
       onChanged: (String? newValue) {
         setState(() => _selectedValue = newValue);
-        if (widget.controller != null && newValue != null) {
-          widget.controller!.text = newValue;
+        if (widget.controller != null) {
+          widget.controller!.text = newValue ?? '';
         }
         if (widget.onChanged != null) widget.onChanged!(newValue);
       },
       style: textStyle,
       dropdownColor: Colors.white,
+      validator: widget.validator,
     );
   }
 }
