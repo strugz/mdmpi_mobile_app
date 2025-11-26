@@ -2,9 +2,11 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
@@ -22,6 +24,7 @@ import '../../../data/repositories/image/image_repository.dart';
 /// Manager for Pull-Out domain orchestration (save/update flows).
 class PullOutDataManager {
   final PullOutRepository _repository = Get.find<PullOutRepository>();
+  final CancelRemarksRepository _cancelRemarksRepository = Get.find<CancelRemarksRepository>();
 
   Future<bool> validateConnectivity() async {
     final isConnected = await NetworkManager.instance.isConnected();
@@ -360,6 +363,27 @@ class PullOutDataManager {
       }
     } catch (e) {
       logDebug('PullOutDataManager.loadCategories failed: $e');
+    }
+  }
+
+  /// Fetch cancel remarks for a pull-out request from CancelRemarksRepository.
+  /// Uses the same shared repository as standard delivery.
+  Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
+    try {
+      logDebug('🔍 PullOutDataManager: Fetching cancel remarks for: $requestId');
+      final result = await _cancelRemarksRepository.getCancelRemarksByRequestId(
+        requestId,
+        module: RequestModule.pullOut, // Specify pull-out module
+      );
+      logDebug('✅ PullOutDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
+      if (result.remarks.isEmpty) {
+        logDebug('⚠️ PullOutDataManager: Remarks are EMPTY! Check if API endpoint exists and returns data.');
+      }
+      return result;
+    } catch (e) {
+      logDebug('❌ PullOutDataManager.fetchCancelRemarks FAILED: $e');
+      logDebug('💡 Tip: Check if GET /api4/RequestPullOutReturnPickUp/cancel/$requestId endpoint exists');
+      return CancelRemarksModel.empty;
     }
   }
 }

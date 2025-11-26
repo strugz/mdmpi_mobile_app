@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 
 /// Pull-out request model.
 class PullOutModel {
@@ -36,6 +37,7 @@ class PullOutModel {
   // Aggregates
   ClientModel client;
   List<String> documentReference;
+  CancelRemarksModel cancelRemarks;
 
   PullOutModel({
     this.id = '',
@@ -63,8 +65,10 @@ class PullOutModel {
     this.requestedBy = '',
     ClientModel? client,
     List<String>? documentReference,
+    CancelRemarksModel? cancelRemarks,
   })  : client = client ?? ClientModel.empty(),
-        documentReference = documentReference ?? <String>[];
+        documentReference = documentReference ?? <String>[],
+        cancelRemarks = cancelRemarks ?? CancelRemarksModel.empty;
 
   /// Convenience empty factory
   static PullOutModel empty() => PullOutModel();
@@ -95,6 +99,7 @@ class PullOutModel {
     String? requestedBy,
     ClientModel? client,
     List<String>? documentReference,
+    CancelRemarksModel? cancelRemarks,
   }) {
     return PullOutModel(
       id: id ?? this.id,
@@ -122,6 +127,7 @@ class PullOutModel {
       requestedBy: requestedBy ?? this.requestedBy,
       client: client ?? this.client,
       documentReference: documentReference ?? this.documentReference,
+      cancelRemarks: cancelRemarks ?? this.cancelRemarks,
     );
   }
 
@@ -153,6 +159,7 @@ class PullOutModel {
       'RequestedBy': requestedBy,
       'Client': client.toJson(),
       'DocumentReference': documentReference,
+      'CancelRemarks': cancelRemarks.toJson(),
     };
   }
 
@@ -256,6 +263,9 @@ class PullOutModel {
               ? List<String>.from((json['DocumentReference'] as List)
                   .map((e) => e?.toString() ?? ''))
               : <String>[],
+      cancelRemarks: json['CancelRemarks'] != null
+          ? CancelRemarksModel.fromJson(Map<String, dynamic>.from(json['CancelRemarks']))
+          : CancelRemarksModel.empty,
     );
   }
 }

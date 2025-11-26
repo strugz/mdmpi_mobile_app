@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -25,6 +27,9 @@ class PullOutController extends GetxController {
 
   /// Last error message, if any.
   final RxnString errorMessage = RxnString();
+
+  /// Cancel remarks data
+  final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
 
   /// Manager for date & status filtering.
   late final PullOutFilterManager filterManager;
@@ -102,6 +107,21 @@ class PullOutController extends GetxController {
         signature != null && signature.isNotEmpty
             ? base64Encode(signature)
             : "";
+  }
+
+  /// Load cancel remarks for a request ID
+  Future<void> loadCancelRemarks(String requestId) async {
+    try {
+      final repo = Get.find<CancelRemarksRepository>();
+      final result = await repo.getCancelRemarksByRequestId(
+        requestId,
+        module: RequestModule.pullOut,
+      );
+
+      cancelRemarks.value = result;
+    } catch (e) {
+      cancelRemarks.value = CancelRemarksModel.empty;
+    }
   }
 
   @override
