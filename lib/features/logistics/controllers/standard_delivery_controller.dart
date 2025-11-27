@@ -171,8 +171,8 @@ class StandardDeliveryController extends GetxController {
     }
   }
 
-  Future<void> updateRequestStatus(
-      StandardDeliveryModel requestModel, String newStatus, String userInitial) async {
+  Future<void> updateRequestStatus(StandardDeliveryModel requestModel,
+      String newStatus, String userInitial) async {
     await dataManager.updateRequestStatus(
       requestModel,
       newStatus,

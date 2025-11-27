@@ -97,7 +97,7 @@ class StandardDeliveryMapper {
   }
 
   static CancelRemarksModel _remarksDtoToModel(RemarksDto dto) {
-    return CancelRemarksModel(requestId: '', remarks: dto.remarks ?? '', date: '');
+    return CancelRemarksModel(requestId: '', remarks: dto.remarks ?? '', date: '', userUpdated: '');
   }
 
   static RemarksDto _cancelRemarksModelToDto(CancelRemarksModel m) {
@@ -137,7 +137,7 @@ class StandardDeliveryMapper {
     }
 
     Map<String, dynamic>? remarks;
-    if (m.cancelRemarks != null && m.cancelRemarks.remarks.isNotEmpty) {
+    if (m.cancelRemarks.remarks.isNotEmpty) {
       remarks = {'requestID': nestedRequestId, 'remarks': m.cancelRemarks.remarks, 'date': m.cancelRemarks.date};
     }
 

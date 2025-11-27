@@ -33,6 +33,8 @@ class PullOutRequestModalFooter extends StatelessWidget {
 
     final hasDriver = requestModel.driver.isNotEmpty;
     final hasHelper = requestModel.helper.isNotEmpty;
+    final hasDeparted = requestModel.pullOutDateStartAt.isNotEmpty;
+    final hasPullOut = requestModel.pullOutDateEndAt.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,27 +140,29 @@ class PullOutRequestModalFooter extends StatelessWidget {
                 ),
             ],
           ),
-          BProductTitleText(
-            title: 'Departed At: ${BFormatter.formatDateTimeCustomizable(
-              requestModel.pullOutDateStartAt,
-              "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-              "yyyy-MM-dd HH:mm",
-            )}',
-            maxLines: 1,
-            smallSize: true,
-            fontColor: dark ? BColors.light : BColors.black,
-          ),
+          if (hasDeparted)
+            BProductTitleText(
+              title: 'Departed At: ${BFormatter.formatDateTimeCustomizable(
+                requestModel.pullOutDateStartAt,
+                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                "yyyy-MM-dd HH:mm",
+              )}',
+              maxLines: 1,
+              smallSize: true,
+              fontColor: dark ? BColors.light : BColors.black,
+            ),
           const SizedBox(height: BSizes.xs),
-          BProductTitleText(
-            title: 'Pull Out At: ${BFormatter.formatDateTimeCustomizable(
-              requestModel.pullOutDateEndAt,
-              "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-              "yyyy-MM-dd HH:mm",
-            )}',
-            maxLines: 1,
-            smallSize: true,
-            fontColor: dark ? BColors.light : BColors.black,
-          ),
+          if (hasPullOut)
+            BProductTitleText(
+              title: 'Pull Out At: ${BFormatter.formatDateTimeCustomizable(
+                requestModel.pullOutDateEndAt,
+                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                "yyyy-MM-dd HH:mm",
+              )}',
+              maxLines: 1,
+              smallSize: true,
+              fontColor: dark ? BColors.light : BColors.black,
+            ),
           const SizedBox(height: BSizes.xs),
         ],
       ],

@@ -130,7 +130,7 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
         items.any((it) => it.value == _selectedValue);
 
     return DropdownButtonFormField<String>(
-      value: containsSelected ? _selectedValue : null,
+      initialValue: containsSelected ? _selectedValue : null,
       isExpanded: widget.isExpanded,
       decoration: InputDecoration(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

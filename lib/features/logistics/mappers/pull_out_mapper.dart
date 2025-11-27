@@ -15,7 +15,6 @@ class PullOutMapper {
       clientContactPerson: m.clientContactPerson.isNotEmpty ? m.clientContactPerson : null,
       formCategoryID: parseIntIfPossible(m.formCategoryId),
       itemCategoryID: parseIntIfPossible(m.itemCategoryId),
-      slipNo: m.slipNo.isNotEmpty ? m.slipNo : null,
       irrfNumber: m.irrfNumber.isNotEmpty ? m.irrfNumber : null,
       irrfDate: m.irrfDate.isNotEmpty ? m.irrfDate : null,
       reasonForReturn: m.reasonForReturn.isNotEmpty ? m.reasonForReturn : null,

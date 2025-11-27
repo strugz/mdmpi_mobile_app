@@ -19,7 +19,7 @@ void main(List<String> args) {
     if (idx != -1) {
       final start = idx - 200 < 0 ? 0 : idx - 200;
       final end = idx + 200 > text.length ? text.length : idx + 200;
-      print('Context:\n' + text.substring(start, end));
+      print('Context:\n${text.substring(start, end)}');
     }
     exit(3);
   } else {

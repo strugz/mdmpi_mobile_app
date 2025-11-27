@@ -5,15 +5,39 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/camera/camera_preview.dart';
 import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 
-class BTextScanner extends StatelessWidget {
+class BTextScanner extends StatefulWidget {
   const BTextScanner({super.key, required this.controller});
 
   final TextEditingController controller;
 
   @override
+  State<BTextScanner> createState() => _BTextScannerState();
+}
+
+class _BTextScannerState extends State<BTextScanner> {
+  late final CameraHandlerController cameraController;
+
+  @override
+  void initState() {
+    super.initState();
+    cameraController = Get.find<CameraHandlerController>();
+    // Ensure camera preview is active when entering the screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      cameraController.resumePreview();
+    });
+  }
+
+  @override
+  void dispose() {
+    // Stop any ongoing flash animations to prevent buffer issues
+    cameraController.stopFlashAnimation();
+    // Pause preview to release camera buffers before leaving
+    cameraController.pausePreview();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final CameraHandlerController cameraController =
-    Get.find<CameraHandlerController>();
     final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final bool isGestureNavigation = bottomPadding > 0.0;
 
@@ -27,7 +51,7 @@ class BTextScanner extends StatelessWidget {
             onPressed: cameraController.isProcessing.value
                 ? null
                 : () {
-              cameraController.scanText(controller);
+              cameraController.scanText(widget.controller);
             },
             child: Obx(() => Text(cameraController.isProcessing.value
                 ? 'Processing...'

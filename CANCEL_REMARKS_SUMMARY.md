@@ -13,7 +13,7 @@
 
 ```dart
 enum RequestModule {
-  standardDelivery,  // /api3/request/cancel/{id}
+  standardDelivery,  // /api4/request/cancel/{id}
   pullOut,          // /api4/RequestPullOutReturnPickUp/cancel/{id}
 }
 
@@ -21,12 +21,20 @@ class CancelRemarksRepository {
   // Returns appropriate API endpoint based on module
   String _getCancelEndpoint(String requestId, RequestModule module);
 
-  // Fetches cancel remarks from API
+  // Fetches cancel remarks from API (GET)
   Future<CancelRemarksModel> getCancelRemarksByRequestId(
     String requestId,
     {RequestModule module = RequestModule.standardDelivery}
   ) async {
     // Handles both single object {} and array [] responses
+  }
+
+  // Saves/updates cancel remarks to API (PATCH)
+  Future<void> addCancelRemarks(
+    CancelRemarksModel m,
+    {RequestModule module = RequestModule.standardDelivery}
+  ) async {
+    // Sends remarks, date, and userUpdated to server
   }
 }
 ```
@@ -112,6 +120,7 @@ Widget build(BuildContext context) {
           return BCancelRemarks(
             remarks: remarks.remarks,
             date: remarks.date,
+            user: remarks.userUpdated,
           );
         }),
       // ...other children
@@ -147,6 +156,7 @@ Widget build(BuildContext context) {
           return BCancelRemarks(
             remarks: remarks.remarks,
             date: remarks.date,
+            user: remarks.userUpdated,
           );
         }),
       // ...other children
@@ -165,8 +175,11 @@ Widget build(BuildContext context) {
 class BCancelRemarks extends StatelessWidget {
   final String remarks;
   final String date;
+  final String user;
   
   // Displays cancel remarks in a card with icon and formatted date
+  // Shows who cancelled the request and when
+  // Supports multiple date formats with fallback parsing
 }
 ```
 
@@ -235,11 +248,36 @@ class BCancelRemarks extends StatelessWidget {
 
 ---
 
+## 🔍 Key Implementation Details
+
+### Response Handling
+The repository intelligently handles both response formats:
+- **Object response:** `{"RequestID":"...","Remarks":"...","Date":"...","UserUpdated":"..."}`
+- **Array response:** `[{"RequestID":"...","Remarks":"...","Date":"...","UserUpdated":"..."}]`
+
+### Date Formatting
+The `BCancelRemarks` widget supports multiple date formats:
+1. Primary format: `"yyyy-MM-dd HH:mm:ss"`
+2. Fallback: ISO 8601 and other common formats via `DateTime.tryParse()`
+3. Display format: `"MM/dd/yyyy hh:mm a"` (e.g., "11/26/2025 07:44 AM")
+
+### Error Handling
+- Controllers gracefully handle errors by setting `cancelRemarks.value = CancelRemarksModel.empty`
+- UI checks for null or empty remarks before displaying
+- Repository throws descriptive exceptions for debugging
+
+### Reactive UI Pattern
+- Load remarks once when modal opens (if cancelled)
+- Use `Obx()` to reactively display when data arrives
+- No loading spinners needed - gracefully shows nothing until data loads
+
+---
+
 ## 📊 API Endpoints
 
 | Module | Endpoint | Response Format |
 |--------|----------|-----------------|
-| Standard Delivery | `GET /api3/request/cancel/{id}` | Object `{}` or Array `[]` |
+| Standard Delivery | `GET /api4/request/cancel/{id}` | Object `{}` or Array `[]` |
 | Pull-Out | `GET /api4/RequestPullOutReturnPickUp/cancel/{id}` | Object `{}` or Array `[]` |
 
 **Response Example:**
@@ -247,7 +285,17 @@ class BCancelRemarks extends StatelessWidget {
 {
   "RequestID": "2025110073",
   "Remarks": "Reroute",
-  "Date": "2025-11-26 07:44:15"
+  "Date": "2025-11-26 07:44:15",
+  "UserUpdated": "John Doe"
+}
+```
+
+**PATCH Request Payload:**
+```json
+{
+  "remarks": "Request cancelled due to change in requirements",
+  "date": "2025-11-26 10:30:00",
+  "userUpdated": "Jane Smith"
 }
 ```
 
@@ -279,15 +327,19 @@ class BCancelRemarks extends StatelessWidget {
 - [ ] Cancel a request with remarks
 - [ ] Open cancelled request modal
 - [ ] Verify remarks display correctly
+- [ ] Verify "Cancelled by" user is shown
 - [ ] Check date formatting
 - [ ] Test dark mode
+- [ ] Test with empty remarks (should not display)
 
 ### Pull-Out
 - [ ] Cancel a request with remarks
 - [ ] Open cancelled request modal
 - [ ] Verify remarks display correctly
+- [ ] Verify "Cancelled by" user is shown
 - [ ] Check date formatting
 - [ ] Test dark mode
+- [ ] Test with empty remarks (should not display)
 
 ---
 

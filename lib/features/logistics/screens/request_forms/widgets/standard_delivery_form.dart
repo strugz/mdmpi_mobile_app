@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request/components/request_controller_components.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
@@ -78,23 +77,11 @@ class StandardDelivery extends StatelessWidget {
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Target date
-                      Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            TextFormField(
-                              onTap: () => RequestControllerComponents
-                                  .showDateTimerPicker(
-                                      context, requestController.formState.targetDate),
-                              controller: requestController.formState.targetDate,
-                              decoration: InputDecoration(
-                                prefixIcon: Icon(Iconsax.clock),
-                                labelText: 'Delivery Date',
-                                labelStyle: TextStyle(color: BColors.darkGrey),
-                              ),
-                            )
-                          ],
-                        ),
+                      ReadOnlyDateFormField(
+                        controller: requestController.formState.targetDate,
+                        label: 'Delivery Date',
+                        includeTime: false,
+                        icon: Iconsax.calendar,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
                       Center(

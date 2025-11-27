@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -12,6 +13,7 @@ class BDialog {
   static Future<void> showRemarksDialog(
       BuildContext context, Object requestModel) async {
     if (requestModel is StandardDeliveryModel) {
+
       final requestController = Get.find<StandardDeliveryController>();
       await CancelReasonDialog.show(context, (reason) async {
         await requestController.updateRequestForCancellation(requestModel, reason);
@@ -19,7 +21,7 @@ class BDialog {
     } else if (requestModel is PullOutModel) {
       final requestController = Get.find<PullOutController>();
       await CancelReasonDialog.show(context, (reason) async {
-        await requestController.cancelPullOut(requestModel.id, reason);
+        await requestController.cancelPullOut(requestModel, reason);
       });
     } else {
       BLoaders.errorSnackBar(title: 'Error', message: 'Unsupported request type for remarks dialog');

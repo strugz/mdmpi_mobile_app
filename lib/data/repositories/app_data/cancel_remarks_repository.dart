@@ -31,8 +31,12 @@ class CancelRemarksRepository {
       {RequestModule module = RequestModule.standardDelivery}) async {
     try {
       final url = _getCancelEndpoint(m.requestId, module);
-      // Server expects a JSON body with remarks (and optionally date).
-      final payload = jsonEncode({'remarks': m.remarks, 'date': m.date});
+      // Server expects a JSON body with remarks, date, and userUpdated.
+      final payload = jsonEncode({
+        'remarks': m.remarks,
+        'date': m.date,
+        'userUpdated': m.userUpdated,
+      });
       final response = await http
           .patch(
             Uri.parse(url),

@@ -55,7 +55,6 @@ class PullOutRequestModalHeader extends StatelessWidget {
     final hasRequestedBy = requestModel.requestedBy.isNotEmpty;
     final hasPullOutDate = requestModel.pullOutDate.isNotEmpty;
     final hasReleasedBy = requestModel.releasedBy.isNotEmpty;
-    final hasSlip = requestModel.slipNo.isNotEmpty;
     final hasTrip = requestModel.tripTicketNumber.isNotEmpty;
     final hasIrrfNumber = requestModel.irrfNumber.isNotEmpty;
     final hasIrrfDate = requestModel.irrfDate.isNotEmpty;
@@ -71,11 +70,7 @@ class PullOutRequestModalHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           BProductTitleText(
-            title: requestModel.client.name.isNotEmpty
-                ? requestModel.client.name
-                : (requestModel.slipNo.isNotEmpty
-                    ? 'Slip: ${requestModel.slipNo}'
-                    : 'Pull-Out Request'),
+            title: requestModel.client.name,
             maxLines: 2,
             bold: true,
             fontColor: dark ? BColors.light : BColors.black,
@@ -122,7 +117,6 @@ class PullOutRequestModalHeader extends StatelessWidget {
           if (hasTrip) ...[
             Row(
               children: [
-                if (hasSlip && hasTrip) const SizedBox(width: BSizes.xs),
                 if (hasTrip)
                   Expanded(
                     child: BLabelValueText(
@@ -169,17 +163,6 @@ class PullOutRequestModalHeader extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                if (hasSlip)
-                  Expanded(
-                    child: BLabelValueText(
-                      label: 'Slip No',
-                      value: requestModel.slipNo,
-                      showLabel: false,
-                      copyable: true,
-                      icon: Iconsax.document,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
                 if (hasReasonForReturn)
                   Expanded(
                     child: BLabelValueText(

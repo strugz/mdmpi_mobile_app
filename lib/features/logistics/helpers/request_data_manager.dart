@@ -387,7 +387,6 @@ class RequestDataManager {
         'Saving on process...', BImages.docerAnimation);
 
     if (!await validateConnectivity()) {
-      // No connectivity: stop loader and inform the user, then return.
       BFullScreenLoader.stopLoading();
       BLoaders.warningSnackBar(
         title: 'No Internet',
@@ -406,7 +405,8 @@ class RequestDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _requestRepository.cancelDelivery(requestModel.id, remarks);
+          await _requestRepository.cancelDelivery(
+              requestModel.id, remarks, _userController.user.value.initial);
           await _dbHelper.cancelRequestWithRemarks(
               requestID: requestModel.id,
               remarks: remarks,

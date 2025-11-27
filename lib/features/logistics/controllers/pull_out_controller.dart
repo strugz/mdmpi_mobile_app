@@ -38,6 +38,9 @@ class PullOutController extends GetxController {
   /// --- Form state and controllers ---
   late final PullOutFormState formState;
 
+  /// User controller for accessing logged-in user data.
+  late final UserController userController;
+
   /// CreatedBy is derived from the logged-in user and stored here (not exposed as an editable UI field).
   String createdBy = '';
 
@@ -56,8 +59,8 @@ class PullOutController extends GetxController {
     dataManager.loadCategories(this);
     dataManager.fetchPullOuts(this);
 
-    final userCtrl = Get.find<UserController>();
-    createdBy = userCtrl.user.value.initial;
+    userController = Get.find<UserController>();
+    createdBy = userController.user.value.initial;
   }
 
   /// Convenience access to filtered list.
@@ -84,8 +87,9 @@ class PullOutController extends GetxController {
   }
 
   /// Cancel a pull-out request with remarks.
-  Future<void> cancelPullOut(String requestId, String remarks) async {
-    await dataManager.cancelPullOutById(requestId, remarks, this);
+  Future<void> cancelPullOut(PullOutModel request, String remarks) async {
+    final user = userController.user.value.initial;
+    await dataManager.cancelRequestWithRemarks(request, remarks, user, this);
   }
 
   /// Build a PullOutModel from the controllers and submit.

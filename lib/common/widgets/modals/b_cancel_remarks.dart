@@ -15,10 +15,12 @@ class BCancelRemarks extends StatelessWidget {
     super.key,
     required this.remarks,
     required this.date,
+    required this.user,
   });
 
   final String remarks;
   final String date;
+  final String user;
 
   @override
   Widget build(BuildContext context) {
@@ -59,9 +61,22 @@ class BCancelRemarks extends StatelessWidget {
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(
-              formattedDate,
-              style: TextStyle(color: textColor.withAlpha((0.7 * 255).round())),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (user.isNotEmpty)
+                  Text(
+                    'Cancelled by: $user',
+                    style: TextStyle(
+                      color: textColor.withAlpha((0.7 * 255).round()),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                Text(
+                  formattedDate,
+                  style: TextStyle(color: textColor.withAlpha((0.7 * 255).round())),
+                ),
+              ],
             ),
             dense: true,
           ),
@@ -70,4 +85,3 @@ class BCancelRemarks extends StatelessWidget {
     );
   }
 }
-

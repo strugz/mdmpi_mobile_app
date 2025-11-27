@@ -101,11 +101,11 @@ class StandardDeliveryRepository extends GetxController {
   }
 
   /// Cancel request with remarks (PATCH /api3/request/cancel/{id})
-  Future<void> cancelDelivery(String requestID, String remarks) async {
+  Future<void> cancelDelivery(String requestID, String remarks, String user) async {
     try {
       final response = await http
           .patch(
-            Uri.parse("${dotenv.env['API_URL']!}/api4/request/cancel/$requestID"),
+            Uri.parse("${dotenv.env['API_URL']!}/api4/request/cancel/$requestID/$user"),
             headers: <String, String>{
               'Content-Type': 'application/json; charset=UTF-8',
             },

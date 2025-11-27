@@ -10,8 +10,6 @@ class PullOutModel {
   String formCategoryId;
   String itemCategoryId;
 
-  // Document/IRRF and reason
-  String slipNo;
   String irrfNumber;
   String irrfDate;
   String reasonForReturn;
@@ -45,7 +43,6 @@ class PullOutModel {
     this.clientContactPerson = '',
     this.formCategoryId = '',
     this.itemCategoryId = '',
-    this.slipNo = '',
     this.irrfNumber = '',
     this.irrfDate = '',
     this.reasonForReturn = '',
@@ -79,7 +76,6 @@ class PullOutModel {
     String? clientContactPerson,
     String? formCategoryId,
     String? itemCategoryId,
-    String? slipNo,
     String? irrfNumber,
     String? irrfDate,
     String? reasonForReturn,
@@ -107,7 +103,6 @@ class PullOutModel {
       clientContactPerson: clientContactPerson ?? this.clientContactPerson,
       formCategoryId: formCategoryId ?? this.formCategoryId,
       itemCategoryId: itemCategoryId ?? this.itemCategoryId,
-      slipNo: slipNo ?? this.slipNo,
       irrfNumber: irrfNumber ?? this.irrfNumber,
       irrfDate: irrfDate ?? this.irrfDate,
       reasonForReturn: reasonForReturn ?? this.reasonForReturn,
@@ -139,7 +134,6 @@ class PullOutModel {
       'ClientContactPerson': clientContactPerson,
       'FormCategoryID': formCategoryId,
       'ItemCategoryID': itemCategoryId,
-      'SlipNo': slipNo,
       'IRRFNumber': irrfNumber,
       'IRRFDate': irrfDate,
       'ReasonForReturn': reasonForReturn,
@@ -208,7 +202,6 @@ class PullOutModel {
         'ItemCategoryId',
         'itemCategoryId'
       ]),
-      slipNo: firstPresent(json, ['SlipNo', 'slipNo', 'Slipno', 'slipno']),
       irrfNumber: firstPresent(
           json, ['IRRFNumber', 'irrfNumber', 'IrrfNumber', 'irrfnumber']),
       irrfDate:

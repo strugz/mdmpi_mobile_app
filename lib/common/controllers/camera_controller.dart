@@ -80,7 +80,6 @@ class CameraHandlerController extends GetxController
   /// --- Scan text from the camera preview and update the recognizedText variable ---
   Future<void> scanText(TextEditingController controller) async {
     if (!_cameraService.isInitialized || isProcessing.value) {
-      // isProcessing could also come from cameraService
       return;
     }
     isProcessing.value = true;
@@ -143,7 +142,6 @@ class CameraHandlerController extends GetxController
   /// --- Take Picture and Save to the device ---
   Future<void> takePicture(String pictureName) async {
     if (!_cameraService.isInitialized || isProcessing.value) {
-      // isProcessing could also come from cameraService
       return;
     }
 
@@ -160,7 +158,23 @@ class CameraHandlerController extends GetxController
   Future<void> takePictureWithAnimation(String requestId) async {
     isFlashing.value = true;
     _flashAnimController.forward(from: 0.0);
-    await takePicture(requestId); // Your existing takePicture logic
+    await takePicture(requestId);
+  }
+
+  /// --- Pause the camera preview to release resources ---
+  Future<void> pausePreview() async {
+    await _cameraService.pausePreview();
+  }
+
+  /// --- Resume the camera preview ---
+  Future<void> resumePreview() async {
+    await _cameraService.resumePreview();
+  }
+
+  /// --- Stop flash animation ---
+  void stopFlashAnimation() {
+    _flashAnimController.stop();
+    isFlashing.value = false;
   }
 
   Widget? getCameraPreviewWidget() {

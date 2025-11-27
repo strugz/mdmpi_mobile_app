@@ -53,17 +53,27 @@ class PullOutRepository extends GetxController {
   }
 
   /// Performs a GET request with timeout and returns the response.
-  Future<http.Response> _safeGet(Uri url) => http.get(url).timeout(const Duration(seconds: 60));
+  Future<http.Response> _safeGet(Uri url) =>
+      http.get(url).timeout(const Duration(seconds: 60));
 
   /// Performs a POST request with timeout.
   Future<http.Response> _safePost(Uri url, Map<String, dynamic> payload) => http
-      .post(url, headers: const {'Content-Type': 'application/json'}, body: jsonEncode(payload))
+      .post(url,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode(payload))
       .timeout(const Duration(seconds: 60));
 
   /// Performs a PATCH request with timeout.
-  Future<http.Response> _safePatch(Uri url, Map<String, dynamic> payload) => http
-      .patch(url, headers: const {'Content-Type': 'application/json; charset=UTF-8'}, body: jsonEncode(payload))
-      .timeout(const Duration(seconds: 60));
+  Future<http.Response> _safePatch(
+          Uri url, Map<String, dynamic> payload) =>
+      http
+          .patch(
+              url,
+              headers: const {
+                'Content-Type': 'application/json; charset=UTF-8'
+              },
+              body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 60));
 
   /// Fetch all pull-out requests.
   Future<List<PullOutModel>> getAll() async {
@@ -80,7 +90,8 @@ class PullOutRepository extends GetxController {
                 : PullOutModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       }
-      throw Exception('Failed to load pull-out requests (${response.statusCode})');
+      throw Exception(
+          'Failed to load pull-out requests (${response.statusCode})');
     } catch (e, st) {
       _showError('Failed to fetch pull-out list');
       throw Exception('getAll pull-out error: $e\n$st');
@@ -98,7 +109,8 @@ class PullOutRepository extends GetxController {
       if (response.statusCode == 200) {
         _showSuccess('Success saving...', silent: silent);
       } else {
-        final msg = 'Failed to insert pull-out. Status code: ${response.statusCode}';
+        final msg =
+            'Failed to insert pull-out. Status code: ${response.statusCode}';
         if (silent) {
           throw Exception(msg);
         } else {
@@ -106,9 +118,11 @@ class PullOutRepository extends GetxController {
         }
       }
     } on TFormatException catch (_) {
-      if (silent) rethrow; throw TFormatException();
+      if (silent) rethrow;
+      throw TFormatException();
     } on PlatformException catch (e) {
-      if (silent) rethrow; throw TPlatformException(e.code).message;
+      if (silent) rethrow;
+      throw TPlatformException(e.code).message;
     } catch (e) {
       if (silent) {
         rethrow;
@@ -128,7 +142,11 @@ class PullOutRepository extends GetxController {
       final response = await _safePatch(url, payload);
       if (response.statusCode == 200) {
         dynamic decoded;
-        try { decoded = jsonDecode(response.body); } catch (_) { decoded = response.body; }
+        try {
+          decoded = jsonDecode(response.body);
+        } catch (_) {
+          decoded = response.body;
+        }
         String message;
         if (decoded is Map && decoded.containsKey('message')) {
           message = decoded['message'].toString();
@@ -145,7 +163,8 @@ class PullOutRepository extends GetxController {
           _showWarning(message, silent: silent);
         }
       } else {
-        final msg = 'Failed to update pull-out. Status code: ${response.statusCode}';
+        final msg =
+            'Failed to update pull-out. Status code: ${response.statusCode}';
         if (silent) {
           throw Exception(msg);
         } else {
@@ -153,9 +172,11 @@ class PullOutRepository extends GetxController {
         }
       }
     } on TFormatException catch (_) {
-      if (silent) rethrow; throw TFormatException();
+      if (silent) rethrow;
+      throw TFormatException();
     } on PlatformException catch (e) {
-      if (silent) rethrow; throw TPlatformException(e.code).message;
+      if (silent) rethrow;
+      throw TPlatformException(e.code).message;
     } catch (e) {
       if (silent) {
         rethrow;
@@ -167,13 +188,18 @@ class PullOutRepository extends GetxController {
 
   /// Update using a pre-built payload. This allows callers to prepare the
   /// payload (e.g. via a mapper) and send it directly.
-  Future<void> updateWithPayload(Map<String, dynamic> payload, {bool silent = false}) async {
+  Future<void> updateWithPayload(Map<String, dynamic> payload,
+      {bool silent = false}) async {
     try {
       final url = _uri(_resource);
       final response = await _safePatch(url, payload);
       if (response.statusCode == 200) {
         dynamic decoded;
-        try { decoded = jsonDecode(response.body); } catch (_) { decoded = response.body; }
+        try {
+          decoded = jsonDecode(response.body);
+        } catch (_) {
+          decoded = response.body;
+        }
         String message;
         if (decoded is Map && decoded.containsKey('message')) {
           message = decoded['message'].toString();
@@ -190,7 +216,8 @@ class PullOutRepository extends GetxController {
           _showWarning(message, silent: silent);
         }
       } else {
-        final msg = 'Failed to update pull-out. Status code: ${response.statusCode}';
+        final msg =
+            'Failed to update pull-out. Status code: ${response.statusCode}';
         if (silent) {
           throw Exception(msg);
         } else {
@@ -198,9 +225,11 @@ class PullOutRepository extends GetxController {
         }
       }
     } on TFormatException catch (_) {
-      if (silent) rethrow; throw TFormatException();
+      if (silent) rethrow;
+      throw TFormatException();
     } on PlatformException catch (e) {
-      if (silent) rethrow; throw TPlatformException(e.code).message;
+      if (silent) rethrow;
+      throw TPlatformException(e.code).message;
     } catch (e) {
       if (silent) {
         rethrow;
@@ -211,16 +240,23 @@ class PullOutRepository extends GetxController {
   }
 
   /// Cancel a pull-out request. Optional [silent] to suppress snackbars.
-  Future<void> cancelPullOut(String requestID, String remarks, {bool silent = false}) async {
+  Future<void> cancelPullOutAPI(String requestID, String remarks, String user,
+      {bool silent = false}) async {
     try {
-      final url = Uri.parse("${dotenv.env['API_URL']!}$_resource/cancel/$requestID");
+      final url =
+          Uri.parse("${dotenv.env['API_URL']!}$_resource/cancel/$requestID/$user");
       final response = await http
-          .patch(url, headers: const {'Content-Type': 'application/json; charset=UTF-8'}, body: jsonEncode(remarks))
+          .patch(url,
+              headers: const {
+                'Content-Type': 'application/json; charset=UTF-8'
+              },
+              body: jsonEncode(remarks))
           .timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         _showSuccess('Success saving...', silent: silent);
       } else {
-        final msg = 'Failed to cancel pull-out. Status code: ${response.statusCode}';
+        final msg =
+            'Failed to cancel pull-out. Status code: ${response.statusCode}';
         if (silent) {
           throw Exception(msg);
         } else {

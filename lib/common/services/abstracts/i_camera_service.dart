@@ -6,5 +6,7 @@ abstract class ICameraService {
   bool get isInitialized;
   Stream<bool> get isProcessingStream;
   dynamic getNativeCameraControllerInstance();
+  Future<void> pausePreview();
+  Future<void> resumePreview();
   void dispose();
 }

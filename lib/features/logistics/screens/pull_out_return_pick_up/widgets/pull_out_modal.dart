@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -65,6 +66,7 @@ class PullOutModal extends StatelessWidget {
             return BCancelRemarks(
               remarks: remarks.remarks,
               date: remarks.date,
+              user: remarks.userUpdated,
             );
           }),
         PullOutRequestModalFooter(requestModel: requestModel),

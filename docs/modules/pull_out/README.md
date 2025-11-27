@@ -6,38 +6,40 @@ Purpose
 
 What we implemented
 - Data model: `PullOutModel` with safe defaults and helpers.
-  - Methods: `fromJson`, `toJson`, `toJsonInsert`, `copyWith`, `empty()`.
+  - Methods: `fromJson`, `toJson`, `copyWith`, `empty()`.
   - Parsing tolerant to API key casing/variants and nulls; supports nested `ClientModel` and a `DocumentReference` list.
 - UI guidance: reuse the Standard Delivery `FilterDropdown` pattern for Pull Out status filtering.
 - Integration guidance: controllers, bindings, and services per project architecture (GetX + DI via `Get.lazyPut(fenix: true)`).
 
 Key file(s)
 - lib/features/logistics/models/pull_out_model.dart
+- lib/features/logistics/controllers/pull_out_controller.dart
+- lib/features/logistics/helpers/pull_out_data_manager.dart
+- lib/features/logistics/helpers/pull_out_filter_manager.dart
+- lib/features/logistics/helpers/pull_out_form_state.dart
 
 Data model highlights
 - Fields
   - Identifiers: `id`
   - Client: `clientId`, `clientContactPerson`, `client: ClientModel`
   - Categorization: `formCategoryId`, `itemCategoryId`
-  - Docs/IRRF: `slipNo`, `irrfNumber`, `irrfDate`, `documentReference: List<String>`
+  - Docs/IRRF: `irrfNumber`, `irrfDate`, `documentReference: List<String>`
   - Reason & logistics: `reasonForReturn`, `releasedBy`, `pullOutDate`, `pullOutDateStartAt`, `pullOutDateEndAt`
   - Status & transport: `requestStatus`, `tripTicketNumber`, `driver`, `helper`
+  - Mobile: `mobileID: int?`, `mobileName`
   - Audit: `createdAt`, `updatedAt`, `createdBy`, `requestedBy`
+  - Cancel: `cancelRemarks: CancelRemarksModel`
 - JSON strategy
   - `fromJson` picks the first present key among common variants (e.g., `RequestID`, `requestId`, ...).
-  - `toJson` mirrors API field names used by backend.
-  - `toJsonInsert` emits a minimal, create-focused payload (omit server-managed identifiers/timestamps).
+  - `toJson` mirrors API field names used by backend (PascalCase keys).
 
 Example usage
 ```text
 // Parse from API
 final model = PullOutModel.fromJson(apiResponse);
 
-// Serialize to full/update payload
+// Serialize to payload
 final payload = model.toJson();
-
-// Minimal insert payload
-final insertPayload = model.toJsonInsert();
 
 // Immutable-style updates
 final updated = model.copyWith(requestStatus: 'Approved');
@@ -69,14 +71,16 @@ UI — list onTap/onLongPress behavior
 
 GetX wiring (reference)
 - Bindings (register once, lazily):
-  - `Get.lazyPut(() => PullOutController(service: Get.find()), fenix: true);`
-  - Register `IPullOutService` → `PullOutService` in the same binding.
+  - `Get.lazyPut(() => PullOutController(), fenix: true);`
+  - Repositories (`PullOutRepository`, `CancelRemarksRepository`, etc.) are registered separately.
 - Controller responsibilities
-  - Fetch, filter, and expose `RxList<PullOutModel>`; manage `filterManager` and derived views.
-  - Call services/repositories; no direct network in widgets.
-- Services
-  - `IPullOutService` in `common/services/abstracts`.
-  - `PullOutService` in `common/services/implementations` (API calls, mapping to/from `PullOutModel`).
+  - Fetch, filter, and expose `RxList<PullOutModel>`; manage `filterManager`, `dataManager`, and `formState`.
+  - Delegates business operations to `PullOutDataManager` (orchestration layer).
+  - No direct network in widgets.
+- Data Manager
+  - `PullOutDataManager` in `features/logistics/helpers/` orchestrates save/update/fetch operations.
+  - Calls repositories (API calls, mapping to/from `PullOutModel`).
+  - Validates connectivity and handles full-screen loaders.
 
 New files
 - `lib/features/logistics/services/implementations/pull_out_role_handler.dart` — role-based action handlers (temporary read-only/confirm flows).
@@ -97,15 +101,21 @@ Edge cases covered by model
 
 Checklist to replicate for similar modules
 - Model
-  - Create `<Module>Model` with: defaults, `empty()`, `copyWith`, `fromJson` (multi-key tolerance), `toJson`, `toJsonInsert`.
+  - Create `<Module>Model` with: defaults, `empty()`, `copyWith`, `fromJson` (multi-key tolerance), `toJson`.
 - Controller
   - Expose filters and computed lists; keep logic out of UI.
+  - Use `RxList` for reactive state; manage `filterManager`, `dataManager`, and `formState`.
+- Data Manager
+  - Create `<Module>DataManager` in `features/<domain>/helpers/` for business logic orchestration.
+  - Handle connectivity validation, loading states, and repository calls.
 - Binding
-  - Register controller and service via `Get.lazyPut(fenix: true)`.
-- Service
-  - Define `I<Module>Service` + implementation; return strongly typed models.
+  - Register controller via `Get.lazyPut(fenix: true)`.
+  - Ensure repositories are registered separately.
+- Repository
+  - Implement repository pattern in `data/repositories/<module>/` for API/data access.
 - UI
   - Reuse `FilterDropdown` pattern for status or category filters.
+  - Implement `onTap`/`onLongPress` handlers for list items.
 - Tests (optional but recommended)
   - JSON parsing round-trip; filter logic; controller computed getters.
 

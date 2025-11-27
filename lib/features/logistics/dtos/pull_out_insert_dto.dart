@@ -3,7 +3,6 @@ class PullOutInsertDto {
   final String? clientContactPerson;
   final dynamic formCategoryID;
   final dynamic itemCategoryID;
-  final String? slipNo;
   final String? irrfNumber;
   final String? irrfDate;
   final String? reasonForReturn;
@@ -25,7 +24,6 @@ class PullOutInsertDto {
     this.clientContactPerson,
     this.formCategoryID,
     this.itemCategoryID,
-    this.slipNo,
     this.irrfNumber,
     this.irrfDate,
     this.reasonForReturn,
@@ -53,7 +51,6 @@ class PullOutInsertDto {
     put('ClientContactPerson', clientContactPerson);
     put('FormCategoryID', formCategoryID);
     put('ItemCategoryID', itemCategoryID);
-    put('SlipNo', slipNo);
     put('IRRFNumber', irrfNumber);
     put('IRRFDate', irrfDate);
     put('ReasonForReturn', reasonForReturn);

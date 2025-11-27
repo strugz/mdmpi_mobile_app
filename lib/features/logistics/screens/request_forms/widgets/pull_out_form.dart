@@ -12,7 +12,6 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_info
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/helpers/text_formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_submit_button.dart';
@@ -38,9 +37,6 @@ class PullOutForm extends StatelessWidget {
       await controller.submitFromForm();
 
       if ((controller.errorMessage.value ?? '').isEmpty) {
-        // Explicitly clear fields from this widget after a successful save
-        // Pull-Out specific text fields
-        controller.formState.slipNoController.clear();
         controller.formState.clientContactPersonController.clear();
         controller.formState.irrfNumberController.clear();
         controller.formState.irrfDateController.clear();
@@ -135,15 +131,6 @@ class PullOutForm extends StatelessWidget {
                                     ? 'Please select an item category'
                                     : null,
                           )),
-                      const SizedBox(height: BSizes.spaceBtwItems),
-
-                      /// Slip No
-                      BTextFormField(
-                        controller: controller.formState.slipNoController,
-                        label: 'Slip No',
-                        textCapitalization: TextCapitalization.characters,
-                        inputFormatters: [UpperCaseTextFormatter()],
-                      ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Client Contact Person

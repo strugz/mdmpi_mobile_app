@@ -11,7 +11,6 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/wi
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -65,7 +64,6 @@ class BModal extends StatelessWidget {
         },
       ),
       children: [
-        const SizedBox(height: BSizes.spaceBtwSections),
         if (isDoneDelivery)
           Center(
             child: BProductTitleText(
@@ -75,7 +73,6 @@ class BModal extends StatelessWidget {
                 fontColor: dark ? BColors.light : BColors.black),
           ),
         if (isDoneDelivery) CapturedSignatureImage(requestId: requestModel.id),
-        const SizedBox(height: BSizes.xs),
         if (isDoneDelivery)
           ViewDeliveredItemButton(
             textColor: textColor,
@@ -102,6 +99,7 @@ class BModal extends StatelessWidget {
             return BCancelRemarks(
               remarks: remarks.remarks,
               date: remarks.date,
+              user: remarks.userUpdated,
             );
           }),
         RequestModalFooter(requestModel: requestModel),

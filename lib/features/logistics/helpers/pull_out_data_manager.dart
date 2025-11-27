@@ -110,7 +110,6 @@ class PullOutDataManager {
         requestStatus: 'New Request',
         formCategoryId: normalizedFormCategory,
         itemCategoryId: normalizedItemCategory,
-        slipNo: controller.formState.slipNoController.text,
         irrfNumber: controller.formState.irrfNumberController.text,
         irrfDate: controller.formState.irrfDateController.text,
         reasonForReturn: controller.formState.reasonController.text,
@@ -255,7 +254,7 @@ class PullOutDataManager {
 
   /// Cancel a pull-out request with remarks via API.
   Future<void> cancelRequestWithRemarks(
-      PullOutModel request, String remarks) async {
+      PullOutModel request, String remarks, String user, PullOutController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -265,10 +264,12 @@ class PullOutDataManager {
     }
 
     try {
-      await _repository.cancelPullOut(request.id, remarks, silent: true);
+      await _repository.cancelPullOutAPI(request.id, remarks, user, silent: true);
+      await fetchPullOuts(controller);
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');
     } catch (e) {
+      controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(
           title: 'Save Failed', message: 'An error occurred: $e');
     } finally {
@@ -312,28 +313,6 @@ class PullOutDataManager {
     }
   }
 
-  /// Cancel by id and refresh controller list.
-  Future<void> cancelPullOutById(
-      String requestId, String remarks, PullOutController controller) async {
-    BFullScreenLoader.openLoadingDialog(
-        'Saving on process...', BImages.docerAnimation);
-    if (!await validateConnectivity()) {
-      BFullScreenLoader.stopLoading();
-      return;
-    }
-    try {
-      await _repository.cancelPullOut(requestId, remarks, silent: true);
-      await fetchPullOuts(controller);
-      BLoaders.successSnackBar(
-          title: 'Cancelled', message: 'Request cancelled');
-    } catch (e) {
-      controller.errorMessage.value = e.toString();
-      BLoaders.errorSnackBar(
-          title: 'Save Failed', message: 'An error occurred: $e');
-    } finally {
-      BFullScreenLoader.stopLoading();
-    }
-  }
 
   /// Load item and form categories and populate the controller caches.
   Future<void> loadCategories(PullOutController controller) async {

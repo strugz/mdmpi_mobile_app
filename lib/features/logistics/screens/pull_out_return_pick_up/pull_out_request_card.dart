@@ -10,15 +10,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 
-/// Card widget displaying a pull-out request summary.
-///
-/// Visual hierarchy:
-/// - Header: Client name / Slip reference + optional trailing actions.
-/// - Meta lines: Requested by, Pull-out date, Created by.
-/// - Footer: Status chip.
-///
-/// Interaction: Provide [onTap] / [onLongPress] / [menuItems]. If all are null
-/// card renders without InkWell overhead. Overflow text is truncated.
+
 class PullOutRequestCard extends StatelessWidget {
   const PullOutRequestCard({
     super.key,
@@ -40,7 +32,6 @@ class PullOutRequestCard extends StatelessWidget {
 
   String get _title {
     if (item.client.name.isNotEmpty) return item.client.name;
-    if (item.slipNo.isNotEmpty) return 'Slip: ${item.slipNo}';
     return 'Pull-out Request';
   }
 

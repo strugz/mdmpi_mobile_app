@@ -9,7 +9,6 @@ import '../../../data/models/item_category_model.dart';
 import '../../../data/models/form_category_model.dart';
 
 class PullOutFormState {
-  final TextEditingController slipNoController = TextEditingController();
   final TextEditingController clientContactPersonController = TextEditingController();
   final TextEditingController irrfNumberController = TextEditingController();
   final TextEditingController irrfDateController = TextEditingController();
@@ -38,10 +37,10 @@ class PullOutFormState {
   void initializeDefaultDate() {
     final defaultDate = DateTime.now();
     pullOutDateController.text = DateFormat('yyyy-MM-dd').format(defaultDate);
+    irrfDateController.text = DateFormat('yyyy-MM-dd').format(defaultDate);
   }
 
   void reset() {
-    slipNoController.text = '';
     clientContactPersonController.text = '';
     irrfNumberController.text = '';
     irrfDateController.text = '';
@@ -91,7 +90,6 @@ class PullOutFormState {
   }
 
   void dispose() {
-    slipNoController.dispose();
     clientContactPersonController.dispose();
     irrfNumberController.dispose();
     irrfDateController.dispose();
