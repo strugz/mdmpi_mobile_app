@@ -11,13 +11,9 @@ import 'dart:convert';
 import '../../../base/utils/exceptions/platform_exceptions.dart';
 import '../../../features/logistics/models/cancel_remarks_model.dart';
 
-/// Primary repository for StandardDelivery operations. This contains
-/// the HTTP and upload logic (moved from RequestRepository) so the
-/// codebase uses a domain-focused repository.
 class StandardDeliveryRepository extends GetxController {
   static StandardDeliveryRepository get instance => Get.find();
 
-  /// Insert a new StandardDelivery (POST /api4/request)
   Future<void> insertDelivery(StandardDeliveryModel requestData) async {
     try {
       final dto = StandardDeliveryMapper.toInsertDto(requestData);
@@ -45,7 +41,6 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  /// Update a StandardDelivery (PATCH /api4/request)
   Future<void> updateDelivery(StandardDeliveryModel requestData) async {
     try {
       final updateDto = StandardDeliveryMapper.toUpdateDto(requestData);
@@ -100,7 +95,6 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  /// Cancel request with remarks (PATCH /api3/request/cancel/{id})
   Future<void> cancelDelivery(String requestID, String remarks, String user) async {
     try {
       final response = await http
@@ -152,7 +146,6 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  /// Fetch all pending requests from API
   Future<List<StandardDeliveryModel>> getAllPending() async {
     try {
       final response =
@@ -201,8 +194,6 @@ class StandardDeliveryRepository extends GetxController {
         throw Exception('Failed to load pending request');
       }
     } catch (e, st) {
-      print('Error in getAllPendingRequestAPI: $e');
-      print(st);
       throw Exception('Something went wrong. Please try again: $e\n$st');
     }
   }

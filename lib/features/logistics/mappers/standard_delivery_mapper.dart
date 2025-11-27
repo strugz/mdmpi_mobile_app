@@ -1,11 +1,11 @@
-import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery_dto.dart';
+import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/client_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/remarks_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/image_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/signature_dto.dart';
-import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery_insert_dto.dart';
-import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery_update_dto.dart';
+import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_insert_dto.dart';
+import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_update_dto.dart';
 
 // Import the concrete models used by helpers
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';

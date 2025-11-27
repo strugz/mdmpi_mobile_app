@@ -3,7 +3,6 @@ import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.
 
 /// Pull-out request model.
 class PullOutModel {
-  // Identifiers and client
   String id;
   String clientId;
   String clientContactPerson;

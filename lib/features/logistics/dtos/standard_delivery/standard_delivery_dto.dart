@@ -1,7 +1,7 @@
-import 'client_dto.dart';
-import 'remarks_dto.dart';
-import 'image_dto.dart';
-import 'signature_dto.dart';
+import '../client_dto.dart';
+import '../remarks_dto.dart';
+import '../image_dto.dart';
+import '../signature_dto.dart';
 
 class StandardDeliveryDto {
   final String? id;
