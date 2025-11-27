@@ -33,7 +33,6 @@
 
     <application
         android:label="MDMPI APP"
-        android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:requestLegacyExternalStorage="true"

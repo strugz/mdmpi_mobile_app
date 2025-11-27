@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/item_category_reposito
 
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../data/repositories/image/image_repository.dart';
+import '../../personalization/controller/user_controller.dart';
 
 /// Manager for Pick-Up domain orchestration (save/update flows).
 class PickUpDataManager {
@@ -49,6 +50,7 @@ class PickUpDataManager {
 
     try {
       final stdController = Get.find<StandardDeliveryController>();
+      final userCtrl = Get.find<UserController>();
 
       final client = stdController.formState.clientInformation.value;
       if (client == null || client.id.isEmpty) {
@@ -101,6 +103,7 @@ class PickUpDataManager {
         itemCategoryId: normalizedItemCategory,
         datePickUp: controller.formState.datePickUpController.text,
         status: 'New Request',
+        createdBy: userCtrl.user.value.initial,
         documentReference: docRefs,
       );
       await _repository.insert(model, silent: true);
@@ -139,21 +142,21 @@ class PickUpDataManager {
                 request.itemPreparedAt.isEmpty
             ? nowString
             : request.itemPreparedAt,
-        itemPreparedEndAt: newStatus == BTexts.statusForDelivery &&
+        itemPreparedEndAt: newStatus == 'Item Packed' &&
                 request.itemPreparedEndAt.isEmpty
             ? nowString
             : request.itemPreparedEndAt,
-        releasedBy: newStatus == BTexts.statusInTransit &&
+        releasedBy: newStatus == 'Item Packed' &&
                 request.releasedBy.isEmpty
             ? controller.formState.releasedByController.text
             : request.releasedBy,
-        receivedBy: newStatus == BTexts.statusTakenOut &&
+        receivedBy: newStatus == 'Received' &&
                 request.receivedBy.isEmpty
             ? controller.formState.receivedByController.text
             : request.receivedBy,
       );
 
-      final bool signatureWasAdded = newStatus == BTexts.statusTakenOut &&
+      final bool signatureWasAdded = newStatus == 'Received' &&
           formState.receiverSignatureBase64.value.isNotEmpty;
 
       if (signatureWasAdded) {
@@ -173,7 +176,7 @@ class PickUpDataManager {
         }
       }
 
-      if (newStatus == BTexts.statusTakenOut) {
+      if (newStatus == 'Received') {
         String? finalImageBase64 =
             await BImageHelperFunctions.getDeliveryImageAsBase64(
                 newStatus, request.id);

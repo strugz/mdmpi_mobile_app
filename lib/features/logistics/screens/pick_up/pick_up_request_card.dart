@@ -4,14 +4,13 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
-import 'package:mdmpi_mobile_app/common/widgets/icons/icon_value.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 
-class PullOutRequestCard extends StatelessWidget {
-  const PullOutRequestCard({
+class PickUpRequestCard extends StatelessWidget {
+  const PickUpRequestCard({
     super.key,
     required this.item,
     this.onTap,
@@ -20,7 +19,7 @@ class PullOutRequestCard extends StatelessWidget {
     this.trailing,
   });
 
-  final PullOutModel item;
+  final PickUpModel item;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final List<PopupMenuEntry>? menuItems;
@@ -31,13 +30,13 @@ class PullOutRequestCard extends StatelessWidget {
 
   String get _title {
     if (item.client.name.isNotEmpty) return item.client.name;
-    return 'Pull-out Request';
+    return 'Pick-Up Request';
   }
 
   String _safe(String v) => v.isNotEmpty ? v : '-';
 
-  String get _formattedPullOutDate {
-    final raw = item.pullOutDate.trim();
+  String get _formattedPickUpDate {
+    final raw = item.datePickUp.trim();
     if (raw.isEmpty) return '-';
     String datePart;
     if (raw.contains('T')) {
@@ -60,9 +59,14 @@ class PullOutRequestCard extends StatelessWidget {
     );
   }
 
-  bool get _showDriver {
-    final d = item.driver.trim();
-    return d.isNotEmpty && d.toLowerCase() != 'none';
+  bool get _showPreparedBy {
+    final p = item.preparedBy.trim();
+    return p.isNotEmpty;
+  }
+
+  bool get _showReceivedBy {
+    final r = item.receivedBy.trim();
+    return r.isNotEmpty;
   }
 
   @override
@@ -103,14 +107,14 @@ class PullOutRequestCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _metaLine(
-                    label: 'Requested By',
-                    value: item.requestedBy,
+                    label: 'Item Category',
+                    value: item.itemCategory.name,
                     color: textColorPrimary),
               ),
               const SizedBox(width: BSizes.xs),
               _metaLine(
-                  label: 'Pull-Out Date',
-                  value: _formattedPullOutDate,
+                  label: 'Pick-Up Date',
+                  value: _formattedPickUpDate,
                   color: textColorPrimary),
             ],
           ),
@@ -130,32 +134,30 @@ class PullOutRequestCard extends StatelessWidget {
                 height: 20,
               ),
               // Footer status chip
-              StatusChip(status: item.requestStatus),
+              StatusChip(status: item.status),
             ],
           ),
-          if (_showDriver) ...[
+          if (_showPreparedBy) ...[
+            const SizedBox(height: BSizes.xxs),
             Row(
               children: [
                 _metaLine(
-                  label: 'Driver',
-                  value: item.driver,
+                  label: 'Prepared By',
+                  value: item.preparedBy,
                   color: textColorPrimary,
                 ),
-                SizedBox(width: BSizes.xs),
-                BCircularIcon(
-                  backgroundColor: Colors.transparent,
-                  icon: Iconsax.add_circle1,
-                  color: dark ? BColors.white : BColors.black,
-                  size: 5,
-                  width: 20,
-                  height: 20,
-                ),
+              ],
+            ),
+          ],
+          if (_showReceivedBy) ...[
+            const SizedBox(height: BSizes.xxs),
+            Row(
+              children: [
                 _metaLine(
-                  label: 'Helper',
-                  value: item.helper,
+                  label: 'Received By',
+                  value: item.receivedBy,
                   color: textColorPrimary,
                 ),
-                BIconValue(icon: Iconsax.truck, value: item.mobileName),
               ],
             ),
           ],
@@ -168,7 +170,7 @@ class PullOutRequestCard extends StatelessWidget {
       padding: const EdgeInsets.all(1),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
-        color: item.requestStatus == BTexts.statusCancelled
+        color: item.status == BTexts.statusCancelled
             ? BColors.cancelledBackground
             : null,
       ),

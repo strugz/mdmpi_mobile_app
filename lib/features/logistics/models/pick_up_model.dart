@@ -14,6 +14,7 @@ class PickUpModel {
   String status;
   String releasedBy;
   String receivedBy;
+  String createdBy;
   String createdAt;
   String updatedAt;
 
@@ -34,6 +35,7 @@ class PickUpModel {
     this.status = '',
     this.releasedBy = '',
     this.receivedBy = '',
+    this.createdBy = '',
     this.createdAt = '',
     this.updatedAt = '',
     ClientModel? client,
@@ -58,6 +60,7 @@ class PickUpModel {
     String? status,
     String? releasedBy,
     String? receivedBy,
+    String? createdBy,
     String? createdAt,
     String? updatedAt,
     ClientModel? client,
@@ -76,6 +79,7 @@ class PickUpModel {
       status: status ?? this.status,
       releasedBy: releasedBy ?? this.releasedBy,
       receivedBy: receivedBy ?? this.receivedBy,
+      createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       client: client ?? this.client,
@@ -98,6 +102,7 @@ class PickUpModel {
       'Status': status,
       'ReleasedBy': releasedBy,
       'ReceivedBy': receivedBy,
+      'CreatedBy': createdBy,
       'CreatedAt': createdAt,
       'UpdatedAt': updatedAt,
       'Client': client.toJson(),
@@ -149,6 +154,8 @@ class PickUpModel {
           json, ['ReleasedBy', 'releasedBy', 'Releasedby', 'releasedby']),
       receivedBy: firstPresent(
           json, ['ReceivedBy', 'receivedBy', 'Receivedby', 'receivedby']),
+      createdBy: firstPresent(
+          json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
       createdAt: firstPresent(
           json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
       updatedAt: firstPresent(

@@ -4,6 +4,7 @@ class PickUpInsertDto {
   final List<String>? documentReference;
   final String? datePickUp;
   final String? status;
+  final String? createdBy;
 
   PickUpInsertDto({
     this.clientID,
@@ -11,6 +12,7 @@ class PickUpInsertDto {
     this.documentReference,
     this.datePickUp,
     this.status,
+    this.createdBy,
   });
 
   Map<String, dynamic> toJson() {
@@ -24,6 +26,7 @@ class PickUpInsertDto {
     put('DocumentReference', documentReference);
     put('DatePickUp', datePickUp);
     put('Status', status);
+    put('CreatedBy', createdBy);
 
     return data;
   }

@@ -42,8 +42,6 @@ class PickUpFormState {
     itemCategoryController.text = '';
     receiverSignatureBase64.value = '';
 
-    // If categories are already loaded, restore sensible defaults so the UI
-    // doesn't end up with empty selections after a reset.
     if (itemCategories.isNotEmpty) {
       final defaultItem = itemCategories.firstWhere(
         (e) => e.name.toLowerCase().contains('reagent'),

@@ -45,6 +45,8 @@ import '../features/personalization/controller/update_name_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
 import '../data/repositories/pull_out/pull_out_repository.dart';
 import '../features/logistics/controllers/pull_out_controller.dart';
+import '../data/repositories/pick_up/pick_up_repository.dart';
+import '../features/logistics/controllers/pick_up_controller.dart';
 // Add repositories for categories
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
@@ -77,6 +79,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => MobileController(), fenix: true);
     // Register PullOutController
     Get.lazyPut(() => PullOutController(), fenix: true);
+    // Register PickUpController
+    Get.lazyPut(() => PickUpController(), fenix: true);
     Get.lazyPut(
         () => CameraHandlerController(
               cameraService: Get.find<ICameraService>(),
@@ -104,6 +108,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
     Get.lazyPut(() => PullOutRepository(), fenix: true);
+    Get.lazyPut(() => PickUpRepository(), fenix: true);
     Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
     Get.lazyPut(() => FormCategoryRepository(), fenix: true);
   }

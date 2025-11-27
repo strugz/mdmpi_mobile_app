@@ -18,6 +18,7 @@ class PickUpMapper {
       documentReference: m.documentReference.isNotEmpty ? m.documentReference : null,
       datePickUp: m.datePickUp.isNotEmpty ? m.datePickUp : null,
       status: m.status.isNotEmpty ? m.status : null,
+      createdBy: m.createdBy.isNotEmpty ? m.createdBy : null,
     );
   }
 

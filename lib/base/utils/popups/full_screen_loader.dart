@@ -11,8 +11,10 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
 import '../../../common/widgets/texts/product_title_text.dart';
@@ -21,6 +23,7 @@ import '../../../features/authentication/controllers/signup/signup_controller.da
 import '../../../features/logistics/controllers/standard_delivery_controller.dart';
 import '../../../features/logistics/models/standard_delivery_model.dart';
 import '../../../features/logistics/models/pull_out_model.dart';
+import '../../../features/logistics/models/pick_up_model.dart';
 
 /// A utility class for managing a full-screen loading dialog.
 class BFullScreenLoader {
@@ -416,6 +419,39 @@ class BFullScreenLoader {
       builder: (BuildContext context) {
         return SafeArea(
           child: PullOutModal(
+            requestModel: requestModel,
+            onPressed: onPressed,
+            isActionVisible: isActionVisible,
+          ),
+        );
+      },
+    );
+  }
+
+  static void showSignatureDialogForPickUp(
+      BuildContext context, PickUpController requestController) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (Uint8List? signatureBytes) {
+        requestController.setSignature(signatureBytes);
+      },
+    );
+  }
+
+  static void showPickUpDialog(
+    BuildContext context,
+    PickUpModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: PickUpModal(
             requestModel: requestModel,
             onPressed: onPressed,
             isActionVisible: isActionVisible,

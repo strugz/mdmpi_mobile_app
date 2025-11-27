@@ -5,12 +5,15 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_floating_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_list.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/pull_out_return_pick_up_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/pick_up_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_filter_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_filter_manager.dart';
 
 import '../controllers/standard_delivery_controller.dart';
 
@@ -22,9 +25,10 @@ class RequestScreen extends StatelessWidget {
     final requestController = Get.find<StandardDeliveryController>();
     final userController = Get.find<UserController>();
     final pullOutController = Get.find<PullOutController>();
+    final pickUpController = Get.find<PickUpController>();
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Builder(builder: (context) {
         final TabController tabController = DefaultTabController.of(context);
 
@@ -62,6 +66,7 @@ class RequestScreen extends StatelessWidget {
                   builder: (context, _) {
                     final currentIndex = tabController.index;
                     if (currentIndex == 0) {
+                      // Standard Delivery filters
                       return Column(
                         children: [
                           const BFilterDropdown(),
@@ -76,7 +81,8 @@ class RequestScreen extends StatelessWidget {
                           ),
                         ],
                       );
-                    } else {
+                    } else if (currentIndex == 1) {
+                      // Pull-out filters
                       return Column(
                         children: [
                           // Date filter for Pull-out using same RequestFilter enum
@@ -100,6 +106,31 @@ class RequestScreen extends StatelessWidget {
                           ),
                         ],
                       );
+                    } else {
+                      // Pick-Up filters
+                      return Column(
+                        children: [
+                          // Date filter for Pick-up using same RequestFilter enum
+                          FilterDropdown<RequestFilter>(
+                            selectedFilter: pickUpController.filterManager.selectedFilter,
+                            filterValues: RequestFilter.values,
+                            getDisplayName: (f) => f.displayName,
+                            onFilterChanged: (f) {
+                              pickUpController.selectDateFilter(f);
+                            },
+                          ),
+                          const SizedBox(height: BSizes.spaceBtwItems),
+                          // Status filter for Pick-up
+                          FilterDropdown<PickUpStatusFilter>(
+                            selectedFilter: pickUpController.filterManager.selectedStatusFilter,
+                            filterValues: PickUpStatusFilter.values,
+                            getDisplayName: (f) => f.displayName,
+                            onFilterChanged: (f) {
+                              pickUpController.selectStatusFilter(f);
+                            },
+                          ),
+                        ],
+                      );
                     }
                   },
                 ),
@@ -111,6 +142,7 @@ class RequestScreen extends StatelessWidget {
                 tabs: const [
                   Tab(text: 'Standard Delivery'),
                   Tab(text: 'Pull-out'),
+                  Tab(text: 'Pick-Up'),
                 ],
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
@@ -129,6 +161,12 @@ class RequestScreen extends StatelessWidget {
                     Column(
                       children: const [
                         PullOutReturnPickUpList(),
+                      ],
+                    ),
+                    // Pick-Up tab: only the list (filters are above)
+                    Column(
+                      children: const [
+                        PickUpList(),
                       ],
                     ),
                   ],

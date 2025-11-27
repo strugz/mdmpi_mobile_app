@@ -8,8 +8,9 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_deliver
 
 enum PickUpStatusFilter {
   statusNewRequest('New Request'),
-  statusInTransit('In Transit'),
-  statusTakenOut('Taken Out'),
+  statusItemPrepared('Item Prepared'),
+  statusItemPacked('Item Packed'),
+  statusReceived('Received'),
   statusCancelled('Cancelled'),
   all('All');
 
