@@ -41,7 +41,7 @@
         android:usesCleartextTraffic="true">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyCT7YYQC4CNoyAdJXvfzqMxxTW-NggMeCY" />
+            android:value="${mapsApiKey}" />
 
 
 
