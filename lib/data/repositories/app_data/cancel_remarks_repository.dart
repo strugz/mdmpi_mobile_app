@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.
 enum RequestModule {
   standardDelivery,
   pullOut,
+  pickUp,
 }
 
 class CancelRemarksRepository {
@@ -22,6 +23,8 @@ class CancelRemarksRepository {
         return "${dotenv.env['API_URL']!}/api4/request/cancel/$requestId";
       case RequestModule.pullOut:
         return "${dotenv.env['API_URL']!}/api4/RequestPullOutReturnPickUp/cancel/$requestId";
+      case RequestModule.pickUp:
+        return "${dotenv.env['API_URL']!}/api4/RequestPickUp/cancel/$requestId";
     }
   }
 
