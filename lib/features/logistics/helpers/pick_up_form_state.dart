@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,8 @@ import 'package:intl/intl.dart';
 import '../../../features/logistics/models/client_model.dart';
 import '../../../data/models/item_category_model.dart';
 
+/// Encapsulates all form-related state for pick-up requests.
+/// Manages text controllers, reactive values, and form validation state.
 class PickUpFormState {
   final TextEditingController preparedByController = TextEditingController();
   final TextEditingController itemPreparedAtController = TextEditingController();
@@ -26,11 +29,28 @@ class PickUpFormState {
 
   final RxList<ItemCategoryModel> itemCategories = <ItemCategoryModel>[].obs;
 
+  /// Initializes the pick-up date controller with today's date.
+  /// Should be called during form initialization.
   void initializeDefaultDate() {
     final defaultDate = DateTime.now();
     datePickUpController.text = DateFormat('yyyy-MM-dd').format(defaultDate);
   }
 
+  /// Sets the receiver's signature with automatic base64 conversion.
+  /// Handles both setting and clearing of signature data.
+  ///
+  /// [signature] Raw signature image bytes, or null to clear the signature
+  void setSignature(Uint8List? signature) {
+    receiverSignatureBytes.value = signature;
+    receiverSignatureBase64.value =
+        signature != null && signature.isNotEmpty
+            ? base64Encode(signature)
+            : "";
+  }
+
+  /// Resets all form fields to their default or empty state.
+  /// Maintains category selection with 'reagent' as default if available.
+  /// Properly disposes all document reference controllers to prevent memory leaks.
   void reset() {
     preparedByController.text = '';
     itemPreparedAtController.text = '';
@@ -64,6 +84,8 @@ class PickUpFormState {
     receiverSignatureBase64.value = "";
   }
 
+  /// Disposes all text controllers to free up resources.
+  /// Should be called when the form state is no longer needed.
   void dispose() {
     preparedByController.dispose();
     itemPreparedAtController.dispose();

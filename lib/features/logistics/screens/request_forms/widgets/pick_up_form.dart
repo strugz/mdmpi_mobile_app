@@ -94,17 +94,17 @@ class PickUpForm extends StatelessWidget {
 
                       /// Item Category (display name, store ID)
                       Obx(() => BDropDownDynamicList(
-                            controller: controller.formState.itemCategoryController,
+                            controller:
+                                controller.formState.itemCategoryController,
                             label: 'Item Category',
                             dropdownList: controller.formState.itemCategories
-                                    .map((e) => e.toJson())
-                                    .toList(),
+                                .map((e) => e.toJson())
+                                .toList(),
                             valueKey: 'ItemCategoryID',
                             displayKey: 'ItemCategoryName',
-                            validator: (v) =>
-                                (v == null || v.trim().isEmpty)
-                                    ? 'Please select an item category'
-                                    : null,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Please select an item category'
+                                : null,
                           )),
                       const SizedBox(height: BSizes.spaceBtwItems),
 

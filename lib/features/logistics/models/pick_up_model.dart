@@ -174,5 +174,41 @@ class PickUpModel {
               : <String>[],
     );
   }
+
+  /// Parse from local database JSON (uses different column naming)
+  factory PickUpModel.fromDbJson(Map<String, dynamic> json) {
+    // Normalize keys to lowercase to handle platform/sqlite variations
+    final Map<String, dynamic> lower = {};
+    json.forEach((k, v) {
+      lower[k.toString().toLowerCase()] = v;
+    });
+
+    String idValue = (lower['requestid'] ?? lower['id'] ?? '').toString();
+
+    // Parse item category from separate fields
+    ItemCategoryModel itemCategoryModel = ItemCategoryModel(
+      id: (lower['itemcategoryid'] ?? '').toString(),
+      name: (lower['itemcategoryname'] ?? '').toString(),
+    );
+
+    return PickUpModel(
+      id: idValue,
+      clientId: (lower['clientid'] ?? '').toString(),
+      itemCategoryId: (lower['itemcategoryid'] ?? '').toString(),
+      preparedBy: (lower['preparedby'] ?? '').toString(),
+      itemPreparedAt: (lower['itempreparedat'] ?? '').toString(),
+      itemPreparedEndAt: (lower['itempreparedendat'] ?? '').toString(),
+      datePickUp: (lower['datepickup'] ?? '').toString(),
+      remarks: (lower['remarks'] ?? '').toString(),
+      status: (lower['status'] ?? '').toString(),
+      releasedBy: (lower['releasedby'] ?? '').toString(),
+      receivedBy: (lower['receivedby'] ?? '').toString(),
+      createdBy: (lower['createdby'] ?? '').toString(),
+      createdAt: (lower['createdat'] ?? '').toString(),
+      updatedAt: (lower['updatedat'] ?? '').toString(),
+      itemCategory: itemCategoryModel,
+      // client and documentReference will be loaded by DAO
+    );
+  }
 }
 

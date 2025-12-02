@@ -3,12 +3,17 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
+
+import '../../../../../common/widgets/dialogs/request_image_dialog.dart';
 
 class PickUpRequestModalHeader extends StatelessWidget {
   const PickUpRequestModalHeader({
@@ -35,17 +40,16 @@ class PickUpRequestModalHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-
+    final Color textColor = dark ? BColors.light : BColors.black;
     final hasAddress = requestModel.client.address.isNotEmpty;
     final hasDatePickUp = requestModel.datePickUp.isNotEmpty;
     final hasReleasedBy = requestModel.releasedBy.isNotEmpty;
     final hasPreparedBy = requestModel.preparedBy.isNotEmpty;
     final hasCreatedBy = requestModel.createdBy.isNotEmpty;
+    final hasReceivedBy = requestModel.receivedBy.isNotEmpty;
 
     return SingleChildScrollView(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
         children: [
           BProductTitleText(
             title: requestModel.client.name,
@@ -62,45 +66,7 @@ class PickUpRequestModalHeader extends StatelessWidget {
               fontColor: dark ? BColors.light : BColors.black,
             ),
           ],
-          if (hasDatePickUp || hasReleasedBy) ...[
-            const SizedBox(height: BSizes.sm),
-            const BTextDivider(text: 'Pick-Up Info'),
-            Row(
-              children: [
-                if (hasReleasedBy)
-                  Expanded(
-                    child: BLabelValueText(
-                      label: 'Released By',
-                      value: requestModel.releasedBy,
-                      showLabel: false,
-                      icon: Iconsax.user,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                if (hasDatePickUp)
-                  Expanded(
-                    child: BLabelValueText(
-                      label: 'Pick-Up Date',
-                      value: _formatDate(requestModel.datePickUp),
-                      showLabel: false,
-                      icon: Iconsax.calendar,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-              ],
-            ),
-          ],
-          if (hasPreparedBy) ...[
-            const SizedBox(height: BSizes.sm),
-            BLabelValueText(
-              label: 'Prepared By',
-              value: requestModel.preparedBy,
-              icon: Iconsax.user,
-              padding: EdgeInsets.zero,
-            ),
-          ],
-          if (hasCreatedBy) ...[
-            const SizedBox(height: BSizes.sm),
+          if (hasCreatedBy && hasPreparedBy) ...[
             BLabelValueText(
               label: 'Created By',
               value: requestModel.createdBy,
@@ -108,10 +74,68 @@ class PickUpRequestModalHeader extends StatelessWidget {
               padding: EdgeInsets.zero,
             ),
           ],
-          const SizedBox(height: BSizes.sm),
+          if (hasDatePickUp || hasReleasedBy) ...[
+            const SizedBox(height: BSizes.sm),
+            const BTextDivider(text: 'Pick-Up Info'),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  children: [
+                    if (hasReleasedBy)
+                      Expanded(
+                        child: BLabelValueText(
+                          label: 'Released By',
+                          value: requestModel.releasedBy,
+                          showLabel: false,
+                          icon: Iconsax.user,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                    if (hasDatePickUp)
+                      Expanded(
+                        child: BLabelValueText(
+                          label: 'Pick-Up Date',
+                          value: _formatDate(requestModel.datePickUp),
+                          showLabel: false,
+                          icon: Iconsax.calendar,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            if (hasReceivedBy) ...[
+              const SizedBox(height: BSizes.sm),
+              BLabelValueText(
+                label: 'Received By',
+                value: requestModel.receivedBy,
+                showLabel: false,
+                icon: Iconsax.user,
+                padding: EdgeInsets.zero,
+                mainAlignment: MainAxisAlignment.center,
+              ),
+              const SizedBox(height: BSizes.sm),
+              CapturedSignatureImage(requestId: requestModel.id),
+              ViewDeliveredItemButton(
+                textColor: textColor,
+                labelTitle: BTexts.requestModalViewItemReceivedText,
+                onPressed: () {
+                  final requestIdForDb = requestModel.id;
+                  showRequestImageDialog(context,
+                      requestId: requestIdForDb,
+                      fetchIfMissing: true,
+                      semanticsLabel:
+                          'Delivered item image for request ${requestModel.id}',
+                      apiController: 'RequestPickUp',
+                      title: 'Pick Up Item');
+                },
+              ),
+            ],
+          ],
         ],
       ),
     );
   }
 }
-

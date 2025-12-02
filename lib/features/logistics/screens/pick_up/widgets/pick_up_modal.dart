@@ -56,23 +56,21 @@ class PickUpModal extends StatelessWidget {
         },
       ),
       children: [
-        if (isCancelled)
-          BTextDivider(text: 'Cancel Remarks'),
-          Obx(() {
-            controller.loadCancelRemarks(requestModel.id);
-            final remarks = controller.cancelRemarks.value;
-            if (remarks == null || remarks.remarks.isEmpty) {
-              return const SizedBox.shrink();
-            }
-            return BCancelRemarks(
-              remarks: remarks.remarks,
-              date: remarks.date,
-              user: remarks.userUpdated,
-            );
-          }),
+        if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
+        Obx(() {
+          controller.loadCancelRemarks(requestModel.id);
+          final remarks = controller.cancelRemarks.value;
+          if (remarks == null || remarks.remarks.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return BCancelRemarks(
+            remarks: remarks.remarks,
+            date: remarks.date,
+            user: remarks.userUpdated,
+          );
+        }),
         PickUpRequestModalFooter(requestModel: requestModel),
       ],
     );
   }
 }
-

@@ -122,4 +122,3 @@ class PickUpRequestModalFooter extends StatelessWidget {
     );
   }
 }
-

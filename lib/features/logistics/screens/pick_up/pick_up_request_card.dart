@@ -4,10 +4,13 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
+import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+
 
 class PickUpRequestCard extends StatelessWidget {
   const PickUpRequestCard({
@@ -59,14 +62,24 @@ class PickUpRequestCard extends StatelessWidget {
     );
   }
 
-  bool get _showPreparedBy {
-    final p = item.preparedBy.trim();
-    return p.isNotEmpty;
-  }
+  Future<String> _getItemCategoryName() async {
+    // If already has a name, return it
+    if (item.itemCategory.name.isNotEmpty) {
+      return item.itemCategory.name;
+    }
 
-  bool get _showReceivedBy {
-    final r = item.receivedBy.trim();
-    return r.isNotEmpty;
+    // If no itemCategoryId, return empty
+    if (item.itemCategoryId.isEmpty) {
+      return '';
+    }
+
+    // Fetch from repository
+    try {
+      final categoryName = await ItemCategoryRepository.instance.fetchItemCategory(item.itemCategoryId);
+      return categoryName ?? '';
+    } catch (e) {
+      return '';
+    }
   }
 
   @override
@@ -106,10 +119,21 @@ class PickUpRequestCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _metaLine(
-                    label: 'Item Category',
-                    value: item.itemCategory.name,
-                    color: textColorPrimary),
+                child: FutureBuilder<String>(
+                  future: _getItemCategoryName(),
+                  builder: (context, snapshot) {
+                    final categoryName = snapshot.data ?? item.itemCategory.name;
+                    return BLabelValueText(
+                      icon: Iconsax.category,
+                      label: 'Item Category',
+                      value: categoryName.isNotEmpty ? categoryName : '-',
+                      textColor: textColorPrimary,
+                      dense: true,
+                      maxLines: 1,
+                      showLabel: false,
+                    );
+                  },
+                ),
               ),
               const SizedBox(width: BSizes.xs),
               _metaLine(
@@ -137,30 +161,6 @@ class PickUpRequestCard extends StatelessWidget {
               StatusChip(status: item.status),
             ],
           ),
-          if (_showPreparedBy) ...[
-            const SizedBox(height: BSizes.xxs),
-            Row(
-              children: [
-                _metaLine(
-                  label: 'Prepared By',
-                  value: item.preparedBy,
-                  color: textColorPrimary,
-                ),
-              ],
-            ),
-          ],
-          if (_showReceivedBy) ...[
-            const SizedBox(height: BSizes.xxs),
-            Row(
-              children: [
-                _metaLine(
-                  label: 'Received By',
-                  value: item.receivedBy,
-                  color: textColorPrimary,
-                ),
-              ],
-            ),
-          ],
         ],
       ),
     );

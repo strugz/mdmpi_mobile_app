@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
@@ -21,7 +23,8 @@ enum PickUpStatusFilter {
 class PickUpFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
 
-  final Rx<PickUpStatusFilter> selectedStatusFilter = PickUpStatusFilter.all.obs;
+  final Rx<PickUpStatusFilter> selectedStatusFilter =
+      PickUpStatusFilter.all.obs;
 
   final RxList<PickUpModel> filteredPickUps = <PickUpModel>[].obs;
 
@@ -60,30 +63,36 @@ class PickUpFilterManager {
           dateMatches = targetDate != null && BFormatter.isToday(targetDate);
           break;
         case RequestFilter.yesterday:
-          dateMatches = targetDate != null && BFormatter.isYesterday(targetDate);
+          dateMatches =
+              targetDate != null && BFormatter.isYesterday(targetDate);
           break;
         case RequestFilter.tomorrow:
           dateMatches = targetDate != null && BFormatter.isTomorrow(targetDate);
           break;
         case RequestFilter.fiveDaysAgo:
-          dateMatches = targetDate != null && BFormatter.isWithinLastNDays(targetDate, 5);
+          dateMatches =
+              targetDate != null && BFormatter.isWithinLastNDays(targetDate, 5);
           break;
         case RequestFilter.thirtyDaysAgo:
-          dateMatches = targetDate != null && BFormatter.isWithinLastNDays(targetDate, 30);
+          dateMatches = targetDate != null &&
+              BFormatter.isWithinLastNDays(targetDate, 30);
           break;
         case RequestFilter.all:
           dateMatches = true;
           break;
       }
 
-      final statusMatches = statusFilter.displayName == PickUpStatusFilter.all.displayName ||
-          item.status == statusFilter.displayName;
+      final statusMatches =
+          statusFilter.displayName == PickUpStatusFilter.all.displayName ||
+              item.status == statusFilter.displayName;
 
       bool userMatches = true;
       if (!currentUser.role.contains(',')) {
         if (currentUser.role.contains(BTexts.roleCourier)) {
-          userMatches = item.receivedBy == currentUser.initial || item.releasedBy == currentUser.initial;
-          logDebug('PickUpFilter: receivedBy=${item.receivedBy}, releasedBy=${item.releasedBy}');
+          userMatches = item.receivedBy == currentUser.initial ||
+              item.releasedBy == currentUser.initial;
+          logDebug(
+              'PickUpFilter: receivedBy=${item.receivedBy}, releasedBy=${item.releasedBy}');
         }
       }
 
@@ -100,6 +109,7 @@ class PickUpFilterManager {
       }
     });
 
+    /// tempList is null here please check
     filteredPickUps.assignAll(tempList);
   }
 
@@ -108,9 +118,9 @@ class PickUpFilterManager {
     applyFilter(allPickUps.toList());
   }
 
-  void selectStatusFilter(PickUpStatusFilter statusFilter, RxList<PickUpModel> allPickUps) {
+  void selectStatusFilter(
+      PickUpStatusFilter statusFilter, RxList<PickUpModel> allPickUps) {
     selectedStatusFilter.value = statusFilter;
     applyFilter(allPickUps.toList());
   }
 }
-

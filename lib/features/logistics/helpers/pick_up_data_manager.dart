@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -20,11 +22,21 @@ import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart'
 import '../../../data/repositories/image/image_repository.dart';
 import '../../personalization/controller/user_controller.dart';
 
-/// Manager for Pick-Up domain orchestration (save/update flows).
+/// Manages pick-up request data operations and orchestrates business logic.
+/// Handles CRUD operations, status updates, form validation, and data synchronization
+/// between API and local storage for pick-up requests.
 class PickUpDataManager {
   final PickUpRepository _repository = Get.find<PickUpRepository>();
-  final CancelRemarksRepository _cancelRemarksRepository = Get.find<CancelRemarksRepository>();
+  final CancelRemarksRepository _cancelRemarksRepository =
+      Get.find<CancelRemarksRepository>();
 
+  // ========================================================================
+  // VALIDATION METHODS
+  // ========================================================================
+
+  /// Validates network connectivity before performing operations.
+  /// Shows a warning snackbar if no internet connection is available.
+  /// Returns true if connected, false otherwise.
   Future<bool> validateConnectivity() async {
     final isConnected = await NetworkManager.instance.isConnected();
     if (!isConnected) {
@@ -37,7 +49,64 @@ class PickUpDataManager {
     return true;
   }
 
-  /// Save a new pick-up request using values from controllers and shared form state.
+  // ========================================================================
+  // CRUD OPERATIONS
+  // ========================================================================
+
+  /// Fetches pick-up requests from local database or API based on storage preference.
+  /// Attempts local DB first if [useLocalStorage] is true; falls back to API if empty.
+  /// Applies active filters after loading data and updates the controller state.
+  ///
+  /// [controller] The pick-up controller to update with fetched data
+  /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
+  Future<void> fetchPickUps(
+      PickUpController controller, bool useLocalStorage) async {
+    if (controller.isLoading.value) return;
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+    try {
+      List<PickUpModel> results;
+      if (!useLocalStorage) {
+        logDebug(
+            'PickUpDataManager: Fetching from API (useLocalStorage=false, forcing refresh1)');
+        results = await _repository.getAll(forceRefresh: true);
+      } else {
+        logDebug('PickUpDataManager: Fetching from local DB first');
+        results = await _repository.getLocalPickUps();
+        if (results.isEmpty) {
+          logDebug('PickUpDataManager: Local DB empty, fetching from API');
+          results = await _repository.getAll();
+        } else {
+          logDebug(
+              'PickUpDataManager: Loaded ${results.length} items from local DB');
+        }
+      }
+
+      controller.pickUps.assignAll(results);
+      logDebug(
+          'PickUpDataManager: Assigned ${results.length} pick-ups to controller');
+
+      controller.filterManager.applyFilter(controller.pickUps.toList());
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      logDebug('PickUpDataManager.fetchPickUps error: $e');
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
+  /// Creates and saves a new pick-up request from form data.
+  /// Validates client selection, document references, pick-up date, and item category.
+  /// Displays loading dialog during save operation and shows appropriate feedback.
+  ///
+  /// Validation checks:
+  /// - Client must be selected
+  /// - At least one document reference required
+  /// - Pick-up date must be provided
+  /// - Item category is normalized to ID format
+  ///
+  /// [controller] The pick-up controller containing form state and data
   Future<void> saveRequestFromForm(PickUpController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
@@ -57,6 +126,7 @@ class PickUpDataManager {
         controller.errorMessage.value = 'Please select a Client.';
         BLoaders.errorSnackBar(
             title: 'Client', message: 'Please select a Client.');
+        BFullScreenLoader.stopLoading();
         return;
       }
 
@@ -69,6 +139,7 @@ class PickUpDataManager {
         BLoaders.errorSnackBar(
             title: 'Document Reference',
             message: 'Please enter at least one document reference.');
+        BFullScreenLoader.stopLoading();
         return;
       }
 
@@ -76,6 +147,7 @@ class PickUpDataManager {
         controller.errorMessage.value = 'Please pick a pick-up date.';
         BLoaders.errorSnackBar(
             title: 'Pick-Up Date', message: 'Please pick a pick-up date.');
+        BFullScreenLoader.stopLoading(); // ✅ Stop loading before return
         return;
       }
 
@@ -106,11 +178,19 @@ class PickUpDataManager {
         createdBy: userCtrl.user.value.initial,
         documentReference: docRefs,
       );
+
+      // Insert via API (also saves to local DB)
       await _repository.insert(model, silent: true);
 
-      await controller.loadPickUps();
+      // Force refresh from API to ensure we have the latest data with proper IDs
+      final refreshedList = await _repository.refreshFromApi();
 
-      // Mark as success
+      // Update controller's list
+      controller.pickUps.assignAll(refreshedList);
+
+      // Reapply filters to update the filtered view
+      controller.filterManager.applyFilter(controller.pickUps.toList());
+
       controller.errorMessage.value = null;
     } catch (e) {
       controller.errorMessage.value = 'An error occurred: $e';
@@ -121,13 +201,46 @@ class PickUpDataManager {
     }
   }
 
-  /// Update request status and merge interactive header inputs from the controller if provided.
-  Future<void> updateRequestStatus(
-    PickUpModel request,
-    String newStatus,
-    PickUpController controller,
-    PickUpFormState formState,
-  ) async {
+  /// Inserts a new pick-up request model and refreshes the controller list.
+  /// Prevents duplicate saves by checking if a save operation is already in progress.
+  /// Shows success or error feedback and updates the pick-up list on completion.
+  ///
+  /// [model] The pick-up model to insert
+  /// [controller] The pick-up controller to refresh after insertion
+  Future<void> insertPickUpModel(
+      PickUpModel model, PickUpController controller) async {
+    if (controller.isSaving.value) return;
+    controller.isSaving.value = true;
+    controller.errorMessage.value = null;
+    try {
+      await _repository.insert(model, silent: true);
+      await fetchPickUps(controller, controller.useLocalStorage.value);
+      BLoaders.successSnackBar(title: 'Success', message: 'Request created');
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      BLoaders.errorSnackBar(
+          title: 'Save Failed', message: 'An error occurred: $e');
+    } finally {
+      controller.isSaving.value = false;
+    }
+  }
+
+  /// Updates the status of a pick-up request with automatic field population.
+  /// Handles status-specific logic including timestamps, signatures, and proof images.
+  ///
+  /// Status transitions:
+  /// - "Item Prepared": Sets itemPreparedAt timestamp and preparedBy field
+  /// - "Item Packed": Sets itemPreparedEndAt timestamp and releasedBy field
+  /// - "Received": Sets receivedBy, uploads signature and proof images
+  ///
+  /// Images and signatures are uploaded to the server if connected, otherwise saved locally.
+  ///
+  /// [request] The pick-up request to update
+  /// [newStatus] The new status to set
+  /// [controller] The pick-up controller for state management
+  /// [formState] Form state containing signature and field values
+  Future<void> updateRequestStatus(PickUpModel request, String newStatus,
+      PickUpController controller, PickUpFormState formState) async {
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -135,23 +248,21 @@ class PickUpDataManager {
 
       final updated = request.copyWith(
         status: newStatus,
-        preparedBy: controller.formState.preparedByController.text.isNotEmpty
-            ? controller.formState.preparedByController.text
+        preparedBy: newStatus == BTexts.statusItemPrepared
+            ? controller.userController.user.value.initial
             : request.preparedBy,
         itemPreparedAt: newStatus == BTexts.statusItemPrepared &&
                 request.itemPreparedAt.isEmpty
             ? nowString
             : request.itemPreparedAt,
-        itemPreparedEndAt: newStatus == 'Item Packed' &&
-                request.itemPreparedEndAt.isEmpty
-            ? nowString
-            : request.itemPreparedEndAt,
-        releasedBy: newStatus == 'Item Packed' &&
-                request.releasedBy.isEmpty
+        itemPreparedEndAt:
+            newStatus == 'Item Packed' && request.itemPreparedEndAt.isEmpty
+                ? nowString
+                : request.itemPreparedEndAt,
+        releasedBy: newStatus == 'Item Packed' && request.releasedBy.isEmpty
             ? controller.formState.releasedByController.text
             : request.releasedBy,
-        receivedBy: newStatus == 'Received' &&
-                request.receivedBy.isEmpty
+        receivedBy: newStatus == 'Received' && request.receivedBy.isEmpty
             ? controller.formState.receivedByController.text
             : request.receivedBy,
       );
@@ -176,10 +287,12 @@ class PickUpDataManager {
         }
       }
 
-      if (newStatus == 'Received') {
+      if (newStatus == BTexts.statusReceived) {
         String? finalImageBase64 =
             await BImageHelperFunctions.getDeliveryImageAsBase64(
                 newStatus, request.id);
+
+        // ✅ Safe null check - prevents crash
         if (finalImageBase64!.isNotEmpty) {
           final isConnectedForUpload =
               await NetworkManager.instance.isConnected();
@@ -192,6 +305,7 @@ class PickUpDataManager {
                 type: 'Proof',
               );
             } catch (e) {
+              logDebug('PickUpDataManager: Image upload failed: $e');
               BLoaders.warningSnackBar(
                 title: 'Upload Failed',
                 message:
@@ -204,6 +318,9 @@ class PickUpDataManager {
                 message:
                     'Image saved locally. It will be uploaded when internet connection is available.');
           }
+        } else {
+          logDebug(
+              'PickUpDataManager: No image to upload (finalImageBase64 is null or empty)');
         }
       }
 
@@ -226,9 +343,16 @@ class PickUpDataManager {
     }
   }
 
-  /// Cancel a pick-up request with remarks via API.
-  Future<void> cancelRequestWithRemarks(
-      PickUpModel request, String remarks, String user, PickUpController controller) async {
+  /// Cancels a pick-up request with remarks via API.
+  /// Validates connectivity, calls the cancel API endpoint, and refreshes the pick-up list.
+  /// Shows loading dialog during operation and displays success/error feedback.
+  ///
+  /// [request] The pick-up request to cancel
+  /// [remarks] Cancellation remarks/reason
+  /// [user] User identifier performing the cancellation
+  /// [controller] The pick-up controller for state management
+  Future<void> cancelRequestWithRemarks(PickUpModel request, String remarks,
+      String user, PickUpController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -238,8 +362,9 @@ class PickUpDataManager {
     }
 
     try {
-      await _repository.cancelPickUpAPI(request.id, remarks, user, silent: true);
-      await fetchPickUps(controller);
+      await _repository.cancelPickUpAPI(request.id, remarks, user,
+          silent: true);
+      await fetchPickUps(controller, controller.useLocalStorage.value);
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');
     } catch (e) {
@@ -251,43 +376,15 @@ class PickUpDataManager {
     }
   }
 
-  /// Fetch pick-ups and assign to the provided controller.
-  Future<void> fetchPickUps(PickUpController controller) async {
-    if (controller.isLoading.value) return;
-    controller.isLoading.value = true;
-    controller.errorMessage.value = null;
-    try {
-      final results = await _repository.getAll();
-      controller.pickUps.assignAll(results);
-      controller.filterManager.applyFilter(controller.pickUps.toList());
-    } catch (e) {
-      controller.errorMessage.value = e.toString();
-      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
-    } finally {
-      controller.isLoading.value = false;
-    }
-  }
+  // ========================================================================
+  // DATA LOADING & UTILITY METHODS
+  // ========================================================================
 
-  /// Insert a PickUpModel and refresh controller list.
-  Future<void> insertPickUpModel(
-      PickUpModel model, PickUpController controller) async {
-    if (controller.isSaving.value) return;
-    controller.isSaving.value = true;
-    controller.errorMessage.value = null;
-    try {
-      await _repository.insert(model, silent: true);
-      await fetchPickUps(controller);
-      BLoaders.successSnackBar(title: 'Success', message: 'Request created');
-    } catch (e) {
-      controller.errorMessage.value = e.toString();
-      BLoaders.errorSnackBar(
-          title: 'Save Failed', message: 'An error occurred: $e');
-    } finally {
-      controller.isSaving.value = false;
-    }
-  }
-
-  /// Load item categories and populate the controller caches.
+  /// Loads item categories from repository and populates the controller caches.
+  /// Sets a default category (preferring 'reagent' if available) when no category is selected.
+  /// Stores category ID in the controller for use with BDropDownDynamicList.
+  ///
+  /// [controller] The pick-up controller to populate with category data
   Future<void> loadCategories(PickUpController controller) async {
     try {
       final items = await Get.find<ItemCategoryRepository>().getAll();
@@ -307,8 +404,12 @@ class PickUpDataManager {
     }
   }
 
-  /// Fetch cancel remarks for a pick-up request from CancelRemarksRepository.
-  /// Uses the same shared repository as standard delivery.
+  /// Fetches cancel remarks for a pick-up request from the cancel remarks repository.
+  /// Uses the shared CancelRemarksRepository with pick-up module specification.
+  /// Returns empty model if remarks are not found or API call fails.
+  ///
+  /// [requestId] The pick-up request ID to fetch remarks for
+  /// Returns [CancelRemarksModel] containing remarks and date, or empty model on error
   Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
     try {
       logDebug('🔍 PickUpDataManager: Fetching cancel remarks for: $requestId');
@@ -316,16 +417,18 @@ class PickUpDataManager {
         requestId,
         module: RequestModule.pickUp, // Specify pick-up module
       );
-      logDebug('✅ PickUpDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
+      logDebug(
+          '✅ PickUpDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
       if (result.remarks.isEmpty) {
-        logDebug('⚠️ PickUpDataManager: Remarks are EMPTY! Check if API endpoint exists and returns data.');
+        logDebug(
+            '⚠️ PickUpDataManager: Remarks are EMPTY! Check if API endpoint exists and returns data.');
       }
       return result;
     } catch (e) {
       logDebug('❌ PickUpDataManager.fetchCancelRemarks FAILED: $e');
-      logDebug('💡 Tip: Check if GET /api4/RequestPickUp/cancel/$requestId endpoint exists');
+      logDebug(
+          '💡 Tip: Check if GET /api4/RequestPickUp/cancel/$requestId endpoint exists');
       return CancelRemarksModel.empty;
     }
   }
 }
-

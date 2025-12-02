@@ -12,12 +12,15 @@ import '../../features/personalization/models/user_model.dart';
 
 // DAO imports
 import 'dao/standard_delivery/standard_delivery_dao.dart';
+import 'dao/pick_up/pick_up_dao.dart';
 import 'dao/common/document_reference_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
 import 'dao/common/mobile_dao.dart';
 import 'dao/common/user_dao.dart';
 import 'dao/common/cntmst_dao.dart';
+import 'dao/common/item_category_dao.dart';
+import 'dao/common/form_category_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -30,12 +33,15 @@ class DatabaseHelper {
 
   // Cached DAO instances
   RequestDao? _requestDao;
+  PickUpDao? _pickUpDao;
   DocumentReferenceDao? _documentReferenceDao;
   RemarksDao? _remarksDao;
   ClientDao? _clientDao;
   MobileDao? _mobileDao;
   UserDao? _userDao;
   CntmstDao? _cntmstDao;
+  ItemCategoryDao? _itemCategoryDao;
+  FormCategoryDao? _formCategoryDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -46,9 +52,57 @@ class DatabaseHelper {
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, fileName);
-    return await openDatabase(path, version: 1, onCreate: (db, version) async {
-      await createAllTables(db);
-    });
+    return await openDatabase(
+      path,
+      version: 3,
+      onCreate: (db, version) async {
+        await createAllTables(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Add pick-up main table for version 2
+          // Pick-up requests reuse the existing shared support tables:
+          // - a_tblRequestDocumentReference
+          // - a_tblRequestReceiverSignature
+          // - a_tblRequestImage
+          // - a_tblRequestRemarks
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestPickUp (
+              RequestID INTEGER PRIMARY KEY,
+              ClientID TEXT,
+              ItemCategoryID TEXT,
+              ItemCategoryName TEXT,
+              PreparedBy TEXT,
+              ItemPreparedAt TEXT,
+              ItemPreparedEndAt TEXT,
+              DatePickUp TEXT,
+              Remarks TEXT,
+              Status TEXT,
+              ReleasedBy TEXT,
+              ReceivedBy TEXT,
+              CreatedBy TEXT,
+              CreatedAt TEXT,
+              UpdatedAt TEXT
+            )
+          ''');
+        }
+        if (oldVersion < 3) {
+          // Add ItemCategory and FormCategory tables for version 3
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblItemCategory (
+              ItemCategoryID TEXT PRIMARY KEY,
+              ItemCategoryName TEXT
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblFormCategory (
+              FormCategoryID TEXT PRIMARY KEY,
+              FormCategoryName TEXT
+            )
+          ''');
+        }
+      },
+    );
   }
 
   // --- DAO getters ---
@@ -99,6 +153,27 @@ class DatabaseHelper {
     final db = await database;
     _cntmstDao = CntmstDao(db);
     return _cntmstDao!;
+  }
+
+  Future<PickUpDao> get pickUpDao async {
+    if (_pickUpDao != null) return _pickUpDao!;
+    final db = await database;
+    _pickUpDao = PickUpDao(db);
+    return _pickUpDao!;
+  }
+
+  Future<ItemCategoryDao> get itemCategoryDao async {
+    if (_itemCategoryDao != null) return _itemCategoryDao!;
+    final db = await database;
+    _itemCategoryDao = ItemCategoryDao(db);
+    return _itemCategoryDao!;
+  }
+
+  Future<FormCategoryDao> get formCategoryDao async {
+    if (_formCategoryDao != null) return _formCategoryDao!;
+    final db = await database;
+    _formCategoryDao = FormCategoryDao(db);
+    return _formCategoryDao!;
   }
 
   // --- Request operations (delegated to RequestDao) ---
