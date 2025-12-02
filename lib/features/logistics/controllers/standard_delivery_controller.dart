@@ -48,7 +48,7 @@ class StandardDeliveryController extends GetxController {
   final isLoading = false.obs;
   final isSaving = false.obs;
   final isFetchingRequests = false.obs;
-  final useLocalStorage = true.obs;
+  final useLocalStorage = false.obs;
   final totalRequest = 0.obs;
   final gettingSuppliesReady = 0.obs;
   final itemPrepared = 0.obs;

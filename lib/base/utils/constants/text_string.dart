@@ -100,12 +100,14 @@ class BTexts {
   static const String statusInTransit = "In Transit";
   static const String statusTakenOut = "Taken Out";
   static const String statusAll = "All";
+  static const String statusReceived = "Received";
 
   /// Request Modal Specific Texts
   static const String requestModalDeliveryShotTitle = "Delivery Shot";
   static const String requestModalCloseButtonText = "Close";
   static const String requestModalImageNotFoundError = "Error: Delivery shot image not found.";
   static const String requestModalViewItemDeliveredText = "View Item Delivered";
+  static const String requestModalViewItemReceivedText = "View Item Received";
   static const String requestModalPrepareItemButtonText = "Prepare Item";
   static const String requestModalPackedAndReadyButtonText = "Packed and Ready to Ship";
   static const String requestModalDropOffButtonText = "Drop Off";

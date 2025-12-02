@@ -433,7 +433,7 @@ class BFullScreenLoader {
     BSignatureCaptureDialog.show(
       context: context,
       onSave: (Uint8List? signatureBytes) {
-        requestController.setSignature(signatureBytes);
+        requestController.formState.setSignature(signatureBytes);
       },
     );
   }

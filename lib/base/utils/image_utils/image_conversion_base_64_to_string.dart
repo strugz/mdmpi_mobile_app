@@ -53,14 +53,18 @@ class BImageHelperFunctions {
   static Future<String?> getDeliveryImageAsBase64(
       String newStatus, String requestId) async {
     String? imageBase64;
-    if (newStatus == BTexts.statusDoneDelivery || newStatus == BTexts.statusTakenOut) {
+
+    if (newStatus == BTexts.statusDoneDelivery ||
+        newStatus == BTexts.statusTakenOut ||
+        newStatus == BTexts.statusReceived) {
       const deliveryShotsDirPath = BPaths.deliveryShots;
 
       await Directory(deliveryShotsDirPath).create(recursive: true);
 
-      final imageFilePath =
-          '$deliveryShotsDirPath/$requestId.jpg';
+      final imageFilePath = '$deliveryShotsDirPath/$requestId.jpg';
+
       final imageFile = File(imageFilePath);
+
       if (await imageFile.exists()) {
         final imageBytes = await imageFile.readAsBytes();
         imageBase64 = base64Encode(imageBytes);

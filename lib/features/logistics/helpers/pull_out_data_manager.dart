@@ -206,6 +206,7 @@ class PullOutDataManager {
         String? finalImageBase64 =
             await BImageHelperFunctions.getDeliveryImageAsBase64(
                 newStatus, request.id);
+
         if (finalImageBase64!.isNotEmpty) {
           final isConnectedForUpload =
               await NetworkManager.instance.isConnected();
@@ -278,16 +279,41 @@ class PullOutDataManager {
   }
 
   /// Fetch pull-outs and assign to the provided controller.
-  Future<void> fetchPullOuts(PullOutController controller) async {
+  /// Attempts local DB first if [useLocalStorage] is true; falls back to API if empty.
+  /// Applies active filters after loading data and updates the controller state.
+  ///
+  /// [controller] The pull-out controller to update with fetched data
+  /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
+  Future<void> fetchPullOuts(PullOutController controller, [bool useLocalStorage = true]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
     try {
-      final results = await _repository.getAll();
+      List<PullOutModel> results;
+
+      if (!useLocalStorage) {
+        // Force API fetch by passing forceRefresh: true
+        // This bypasses local DB check even if it has data
+        logDebug('PullOutDataManager: Fetching from API (useLocalStorage=false, forcing refresh)');
+        results = await _repository.getAll(forceRefresh: true);
+      } else {
+        logDebug('PullOutDataManager: Fetching from local DB first');
+        results = await _repository.getLocalPullOuts();
+        if (results.isEmpty) {
+          logDebug('PullOutDataManager: Local DB empty, fetching from API');
+          results = await _repository.getAll();
+        } else {
+          logDebug('PullOutDataManager: Loaded ${results.length} items from local DB');
+        }
+      }
+
       controller.pullOuts.assignAll(results);
+      logDebug('PullOutDataManager: Assigned ${results.length} pull-outs to controller');
+
       controller.filterManager.applyFilter(controller.pullOuts.toList());
     } catch (e) {
       controller.errorMessage.value = e.toString();
+      logDebug('PullOutDataManager.fetchPullOuts error: $e');
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;
@@ -295,8 +321,7 @@ class PullOutDataManager {
   }
 
   /// Insert a PullOutModel and refresh controller list.
-  Future<void> insertPullOutModel(
-      PullOutModel model, PullOutController controller) async {
+  Future<void> insertPullOutModel(PullOutModel model, PullOutController controller) async {
     if (controller.isSaving.value) return;
     controller.isSaving.value = true;
     controller.errorMessage.value = null;

@@ -76,7 +76,9 @@ class PullOutRepository extends GetxController {
           .timeout(const Duration(seconds: 60));
 
   /// Fetch all pull-out requests.
-  Future<List<PullOutModel>> getAll() async {
+  /// [forceRefresh] is accepted for API compatibility but currently has no effect
+  /// since PullOut doesn't have local DB caching yet.
+  Future<List<PullOutModel>> getAll({bool forceRefresh = false}) async {
     try {
       final url = _uri(_resource);
       final response = await _safeGet(url);
@@ -96,6 +98,14 @@ class PullOutRepository extends GetxController {
       _showError('Failed to fetch pull-out list');
       throw Exception('getAll pull-out error: $e\n$st');
     }
+  }
+
+  /// Get pull-outs from local DB only (no API call).
+  /// Currently just redirects to getAll() since PullOut doesn't have local DB yet.
+  /// This method exists for API compatibility with other repositories.
+  Future<List<PullOutModel>> getLocalPullOuts() async {
+    // TODO: Implement local DB support for pull-out requests
+    return await getAll();
   }
 
   /// Insert a new pull-out request. Set [silent] true to suppress snackbars.

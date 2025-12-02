@@ -6,29 +6,33 @@ import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../models/item_category_model.dart';
+import '../../local/database_helper.dart';
 
-/// Repository to retrieve Item Categories from backend.
+/// Repository to retrieve Item Categories from backend with local caching.
 class ItemCategoryRepository extends GetxController {
   static ItemCategoryRepository get instance => Get.find();
 
   String get _baseUrl {
     try {
       if (dotenv.isInitialized) return dotenv.env['API_URL'] ?? '';
-    } catch (_) {
-    }
+    } catch (_) {}
     return '';
   }
+
   Uri _uri(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return Uri.parse(path);
     }
-    final base = _baseUrl.endsWith('/') ? _baseUrl.substring(0, _baseUrl.length - 1) : _baseUrl;
+    final base = _baseUrl.endsWith('/')
+        ? _baseUrl.substring(0, _baseUrl.length - 1)
+        : _baseUrl;
     final p = path.startsWith('/') ? path : '/$path';
     return Uri.parse('$base$p');
   }
 
   static const String _resource = '/api4/Category';
-  static const String _publicFallback = 'https://inventory.mdmpi.com.ph/api4/Category';
+  static const String _publicFallback =
+      'https://inventory.mdmpi.com.ph/api4/Category';
 
   String get _resourceUrl {
     try {
@@ -41,7 +45,23 @@ class ItemCategoryRepository extends GetxController {
     return _publicFallback;
   }
 
-  Future<List<ItemCategoryModel>> getAll({http.Client? client}) async {
+  Future<List<ItemCategoryModel>> getAll(
+      {http.Client? client, bool forceRefresh = false}) async {
+    // Try loading from local DB first if not forcing refresh
+    if (!forceRefresh) {
+      try {
+        final dao = await DatabaseHelper.instance.itemCategoryDao;
+        final hasData = await dao.hasData();
+        if (hasData) {
+          logDebug('ItemCategoryRepository.getAll: Loading from local DB');
+          return await dao.getAll();
+        }
+      } catch (e) {
+        logDebug('ItemCategoryRepository.getAll: Local DB error: $e');
+      }
+    }
+
+    // Fetch from API
     final c = client ?? http.Client();
     try {
       final url = _uri(_resourceUrl);
@@ -67,8 +87,10 @@ class ItemCategoryRepository extends GetxController {
       if (decoded is List) {
         list = decoded;
       } else if (decoded is Map<String, dynamic>) {
-        list = (decoded['data'] as List?) ?? (decoded['items'] as List?) ??
-            (decoded.values.firstWhere((v) => v is List, orElse: () => const []) as List);
+        list = (decoded['data'] as List?) ??
+            (decoded['items'] as List?) ??
+            (decoded.values.firstWhere((v) => v is List, orElse: () => const [])
+                as List);
       } else {
         list = const [];
       }
@@ -79,11 +101,64 @@ class ItemCategoryRepository extends GetxController {
         return type == 'ITEM';
       }).toList();
 
-      return list
+      final items = list
           .map((e) => ItemCategoryModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
+
+      // Cache to local DB
+      try {
+        final dao = await DatabaseHelper.instance.itemCategoryDao;
+        await dao.deleteAll();
+        await dao.insertItemCategories(items);
+        logDebug(
+            'ItemCategoryRepository.getAll: Cached ${items.length} items to local DB');
+      } catch (e) {
+        logDebug('ItemCategoryRepository.getAll: Failed to cache: $e');
+      }
+
+      return items;
     } finally {
       if (client == null) c.close();
     }
+  }
+
+  /// Get item categories from local database only
+  Future<List<ItemCategoryModel>> getFromLocal() async {
+    final dao = await DatabaseHelper.instance.itemCategoryDao;
+    return await dao.getAll();
+  }
+
+  /// Save item categories to local database
+  Future<void> saveToLocal(List<ItemCategoryModel> items) async {
+    final dao = await DatabaseHelper.instance.itemCategoryDao;
+    await dao.deleteAll();
+    await dao.insertItemCategories(items);
+  }
+
+  /// Clear local cache
+  Future<void> clearLocal() async {
+    final dao = await DatabaseHelper.instance.itemCategoryDao;
+    await dao.deleteAll();
+  }
+
+  /// Fetch item category by ID
+  /// Checks local DB first, if not found fetches all from API and caches them
+  Future<String?> fetchItemCategory(String id) async {
+    try {
+      // First, try to get from local DB
+      final dao = await DatabaseHelper.instance.itemCategoryDao;
+      final localItem = await dao.getById(id);
+
+      if (localItem != null) {
+        logDebug(
+            'ItemCategoryRepository.fetchItemCategory: Found ID=$id in local DB');
+        return localItem.name;
+      }
+    } catch (e) {
+      logDebug(
+          'ItemCategoryRepository.fetchItemCategory: Error fetching ID=$id: $e');
+      return null;
+    }
+    return null;
   }
 }

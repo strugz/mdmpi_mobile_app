@@ -6,10 +6,13 @@ import '../../../../base/utils/constants/text_string.dart';
 class ViewDeliveredItemButton extends StatelessWidget {
   final Color textColor;
   final VoidCallback onPressed;
+  final String labelTitle;
 
-  const ViewDeliveredItemButton({super.key,
+  const ViewDeliveredItemButton({
+    super.key,
     required this.textColor,
     required this.onPressed,
+    this.labelTitle = BTexts.requestModalViewItemDeliveredText,
   });
 
   @override
@@ -21,7 +24,7 @@ class ViewDeliveredItemButton extends StatelessWidget {
           color: textColor,
         ),
         label: Text(
-          BTexts.requestModalViewItemDeliveredText, // USE BTexts
+          labelTitle, // USE BTexts
           style: TextStyle(color: textColor),
         ),
         onPressed: onPressed,

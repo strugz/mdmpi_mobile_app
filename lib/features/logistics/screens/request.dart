@@ -36,24 +36,53 @@ class RequestScreen extends StatelessWidget {
           appBar: BAppBar(
             title: Text('Request', style: Theme.of(context).textTheme.headlineMedium),
             actions: [
-              Obx(() {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: Row(
-                    children: [
-                      Text(requestController.useLocalStorage.value ? 'Server' : 'Local'),
-                      Switch(
-                        value: requestController.useLocalStorage.value,
-                        onChanged: (value) {
-                          requestController.toggleStoragePreference(value);
-                        },
-                        activeTrackColor: Colors.lightGreenAccent,
-                        activeThumbColor: Colors.green,
+              // Dynamic switch based on active tab
+              AnimatedBuilder(
+                animation: tabController,
+                builder: (context, _) {
+                  final currentIndex = tabController.index;
+
+                  return Obx(() {
+                    // Re-read the value reactively for the current controller
+                    // Invert the logic: when useLocalStorage is false, switch shows true (Server)
+                    final useLocalStorageValue = currentIndex == 0
+                        ? requestController.useLocalStorage.value
+                        : currentIndex == 1
+                            ? pullOutController.useLocalStorage.value
+                            : pickUpController.useLocalStorage.value;
+
+                    // Inverted: switch true = Server mode (useLocalStorage false)
+                    final switchValue = !useLocalStorageValue;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: Row(
+                        children: [
+                          Text(switchValue ? 'Server' : 'Local'),
+                          Switch(
+                            value: switchValue,
+                            onChanged: (value) {
+                              // Invert back: switch true means useLocalStorage should be false
+                              final newUseLocalStorage = !value;
+
+                              // Toggle the appropriate controller based on tab
+                              if (currentIndex == 0) {
+                                requestController.toggleStoragePreference(newUseLocalStorage);
+                              } else if (currentIndex == 1) {
+                                pullOutController.toggleStoragePreference(newUseLocalStorage);
+                              } else {
+                                pickUpController.toggleStoragePreference(newUseLocalStorage);
+                              }
+                            },
+                            activeTrackColor: Colors.lightGreenAccent,
+                            activeThumbColor: Colors.green,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                );
-              }),
+                    );
+                  });
+                },
+              ),
             ],
           ),
           body: Column(

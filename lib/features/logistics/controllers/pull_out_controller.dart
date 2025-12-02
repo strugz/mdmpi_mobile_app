@@ -25,6 +25,11 @@ class PullOutController extends GetxController {
   /// Loading flag for save/update operations.
   final RxBool isSaving = false.obs;
 
+  /// Storage preference flag for data source selection.
+  /// - true: Use local database (offline-first approach)
+  /// - false: Fetch directly from API/server (default)
+  final RxBool useLocalStorage = false.obs;
+
   /// Last error message, if any.
   final RxnString errorMessage = RxnString();
 
@@ -78,7 +83,7 @@ class PullOutController extends GetxController {
 
   /// Fetch all pull-out requests from repository.
   Future<void> loadPullOuts() async {
-    await dataManager.fetchPullOuts(this);
+    await dataManager.fetchPullOuts(this, useLocalStorage.value);
   }
 
   /// Insert a new pull-out request and refresh the list.
@@ -126,6 +131,19 @@ class PullOutController extends GetxController {
     } catch (e) {
       cancelRemarks.value = CancelRemarksModel.empty;
     }
+  }
+
+  /// Toggles the data source preference between local database and API.
+  /// Automatically reloads pull-out data using the newly selected source.
+  ///
+  /// Use cases:
+  /// - Enable local storage for offline mode or faster loading
+  /// - Disable local storage to force fresh data from server
+  ///
+  /// [value] True to use local storage, false to use API directly
+  void toggleStoragePreference(bool value) {
+    useLocalStorage.value = value;
+    loadPullOuts();
   }
 
   @override

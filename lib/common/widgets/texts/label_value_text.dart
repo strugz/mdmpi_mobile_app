@@ -25,6 +25,7 @@ class BLabelValueText extends StatelessWidget {
     this.textScaleFactor,
     this.showLabel = true,
     this.padding,
+    this.mainAlignment = MainAxisAlignment.start,
   });
 
   final String label;
@@ -37,10 +38,12 @@ class BLabelValueText extends StatelessWidget {
   final double? textScaleFactor;
   final bool showLabel;
   final EdgeInsetsGeometry? padding;
+  final MainAxisAlignment mainAlignment;
 
   @override
   Widget build(BuildContext context) {
-    final color = textColor ?? (BHelperFunctions.isDarkMode(context) ? BColors.light : BColors.black);
+    final color = textColor ??
+        (BHelperFunctions.isDarkMode(context) ? BColors.light : BColors.black);
     final baseStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
           color: color,
           height: dense ? 1.1 : null,
@@ -58,7 +61,8 @@ class BLabelValueText extends StatelessWidget {
             : MediaQuery.textScalerOf(context),
         text: TextSpan(
           children: [
-            if (showLabel && label.isNotEmpty) TextSpan(text: '$label: ', style: labelStyle),
+            if (showLabel && label.isNotEmpty)
+              TextSpan(text: '$label: ', style: labelStyle),
             TextSpan(text: value, style: valueStyle),
           ],
         ),
@@ -88,7 +92,10 @@ class BLabelValueText extends StatelessWidget {
 
     return Padding(
       padding: padding ?? const EdgeInsets.symmetric(vertical: BSizes.xxs),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: children),
+      child: Row(
+          mainAxisAlignment: mainAlignment,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: children),
     );
   }
 }
