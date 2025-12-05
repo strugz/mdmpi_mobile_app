@@ -255,19 +255,21 @@ class PickUpDataManager {
                 request.itemPreparedAt.isEmpty
             ? nowString
             : request.itemPreparedAt,
-        itemPreparedEndAt:
-            newStatus == 'Item Packed' && request.itemPreparedEndAt.isEmpty
-                ? nowString
-                : request.itemPreparedEndAt,
-        releasedBy: newStatus == 'Item Packed' && request.releasedBy.isEmpty
-            ? controller.formState.releasedByController.text
-            : request.releasedBy,
-        receivedBy: newStatus == 'Received' && request.receivedBy.isEmpty
-            ? controller.formState.receivedByController.text
-            : request.receivedBy,
+        itemPreparedEndAt: newStatus == BTexts.statusItemPacked &&
+                request.itemPreparedEndAt.isEmpty
+            ? nowString
+            : request.itemPreparedEndAt,
+        releasedBy:
+            newStatus == BTexts.statusItemPacked && request.releasedBy.isEmpty
+                ? controller.userController.user.value.initial
+                : request.releasedBy,
+        receivedBy:
+            newStatus == BTexts.statusReceived && request.receivedBy.isEmpty
+                ? controller.formState.receivedByController.text
+                : request.receivedBy,
       );
 
-      final bool signatureWasAdded = newStatus == 'Received' &&
+      final bool signatureWasAdded = newStatus == BTexts.statusReceived &&
           formState.receiverSignatureBase64.value.isNotEmpty;
 
       if (signatureWasAdded) {

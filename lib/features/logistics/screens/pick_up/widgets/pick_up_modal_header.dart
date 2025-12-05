@@ -67,15 +67,17 @@ class PickUpRequestModalHeader extends StatelessWidget {
             ),
           ],
           if (hasCreatedBy && hasPreparedBy) ...[
+            const SizedBox(height: BSizes.xs),
             BLabelValueText(
               label: 'Created By',
               value: requestModel.createdBy,
+              showLabel: false,
               icon: Iconsax.user,
               padding: EdgeInsets.zero,
             ),
           ],
           if (hasDatePickUp || hasReleasedBy) ...[
-            const SizedBox(height: BSizes.sm),
+            const SizedBox(height: BSizes.xs),
             const BTextDivider(text: 'Pick-Up Info'),
             Column(
               crossAxisAlignment: CrossAxisAlignment.center,

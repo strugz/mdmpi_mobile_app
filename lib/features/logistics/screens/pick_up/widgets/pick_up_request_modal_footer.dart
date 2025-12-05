@@ -13,6 +13,8 @@ import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 
+import '../../../../../base/utils/formatters/formatters.dart';
+
 class PickUpRequestModalFooter extends StatelessWidget {
   const PickUpRequestModalFooter({super.key, required this.requestModel});
 
@@ -93,14 +95,22 @@ class PickUpRequestModalFooter extends StatelessWidget {
           const BTextDivider(text: 'Timestamps'),
           if (hasItemPreparedAt)
             BProductTitleText(
-              title: 'Item Prepared At: ${requestModel.itemPreparedAt}',
+              title: 'Item Prepared At: ${BFormatter.formatDateTimeCustomizable(
+                requestModel.itemPreparedAt,
+                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                "yyyy-MM-dd HH:mm",
+              )}',
               maxLines: 1,
               smallSize: true,
               fontColor: textColor,
             ),
           if (hasItemPreparedEndAt)
             BProductTitleText(
-              title: 'Item Packed At: ${requestModel.itemPreparedEndAt}',
+              title: 'Item Packed At: ${BFormatter.formatDateTimeCustomizable(
+                requestModel.itemPreparedEndAt,
+                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                "yyyy-MM-dd HH:mm",
+              )}',
               maxLines: 1,
               smallSize: true,
               fontColor: textColor,

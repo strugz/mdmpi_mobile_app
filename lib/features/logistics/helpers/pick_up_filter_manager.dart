@@ -10,7 +10,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_deliver
 
 enum PickUpStatusFilter {
   statusNewRequest('New Request'),
-  statusItemPrepared('Item Prepared'),
+  statusGettingSuppliesReady('Getting Supplies Ready'),
   statusItemPacked('Item Packed'),
   statusReceived('Received'),
   statusCancelled('Cancelled'),

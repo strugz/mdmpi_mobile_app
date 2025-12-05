@@ -17,11 +17,16 @@ abstract class PickUpActionHandler {
 
 class PickUpRequestRoleHandler extends PickUpActionHandler {
   @override
-  void handleAction(BuildContext context, PickUpModel request, PickUpController controller,
-      UserController userController, String userInitial) {
+  void handleAction(
+      BuildContext context,
+      PickUpModel request,
+      PickUpController controller,
+      UserController userController,
+      String userInitial) {
     if (request.status == BTexts.statusNewRequest) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
-        await controller.updateStatusWithInputs(request, BTexts.statusItemPrepared);
+        await controller.updateStatusWithInputs(
+            request, BTexts.statusItemPrepared);
       }, true);
     } else {
       BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
@@ -31,19 +36,31 @@ class PickUpRequestRoleHandler extends PickUpActionHandler {
 
 class PickUpReleaseRoleHandler extends PickUpActionHandler {
   @override
-  void handleAction(BuildContext context, PickUpModel request, PickUpController controller,
-      UserController userController, String userInitial) {
+  void handleAction(
+      BuildContext context,
+      PickUpModel request,
+      PickUpController controller,
+      UserController userController,
+      String userInitial) {
+
     if (request.status == BTexts.statusItemPrepared) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
-        await controller.updateStatusWithInputs(request, 'Item Packed');
+        await controller.updateStatusWithInputs(
+            request, BTexts.statusItemPacked);
       }, true);
-    } else if (request.status == 'Item Packed') {
+    } else if (request.status == BTexts.statusGettingSuppliesReady) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
-        await controller.updateStatusWithInputs(request, 'Received');
+        await controller.updateStatusWithInputs(
+            request, BTexts.statusItemPrepared);
+      }, true);
+    } else if (request.status == BTexts.statusItemPacked) {
+      BFullScreenLoader.showPickUpDialog(context, request, () async {
+        await controller.updateStatusWithInputs(request, BTexts.statusReceived);
       }, true);
     } else if (request.status == BTexts.statusNewRequest) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
-        await controller.updateStatusWithInputs(request, BTexts.statusItemPrepared);
+        await controller.updateStatusWithInputs(
+            request, BTexts.statusItemPrepared);
       }, true);
     } else {
       BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
@@ -53,25 +70,36 @@ class PickUpReleaseRoleHandler extends PickUpActionHandler {
 
 class PickUpCourierRoleHandler extends PickUpActionHandler {
   @override
-  void handleAction(BuildContext context, PickUpModel request, PickUpController controller,
-      UserController userController, String userInitial) {
+  void handleAction(
+      BuildContext context,
+      PickUpModel request,
+      PickUpController controller,
+      UserController userController,
+      String userInitial) {
     BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
   }
 }
 
 class PickUpViewerRoleHandler extends PickUpActionHandler {
   @override
-  void handleAction(BuildContext context, PickUpModel request, PickUpController controller,
-      UserController userController, String userInitial) {
+  void handleAction(
+      BuildContext context,
+      PickUpModel request,
+      PickUpController controller,
+      UserController userController,
+      String userInitial) {
     BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
   }
 }
 
 class PickUpDefaultHandler extends PickUpActionHandler {
   @override
-  void handleAction(BuildContext context, PickUpModel request, PickUpController controller,
-      UserController userController, String userInitial) {
+  void handleAction(
+      BuildContext context,
+      PickUpModel request,
+      PickUpController controller,
+      UserController userController,
+      String userInitial) {
     BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
   }
 }
-

@@ -101,6 +101,7 @@ class BTexts {
   static const String statusTakenOut = "Taken Out";
   static const String statusAll = "All";
   static const String statusReceived = "Received";
+  static const String statusItemPacked = "Item Packed";
 
   /// Request Modal Specific Texts
   static const String requestModalDeliveryShotTitle = "Delivery Shot";

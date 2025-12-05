@@ -21,13 +21,6 @@ class LoginScreen extends StatelessWidget {
           children: [
             const LoginHeader(),
             const LoginForm(),
-
-            /// Divider
-            const FormDivider(dividerText: BTexts.orSignInWith),
-            const SizedBox(width: BSizes.spaceBtwSections),
-
-            /// Footer
-            const BSocialButtons()
           ],
         ),
       ),

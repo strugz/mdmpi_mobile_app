@@ -44,9 +44,9 @@ class PickUpModal extends StatelessWidget {
           switch (status) {
             case 'New Request':
               return 'Mark Item Prepared';
-            case 'Item Prepared':
+            case 'Getting supplies ready':
               return 'Mark Item Packed';
-            case 'Item Packed':
+            case 'Item Prepared':
               return 'Mark Received';
             case 'Received':
               return '';
