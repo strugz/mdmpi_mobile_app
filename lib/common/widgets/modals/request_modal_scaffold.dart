@@ -35,7 +35,6 @@ class RequestModalScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
-
     return BRoundedContainer(
       backgroundColor: dark ? BColors.black : BColors.light,
       radius: 0,
@@ -67,12 +66,12 @@ class RequestModalScaffold extends StatelessWidget {
               docsBottomDivider
                   ? Column(
                       children: const [
-                        SizedBox(height: BSizes.spaceBtwSections),
+                        SizedBox(height: BSizes.xs),
                         Divider(),
-                        SizedBox(height: BSizes.spaceBtwSections),
+                        SizedBox(height: BSizes.xs),
                       ],
                     )
-                  : const SizedBox(height: BSizes.spaceBtwSections),
+                  : const SizedBox(height: BSizes.xs),
             // Body
             ...children,
             const SizedBox(height: BSizes.xs),

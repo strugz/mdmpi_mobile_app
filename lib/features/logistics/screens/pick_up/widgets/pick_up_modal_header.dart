@@ -31,7 +31,7 @@ class PickUpRequestModalHeader extends StatelessWidget {
     }
     try {
       final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy').format(dt);
+      return DateFormat('MMM d, yyyy HH:mm').format(dt);
     } catch (_) {
       return value.length >= 10 ? value.substring(0, 10) : value;
     }
@@ -42,11 +42,10 @@ class PickUpRequestModalHeader extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
     final hasAddress = requestModel.client.address.isNotEmpty;
-    final hasDatePickUp = requestModel.datePickUp.isNotEmpty;
-    final hasReleasedBy = requestModel.releasedBy.isNotEmpty;
     final hasPreparedBy = requestModel.preparedBy.isNotEmpty;
     final hasCreatedBy = requestModel.createdBy.isNotEmpty;
     final hasReceivedBy = requestModel.receivedBy.isNotEmpty;
+    final hasItemPreparedEndAt = requestModel.itemPreparedEndAt.isNotEmpty;
 
     return SingleChildScrollView(
       child: Column(
@@ -59,62 +58,77 @@ class PickUpRequestModalHeader extends StatelessWidget {
           ),
           if (hasAddress) ...[
             const SizedBox(height: BSizes.xxs),
-            BProductTitleText(
-              title: requestModel.client.address,
-              maxLines: 2,
-              smallSize: true,
-              fontColor: dark ? BColors.light : BColors.black,
-            ),
+            BLabelValueText(
+              label: 'Address',
+              value: requestModel.client.address,
+              icon: Iconsax.location,
+              showLabel: false,
+              maxLines: 3,
+              copyable: true,
+            )
           ],
           if (hasCreatedBy && hasPreparedBy) ...[
             const SizedBox(height: BSizes.xs),
+            BTextDivider(text: 'Preparation Details'),
             BLabelValueText(
-              label: 'Created By',
-              value: requestModel.createdBy,
+              label: 'Prepared By',
+              value: requestModel.preparedBy,
               showLabel: false,
-              icon: Iconsax.user,
+              icon: Iconsax.user_edit,
               padding: EdgeInsets.zero,
             ),
-          ],
-          if (hasDatePickUp || hasReleasedBy) ...[
-            const SizedBox(height: BSizes.xs),
-            const BTextDivider(text: 'Pick-Up Info'),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Row(
-                  children: [
-                    if (hasReleasedBy)
-                      Expanded(
-                        child: BLabelValueText(
-                          label: 'Released By',
-                          value: requestModel.releasedBy,
-                          showLabel: false,
-                          icon: Iconsax.user,
-                          padding: EdgeInsets.zero,
-                        ),
-                      ),
-                    if (hasDatePickUp)
-                      Expanded(
-                        child: BLabelValueText(
-                          label: 'Pick-Up Date',
-                          value: _formatDate(requestModel.datePickUp),
-                          showLabel: false,
-                          icon: Iconsax.calendar,
-                          padding: EdgeInsets.zero,
-                        ),
-                      ),
-                  ],
+            BLabelValueText(
+              label: 'Item prepared at',
+              value: _formatDate(
+                BFormatter.formatDateTimeCustomizable(
+                  requestModel.itemPreparedAt,
+                  "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                  "yyyy-MM-dd HH:mm",
                 ),
-              ],
+              ),
+              showLabel: false,
+              icon: Iconsax.calendar,
+              padding: EdgeInsets.zero,
             ),
+            if (hasItemPreparedEndAt)
+              BLabelValueText(
+                label: 'Item prepared end at',
+                value: _formatDate(
+                  BFormatter.formatDateTimeCustomizable(
+                    requestModel.itemPreparedEndAt,
+                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                    "yyyy-MM-dd HH:mm",
+                  ),
+                ),
+                showLabel: false,
+                icon: Iconsax.calendar_1,
+                padding: EdgeInsets.zero,
+              ),
+          ],
+          if (requestModel.status == BTexts.statusReceived) ...[
+            const SizedBox(height: BSizes.xs),
+            const BTextDivider(text: 'Release Details'),
             if (hasReceivedBy) ...[
               const SizedBox(height: BSizes.sm),
               BLabelValueText(
                 label: 'Received By',
                 value: requestModel.receivedBy,
                 showLabel: false,
-                icon: Iconsax.user,
+                icon: Iconsax.user_octagon,
+                padding: EdgeInsets.zero,
+                mainAlignment: MainAxisAlignment.center,
+              ),
+              BLabelValueText(
+                label: 'Received at',
+                value: _formatDate(
+                  BFormatter.formatDateTimeCustomizable(
+                    requestModel.updatedAt,
+                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                    "yyyy-MM-dd HH:mm",
+                  ),
+                ),
+                showLabel: false,
+                icon: Iconsax.calendar_1,
                 padding: EdgeInsets.zero,
                 mainAlignment: MainAxisAlignment.center,
               ),
@@ -133,7 +147,7 @@ class PickUpRequestModalHeader extends StatelessWidget {
                       apiController: 'RequestPickUp',
                       title: 'Pick Up Item');
                 },
-              ),
+              )
             ],
           ],
         ],

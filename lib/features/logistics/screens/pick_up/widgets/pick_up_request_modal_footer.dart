@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
@@ -29,15 +31,12 @@ class PickUpRequestModalFooter extends StatelessWidget {
     final cameraController = Get.find<CameraHandlerController>();
     final PickUpController requestController = Get.find();
 
-    final hasItemPreparedAt = requestModel.itemPreparedAt.isNotEmpty;
-    final hasItemPreparedEndAt = requestModel.itemPreparedEndAt.isNotEmpty;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// -- For Item Packed status (capture proof of packing) --
-        if (requestModel.status == 'Item Packed') ...[
-          const BTextDivider(text: 'Proof of Packing'),
+        if (requestModel.status == BTexts.statusItemPacked) ...[
+          const BTextDivider(text: 'Proof of Picked Up'),
           Obx(
             () => Center(
               child: Column(
@@ -64,6 +63,7 @@ class PickUpRequestModalFooter extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: BSizes.sm),
           BTextFormField(
             controller: requestController.formState.receivedByController,
             label: 'Received By',
@@ -88,35 +88,6 @@ class PickUpRequestModalFooter extends StatelessWidget {
             ),
           ),
         ],
-
-        /// -- Timestamps info --
-        if (hasItemPreparedAt || hasItemPreparedEndAt) ...[
-          const SizedBox(height: BSizes.sm),
-          const BTextDivider(text: 'Timestamps'),
-          if (hasItemPreparedAt)
-            BProductTitleText(
-              title: 'Item Prepared At: ${BFormatter.formatDateTimeCustomizable(
-                requestModel.itemPreparedAt,
-                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                "yyyy-MM-dd HH:mm",
-              )}',
-              maxLines: 1,
-              smallSize: true,
-              fontColor: textColor,
-            ),
-          if (hasItemPreparedEndAt)
-            BProductTitleText(
-              title: 'Item Packed At: ${BFormatter.formatDateTimeCustomizable(
-                requestModel.itemPreparedEndAt,
-                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                "yyyy-MM-dd HH:mm",
-              )}',
-              maxLines: 1,
-              smallSize: true,
-              fontColor: textColor,
-            ),
-        ],
-
         /// -- Remarks --
         if (requestModel.remarks.isNotEmpty) ...[
           const SizedBox(height: BSizes.sm),

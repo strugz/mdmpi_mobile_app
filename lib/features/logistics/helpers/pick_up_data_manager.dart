@@ -248,10 +248,10 @@ class PickUpDataManager {
 
       final updated = request.copyWith(
         status: newStatus,
-        preparedBy: newStatus == BTexts.statusItemPrepared
+        preparedBy: newStatus == BTexts.statusGettingSuppliesReady
             ? controller.userController.user.value.initial
             : request.preparedBy,
-        itemPreparedAt: newStatus == BTexts.statusItemPrepared &&
+        itemPreparedAt: newStatus == BTexts.statusGettingSuppliesReady &&
                 request.itemPreparedAt.isEmpty
             ? nowString
             : request.itemPreparedAt,

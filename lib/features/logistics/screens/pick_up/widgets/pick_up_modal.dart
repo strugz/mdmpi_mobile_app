@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -43,7 +45,7 @@ class PickUpModal extends StatelessWidget {
           if (status == null) return 'Proceed';
           switch (status) {
             case 'New Request':
-              return 'Mark Item Prepared';
+              return 'Mark Preparing';
             case 'Getting supplies ready':
               return 'Mark Item Packed';
             case 'Item Prepared':
@@ -57,18 +59,20 @@ class PickUpModal extends StatelessWidget {
       ),
       children: [
         if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
-        Obx(() {
-          controller.loadCancelRemarks(requestModel.id);
-          final remarks = controller.cancelRemarks.value;
-          if (remarks == null || remarks.remarks.isEmpty) {
-            return const SizedBox.shrink();
-          }
-          return BCancelRemarks(
-            remarks: remarks.remarks,
-            date: remarks.date,
-            user: remarks.userUpdated,
-          );
-        }),
+        Obx(
+          () {
+            controller.loadCancelRemarks(requestModel.id);
+            final remarks = controller.cancelRemarks.value;
+            if (remarks == null || remarks.remarks.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return BCancelRemarks(
+              remarks: remarks.remarks,
+              date: remarks.date,
+              user: remarks.userUpdated,
+            );
+          },
+        ),
         PickUpRequestModalFooter(requestModel: requestModel),
       ],
     );

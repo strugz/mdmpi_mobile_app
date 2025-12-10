@@ -26,7 +26,7 @@ class PickUpRequestRoleHandler extends PickUpActionHandler {
     if (request.status == BTexts.statusNewRequest) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
         await controller.updateStatusWithInputs(
-            request, BTexts.statusItemPrepared);
+            request, BTexts.statusGettingSuppliesReady);
       }, true);
     } else {
       BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
@@ -42,25 +42,19 @@ class PickUpReleaseRoleHandler extends PickUpActionHandler {
       PickUpController controller,
       UserController userController,
       String userInitial) {
-
-    if (request.status == BTexts.statusItemPrepared) {
+    if (request.status == BTexts.statusNewRequest) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
         await controller.updateStatusWithInputs(
-            request, BTexts.statusItemPacked);
+            request, BTexts.statusGettingSuppliesReady);
       }, true);
     } else if (request.status == BTexts.statusGettingSuppliesReady) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
         await controller.updateStatusWithInputs(
-            request, BTexts.statusItemPrepared);
+            request, BTexts.statusItemPacked);
       }, true);
     } else if (request.status == BTexts.statusItemPacked) {
       BFullScreenLoader.showPickUpDialog(context, request, () async {
         await controller.updateStatusWithInputs(request, BTexts.statusReceived);
-      }, true);
-    } else if (request.status == BTexts.statusNewRequest) {
-      BFullScreenLoader.showPickUpDialog(context, request, () async {
-        await controller.updateStatusWithInputs(
-            request, BTexts.statusItemPrepared);
       }, true);
     } else {
       BFullScreenLoader.showPickUpDialog(context, request, () {}, false);

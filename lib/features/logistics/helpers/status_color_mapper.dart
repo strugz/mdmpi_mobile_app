@@ -28,8 +28,13 @@ class LogisticsStatusColors {
         bg = _adjustAlpha(BColors.secondary, darkMode, baseAlpha: 0.3); fg = BColors.white; break;
       case BTexts.statusTakenOut:
         bg = _adjustAlpha(BColors.success, darkMode, baseAlpha: 0.25); fg = BColors.success; break;
+      case BTexts.statusItemPacked:
+        bg = _adjustAlpha(BColors.info, darkMode, baseAlpha: 0.2); fg = darkMode ? BColors.white : BColors.info; break;
       case BTexts.statusDoneDelivery:
+        bg = _adjustAlpha(BColors.success, darkMode, baseAlpha: 0.3); fg = darkMode ? BColors.white : BColors.success; break;
+      case BTexts.statusReceived:
         bg = BColors.success; fg = BColors.white; break;
+
       default:
         bg = darkMode ? BColors.darkerGrey : BColors.light; fg = darkMode ? BColors.light : BColors.darkGrey;
     }

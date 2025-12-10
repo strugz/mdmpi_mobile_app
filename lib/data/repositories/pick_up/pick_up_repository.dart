@@ -120,7 +120,6 @@ class PickUpRepository extends GetxController {
       logDebug('PickUpRepository: Fetching from API');
       final url = _uri(_resource);
       final response = await _safeGet(url);
-
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         final items = _decodeRootToList(decoded);
@@ -130,7 +129,6 @@ class PickUpRepository extends GetxController {
                 ? PickUpModel.fromJson(e)
                 : PickUpModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
-
         // Cache to local DB
         try {
           await dao.deleteAll();
@@ -178,7 +176,6 @@ class PickUpRepository extends GetxController {
                 ? PickUpModel.fromJson(e)
                 : PickUpModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
-
         if (pickUps.isNotEmpty) {
           final dao = await _dao;
           await dao.deleteAll();

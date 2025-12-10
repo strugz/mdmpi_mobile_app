@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/data/models/item_category_model.dart';
 
@@ -124,8 +126,8 @@ class PickUpModel {
     return PickUpModel(
       id: firstPresent(json,
           ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
-      clientId: firstPresent(
-          json, ['ClientID', 'clientID', 'clientId', 'ClientId']),
+      clientId:
+          firstPresent(json, ['ClientID', 'clientID', 'clientId', 'ClientId']),
       itemCategoryId: firstPresent(json, [
         'ItemCategoryID',
         'itemCategoryID',
@@ -168,8 +170,8 @@ class PickUpModel {
               Map<String, dynamic>.from(json['ItemCategory']))
           : ItemCategoryModel.empty(),
       documentReference:
-          json['DocumentReference'] != null && json['DocumentReference'] is List
-              ? List<String>.from((json['DocumentReference'] as List)
+          json['documentReference'] != null && json['documentReference'] is List
+              ? List<String>.from((json['documentReference'] as List)
                   .map((e) => e?.toString() ?? ''))
               : <String>[],
     );
@@ -211,4 +213,3 @@ class PickUpModel {
     );
   }
 }
-
