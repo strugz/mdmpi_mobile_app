@@ -188,4 +188,28 @@ Future<void> createAllTables(Database db) async {
       FormCategoryName TEXT
     )
   ''');
+
+  // Table: a_tblRequestAirSea
+  await db.execute('''
+    CREATE TABLE a_tblRequestAirSea (
+      RequestID INTEGER PRIMARY KEY,
+      ClientID TEXT,
+      ItemCategoryID TEXT,
+      MobileID INTEGER,
+      DatePickUp TEXT,
+      ItemPreparedAt TEXT,
+      ItemPreparedEndAt TEXT,
+      PreparedBy TEXT,
+      EndorsedTo TEXT,
+      EndorsedAt TEXT,
+      EndorsedBy TEXT,
+      WaybillNumber TEXT,
+      ReceivedAt TEXT,
+      ReceivedBy TEXT,
+      Status TEXT,
+      Remarks TEXT,
+      CreatedAt TEXT,
+      UpdatedAt TEXT
+    )
+  ''');
 }

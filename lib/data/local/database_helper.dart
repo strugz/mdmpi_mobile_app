@@ -13,6 +13,7 @@ import '../../features/personalization/models/user_model.dart';
 // DAO imports
 import 'dao/standard_delivery/standard_delivery_dao.dart';
 import 'dao/pick_up/pick_up_dao.dart';
+import 'dao/air_sea/air_sea_dao.dart';
 import 'dao/common/document_reference_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
@@ -34,6 +35,7 @@ class DatabaseHelper {
   // Cached DAO instances
   RequestDao? _requestDao;
   PickUpDao? _pickUpDao;
+  AirSeaDao? _airSeaDao;
   DocumentReferenceDao? _documentReferenceDao;
   RemarksDao? _remarksDao;
   ClientDao? _clientDao;
@@ -54,7 +56,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -100,6 +102,57 @@ class DatabaseHelper {
               FormCategoryName TEXT
             )
           ''');
+        }
+        if (oldVersion < 4) {
+          // Add Air/Sea main table for version 4
+          // Air/Sea requests reuse the existing shared support tables:
+          // - a_tblRequestDocumentReference
+          // - a_tblRequestReceiverSignature
+          // - a_tblRequestImage
+          // - a_tblRequestRemarks
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestAirSea (
+              RequestID INTEGER PRIMARY KEY,
+              ClientID TEXT,
+              ItemCategoryID TEXT,              MobileID INTEGER,
+              DatePickUp TEXT,
+              ItemPreparedAt TEXT,
+              ItemPreparedEndAt TEXT,              
+              PreparedBy TEXT,
+              EndorsedTo TEXT,
+              EndorsedAt TEXT,
+              EndorsedBy TEXT,
+              WaybillNumber TEXT,
+              ReceivedAt TEXT,
+              ReceivedBy TEXT,
+              Status TEXT,
+              Remarks TEXT,
+              CreatedAt TEXT,
+              UpdatedAt TEXT
+            )
+          ''');
+        }
+        if (oldVersion < 5) {
+          // Version 5: Ensure all Air/Sea columns exist (fix for databases created with incomplete schema)
+          // Add missing columns if they don't exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedTo TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedBy TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN WaybillNumber TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN ReceivedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN ReceivedBy TEXT');
+          } catch (_) {}
         }
       },
     );
@@ -160,6 +213,13 @@ class DatabaseHelper {
     final db = await database;
     _pickUpDao = PickUpDao(db);
     return _pickUpDao!;
+  }
+
+  Future<AirSeaDao> get airSeaDao async {
+    if (_airSeaDao != null) return _airSeaDao!;
+    final db = await database;
+    _airSeaDao = AirSeaDao(db);
+    return _airSeaDao!;
   }
 
   Future<ItemCategoryDao> get itemCategoryDao async {
@@ -372,6 +432,36 @@ class DatabaseHelper {
     _mobileDao = null;
     _userDao = null;
     _cntmstDao = null;
+  }
+
+  /// Delete the database file and reset the instance.
+  /// WARNING: This will delete all local data!
+  /// Use only for debugging or testing purposes.
+  Future<void> deleteDatabase() async {
+    try {
+      if (_database != null) {
+        await _database!.close();
+        _database = null;
+      }
+      final dbPath = await getDatabasesPath();
+      final path = join(dbPath, 'app.db');
+      await databaseFactory.deleteDatabase(path);
+
+      // Clear all cached DAOs
+      _requestDao = null;
+      _pickUpDao = null;
+      _airSeaDao = null;
+      _documentReferenceDao = null;
+      _remarksDao = null;
+      _clientDao = null;
+      _mobileDao = null;
+      _userDao = null;
+      _cntmstDao = null;
+      _itemCategoryDao = null;
+      _formCategoryDao = null;
+    } catch (e) {
+      // Ignore errors during deletion
+    }
   }
 }
 

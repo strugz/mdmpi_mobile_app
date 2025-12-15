@@ -47,7 +47,8 @@ import '../data/repositories/pull_out/pull_out_repository.dart';
 import '../features/logistics/controllers/pull_out_controller.dart';
 import '../data/repositories/pick_up/pick_up_repository.dart';
 import '../features/logistics/controllers/pick_up_controller.dart';
-// Add repositories for categories
+import '../data/repositories/air_sea/air_sea_repository.dart';
+import '../features/logistics/controllers/air_sea_controller.dart';
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
 
@@ -77,10 +78,9 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UpdateNameController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);
     Get.lazyPut(() => MobileController(), fenix: true);
-    // Register PullOutController
     Get.lazyPut(() => PullOutController(), fenix: true);
-    // Register PickUpController
     Get.lazyPut(() => PickUpController(), fenix: true);
+    Get.lazyPut(() => AirSeaController(), fenix: true);
     Get.lazyPut(
         () => CameraHandlerController(
               cameraService: Get.find<ICameraService>(),
@@ -94,7 +94,6 @@ class GeneralBindings extends Bindings {
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
     Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
-    // Image repository used across request flow (upload/download); register globally
     Get.lazyPut(() => ImageRepository(), fenix: true);
     Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
     Get.lazyPut(() => UserRepository());
@@ -109,6 +108,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
     Get.lazyPut(() => PullOutRepository(), fenix: true);
     Get.lazyPut(() => PickUpRepository(), fenix: true);
+    Get.lazyPut(() => AirSeaRepository(), fenix: true);
     Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
     Get.lazyPut(() => FormCategoryRepository(), fenix: true);
   }

@@ -6,14 +6,17 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_floating_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_list.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/pull_out_return_pick_up_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/pick_up_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/air_sea_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_filter_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_filter_manager.dart';
 
 import '../controllers/standard_delivery_controller.dart';
 
@@ -26,32 +29,32 @@ class RequestScreen extends StatelessWidget {
     final userController = Get.find<UserController>();
     final pullOutController = Get.find<PullOutController>();
     final pickUpController = Get.find<PickUpController>();
+    final airSeaController = Get.find<AirSeaController>();
 
     return DefaultTabController(
-      length: 3,
+      length: 4,
       child: Builder(builder: (context) {
         final TabController tabController = DefaultTabController.of(context);
 
         return Scaffold(
           appBar: BAppBar(
-            title: Text('Request', style: Theme.of(context).textTheme.headlineMedium),
+            title: Text('Request',
+                style: Theme.of(context).textTheme.headlineMedium),
             actions: [
-              // Dynamic switch based on active tab
               AnimatedBuilder(
                 animation: tabController,
                 builder: (context, _) {
                   final currentIndex = tabController.index;
 
                   return Obx(() {
-                    // Re-read the value reactively for the current controller
-                    // Invert the logic: when useLocalStorage is false, switch shows true (Server)
                     final useLocalStorageValue = currentIndex == 0
                         ? requestController.useLocalStorage.value
                         : currentIndex == 1
                             ? pullOutController.useLocalStorage.value
-                            : pickUpController.useLocalStorage.value;
+                            : currentIndex == 2
+                                ? pickUpController.useLocalStorage.value
+                                : airSeaController.useLocalStorage.value;
 
-                    // Inverted: switch true = Server mode (useLocalStorage false)
                     final switchValue = !useLocalStorageValue;
 
                     return Padding(
@@ -62,16 +65,20 @@ class RequestScreen extends StatelessWidget {
                           Switch(
                             value: switchValue,
                             onChanged: (value) {
-                              // Invert back: switch true means useLocalStorage should be false
                               final newUseLocalStorage = !value;
 
-                              // Toggle the appropriate controller based on tab
                               if (currentIndex == 0) {
-                                requestController.toggleStoragePreference(newUseLocalStorage);
+                                requestController.toggleStoragePreference(
+                                    newUseLocalStorage);
                               } else if (currentIndex == 1) {
-                                pullOutController.toggleStoragePreference(newUseLocalStorage);
+                                pullOutController.toggleStoragePreference(
+                                    newUseLocalStorage);
+                              } else if (currentIndex == 2) {
+                                pickUpController.toggleStoragePreference(
+                                    newUseLocalStorage);
                               } else {
-                                pickUpController.toggleStoragePreference(newUseLocalStorage);
+                                airSeaController.toggleStoragePreference(
+                                    newUseLocalStorage);
                               }
                             },
                             activeTrackColor: Colors.lightGreenAccent,
@@ -87,21 +94,21 @@ class RequestScreen extends StatelessWidget {
           ),
           body: Column(
             children: [
-              // Top filter area: switches based on active tab using AnimatedBuilder
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: BSizes.defaultSpace, vertical: 8),
                 child: AnimatedBuilder(
                   animation: tabController,
                   builder: (context, _) {
                     final currentIndex = tabController.index;
                     if (currentIndex == 0) {
-                      // Standard Delivery filters
                       return Column(
                         children: [
                           const BFilterDropdown(),
                           const SizedBox(height: BSizes.spaceBtwItems),
                           FilterDropdown(
-                            selectedFilter: requestController.filterManager.selectedStatusFilter,
+                            selectedFilter: requestController
+                                .filterManager.selectedStatusFilter,
                             filterValues: RequestStatusFilter.values,
                             getDisplayName: (filter) => filter.displayName,
                             onFilterChanged: (filter) {
@@ -114,9 +121,9 @@ class RequestScreen extends StatelessWidget {
                       // Pull-out filters
                       return Column(
                         children: [
-                          // Date filter for Pull-out using same RequestFilter enum
                           FilterDropdown<RequestFilter>(
-                            selectedFilter: pullOutController.filterManager.selectedFilter,
+                            selectedFilter:
+                                pullOutController.filterManager.selectedFilter,
                             filterValues: RequestFilter.values,
                             getDisplayName: (f) => f.displayName,
                             onFilterChanged: (f) {
@@ -124,9 +131,9 @@ class RequestScreen extends StatelessWidget {
                             },
                           ),
                           const SizedBox(height: BSizes.spaceBtwItems),
-                          // Status filter for Pull-out
                           FilterDropdown<PullOutStatusFilter>(
-                            selectedFilter: pullOutController.filterManager.selectedStatusFilter,
+                            selectedFilter: pullOutController
+                                .filterManager.selectedStatusFilter,
                             filterValues: PullOutStatusFilter.values,
                             getDisplayName: (f) => f.displayName,
                             onFilterChanged: (f) {
@@ -135,13 +142,13 @@ class RequestScreen extends StatelessWidget {
                           ),
                         ],
                       );
-                    } else {
+                    } else if (currentIndex == 2) {
                       // Pick-Up filters
                       return Column(
                         children: [
-                          // Date filter for Pick-up using same RequestFilter enum
                           FilterDropdown<RequestFilter>(
-                            selectedFilter: pickUpController.filterManager.selectedFilter,
+                            selectedFilter:
+                                pickUpController.filterManager.selectedFilter,
                             filterValues: RequestFilter.values,
                             getDisplayName: (f) => f.displayName,
                             onFilterChanged: (f) {
@@ -149,9 +156,9 @@ class RequestScreen extends StatelessWidget {
                             },
                           ),
                           const SizedBox(height: BSizes.spaceBtwItems),
-                          // Status filter for Pick-up
                           FilterDropdown<PickUpStatusFilter>(
-                            selectedFilter: pickUpController.filterManager.selectedStatusFilter,
+                            selectedFilter: pickUpController
+                                .filterManager.selectedStatusFilter,
                             filterValues: PickUpStatusFilter.values,
                             getDisplayName: (f) => f.displayName,
                             onFilterChanged: (f) {
@@ -160,6 +167,33 @@ class RequestScreen extends StatelessWidget {
                           ),
                         ],
                       );
+                    } else if (currentIndex == 3) {
+                      // Air/Sea filters
+                      return Column(
+                        children: [
+                          FilterDropdown<RequestFilter>(
+                            selectedFilter:
+                                airSeaController.filterManager.selectedFilter,
+                            filterValues: RequestFilter.values,
+                            getDisplayName: (f) => f.displayName,
+                            onFilterChanged: (f) {
+                              airSeaController.selectDateFilter(f);
+                            },
+                          ),
+                          const SizedBox(height: BSizes.spaceBtwItems),
+                          FilterDropdown<AirSeaStatusFilter>(
+                            selectedFilter: airSeaController
+                                .filterManager.selectedStatusFilter,
+                            filterValues: AirSeaStatusFilter.values,
+                            getDisplayName: (f) => f.displayName,
+                            onFilterChanged: (f) {
+                              airSeaController.selectStatusFilter(f);
+                            },
+                          ),
+                        ],
+                      );
+                    } else {
+                      return const SizedBox.shrink();
                     }
                   },
                 ),
@@ -172,6 +206,7 @@ class RequestScreen extends StatelessWidget {
                   Tab(text: 'Standard Delivery'),
                   Tab(text: 'Pull-out'),
                   Tab(text: 'Pick-Up'),
+                  Tab(text: 'Air/Sea'),
                 ],
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
@@ -179,23 +214,25 @@ class RequestScreen extends StatelessWidget {
                 child: TabBarView(
                   controller: tabController,
                   children: [
-                    // Standard Delivery tab: only the list (filters are above)
                     Column(
                       children: const [
                         SizedBox(height: 8),
                         BList(),
                       ],
                     ),
-                    // Pull-out tab: only the list (filters are above)
                     Column(
                       children: const [
                         PullOutReturnPickUpList(),
                       ],
                     ),
-                    // Pick-Up tab: only the list (filters are above)
                     Column(
                       children: const [
                         PickUpList(),
+                      ],
+                    ),
+                    Column(
+                      children: const [
+                        AirSeaList(),
                       ],
                     ),
                   ],

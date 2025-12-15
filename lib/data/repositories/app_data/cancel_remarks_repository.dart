@@ -11,6 +11,7 @@ enum RequestModule {
   standardDelivery,
   pullOut,
   pickUp,
+  airSea,
 }
 
 class CancelRemarksRepository {
@@ -25,6 +26,8 @@ class CancelRemarksRepository {
         return "${dotenv.env['API_URL']!}/api4/RequestPullOutReturnPickUp/cancel/$requestId";
       case RequestModule.pickUp:
         return "${dotenv.env['API_URL']!}/api4/RequestPickUp/cancel/$requestId";
+      case RequestModule.airSea:
+        return "${dotenv.env['API_URL']!}/api4/RequestAirSea/cancel/$requestId";
     }
   }
 

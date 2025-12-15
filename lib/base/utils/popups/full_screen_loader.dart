@@ -15,15 +15,18 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controll
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
 import '../../../common/widgets/texts/product_title_text.dart';
 import '../../../data/controllers/app_data/user_initial_controller.dart';
 import '../../../features/authentication/controllers/signup/signup_controller.dart';
+import '../../../features/logistics/controllers/air_sea_controller.dart';
 import '../../../features/logistics/controllers/standard_delivery_controller.dart';
 import '../../../features/logistics/models/standard_delivery_model.dart';
 import '../../../features/logistics/models/pull_out_model.dart';
 import '../../../features/logistics/models/pick_up_model.dart';
+import '../../../features/logistics/models/air_sea_model.dart';
 
 /// A utility class for managing a full-screen loading dialog.
 class BFullScreenLoader {
@@ -457,6 +460,41 @@ class BFullScreenLoader {
             isActionVisible: isActionVisible,
           ),
         );
+      },
+    );
+  }
+
+  /// Show Air/Sea request modal dialog
+  static void showAirSeaDialog(
+    BuildContext context,
+    AirSeaModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: AirSeaModal(
+            requestModel: requestModel,
+            onPressed: onPressed,
+            isActionVisible: isActionVisible,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show signature capture dialog for Air/Sea
+  static void showSignatureDialogForAirSea(
+      BuildContext context, AirSeaController controller) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (bytes) {
+        controller.formState.setSignature(bytes);
       },
     );
   }
