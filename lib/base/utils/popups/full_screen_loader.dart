@@ -477,11 +477,16 @@ class BFullScreenLoader {
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return SafeArea(
-          child: AirSeaModal(
-            requestModel: requestModel,
-            onPressed: onPressed,
-            isActionVisible: isActionVisible,
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: AirSeaModal(
+              requestModel: requestModel,
+              onPressed: onPressed,
+              isActionVisible: isActionVisible,
+            ),
           ),
         );
       },

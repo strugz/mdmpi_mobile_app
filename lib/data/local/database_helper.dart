@@ -56,7 +56,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -125,6 +125,11 @@ class DatabaseHelper {
               WaybillNumber TEXT,
               ReceivedAt TEXT,
               ReceivedBy TEXT,
+              TripTicketNumber TEXT,
+              Driver TEXT,
+              Helper TEXT,
+              DispatchedAt TEXT,
+              DropOffAt TEXT,
               Status TEXT,
               Remarks TEXT,
               CreatedAt TEXT,
@@ -152,6 +157,24 @@ class DatabaseHelper {
           } catch (_) {}
           try {
             await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN ReceivedBy TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 6) {
+          // Version 6: Add dispatch-related columns (TripTicketNumber, Driver, Helper, DispatchedAt, DropOffAt)
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN TripTicketNumber TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Driver TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Helper TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DispatchedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DropOffAt TEXT');
           } catch (_) {}
         }
       },

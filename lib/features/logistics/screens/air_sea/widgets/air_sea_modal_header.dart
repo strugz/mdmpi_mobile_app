@@ -25,6 +25,8 @@ class AirSeaRequestModalHeader extends StatelessWidget {
 
   final AirSeaModel requestModel;
 
+  /// Formats date string to readable format (MMM d, yyyy HH:mm)
+  /// Handles various date formats and returns fallback if parsing fails
   String _formatDate(String value) {
     if (value.isEmpty) return '';
     final norm = BFormatter.normalizeToIsoDatetime(value);
@@ -43,6 +45,7 @@ class AirSeaRequestModalHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
+
     final hasAddress = requestModel.client.address.isNotEmpty;
     final hasPreparedBy = requestModel.preparedBy.isNotEmpty;
     final hasReceivedBy = requestModel.receivedBy.isNotEmpty;
@@ -68,6 +71,7 @@ class AirSeaRequestModalHeader extends StatelessWidget {
               copyable: true,
             )
           ],
+          // Preparation details section (who prepared and when)
           if (hasPreparedBy) ...[
             const SizedBox(height: BSizes.xs),
             BTextDivider(text: 'Preparation Details'),
@@ -106,6 +110,60 @@ class AirSeaRequestModalHeader extends StatelessWidget {
                 padding: EdgeInsets.zero,
               ),
           ],
+
+          // Guard Endorsement section (only shown when status is 'Endorsed to Guard')
+          if (requestModel.status == BTexts.statusEndorsedToGuard) ...[
+            const SizedBox(height: BSizes.xs),
+            const BTextDivider(text: 'Guard Endorsement'),
+            if (hasReceivedBy) ...[
+              const SizedBox(height: BSizes.sm),
+              BLabelValueText(
+                label: 'Endorsed To (Guard)',
+                value: requestModel.receivedBy,
+                showLabel: false,
+                icon: Iconsax.user_octagon,
+                padding: EdgeInsets.zero,
+                mainAlignment: MainAxisAlignment.center,
+              ),
+              BLabelValueText(
+                label: 'Endorsed at',
+                value: _formatDate(
+                  BFormatter.formatDateTimeCustomizable(
+                    requestModel.updatedAt,
+                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                    "yyyy-MM-dd HH:mm",
+                  ),
+                ),
+                showLabel: false,
+                icon: Iconsax.calendar_1,
+                padding: EdgeInsets.zero,
+                mainAlignment: MainAxisAlignment.center,
+              ),
+              const SizedBox(height: BSizes.sm),
+            ],
+          ],
+
+          if (requestModel.status == BTexts.statusEndorsedToGuard) ...[
+            // Display captured guard signature image
+            CapturedSignatureImage(requestId: requestModel.id),
+            // Button to view guard receipt proof image
+            ViewDeliveredItemButton(
+              textColor: textColor,
+              labelTitle: 'View Guard Receipt Proof',
+              onPressed: () {
+                final requestIdForDb = requestModel.id;
+                showRequestImageDialog(context,
+                    requestId: requestIdForDb,
+                    fetchIfMissing: true,
+                    semanticsLabel:
+                        'Guard receipt proof image for request ${requestModel.id}',
+                    apiController: 'RequestAirSea',
+                    title: 'Guard Receipt Proof');
+              },
+            )
+          ],
+
+          // Receipt details section (only shown when status is 'Received')
           if (requestModel.status == BTexts.statusReceived) ...[
             const SizedBox(height: BSizes.xs),
             const BTextDivider(text: 'Receipt Details'),
@@ -151,9 +209,58 @@ class AirSeaRequestModalHeader extends StatelessWidget {
               )
             ],
           ],
+
+          // Drop Off details section (only shown when status is 'Drop Off')
+          if (requestModel.status == 'Drop Off') ...[
+            const SizedBox(height: BSizes.xs),
+            const BTextDivider(text: 'Drop Off Details'),
+            if (hasReceivedBy) ...[
+              const SizedBox(height: BSizes.sm),
+              BLabelValueText(
+                label: 'Received By',
+                value: requestModel.receivedBy,
+                showLabel: false,
+                icon: Iconsax.user_octagon,
+                padding: EdgeInsets.zero,
+                mainAlignment: MainAxisAlignment.center,
+              ),
+              if (requestModel.dropOffAt.isNotEmpty)
+                BLabelValueText(
+                  label: 'Dropped Off at',
+                  value: _formatDate(
+                    BFormatter.formatDateTimeCustomizable(
+                      requestModel.dropOffAt,
+                      "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                      "yyyy-MM-dd HH:mm",
+                    ),
+                  ),
+                  showLabel: false,
+                  icon: Iconsax.calendar_1,
+                  padding: EdgeInsets.zero,
+                  mainAlignment: MainAxisAlignment.center,
+                ),
+              const SizedBox(height: BSizes.sm),
+              // Display captured receiver signature image
+              CapturedSignatureImage(requestId: requestModel.id),
+              // Button to view drop off proof image
+              ViewDeliveredItemButton(
+                textColor: textColor,
+                labelTitle: 'View Drop Off Proof',
+                onPressed: () {
+                  final requestIdForDb = requestModel.id;
+                  showRequestImageDialog(context,
+                      requestId: requestIdForDb,
+                      fetchIfMissing: true,
+                      semanticsLabel:
+                          'Drop off proof image for request ${requestModel.id}',
+                      apiController: 'RequestAirSea',
+                      title: 'Drop Off Proof');
+                },
+              )
+            ],
+          ],
         ],
       ),
     );
   }
 }
-

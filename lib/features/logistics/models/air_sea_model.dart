@@ -15,13 +15,23 @@ class AirSeaModel {
   String itemPreparedEndAt;
 
   String preparedBy;
+  // Guard endorsement phase
+  String endorsedBy; // Guard name for "Endorsed to Guard" status
   // Receipt phase
-  String receivedBy;
+  String receivedBy; // Receiver name for "Received" status
   String waybillNumber;
   String receivedAt;
 
+  // Dispatch phase
+  String tripTicketNumber;
+  String driver;
+  String helper;
+  String dispatchedAt;
+  String dropOffAt;
+
   String status;
   String remarks;
+  String createdBy;
   String createdAt;
   String updatedAt;
 
@@ -39,11 +49,18 @@ class AirSeaModel {
     this.itemPreparedAt = '',
     this.itemPreparedEndAt = '',
     this.preparedBy = '',
+    this.endorsedBy = '',
     this.receivedBy = '',
     this.waybillNumber = '',
     this.receivedAt = '',
+    this.tripTicketNumber = '',
+    this.driver = '',
+    this.helper = '',
+    this.dispatchedAt = '',
+    this.dropOffAt = '',
     this.status = '',
     this.remarks = '',
+    this.createdBy = '',
     this.createdAt = '',
     this.updatedAt = '',
     ClientModel? client,
@@ -65,11 +82,18 @@ class AirSeaModel {
     String? itemPreparedAt,
     String? itemPreparedEndAt,
     String? preparedBy,
+    String? endorsedBy,
     String? receivedBy,
     String? waybillNumber,
     String? receivedAt,
+    String? tripTicketNumber,
+    String? driver,
+    String? helper,
+    String? dispatchedAt,
+    String? dropOffAt,
     String? status,
     String? remarks,
+    String? createdBy,
     String? createdAt,
     String? updatedAt,
     ClientModel? client,
@@ -85,11 +109,18 @@ class AirSeaModel {
       itemPreparedAt: itemPreparedAt ?? this.itemPreparedAt,
       itemPreparedEndAt: itemPreparedEndAt ?? this.itemPreparedEndAt,
       preparedBy: preparedBy ?? this.preparedBy,
+      endorsedBy: endorsedBy ?? this.endorsedBy,
       receivedBy: receivedBy ?? this.receivedBy,
       waybillNumber: waybillNumber ?? this.waybillNumber,
       receivedAt: receivedAt ?? this.receivedAt,
+      tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber,
+      driver: driver ?? this.driver,
+      helper: helper ?? this.helper,
+      dispatchedAt: dispatchedAt ?? this.dispatchedAt,
+      dropOffAt: dropOffAt ?? this.dropOffAt,
       status: status ?? this.status,
       remarks: remarks ?? this.remarks,
+      createdBy: createdBy ?? this.createdBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       client: client ?? this.client,
@@ -112,8 +143,14 @@ class AirSeaModel {
       'ReceivedBy': receivedBy,
       'WaybillNumber': waybillNumber,
       'ReceivedAt': receivedAt,
+      'TripTicketNumber': tripTicketNumber,
+      'Driver': driver,
+      'Helper': helper,
+      'DispatchedAt': dispatchedAt,
+      'DropOffAt': dropOffAt,
       'Status': status,
       'Remarks': remarks,
+      'CreatedBy': createdBy,
       'CreatedAt': createdAt,
       'UpdatedAt': updatedAt,
       'Client': client.toJson(),
@@ -181,8 +218,30 @@ class AirSeaModel {
       ]),
       receivedAt: firstPresent(
           json, ['ReceivedAt', 'receivedAt', 'Receivedat', 'receivedat']),
+      tripTicketNumber: firstPresent(json, [
+        'TripTicketNumber',
+        'tripTicketNumber',
+        'Tripticketnumber',
+        'tripticketnumber'
+      ]),
+      driver: firstPresent(json, ['Driver', 'driver']),
+      helper: firstPresent(json, ['Helper', 'helper']),
+      dispatchedAt: firstPresent(json, [
+        'DispatchedAt',
+        'dispatchedAt',
+        'Dispatchedat',
+        'dispatchedat'
+      ]),
+      dropOffAt: firstPresent(json, [
+        'DropOffAt',
+        'dropOffAt',
+        'Dropoffat',
+        'dropoffat'
+      ]),
       status: firstPresent(json, ['Status', 'status']),
       remarks: firstPresent(json, ['Remarks', 'remarks']),
+      createdBy: firstPresent(
+          json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
       createdAt: firstPresent(
           json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
       updatedAt: firstPresent(
@@ -191,8 +250,8 @@ class AirSeaModel {
           ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
           : ClientModel.empty(),
       documentReference:
-          json['DocumentReference'] != null && json['DocumentReference'] is List
-              ? List<String>.from((json['DocumentReference'] as List)
+          json['documentReference'] != null && json['documentReference'] is List
+              ? List<String>.from((json['documentReference'] as List)
                   .map((e) => e?.toString() ?? ''))
               : <String>[],
       cancelRemarks: json['CancelRemarks'] != null
@@ -228,11 +287,18 @@ class AirSeaModel {
       itemPreparedAt: (lower['itempreparedat'] ?? '').toString(),
       itemPreparedEndAt: (lower['itempreparedendat'] ?? '').toString(),
       preparedBy: (lower['preparedby'] ?? '').toString(),
+      endorsedBy: (lower['endorsedby'] ?? '').toString(),
       receivedBy: (lower['receivedby'] ?? '').toString(),
       waybillNumber: (lower['waybillnumber'] ?? '').toString(),
       receivedAt: (lower['receivedat'] ?? '').toString(),
+      tripTicketNumber: (lower['tripticketnumber'] ?? '').toString(),
+      driver: (lower['driver'] ?? '').toString(),
+      helper: (lower['helper'] ?? '').toString(),
+      dispatchedAt: (lower['dispatchedat'] ?? '').toString(),
+      dropOffAt: (lower['dropoffat'] ?? '').toString(),
       status: (lower['status'] ?? '').toString(),
       remarks: (lower['remarks'] ?? '').toString(),
+      createdBy: (lower['createdby'] ?? '').toString(),
       createdAt: (lower['createdat'] ?? '').toString(),
       updatedAt: (lower['updatedat'] ?? '').toString(),
       // client, documentReference, and cancelRemarks will be loaded by DAO

@@ -50,6 +50,10 @@ class AirSeaController extends GetxController {
   /// Contains remarks and cancellation date when a request is cancelled.
   final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
 
+  /// Identity of the user who created the current request.
+  /// Automatically populated from logged-in user's initials.
+  String createdBy = '';
+
   // ========================================================================
   // MANAGERS & DEPENDENCIES
   // ========================================================================
@@ -88,6 +92,7 @@ class AirSeaController extends GetxController {
 
     // Set up user context
     userController = Get.find<UserController>();
+    createdBy = userController.user.value.initial;
   }
 
   @override

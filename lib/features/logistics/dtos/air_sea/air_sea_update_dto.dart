@@ -6,6 +6,13 @@ class AirSeaUpdateDto {
   final String? itemPreparedAt;
   final String? itemPreparedEndAt;
   final String? preparedBy;
+  final String? receivedBy;
+  final String? waybillNumber;
+  final String? tripTicketNumber;
+  final String? driver;
+  final String? helper;
+  final String? dispatchedAt;
+  final String? dropOffAt;
   final String? status;
   final String? remarks;
 
@@ -16,6 +23,13 @@ class AirSeaUpdateDto {
     this.itemPreparedAt,
     this.itemPreparedEndAt,
     this.preparedBy,
+    this.receivedBy,
+    this.waybillNumber,
+    this.tripTicketNumber,
+    this.driver,
+    this.helper,
+    this.dispatchedAt,
+    this.dropOffAt,
     this.status,
     this.remarks,
   });
@@ -32,6 +46,13 @@ class AirSeaUpdateDto {
     put('ItemPreparedAt', itemPreparedAt);
     put('ItemPreparedEndAt', itemPreparedEndAt);
     put('PreparedBy', preparedBy);
+    put('ReceivedBy', receivedBy);
+    put('WaybillNumber', waybillNumber);
+    put('TripTicketNumber', tripTicketNumber);
+    put('Driver', driver);
+    put('Helper', helper);
+    put('DispatchedAt', dispatchedAt);
+    put('DropOffAt', dropOffAt);
     put('Status', status);
     put('Remarks', remarks);
 

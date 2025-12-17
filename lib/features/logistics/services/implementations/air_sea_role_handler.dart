@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
@@ -60,7 +62,17 @@ class AirSeaReleaseRoleHandler extends AirSeaActionHandler {
       }, true);
     } else if (request.status == BTexts.statusItemPacked) {
       BFullScreenLoader.showAirSeaDialog(context, request, () async {
-        await controller.updateStatusWithInputs(request, BTexts.statusEndorsedToGuard);
+        final selectedStatus = controller.formState.endorsedToController.text;
+        if (selectedStatus == 'Endorsed to Guard') {
+          await controller.updateStatusWithInputs(
+              request, BTexts.statusEndorsedToGuard);
+        } else if (selectedStatus == 'Received') {
+          await controller.updateStatusWithInputs(
+              request, BTexts.statusReceived);
+        } else if (selectedStatus == BTexts.statusDispatch) {
+          await controller.updateStatusWithInputs(
+              request, BTexts.statusDispatch);
+        }
       }, true);
     } else if (request.status == BTexts.statusEndorsedToGuard) {
       BFullScreenLoader.showAirSeaDialog(context, request, () async {
@@ -82,7 +94,13 @@ class AirSeaCourierRoleHandler extends AirSeaActionHandler {
       AirSeaController controller,
       UserController userController,
       String userInitial) {
-    BFullScreenLoader.showAirSeaDialog(context, request, () {}, false);
+    if (request.status == BTexts.statusDispatch) {
+      BFullScreenLoader.showAirSeaDialog(context, request, () async {
+        await controller.updateStatusWithInputs(request, BTexts.statusDropOff);
+      }, true);
+    } else {
+      BFullScreenLoader.showAirSeaDialog(context, request, () {}, false);
+    }
   }
 }
 
@@ -113,4 +131,3 @@ class AirSeaDefaultHandler extends AirSeaActionHandler {
     BFullScreenLoader.showAirSeaDialog(context, request, () {}, false);
   }
 }
-

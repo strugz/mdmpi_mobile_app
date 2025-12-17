@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
@@ -14,6 +12,14 @@ import 'package:mdmpi_mobile_app/features/logistics/services/implementations/air
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
+
+/// Role priority map: Lower number = Higher priority (more capabilities)
+const _rolePriority = {
+  BTexts.roleRelease: 1, // Most powerful - can handle most statuses
+  BTexts.roleCourier: 2, // Handles dispatch/drop-off
+  BTexts.roleRequest: 3, // Can only advance "New Request"
+  BTexts.roleViewer: 4, // View-only access
+};
 
 /// Main list screen for Air/Sea requests.
 /// Displays filtered requests with pull-to-refresh and tap handling based on user roles.
@@ -110,7 +116,7 @@ class AirSeaList extends StatelessWidget {
 }
 
 /// Handles tap on Air/Sea request based on user role.
-/// Delegates to appropriate role handler for status-specific actions.
+/// Selects the highest-priority role handler to avoid multiple dialogs.
 void _handleAirSeaTap(
   BuildContext context,
   AirSeaModel request,
@@ -124,6 +130,14 @@ void _handleAirSeaTap(
       .toList();
   final userInitial = userController.user.value.initial;
 
+  // Handle cancelled/received status with default handler
+  if (request.status.toLowerCase() == 'cancelled' ||
+      request.status == 'Received') {
+    AirSeaDefaultHandler().handleAction(
+        context, request, controller, userController, userInitial);
+    return;
+  }
+
   final handlers = <String, AirSeaActionHandler>{
     BTexts.roleRequest: AirSeaRequestRoleHandler(),
     BTexts.roleRelease: AirSeaReleaseRoleHandler(),
@@ -131,19 +145,24 @@ void _handleAirSeaTap(
     BTexts.roleViewer: AirSeaViewerRoleHandler(),
   };
 
-  for (final role in roles) {
-    final handler = handlers[role];
-    if (handler == null) continue;
+  // Find the highest-priority role the user has
+  String? selectedRole;
+  int highestPriority = 999;
 
-    if (request.status.toLowerCase() == 'cancelled' ||
-        request.status == 'Received') {
-      AirSeaDefaultHandler().handleAction(
-          context, request, controller, userController, userInitial);
-      break;
+  for (final role in roles) {
+    if (handlers.containsKey(role)) {
+      final priority = _rolePriority[role] ?? 999;
+      if (priority < highestPriority) {
+        highestPriority = priority;
+        selectedRole = role;
+      }
     }
-    handler.handleAction(
+  }
+
+  // Invoke only the highest-priority handler
+  if (selectedRole != null && handlers.containsKey(selectedRole)) {
+    handlers[selectedRole]!.handleAction(
         context, request, controller, userController, userInitial);
-    break;
   }
 }
 

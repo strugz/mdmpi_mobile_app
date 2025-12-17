@@ -115,6 +115,54 @@ class CameraHandlerController extends GetxController
     }
   }
 
+  /// Scans text and populates a single field with the first matched pattern.
+  /// Used for single-field scenarios like waybill numbers, tracking codes, etc.
+  Future<void> scanSingleField(TextEditingController controller) async {
+    if (!_cameraService.isInitialized || isProcessing.value) {
+      return;
+    }
+    isProcessing.value = true;
+    recognizedText.value = 'Processing...';
+
+    try {
+      final XFile? imageFile = await _cameraService.takePicture();
+      if (imageFile == null) {
+        recognizedText.value = 'Failed to capture image.';
+        isProcessing.value = false;
+        return;
+      }
+
+      final inputImage = InputImage.fromFile(File(imageFile.path));
+      final String rawRecognizedText =
+          await _textRecognitionService.processImage(inputImage);
+
+      final List<String> extractedMatches =
+          _textExtractor.extractPatterns(rawRecognizedText);
+
+      if (extractedMatches.isNotEmpty) {
+        // Take the first matched pattern and populate the field
+        controller.text = extractedMatches.first;
+        recognizedText.value = 'Scanned: ${extractedMatches.first}';
+        Get.back(); // Return to previous screen
+      } else {
+        recognizedText.value = 'No relevant information found.';
+        BLoaders.warningSnackBar(
+          title: 'No Text Found',
+          message: 'Could not detect any text. Please try again.',
+        );
+      }
+    } catch (e) {
+      logDebug('Error recognizing text: $e');
+      recognizedText.value = 'Error processing text.';
+      BLoaders.errorSnackBar(
+        title: 'Scan Error',
+        message: 'Failed to process image. Please try again.',
+      );
+    } finally {
+      isProcessing.value = false;
+    }
+  }
+
   Future<void> scannedTextValidation(List<String> strValidations,
       TextEditingController displayController) async {
     List<bool> isDuplicate = [];

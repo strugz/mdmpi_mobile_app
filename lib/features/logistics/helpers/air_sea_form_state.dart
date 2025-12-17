@@ -18,9 +18,16 @@ class AirSeaFormState {
       TextEditingController();
   final TextEditingController datePickUpController = TextEditingController();
   final TextEditingController remarksController = TextEditingController();
-    final TextEditingController itemCategoryController = TextEditingController();
+  final TextEditingController itemCategoryController = TextEditingController();
   final TextEditingController endorsedToController = TextEditingController();
+  final TextEditingController receivedByController = TextEditingController();
   final TextEditingController waybillNumberController = TextEditingController();
+  final TextEditingController tripTicketController = TextEditingController();
+  final TextEditingController driverController = TextEditingController();
+  final TextEditingController helperController = TextEditingController();
+  final TextEditingController vehicleController = TextEditingController();
+  final TextEditingController dispatchedAtController = TextEditingController();
+  final TextEditingController dropOffAtController = TextEditingController();
   final RxList<TextEditingController> documentReferenceControllers =
       <TextEditingController>[].obs;
   final Rx<ClientModel?> clientInformation =
@@ -45,22 +52,12 @@ class AirSeaFormState {
 
   /// Sets the receiver's signature with automatic base64 conversion.
   /// Handles both setting and clearing of signature data.
+  /// Used for both "Endorsed to Guard" and "Received" statuses.
   ///
   /// [signature] Raw signature image bytes, or null to clear the signature
   void setSignature(Uint8List? signature) {
     receiverSignatureBytes.value = signature;
     receiverSignatureBase64.value = signature != null && signature.isNotEmpty
-        ? base64Encode(signature)
-        : "";
-  }
-
-  /// Sets the guard's signature with automatic base64 conversion.
-  /// Handles both setting and clearing of signature data.
-  ///
-  /// [signature] Raw signature image bytes, or null to clear the signature
-  void setGuardSignature(Uint8List? signature) {
-    guardSignatureBytes.value = signature;
-    guardSignatureBase64.value = signature != null && signature.isNotEmpty
         ? base64Encode(signature)
         : "";
   }
@@ -75,10 +72,16 @@ class AirSeaFormState {
     datePickUpController.text = '';
     remarksController.text = '';
     endorsedToController.text = '';
+    receivedByController.text = '';
     waybillNumberController.text = '';
+    tripTicketController.text = '';
+    driverController.text = '';
+    helperController.text = '';
+    vehicleController.text = '';
+    dispatchedAtController.text = '';
+    dropOffAtController.text = '';
     receiverSignatureBase64.value = '';
-    guardSignatureBase64.value = '';
-        itemCategoryController.text = '';
+    itemCategoryController.text = '';
     mobileId.value = null;
 
     if (itemCategories.isNotEmpty) {
@@ -116,6 +119,12 @@ class AirSeaFormState {
         itemCategoryController.dispose();
     endorsedToController.dispose();
     waybillNumberController.dispose();
+    tripTicketController.dispose();
+    driverController.dispose();
+    helperController.dispose();
+    vehicleController.dispose();
+    dispatchedAtController.dispose();
+    dropOffAtController.dispose();
     for (var controller in documentReferenceControllers) {
       controller.dispose();
     }

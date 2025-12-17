@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_dispatch_info_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal_header.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_modal_footer.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_waybill_input_section.dart';
 
 /// Modal widget displaying Air/Sea request details.
 /// Shows header, document references, footer, and action buttons based on status.
@@ -50,6 +54,12 @@ class AirSeaModal extends StatelessWidget {
               return 'Mark Item Packed';
             case 'Item Prepared':
               return 'Mark Received';
+            case 'Endorsed to Guard':
+              return 'Mark Received';
+            case 'Dispatch':
+              return 'Mark Drop Off';
+            case 'Drop Off':
+              return 'Complete Delivery';
             case 'Received':
               return '';
             default:
@@ -58,6 +68,25 @@ class AirSeaModal extends StatelessWidget {
         },
       ),
       children: [
+        if (requestModel.waybillNumber.isNotEmpty) ...[
+          BLabelValueText(
+            label: 'Waybill Number',
+            value: requestModel.waybillNumber,
+            showLabel: true,
+            icon: Iconsax.clipboard_text,
+            padding: EdgeInsets.zero,
+            mainAlignment: MainAxisAlignment.start,
+            copyable: true,
+          ),
+        ],
+        // Waybill Input Section (shown when status is "Endorsed to Guard")
+        if (requestModel.status == BTexts.statusEndorsedToGuard) ...[
+          AirSeaWaybillInputSection(requestModel: requestModel),
+        ],
+
+        // Dispatch Information Section (shown when dispatch fields are populated)
+        AirSeaDispatchInfoSection(requestModel: requestModel),
+
         if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
         Obx(
           () {
@@ -78,4 +107,3 @@ class AirSeaModal extends StatelessWidget {
     );
   }
 }
-

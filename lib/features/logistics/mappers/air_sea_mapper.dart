@@ -16,9 +16,11 @@ class AirSeaMapper {
     return AirSeaInsertDto(
       clientID: m.clientId.isNotEmpty ? m.clientId : null,
       itemCategoryID: parseIntIfPossible(m.itemCategoryId),
-      documentReference: m.documentReference.isNotEmpty ? m.documentReference : null,
+      documentReference:
+          m.documentReference.isNotEmpty ? m.documentReference : null,
       datePickUp: m.datePickUp.isNotEmpty ? m.datePickUp : null,
       status: m.status.isNotEmpty ? m.status : null,
+      createdBy: m.createdBy.isNotEmpty ? m.createdBy : null,
     );
   }
 
@@ -27,11 +29,18 @@ class AirSeaMapper {
     return AirSeaUpdateDto(
       requestID: m.id.isNotEmpty ? m.id : null,
       mobileID: m.mobileId,
-            preparedBy: m.preparedBy.isNotEmpty ? m.preparedBy : null,
+      preparedBy: m.preparedBy.isNotEmpty ? m.preparedBy : null,
       itemPreparedAt: BFormatter.normalizeToIsoDatetime(m.itemPreparedAt),
       itemPreparedEndAt: BFormatter.normalizeToIsoDatetime(m.itemPreparedEndAt),
       remarks: m.remarks.isNotEmpty ? m.remarks : null,
       status: m.status.isNotEmpty ? m.status : null,
+      receivedBy: m.receivedBy.isNotEmpty ? m.receivedBy : null,
+      waybillNumber: m.waybillNumber.isNotEmpty ? m.waybillNumber : null,
+      tripTicketNumber: m.tripTicketNumber.isNotEmpty ? m.tripTicketNumber : null,
+      driver: m.driver.isNotEmpty ? m.driver : null,
+      helper: m.helper.isNotEmpty ? m.helper : null,
+      dispatchedAt: BFormatter.normalizeToIsoDatetime(m.dispatchedAt),
+      dropOffAt: BFormatter.normalizeToIsoDatetime(m.dropOffAt),
     );
   }
 
@@ -46,13 +55,21 @@ class AirSeaMapper {
 
     if (m.id.isNotEmpty) data['RequestID'] = m.id;
     put('MobileID', m.mobileId);
-        put('PreparedBy', m.preparedBy);
+    put('PreparedBy', m.preparedBy);
     put('ItemPreparedAt', BFormatter.normalizeToIsoDatetime(m.itemPreparedAt));
-    put('ItemPreparedEndAt', BFormatter.normalizeToIsoDatetime(m.itemPreparedEndAt));
+    put('ItemPreparedEndAt',
+        BFormatter.normalizeToIsoDatetime(m.itemPreparedEndAt));
+    put('EndorsedBy', m.endorsedBy);
+    put('ReceivedBy', m.receivedBy);
+    put('WaybillNumber', m.waybillNumber);
+    put('TripTicketNumber', m.tripTicketNumber);
+    put('Driver', m.driver);
+    put('Helper', m.helper);
+    put('DispatchedAt', BFormatter.normalizeToIsoDatetime(m.dispatchedAt));
+    put('DropOffAt', BFormatter.normalizeToIsoDatetime(m.dropOffAt));
     put('Remarks', m.remarks);
     put('Status', m.status);
 
     return data;
   }
 }
-

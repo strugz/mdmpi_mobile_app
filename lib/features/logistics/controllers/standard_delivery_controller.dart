@@ -118,7 +118,7 @@ class StandardDeliveryController extends GetxController {
   Future<void> loadRequests() async {
     try {
       isLoading.value = true;
-      if (useLocalStorage.value) {
+      if (!useLocalStorage.value) {
         await dataManager.fetchPendingRequestsAPI(
             allPendingRequests, filterManager);
       } else {

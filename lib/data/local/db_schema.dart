@@ -208,6 +208,7 @@ Future<void> createAllTables(Database db) async {
       ReceivedBy TEXT,
       Status TEXT,
       Remarks TEXT,
+      CreatedBy TEXT,
       CreatedAt TEXT,
       UpdatedAt TEXT
     )

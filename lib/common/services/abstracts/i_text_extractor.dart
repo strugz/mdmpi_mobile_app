@@ -11,7 +11,7 @@ class DocumentReferenceExtractor implements ITextExtractor {
     RegExp(r'GI No\.: *\n*\d+'),
     RegExp(r'PO No\.: *\n*[A-Za-z0-9-]+'),
     RegExp(r'SIS#: *\n*\d{5}'),
-    RegExp(r'[A-Z]{2}\d{2}-\d{3,}')
+    RegExp(r'[A-Z]{2}\d{2}-\d{3,}'),
   ];
 
   @override

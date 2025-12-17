@@ -15,6 +15,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/air_sea_mapper.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
 
@@ -87,7 +88,6 @@ class AirSeaDataManager {
       }
 
       controller.airSeaRequests.assignAll(results);
-
 
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());
     } catch (e) {
@@ -170,12 +170,15 @@ class AirSeaDataManager {
           controller.formState.itemCategoryController,
           controller.formState.itemCategories);
 
+      final userCtrl = Get.find<UserController>();
+
       final model = AirSeaModel(
         clientId: client.id,
         client: client,
         itemCategoryId: normalizedItemCategory,
         datePickUp: controller.formState.datePickUpController.text,
         status: 'New Request',
+        createdBy: userCtrl.user.value.initial,
         documentReference: docRefs,
       );
 
@@ -260,22 +263,51 @@ class AirSeaDataManager {
                 request.itemPreparedEndAt.isEmpty
             ? nowString
             : request.itemPreparedEndAt,
+        receivedBy: newStatus == BTexts.statusReceived ||
+                newStatus == BTexts.statusEndorsedToGuard &&
+                    formState.receivedByController.text.isNotEmpty
+            ? formState.receivedByController.text
+            : (request.receivedBy.isEmpty ? userInitial : request.receivedBy),
         waybillNumber: newStatus == BTexts.statusReceived &&
                 formState.waybillNumberController.text.isNotEmpty
             ? formState.waybillNumberController.text
             : request.waybillNumber,
-        receivedBy:
-            newStatus == BTexts.statusReceived && request.receivedBy.isEmpty
-                ? userInitial
-                : request.receivedBy,
         receivedAt:
             newStatus == BTexts.statusReceived && request.receivedAt.isEmpty
                 ? nowString
                 : request.receivedAt,
+        tripTicketNumber: newStatus == BTexts.statusDispatch &&
+                formState.tripTicketController.text.isNotEmpty
+            ? formState.tripTicketController.text
+            : request.tripTicketNumber,
+        driver: newStatus == BTexts.statusDispatch &&
+                formState.driverController.text.isNotEmpty
+            ? formState.driverController.text
+            : request.driver,
+        helper: newStatus == BTexts.statusDispatch &&
+                formState.helperController.text.isNotEmpty
+            ? formState.helperController.text
+            : request.helper,
+        mobileId: newStatus == BTexts.statusDispatch &&
+                formState.vehicleController.text.isNotEmpty
+            ? int.tryParse(formState.vehicleController.text)
+            : request.mobileId,
+        dispatchedAt:
+            newStatus == BTexts.statusDispatch && request.dispatchedAt.isEmpty
+                ? nowString
+                : request.dispatchedAt,
+        dropOffAt:
+            newStatus == BTexts.statusDropOff && request.dropOffAt.isEmpty
+                ? nowString
+                : request.dropOffAt,
       );
 
-      final bool signatureWasAdded = newStatus == BTexts.statusReceived &&
-          formState.receiverSignatureBase64.value.isNotEmpty;
+      // Handle signature upload for both "Endorsed to Guard" and "Received" statuses
+      final bool signatureWasAdded =
+          (newStatus == BTexts.statusEndorsedToGuard ||
+                  newStatus == BTexts.statusReceived ||
+                  newStatus == BTexts.statusDropOff) &&
+              formState.receiverSignatureBase64.value.isNotEmpty;
 
       if (signatureWasAdded) {
         final isConnectedForUpload =
@@ -294,7 +326,15 @@ class AirSeaDataManager {
         }
       }
 
-      if (newStatus == BTexts.statusReceived) {
+      // Handle proof image upload for "Endorsed to Guard" or "Received" status
+      // Upload only once: either during endorsement OR when going directly to received
+      // Skip if transitioning from "Endorsed to Guard" → "Received" (already uploaded)
+      final shouldUploadProof = newStatus == BTexts.statusEndorsedToGuard ||
+          (newStatus == BTexts.statusReceived ||
+              newStatus == BTexts.statusDropOff &&
+                  request.status != BTexts.statusEndorsedToGuard);
+
+      if (shouldUploadProof) {
         String? finalImageBase64 =
             await BImageHelperFunctions.getDeliveryImageAsBase64(
                 newStatus, request.id);
@@ -310,6 +350,8 @@ class AirSeaDataManager {
                 base64Image: finalImageBase64,
                 type: 'Proof',
               );
+              logDebug(
+                  'AirSeaDataManager: Proof image uploaded successfully for status: $newStatus (previous: ${request.status})');
             } catch (e) {
               logDebug('AirSeaDataManager: Image upload failed: $e');
               BLoaders.warningSnackBar(
@@ -326,8 +368,11 @@ class AirSeaDataManager {
           }
         } else {
           logDebug(
-              'AirSeaDataManager: No image to upload (finalImageBase64 is null or empty)');
+              'AirSeaDataManager: No image to upload (finalImageBase64 is null or empty) for status: $newStatus');
         }
+      } else {
+        logDebug(
+            'AirSeaDataManager: Skipping proof image upload - already uploaded during previous status transition (current: ${request.status} → new: $newStatus)');
       }
 
       final payload = AirSeaMapper.toUpdateDto(updated);
