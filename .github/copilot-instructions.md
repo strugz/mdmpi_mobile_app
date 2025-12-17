@@ -53,7 +53,28 @@
     * **If no suitable component is found, create a new widget and place it in either `lib/base/utils` or `lib/common` depending on its scope and reusability.**
 
     * **Folder / placement checks (new):**
-        * Before adding business logic, creational code, or new services/controllers, inspect the target folder and nearby files to confirm the correct scope (feature vs common). Check `lib/features/<domain>/controllers`, `lib/common/services/{abstracts,implementations}`, `lib/base/utils`, and `lib/bindings` first.
+        * Before adding business logic, creational code, or new services/controllers, inspect the target folder and nearby files to confirm the correct scope (feature vs common). Check `lib/features/<domain>/controllers`, `common/services/{abstracts,implementations}`, `lib/base/utils`, and `lib/bindings` first.
         * Favor creational patterns for constructing objects/services: use Factory or Abstract Factory for reusable creation logic; prefer Builders for complex object assembly; use Singleton only when justified and register singletons via `Get.put` (document why). Keep interfaces (abstracts) in `common/services/abstracts` and implementations in `common/services/implementations` or within the feature when feature-specific.
         * When adding controllers or services, register them in the appropriate `Binding` using `Get.lazyPut(fenix: true)` (or `Get.put` for true singletons) rather than instantiating in widgets.
         * If placement is ambiguous, add a short README/TODO in the folder explaining the decision and include a link to this guideline.
+
+* Documentation:
+
+    * **ALL documentation (.md files) must be placed in the `docs/` folder, never in the project root.**
+    * Organize module-specific documentation in `docs/modules/<module-name>/` (e.g., `docs/modules/air-sea/`).
+    * Each module folder should have a `README.md` for navigation and quick links.
+    * Use SCREAMING_SNAKE_CASE for documentation file names (e.g., `AIR_SEA_MODULE_DOCUMENTATION.md`).
+    * Main module documentation should be comprehensive and include:
+        * Overview and key features
+        * Status flow diagrams
+        * Architecture and data model
+        * Feature implementations with code examples
+        * API integration details
+        * Testing guide
+        * Troubleshooting section
+    * Keep `docs/README.md` updated with links to all module documentation.
+    * Link to module docs from the root `README.md` in the "Module Documentation" section.
+    * When consolidating scattered implementation notes, create a single comprehensive document rather than keeping multiple small files.
+    * Include version, date, and status in each documentation file.
+    * After creating or updating documentation, update all relevant README files to maintain navigation links.
+

@@ -31,7 +31,9 @@ class LogisticsStatusColors {
       case BTexts.statusItemPacked:
         bg = _adjustAlpha(BColors.info, darkMode, baseAlpha: 0.2); fg = darkMode ? BColors.white : BColors.info; break;
       case BTexts.statusDoneDelivery:
-        bg = _adjustAlpha(BColors.success, darkMode, baseAlpha: 0.3); fg = darkMode ? BColors.white : BColors.success; break;
+        bg = BColors.success; fg = BColors.white; break;
+      case BTexts.statusDropOff:
+        bg = BColors.success; fg = BColors.white; break;
       case BTexts.statusReceived:
         bg = BColors.success; fg = BColors.white; break;
 
