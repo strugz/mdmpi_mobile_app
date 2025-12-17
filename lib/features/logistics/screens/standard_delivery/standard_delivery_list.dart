@@ -14,6 +14,55 @@ import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_mod
 
 import '../../services/implementations/request_role_handler.dart';
 
+/// Role priority map: Lower number = Higher priority (more capabilities)
+const _rolePriority = {
+  BTexts.roleRelease: 1, // Most powerful for initial stages
+  BTexts.roleCourier: 2, // Most powerful for delivery stages
+  BTexts.roleRequest: 3, // Limited to viewing
+  BTexts.roleViewer: 4, // View-only access
+};
+
+/// Selects the appropriate role based on status and available roles.
+/// Prioritizes Courier for delivery-stage statuses, Release for preparation statuses.
+String? _selectActiveRole(List<String> roles, String status) {
+  // Courier-priority statuses (delivery stage)
+  if (status == BTexts.statusItemPrepared ||
+      status == BTexts.statusForDelivery) {
+    if (roles.contains(BTexts.roleCourier)) {
+      return BTexts.roleCourier;
+    }
+    // Release can view/handle if no Courier
+    if (roles.contains(BTexts.roleRelease)) {
+      return BTexts.roleRelease;
+    }
+  }
+
+  // Release-priority statuses (preparation stage)
+  if (status == BTexts.statusNewRequest ||
+      status == BTexts.statusGettingSuppliesReady) {
+    if (roles.contains(BTexts.roleRelease)) {
+      return BTexts.roleRelease;
+    }
+    if (roles.contains(BTexts.roleRequest)) {
+      return BTexts.roleRequest;
+    }
+  }
+
+  // Default: find highest-priority role
+  String? highestRole;
+  int highestPriority = 999;
+
+  for (final role in roles) {
+    final priority = _rolePriority[role] ?? 999;
+    if (priority < highestPriority) {
+      highestPriority = priority;
+      highestRole = role;
+    }
+  }
+
+  return highestRole;
+}
+
 class BList extends StatelessWidget {
   const BList({super.key});
 
@@ -51,7 +100,7 @@ class BList extends StatelessWidget {
                       onTap: () => {
                         requestController.currentSelectedRequest.value =
                             request,
-                        _handleRequestLongPress(
+                        _handleRequestTap(
                             context, request, requestController, userController)
                       },
                       onLongPress: () => {
@@ -108,75 +157,44 @@ class BList extends StatelessWidget {
     });
   }
 
-  /// Handles the tap event on a request item.
-  ///
-  /// This method determines the appropriate action to take based on the
-  /// It utilizes a [RequestActionHandler] to perform role-specific actions.
-  void _handleRequestLongPress(
+  /// Handles tap on Standard Delivery request based on user role.
+  /// Selects the highest-priority role handler to avoid multiple dialogs.
+  /// Uses status-aware role selection to prioritize Courier for delivery stages.
+  void _handleRequestTap(
     BuildContext context,
     StandardDeliveryModel request,
-      StandardDeliveryController requestController,
+    StandardDeliveryController requestController,
     UserController userController,
   ) {
-    final userRolesString = userController.user.value.role;
-    final List<String> userRoles =
-        userRolesString.split(',').map((e) => e.trim()).toList();
+    final roles = userController.user.value.role
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
     final userInitial = userController.user.value.initial;
 
-    final Map<String, RequestActionHandler> roleHandlers = {
-      'Request': RequestRoleHandler(),
-      'Release': ReleaseRoleHandler(),
-      'Courier': CourierRoleHandler(),
-      'Viewer': ViewerRoleHandler(),
+    // Handle done/cancelled status with default handler
+    if (request.status == BTexts.statusDoneDelivery ||
+        request.status == BTexts.statusCancelled) {
+      DefaultRequestHandler().handleAction(
+          context, request, requestController, userController, userInitial);
+      return;
+    }
+
+    final handlers = <String, RequestActionHandler>{
+      BTexts.roleRequest: RequestRoleHandler(),
+      BTexts.roleRelease: ReleaseRoleHandler(),
+      BTexts.roleCourier: CourierRoleHandler(),
+      BTexts.roleViewer: ViewerRoleHandler(),
     };
-    for (String role in userRoles) {
-      if (!roleHandlers.containsKey(role)) {
-        continue;
-      }
-      RequestActionHandler? currentRoleHandler = roleHandlers[role];
 
-      if (currentRoleHandler == null) {
-        continue;
-      }
+    // Select the appropriate role for this status
+    final selectedRole = _selectActiveRole(roles, request.status);
 
-      if (request.status == BTexts.statusDoneDelivery) {
-        DefaultRequestHandler().handleAction(
-            context, request, requestController, userController, userInitial);
-        break;
-      }
-      if (request.status == BTexts.statusCancelled) {
-        DefaultRequestHandler().handleAction(
-            context, request, requestController, userController, userInitial);
-        break;
-      }
-      if (role == 'Release') {
-        if (request.status == BTexts.statusNewRequest ||
-            request.status == BTexts.statusGettingSuppliesReady) {
-          currentRoleHandler.handleAction(
-              context, request, requestController, userController, userInitial);
-          break;
-        } else if (request.status == BTexts.statusItemPrepared &&
-            !userRoles.contains('Courier')) {
-          currentRoleHandler.handleAction(
-              context, request, requestController, userController, userInitial);
-          break;
-        } else if (request.status == BTexts.statusForDelivery &&
-            !userRoles.contains('Courier')) {
-          currentRoleHandler.handleAction(
-              context, request, requestController, userController, userInitial);
-        }
-      } else if (role == 'Courier') {
-        if (request.status == BTexts.statusItemPrepared ||
-            request.status == BTexts.statusForDelivery ||
-            request.status == BTexts.statusNewRequest) {
-          currentRoleHandler.handleAction(
-              context, request, requestController, userController, userInitial);
-          break;
-        }
-      } else if (role == 'Viewer') {
-        currentRoleHandler.handleAction(
-            context, request, requestController, userController, userInitial);
-      }
+    // Invoke only the selected handler
+    if (selectedRole != null && handlers.containsKey(selectedRole)) {
+      handlers[selectedRole]!.handleAction(
+          context, request, requestController, userController, userInitial);
     }
   }
 }
