@@ -13,6 +13,14 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart
 
 import '../../../../base/utils/constants/text_string.dart';
 
+/// Role priority map: Lower number = Higher priority (more capabilities)
+const _rolePriority = {
+  BTexts.roleRelease: 1, // Most powerful - can handle most statuses
+  BTexts.roleCourier: 2, // Handles dispatch/drop-off
+  BTexts.roleRequest: 3, // Can only advance "New Request"
+  BTexts.roleViewer: 4, // View-only access
+};
+
 class PullOutReturnPickUpList extends StatelessWidget {
   const PullOutReturnPickUpList({super.key});
 
@@ -105,6 +113,8 @@ class PullOutReturnPickUpList extends StatelessWidget {
   }
 }
 
+/// Handles tap on PullOut request based on user role.
+/// Selects the highest-priority role handler to avoid multiple dialogs.
 void _handlePullOutTap(
   BuildContext context,
   PullOutModel request,
@@ -118,6 +128,14 @@ void _handlePullOutTap(
       .toList();
   final userInitial = userController.user.value.initial;
 
+  // Handle cancelled/picked-up status with default handler
+  if (request.requestStatus.toLowerCase() == 'cancelled' ||
+      request.requestStatus.toLowerCase() == 'picked-up') {
+    PullOutDefaultHandler().handleAction(
+        context, request, controller, userController, userInitial);
+    return;
+  }
+
   final handlers = <String, PullOutActionHandler>{
     BTexts.roleRequest: PullOutRequestRoleHandler(),
     BTexts.roleRelease: PullOutReleaseRoleHandler(),
@@ -125,18 +143,23 @@ void _handlePullOutTap(
     BTexts.roleViewer: PullOutViewerRoleHandler(),
   };
 
-  for (final role in roles) {
-    final handler = handlers[role];
-    if (handler == null) continue;
+  // Find the highest-priority role the user has
+  String? selectedRole;
+  int highestPriority = 999;
 
-    if (request.requestStatus.toLowerCase() == 'cancelled' ||
-        request.requestStatus.toLowerCase() == 'picked-up') {
-      PullOutDefaultHandler().handleAction(
-          context, request, controller, userController, userInitial);
-      break;
+  for (final role in roles) {
+    if (handlers.containsKey(role)) {
+      final priority = _rolePriority[role] ?? 999;
+      if (priority < highestPriority) {
+        highestPriority = priority;
+        selectedRole = role;
+      }
     }
-    handler.handleAction(
+  }
+
+  // Invoke only the highest-priority handler
+  if (selectedRole != null && handlers.containsKey(selectedRole)) {
+    handlers[selectedRole]!.handleAction(
         context, request, controller, userController, userInitial);
-    break;
   }
 }
