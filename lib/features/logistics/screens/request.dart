@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
@@ -33,7 +34,7 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
   List<FormCategoryModel> formCategories = [];
   bool isLoadingCategories = true;
   TabController? _tabController;
-  PageController? _pageController;
+  CarouselSliderController? _carouselController;
 
   // Define the desired display order for form categories
   static const List<String> _categoryOrder = [
@@ -54,7 +55,6 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
   @override
   void dispose() {
     _tabController?.dispose();
-    _pageController?.dispose();
     super.dispose();
   }
 
@@ -72,14 +72,13 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
           isLoadingCategories = false;
         });
 
-        // Initialize TabController and PageController after categories are loaded
+        // Initialize TabController and CarouselController after categories are loaded
         _tabController = TabController(
           length: formCategories.length,
           vsync: this,
         );
 
-        // Start at a large offset to allow backward scrolling
-        _pageController = PageController(initialPage: 10000);
+        _carouselController = CarouselSliderController();
       }
     } catch (e) {
       if (mounted) {
@@ -91,39 +90,13 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
   }
 
   void _onPageChanged(int index) {
-    final length = formCategories.length;
-    final actualIndex = index % length;
-
-    // Update TabBar to match the current page
-    if (_tabController!.index != actualIndex) {
-      _tabController!.animateTo(actualIndex);
-    }
+    // Update TabBar to match the carousel page
+    _tabController!.animateTo(index);
   }
 
   void _onTabTapped(int index) {
-    if (_pageController == null) return;
-
-    final currentPage = _pageController!.page?.round() ?? 10000;
-    final length = formCategories.length;
-    final currentActualIndex = currentPage % length;
-
-    // Calculate the target page maintaining the current "loop"
-    int targetPage = currentPage - currentActualIndex + index;
-
-    // If we're going backward and the target is before current, go to previous loop
-    if (index < currentActualIndex && (currentActualIndex - index) > (length ~/ 2)) {
-      targetPage += length;
-    }
-    // If we're going forward and the target is after current, go to next loop
-    else if (index > currentActualIndex && (index - currentActualIndex) > (length ~/ 2)) {
-      targetPage -= length;
-    }
-
-    _pageController!.animateToPage(
-      targetPage,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+    // Move carousel to the tapped tab
+    _carouselController?.animateToPage(index);
   }
 
   /// Sort categories according to the predefined order
@@ -428,23 +401,29 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
                       .toList(),
                 ),
               const SizedBox(height: BSizes.spaceBtwItems),
-              if (_pageController != null)
+              if (_carouselController != null)
                 Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    onPageChanged: _onPageChanged,
-                    itemCount: null, // Infinite scroll
-                    itemBuilder: (context, index) {
-                      // Map infinite index to actual category index
-                      final actualIndex = index % formCategories.length;
-                      final category = formCategories[actualIndex];
-
+                  child: CarouselSlider.builder(
+                    carouselController: _carouselController,
+                    itemCount: formCategories.length,
+                    itemBuilder: (context, index, realIndex) {
+                      final category = formCategories[index];
                       return Column(
                         children: [
                           _getListWidgetForCategory(category.name),
                         ],
                       );
                     },
+                    options: CarouselOptions(
+                      height: double.infinity,
+                      viewportFraction: 1.0,
+                      enableInfiniteScroll: true,
+                      initialPage: 0,
+                      scrollDirection: Axis.horizontal,
+                      onPageChanged: (index, reason) {
+                        _onPageChanged(index);
+                      },
+                    ),
                   ),
                 ),
             ],
