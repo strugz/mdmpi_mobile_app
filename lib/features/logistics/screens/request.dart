@@ -73,8 +73,7 @@ class _RequestScreenState extends State<RequestScreen> {
   }
 
   /// Sort categories according to the predefined order
-  List<FormCategoryModel> _sortCategoriesByOrder(
-      List<FormCategoryModel> categories) {
+  List<FormCategoryModel> _sortCategoriesByOrder(List<FormCategoryModel> categories) {
     final sorted = <FormCategoryModel>[];
 
     // Add categories in the defined order
@@ -287,7 +286,6 @@ class _RequestScreenState extends State<RequestScreen> {
       length: formCategories.length,
       child: Builder(builder: (context) {
         final TabController tabController = DefaultTabController.of(context);
-
         return Scaffold(
           appBar: BAppBar(
             title: Text('Request',
@@ -300,7 +298,6 @@ class _RequestScreenState extends State<RequestScreen> {
                   if (currentIndex >= formCategories.length) {
                     return const SizedBox.shrink();
                   }
-
                   return Obx(() {
                     final category = formCategories[currentIndex];
                     final controller = _getControllerForCategory(category.name);
@@ -331,7 +328,6 @@ class _RequestScreenState extends State<RequestScreen> {
                             value: switchValue,
                             onChanged: (value) {
                               final newUseLocalStorage = !value;
-
                               if (controller is StandardDeliveryController) {
                                 controller.toggleStoragePreference(
                                     newUseLocalStorage);
