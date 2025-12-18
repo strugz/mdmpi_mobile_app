@@ -29,9 +29,11 @@ class RequestScreen extends StatefulWidget {
   State<RequestScreen> createState() => _RequestScreenState();
 }
 
-class _RequestScreenState extends State<RequestScreen> {
+class _RequestScreenState extends State<RequestScreen> with SingleTickerProviderStateMixin {
   List<FormCategoryModel> formCategories = [];
   bool isLoadingCategories = true;
+  TabController? _tabController;
+  PageController? _pageController;
 
   // Define the desired display order for form categories
   static const List<String> _categoryOrder = [
@@ -49,6 +51,13 @@ class _RequestScreenState extends State<RequestScreen> {
     _loadFormCategories();
   }
 
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    _pageController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadFormCategories() async {
     try {
       final repo = Get.find<FormCategoryRepository>();
@@ -62,6 +71,15 @@ class _RequestScreenState extends State<RequestScreen> {
           formCategories = sortedCategories;
           isLoadingCategories = false;
         });
+
+        // Initialize TabController and PageController after categories are loaded
+        _tabController = TabController(
+          length: formCategories.length,
+          vsync: this,
+        );
+
+        // Start at a large offset to allow backward scrolling
+        _pageController = PageController(initialPage: 10000);
       }
     } catch (e) {
       if (mounted) {
@@ -70,6 +88,42 @@ class _RequestScreenState extends State<RequestScreen> {
         });
       }
     }
+  }
+
+  void _onPageChanged(int index) {
+    final length = formCategories.length;
+    final actualIndex = index % length;
+
+    // Update TabBar to match the current page
+    if (_tabController!.index != actualIndex) {
+      _tabController!.animateTo(actualIndex);
+    }
+  }
+
+  void _onTabTapped(int index) {
+    if (_pageController == null) return;
+
+    final currentPage = _pageController!.page?.round() ?? 10000;
+    final length = formCategories.length;
+    final currentActualIndex = currentPage % length;
+
+    // Calculate the target page maintaining the current "loop"
+    int targetPage = currentPage - currentActualIndex + index;
+
+    // If we're going backward and the target is before current, go to previous loop
+    if (index < currentActualIndex && (currentActualIndex - index) > (length ~/ 2)) {
+      targetPage += length;
+    }
+    // If we're going forward and the target is after current, go to next loop
+    else if (index > currentActualIndex && (index - currentActualIndex) > (length ~/ 2)) {
+      targetPage -= length;
+    }
+
+    _pageController!.animateToPage(
+      targetPage,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   /// Sort categories according to the predefined order
@@ -282,23 +336,20 @@ class _RequestScreenState extends State<RequestScreen> {
 
     final userController = Get.find<UserController>();
 
-    return DefaultTabController(
-      length: formCategories.length,
-      child: Builder(builder: (context) {
-        final TabController tabController = DefaultTabController.of(context);
-        return Scaffold(
+    return Scaffold(
           appBar: BAppBar(
             title: Text('Request',
                 style: Theme.of(context).textTheme.headlineMedium),
             actions: [
-              AnimatedBuilder(
-                animation: tabController,
-                builder: (context, _) {
-                  final currentIndex = tabController.index;
-                  if (currentIndex >= formCategories.length) {
-                    return const SizedBox.shrink();
-                  }
-                  return Obx(() {
+              if (_tabController != null)
+                AnimatedBuilder(
+                  animation: _tabController!,
+                  builder: (context, _) {
+                    final currentIndex = _tabController!.index;
+                    if (currentIndex >= formCategories.length) {
+                      return const SizedBox.shrink();
+                    }
+                    return Obx(() {
                     final category = formCategories[currentIndex];
                     final controller = _getControllerForCategory(category.name);
 
@@ -355,37 +406,47 @@ class _RequestScreenState extends State<RequestScreen> {
           ),
           body: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: BSizes.defaultSpace, vertical: 8),
-                child: AnimatedBuilder(
-                  animation: tabController,
-                  builder: (context, _) {
-                    final currentIndex = tabController.index;
-                    return _buildFilterForCategory(currentIndex, tabController);
-                  },
+              if (_tabController != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: BSizes.defaultSpace, vertical: 8),
+                  child: AnimatedBuilder(
+                    animation: _tabController!,
+                    builder: (context, _) {
+                      final currentIndex = _tabController!.index;
+                      return _buildFilterForCategory(currentIndex, _tabController!);
+                    },
+                  ),
                 ),
-              ),
-              TabBar(
-                controller: tabController,
-                isScrollable: formCategories.length > 4,
-                tabs: formCategories
-                    .map((category) => Tab(text: category.name))
-                    .toList(),
-              ),
-              const SizedBox(height: BSizes.spaceBtwItems),
-              Expanded(
-                child: TabBarView(
-                  controller: tabController,
-                  children: formCategories
-                      .map((category) => Column(
-                            children: [
-                              _getListWidgetForCategory(category.name),
-                            ],
-                          ))
+              if (_tabController != null)
+                TabBar(
+                  controller: _tabController,
+                  isScrollable: formCategories.length > 4,
+                  onTap: _onTabTapped,
+                  tabs: formCategories
+                      .map((category) => Tab(text: category.name))
                       .toList(),
                 ),
-              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              if (_pageController != null)
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pageController,
+                    onPageChanged: _onPageChanged,
+                    itemCount: null, // Infinite scroll
+                    itemBuilder: (context, index) {
+                      // Map infinite index to actual category index
+                      final actualIndex = index % formCategories.length;
+                      final category = formCategories[actualIndex];
+
+                      return Column(
+                        children: [
+                          _getListWidgetForCategory(category.name),
+                        ],
+                      );
+                    },
+                  ),
+                ),
             ],
           ),
           floatingActionButton: Obx(() {
@@ -396,7 +457,5 @@ class _RequestScreenState extends State<RequestScreen> {
             }
           }),
         );
-      }),
-    );
   }
 }
