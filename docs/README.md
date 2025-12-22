@@ -52,17 +52,23 @@ Complete documentation for the Air/Sea logistics request management system.
 ---
 
 #### [Standard Delivery Module](modules/standard-delivery/)
-Documentation for Standard Delivery logistics module fixes and enhancements.
+**Complete consolidated documentation** for Standard Delivery logistics module - All-in-one comprehensive guide.
 
-**Files**:
-- [Standard Delivery Fix Implementation](modules/standard-delivery/STANDARD_DELIVERY_FIX_IMPLEMENTATION.md)
-- [Multi-Role Fix Analysis](modules/standard-delivery/STANDARD_DELIVERY_MULTI_ROLE_FIX_ANALYSIS.md)
-- [Standard Delivery Refactoring Summary](STANDARD_DELIVERY_REFACTORING_SUMMARY.md) - Controller refactoring to modern pattern
-- [Standard Delivery Quick Reference](STANDARD_DELIVERY_QUICK_REFERENCE.md) - Developer quick reference guide
-- [Standard Delivery Error Fixes](STANDARD_DELIVERY_ERROR_FIXES.md) - Detailed error resolution
-- [Standard Delivery Final Status](STANDARD_DELIVERY_FINAL_STATUS.md) - ✅ Production ready verification
+**Documentation:**
+- [📘 Standard Delivery Complete Documentation](modules/standard-delivery/STANDARD_DELIVERY_COMPLETE_CONSOLIDATED.md) - **Single comprehensive document** covering:
+  - Architecture (Controller + Managers pattern v2.0)
+  - Complete data model & API DTOs
+  - Controllers, Managers, and all components
+  - Features implementation (creation, updates, tracking, filtering, offline, notifications)
+  - API integration (repositories, mappers)
+  - Status flow diagram & rules
+  - Troubleshooting guide
+  - Testing guide (unit, integration, manual)
+  - Complete change history
+  - Multi-role dialog fix implementation
+  - Multi-role fix analysis
 
-**Status**: ✅ Complete | **Last Updated**: Dec 22, 2025
+**Status**: ✅ Complete | **Last Updated**: Dec 22, 2025 | **Version**: 2.0 | **Pages**: Single consolidated document
 
 ---
 
