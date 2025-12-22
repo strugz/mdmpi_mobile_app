@@ -4,7 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart'; // For RequestFilter enum reuse
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart'; // For RequestFilter enum reuse
 
 enum PullOutStatusFilter {
   statusNewRequest('New Request'),

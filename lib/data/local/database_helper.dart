@@ -56,7 +56,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -175,6 +175,15 @@ class DatabaseHelper {
           } catch (_) {}
           try {
             await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DropOffAt TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 7) {
+          // Version 7: Add ItemCategoryID and FormCategoryID columns to a_tblRequest
+          try {
+            await db.execute('ALTER TABLE a_tblRequest ADD COLUMN ItemCategoryID TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequest ADD COLUMN FormCategoryID TEXT');
           } catch (_) {}
         }
       },

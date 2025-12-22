@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/air_sea_list
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_filter_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
 import 'package:mdmpi_mobile_app/data/models/form_category_model.dart';
 
@@ -202,7 +203,7 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
           FilterDropdown(
             selectedFilter:
                 requestController.filterManager.selectedStatusFilter,
-            filterValues: RequestStatusFilter.values,
+            filterValues: StandardDeliveryStatusFilter.values,
             getDisplayName: (filter) => filter.displayName,
             onFilterChanged: (filter) {
               requestController.selectStatusFilter(filter);

@@ -36,6 +36,11 @@ class RequestTransport extends StatelessWidget {
               : request.client.address;
     }
 
+    // Initialize route after setting the address
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      reqTranController.initializeRoute();
+    });
+
     // Get the bottom padding of the device
     final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final bool isGestureNavigation = bottomPadding > 0.0;

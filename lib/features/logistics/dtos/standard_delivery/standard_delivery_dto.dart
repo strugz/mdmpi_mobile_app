@@ -32,6 +32,8 @@ class StandardDeliveryDto {
   final RemarksDto? cancelRemarks;
   final ImageDto? image;
   final SignatureDto? signature;
+  final int? itemCategoryID;  // Changed to int
+  final int? formCategoryID;  // Changed to int
 
   StandardDeliveryDto({
     this.id,
@@ -62,6 +64,8 @@ class StandardDeliveryDto {
     this.cancelRemarks,
     this.image,
     this.signature,
+    this.itemCategoryID,
+    this.formCategoryID,
   });
 
   factory StandardDeliveryDto.fromJson(Map<String, dynamic> json) {
@@ -96,6 +100,12 @@ class StandardDeliveryDto {
       cancelRemarks: json['CancelRemarks'] != null ? RemarksDto.fromJson(Map<String, dynamic>.from(json['CancelRemarks'])) : null,
       image: json['Image'] != null ? ImageDto.fromJson(Map<String, dynamic>.from(json['Image'])) : null,
       signature: json['Signature'] != null ? SignatureDto.fromJson(Map<String, dynamic>.from(json['Signature'])) : null,
+      itemCategoryID: json['ItemCategoryID'] is int
+          ? json['ItemCategoryID']
+          : (json['ItemCategoryID'] != null ? int.tryParse(json['ItemCategoryID'].toString()) : null),
+      formCategoryID: json['FormCategoryID'] is int
+          ? json['FormCategoryID']
+          : (json['FormCategoryID'] != null ? int.tryParse(json['FormCategoryID'].toString()) : null),
     );
   }
 
@@ -129,6 +139,8 @@ class StandardDeliveryDto {
       'CancelRemarks': cancelRemarks?.toJson(),
       'Image': image?.toJson(),
       'Signature': signature?.toJson(),
+      'ItemCategoryID': itemCategoryID,
+      'FormCategoryID': formCategoryID,
     };
   }
 }

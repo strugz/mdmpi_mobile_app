@@ -8,6 +8,8 @@ class StandardDeliveryInsertDto {
   final String? requestBy;
   final String? requestCreatedBy;
   final List<String>? documentReference;
+  final int? itemCategoryID;  // Changed to int
+  final int? formCategoryID;  // Changed to int
 
   StandardDeliveryInsertDto({
     this.requestClientID,
@@ -19,6 +21,8 @@ class StandardDeliveryInsertDto {
     this.requestBy,
     this.requestCreatedBy,
     this.documentReference,
+    this.itemCategoryID,
+    this.formCategoryID,
   });
 
   Map<String, dynamic> toJson() {
@@ -37,6 +41,8 @@ class StandardDeliveryInsertDto {
     put('requestBy', requestBy);
     put('requestCreatedBy', requestCreatedBy);
     put('documentReference', documentReference);
+    put('itemCategoryID', itemCategoryID);
+    put('formCategoryID', formCategoryID);
 
     return data;
   }

@@ -31,6 +31,8 @@ class StandardDeliveryModel {
   String image;
   String tripTicketNumber;
   CancelRemarksModel cancelRemarks;
+  String itemCategoryID;
+  String formCategoryID;
 
   StandardDeliveryModel({
     this.id = '',
@@ -61,6 +63,8 @@ class StandardDeliveryModel {
     this.image = '',
     this.tripTicketNumber = '',
     this.cancelRemarks = CancelRemarksModel.empty,
+    this.itemCategoryID = '',
+    this.formCategoryID = '',
   });
 
   StandardDeliveryModel copyWith({
@@ -92,6 +96,8 @@ class StandardDeliveryModel {
     String? image,
     String? tripTicketNumber,
     CancelRemarksModel? cancelRemarks,
+    String? itemCategoryID,
+    String? formCategoryID,
   }) {
     return StandardDeliveryModel(
       id: id ?? this.id,
@@ -122,6 +128,8 @@ class StandardDeliveryModel {
       image: image ?? this.image,
       tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber,
       cancelRemarks: cancelRemarks ?? this.cancelRemarks,
+      itemCategoryID: itemCategoryID ?? this.itemCategoryID,
+      formCategoryID: formCategoryID ?? this.formCategoryID,
     );
   }
 
@@ -177,6 +185,8 @@ class StandardDeliveryModel {
         image: '',
         tripTicketNumber: '',
         cancelRemarks: CancelRemarksModel.empty,
+        itemCategoryID: '',
+        formCategoryID: '',
       );
 
   /// Json Format
@@ -210,6 +220,8 @@ class StandardDeliveryModel {
       'Image': image,
       'TripTicketNumber': tripTicketNumber,
       'CancelRemarks': cancelRemarks.toJson(),
+      'ItemCategoryID': itemCategoryID,
+      'FormCategoryID': formCategoryID,
     };
   }
 
@@ -268,6 +280,8 @@ class StandardDeliveryModel {
           ? CancelRemarksModel.fromJson(
               Map<String, dynamic>.from(json['CancelRemarks']))
           : CancelRemarksModel.empty,
+      itemCategoryID: (json['ItemCategoryID']?.toString() ?? ''),
+      formCategoryID: (json['FormCategoryID']?.toString() ?? ''),
     );
   }
 
@@ -333,6 +347,8 @@ class StandardDeliveryModel {
         image: (lower['image'] ?? '').toString(),
         tripTicketNumber: (lower['tripticketnumber'] ?? '').toString(),
         cancelRemarks: CancelRemarksModel.empty,
+        itemCategoryID: (lower['itemcategoryid'] ?? '').toString(),
+        formCategoryID: (lower['formcategoryid'] ?? '').toString(),
       );
     } catch (e) {
       return StandardDeliveryModel.empty();
@@ -349,6 +365,8 @@ class StandardDeliveryModel {
     required String preference,
     required ClientModel? client,
     required String createdBy,
+    String itemCategoryID = '',
+    String formCategoryID = '',
   }) {
     if (clientId == null || client == null) {
       throw ArgumentError('Client ID and Client information cannot be null.');
@@ -365,6 +383,8 @@ class StandardDeliveryModel {
       status: 'New Request',
       createdBy: createdBy,
       createdAt: DateTime.now().toString(),
+      itemCategoryID: itemCategoryID,
+      formCategoryID: formCategoryID,
     );
   }
 }

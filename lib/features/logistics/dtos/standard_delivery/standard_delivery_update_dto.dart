@@ -16,6 +16,8 @@ class StandardDeliveryUpdateDto {
   final Map<String, dynamic>? image;
   final Map<String, dynamic>? signature;
   final Map<String, dynamic>? remarks;
+  final String? itemCategoryID;
+  final String? formCategoryID;
 
   const StandardDeliveryUpdateDto({
     this.requestID,
@@ -35,6 +37,8 @@ class StandardDeliveryUpdateDto {
     this.image,
     this.signature,
     this.remarks,
+    this.itemCategoryID,
+    this.formCategoryID,
   });
 
   /// Convert to JSON map for API. Omits null values to keep payload small.
@@ -58,6 +62,8 @@ class StandardDeliveryUpdateDto {
     put('requestDeliveredEndAt', requestDeliveredEndAt);
     put('locationStartedAt', locationStartedAt);
     put('locationEndAt', locationEndAt);
+    put('itemCategoryID', itemCategoryID);
+    put('formCategoryID', formCategoryID);
 
     // Only include nested objects if they contain meaningful values. This
     // ensures keys like `signature` aren't sent when empty or null.

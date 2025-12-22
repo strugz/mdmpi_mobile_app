@@ -27,9 +27,8 @@ class SettingsScreen extends StatelessWidget {
     try {
       await DatabaseHelper.instance.deleteRequest();
 
-      await requestController.dataManager.fetchPendingRequestsAPI(
-          requestController.allPendingRequests,
-          requestController.filterManager);
+      await requestController.dataManager.fetchStandardDeliveryRequests(
+          requestController, false); // false = force API fetch
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {

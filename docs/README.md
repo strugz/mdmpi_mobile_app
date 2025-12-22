@@ -57,8 +57,12 @@ Documentation for Standard Delivery logistics module fixes and enhancements.
 **Files**:
 - [Standard Delivery Fix Implementation](modules/standard-delivery/STANDARD_DELIVERY_FIX_IMPLEMENTATION.md)
 - [Multi-Role Fix Analysis](modules/standard-delivery/STANDARD_DELIVERY_MULTI_ROLE_FIX_ANALYSIS.md)
+- [Standard Delivery Refactoring Summary](STANDARD_DELIVERY_REFACTORING_SUMMARY.md) - Controller refactoring to modern pattern
+- [Standard Delivery Quick Reference](STANDARD_DELIVERY_QUICK_REFERENCE.md) - Developer quick reference guide
+- [Standard Delivery Error Fixes](STANDARD_DELIVERY_ERROR_FIXES.md) - Detailed error resolution
+- [Standard Delivery Final Status](STANDARD_DELIVERY_FINAL_STATUS.md) - ✅ Production ready verification
 
-**Status**: ✅ Complete | **Last Updated**: Dec 17, 2025
+**Status**: ✅ Complete | **Last Updated**: Dec 22, 2025
 
 ---
 

@@ -46,6 +46,8 @@ class StandardDeliveryRepository extends GetxController {
       final updateDto = StandardDeliveryMapper.toUpdateDto(requestData);
       final payload = updateDto.toJson();
 
+      print(jsonEncode(payload));
+
       final url = "${dotenv.env['API_URL']!}/api4/request";
 
       final response = await http

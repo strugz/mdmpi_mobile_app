@@ -11,6 +11,8 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
+import '../../../../../data/repositories/common/item_category_repository.dart';
+import '../../../../../data/repositories/common/form_category_repository.dart';
 import '../../../controllers/standard_delivery_controller.dart';
 
 class StandardDelivery extends StatelessWidget {
@@ -20,6 +22,9 @@ class StandardDelivery extends StatelessWidget {
   Widget build(BuildContext context) {
     final requestController = Get.find<StandardDeliveryController>();
     final userCNTMSTController = Get.find<UserMdmpiController>();
+    final itemCategoryRepo = Get.find<ItemCategoryRepository>();
+    final formCategoryRepo = Get.find<FormCategoryRepository>();
+
     userCNTMSTController.filterUserFromLocal();
 
     // Get the bottom padding of the device
@@ -56,6 +61,58 @@ class StandardDelivery extends StatelessWidget {
 
                           /// Document Reference
                           const BDocumentReference(),
+                          const SizedBox(height: BSizes.sm),
+
+                          /// Item Category dropdown
+                          FutureBuilder(
+                            future: itemCategoryRepo.getAll(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                                return BDropdown(
+                                  controller: requestController.formState.itemCategory,
+                                  label: 'Item Category',
+                                  dropdownList: const [],
+                                );
+                              }
+                              return BDropDownDynamicList(
+                                controller: requestController.formState.itemCategory,
+                                icon: Iconsax.box,
+                                label: 'Item Category',
+                                dropdownList: snapshot.data!.map((cat) => cat.toJson()).toList(),
+                                valueKey: 'ItemCategoryID',
+                                displayKey: 'ItemCategoryName',
+                              );
+                            },
+                          ),
+                          const SizedBox(height: BSizes.spaceBtwItems),
+
+                          /// Form Category dropdown
+                          FutureBuilder(
+                            future: formCategoryRepo.getAll(),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                                return BDropdown(
+                                  controller: requestController.formState.formCategory,
+                                  label: 'Form Category',
+                                  dropdownList: const [],
+                                );
+                              }
+                              return BDropDownDynamicList(
+                                controller: requestController.formState.formCategory,
+                                icon: Iconsax.document,
+                                label: 'Form Category',
+                                dropdownList: snapshot.data!.map((cat) => cat.toJson()).toList(),
+                                valueKey: 'FormCategoryID',
+                                displayKey: 'FormCategoryName',
+                              );
+                            },
+                          ),
                           const SizedBox(height: BSizes.sm),
                         ],
                       ),
