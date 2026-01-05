@@ -116,7 +116,7 @@ class PullOutRepository extends GetxController {
       final url = _uri(_resource);
 
       final response = await _safePost(url, payload);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         _showSuccess('Success saving...', silent: silent);
       } else {
         final msg =

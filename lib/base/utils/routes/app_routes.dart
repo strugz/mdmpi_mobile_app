@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profil
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 
 import '../../../features/logistics/screens/request.dart';
+import '../../../features/logistics/screens/data_test/local_storage_data_viewer.dart';
 
 class AppRoutes {
   static final pages = [
@@ -33,15 +34,16 @@ class AppRoutes {
     GetPage(name: BRoutes.request, page: () => const RequestScreen()),
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
     GetPage(name: BRoutes.pullOutForm, page: () => const PullOutForm()),
+    GetPage(name: BRoutes.localStorageViewer, page: () => const LocalStorageDataViewer()),
   ];
 
   // Pages to navigate to
   static final requestFormPages = [
     const StandardDelivery(),
+    const PullOutForm(),
+    const PickUpForm(),
     const AirSeaForm(),
     const HotlineDirectForm(),
-    const PickUpForm(),
-    const PullOutForm(),
     const StockReceiveForm(),
   ];
 }

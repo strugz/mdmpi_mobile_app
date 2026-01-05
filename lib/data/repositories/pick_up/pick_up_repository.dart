@@ -191,19 +191,21 @@ class PickUpRepository extends GetxController {
 
   /// Insert a new pick-up request to API and local DB.
   Future<void> insert(PickUpModel data, {bool silent = false}) async {
+
     try {
       final dto = PickUpMapper.toInsertDto(data);
       final payload = dto.toJson();
       final url = _uri(_resource);
 
       final response = await _safePost(url, payload);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         // Parse response to get the created ID if available
         PickUpModel updatedData = data;
         try {
           final decoded = jsonDecode(response.body);
-          if (decoded is Map && decoded.containsKey('RequestID')) {
-            updatedData = data.copyWith(id: decoded['RequestID'].toString());
+
+          if (decoded is Map && decoded.containsKey('requestID')) {
+            updatedData = data.copyWith(id: decoded['requestID'].toString());
             logDebug('PickUpRepository: Got RequestID from server: ${updatedData.id}');
           }
         } catch (parseError) {

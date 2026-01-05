@@ -28,4 +28,6 @@ class BRoutes{
   // Pull-out routes
   static const pullOutList = '/pull-out-return-pick-up';
   static const pullOutForm = '/pull-out-form';
+  // Data test routes
+  static const localStorageViewer = '/local-storage-viewer';
 }

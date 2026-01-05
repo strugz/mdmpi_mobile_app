@@ -9,7 +9,6 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_control
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_filter_dropdown.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_floating_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_list.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/pull_out_return_pick_up_list.dart';
@@ -21,6 +20,8 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_filter_manag
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
 import 'package:mdmpi_mobile_app/data/models/form_category_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/app_routes.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
 import '../controllers/standard_delivery_controller.dart';
 
@@ -31,7 +32,8 @@ class RequestScreen extends StatefulWidget {
   State<RequestScreen> createState() => _RequestScreenState();
 }
 
-class _RequestScreenState extends State<RequestScreen> with SingleTickerProviderStateMixin {
+class _RequestScreenState extends State<RequestScreen>
+    with SingleTickerProviderStateMixin {
   List<FormCategoryModel> formCategories = [];
   bool isLoadingCategories = true;
   TabController? _tabController;
@@ -101,7 +103,8 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
   }
 
   /// Sort categories according to the predefined order
-  List<FormCategoryModel> _sortCategoriesByOrder(List<FormCategoryModel> categories) {
+  List<FormCategoryModel> _sortCategoriesByOrder(
+      List<FormCategoryModel> categories) {
     final sorted = <FormCategoryModel>[];
 
     // Add categories in the defined order
@@ -286,6 +289,21 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
     return const SizedBox.shrink();
   }
 
+  /// Opens the appropriate request form based on the currently selected tab/category.
+  void _openFormForCurrentCategory() {
+    if (_tabController == null || formCategories.isEmpty) {
+      return;
+    }
+
+    final currentIndex = _tabController!.index;
+    if (currentIndex < 0 || currentIndex >= AppRoutes.requestFormPages.length) {
+      return;
+    }
+
+    final page = AppRoutes.requestFormPages[currentIndex];
+    Get.to(() => page);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoadingCategories) {
@@ -311,131 +329,143 @@ class _RequestScreenState extends State<RequestScreen> with SingleTickerProvider
     final userController = Get.find<UserController>();
 
     return Scaffold(
-          appBar: BAppBar(
-            title: Text('Request',
-                style: Theme.of(context).textTheme.headlineMedium),
-            actions: [
-              if (_tabController != null)
-                AnimatedBuilder(
-                  animation: _tabController!,
-                  builder: (context, _) {
-                    final currentIndex = _tabController!.index;
-                    if (currentIndex >= formCategories.length) {
-                      return const SizedBox.shrink();
-                    }
-                    return Obx(() {
-                    final category = formCategories[currentIndex];
-                    final controller = _getControllerForCategory(category.name);
+      appBar: BAppBar(
+        title:
+            Text('Request', style: Theme.of(context).textTheme.headlineMedium),
+        actions: [
+          if (_tabController != null)
+            AnimatedBuilder(
+              animation: _tabController!,
+              builder: (context, _) {
+                final currentIndex = _tabController!.index;
+                if (currentIndex >= formCategories.length) {
+                  return const SizedBox.shrink();
+                }
+                return Obx(() {
+                  final category = formCategories[currentIndex];
+                  final controller = _getControllerForCategory(category.name);
 
-                    if (controller == null) {
-                      return const SizedBox.shrink();
-                    }
+                  if (controller == null) {
+                    return const SizedBox.shrink();
+                  }
 
-                    bool useLocalStorageValue = false;
-                    if (controller is StandardDeliveryController) {
-                      useLocalStorageValue = controller.useLocalStorage.value;
-                    } else if (controller is PullOutController) {
-                      useLocalStorageValue = controller.useLocalStorage.value;
-                    } else if (controller is PickUpController) {
-                      useLocalStorageValue = controller.useLocalStorage.value;
-                    } else if (controller is AirSeaController) {
-                      useLocalStorageValue = controller.useLocalStorage.value;
-                    }
+                  bool useLocalStorageValue = false;
+                  if (controller is StandardDeliveryController) {
+                    useLocalStorageValue = controller.useLocalStorage.value;
+                  } else if (controller is PullOutController) {
+                    useLocalStorageValue = controller.useLocalStorage.value;
+                  } else if (controller is PickUpController) {
+                    useLocalStorageValue = controller.useLocalStorage.value;
+                  } else if (controller is AirSeaController) {
+                    useLocalStorageValue = controller.useLocalStorage.value;
+                  }
 
-                    final switchValue = !useLocalStorageValue;
+                  final switchValue = !useLocalStorageValue;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: Row(
-                        children: [
-                          Text(switchValue ? 'Server' : 'Local'),
-                          Switch(
-                            value: switchValue,
-                            onChanged: (value) {
-                              final newUseLocalStorage = !value;
-                              if (controller is StandardDeliveryController) {
-                                controller.toggleStoragePreference(
-                                    newUseLocalStorage);
-                              } else if (controller is PullOutController) {
-                                controller.toggleStoragePreference(
-                                    newUseLocalStorage);
-                              } else if (controller is PickUpController) {
-                                controller.toggleStoragePreference(
-                                    newUseLocalStorage);
-                              } else if (controller is AirSeaController) {
-                                controller.toggleStoragePreference(
-                                    newUseLocalStorage);
-                              }
-                            },
-                            activeTrackColor: Colors.lightGreenAccent,
-                            activeThumbColor: Colors.green,
-                          ),
-                        ],
-                      ),
-                    );
-                  });
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: Row(
+                      children: [
+                        Text(switchValue ? 'Server' : 'Local'),
+                        Switch(
+                          value: switchValue,
+                          onChanged: (value) {
+                            final newUseLocalStorage = !value;
+                            if (controller is StandardDeliveryController) {
+                              controller
+                                  .toggleStoragePreference(newUseLocalStorage);
+                            } else if (controller is PullOutController) {
+                              controller
+                                  .toggleStoragePreference(newUseLocalStorage);
+                            } else if (controller is PickUpController) {
+                              controller
+                                  .toggleStoragePreference(newUseLocalStorage);
+                            } else if (controller is AirSeaController) {
+                              controller
+                                  .toggleStoragePreference(newUseLocalStorage);
+                            }
+                          },
+                          activeTrackColor: Colors.lightGreenAccent,
+                          activeThumbColor: Colors.green,
+                        ),
+                      ],
+                    ),
+                  );
+                });
+              },
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (_tabController != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: BSizes.defaultSpace, vertical: 8),
+              child: AnimatedBuilder(
+                animation: _tabController!,
+                builder: (context, _) {
+                  final currentIndex = _tabController!.index;
+                  return _buildFilterForCategory(currentIndex, _tabController!);
                 },
               ),
-            ],
-          ),
-          body: Column(
-            children: [
-              if (_tabController != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: BSizes.defaultSpace, vertical: 8),
-                  child: AnimatedBuilder(
-                    animation: _tabController!,
-                    builder: (context, _) {
-                      final currentIndex = _tabController!.index;
-                      return _buildFilterForCategory(currentIndex, _tabController!);
-                    },
-                  ),
+            ),
+          if (_tabController != null)
+            TabBar(
+              controller: _tabController,
+              isScrollable: formCategories.length > 4,
+              onTap: _onTabTapped,
+              tabs: formCategories
+                  .map((category) => Tab(text: category.name))
+                  .toList(),
+            ),
+          const SizedBox(height: BSizes.spaceBtwItems),
+          if (_carouselController != null)
+            Expanded(
+              child: CarouselSlider.builder(
+                carouselController: _carouselController,
+                itemCount: formCategories.length,
+                itemBuilder: (context, index, realIndex) {
+                  final category = formCategories[index];
+                  return Column(
+                    children: [
+                      _getListWidgetForCategory(category.name),
+                    ],
+                  );
+                },
+                options: CarouselOptions(
+                  height: double.infinity,
+                  viewportFraction: 1.0,
+                  enableInfiniteScroll: true,
+                  initialPage: 0,
+                  scrollDirection: Axis.horizontal,
+                  onPageChanged: (index, reason) {
+                    _onPageChanged(index);
+                  },
                 ),
-              if (_tabController != null)
-                TabBar(
-                  controller: _tabController,
-                  isScrollable: formCategories.length > 4,
-                  onTap: _onTabTapped,
-                  tabs: formCategories
-                      .map((category) => Tab(text: category.name))
-                      .toList(),
-                ),
-              const SizedBox(height: BSizes.spaceBtwItems),
-              if (_carouselController != null)
-                Expanded(
-                  child: CarouselSlider.builder(
-                    carouselController: _carouselController,
-                    itemCount: formCategories.length,
-                    itemBuilder: (context, index, realIndex) {
-                      final category = formCategories[index];
-                      return Column(
-                        children: [
-                          _getListWidgetForCategory(category.name),
-                        ],
-                      );
-                    },
-                    options: CarouselOptions(
-                      height: double.infinity,
-                      viewportFraction: 1.0,
-                      enableInfiniteScroll: true,
-                      initialPage: 0,
-                      scrollDirection: Axis.horizontal,
-                      onPageChanged: (index, reason) {
-                        _onPageChanged(index);
-                      },
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          floatingActionButton: Obx(() {
-            if (!userController.user.value.role.contains(BTexts.roleRequest)) {
-              return Container();
-            } else {
-              return const BFloatingButton();
-            }
-          }),
-        );
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: Obx(() {
+        if (!userController.user.value.role.contains(BTexts.roleRequest)) {
+          return Container();
+        } else {
+          return Container(
+            height: 60,
+            width: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(100),
+              color: BColors.primary,
+            ),
+            child: IconButton(
+              onPressed: _openFormForCurrentCategory,
+              icon: const Icon(Icons.add),
+              color: BColors.white,
+            ),
+          );
+        }
+      }),
+    );
   }
 }

@@ -18,8 +18,10 @@ class BFloatingButton extends StatelessWidget {
         decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(100), color: BColors.primary),
         child: IconButton(
-          onPressed: () => Get.to(() => const RequestForm()),
-          icon: Icon(Iconsax.add),
+          onPressed: () {
+            Get.to(() => const RequestForm());
+          },
+          icon: const Icon(Iconsax.add),
           color: BColors.white,
         ));
   }

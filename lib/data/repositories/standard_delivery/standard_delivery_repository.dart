@@ -23,7 +23,7 @@ class StandardDeliveryRepository extends GetxController {
         headers: <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         BLoaders.successSnackBar(
             title: 'Information', message: 'Success saving...');
       } else {
@@ -45,8 +45,6 @@ class StandardDeliveryRepository extends GetxController {
     try {
       final updateDto = StandardDeliveryMapper.toUpdateDto(requestData);
       final payload = updateDto.toJson();
-
-      print(jsonEncode(payload));
 
       final url = "${dotenv.env['API_URL']!}/api4/request";
 

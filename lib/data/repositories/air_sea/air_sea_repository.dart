@@ -204,7 +204,7 @@ class AirSeaRepository extends GetxController {
       final url = _uri(_resource);
 
       final response = await _safePost(url, payload);
-      if (response.statusCode == 200) {
+      if (response.statusCode == 201) {
         // Parse response to get the created ID if available
         AirSeaModel updatedData = data;
         try {
