@@ -64,16 +64,15 @@ class AirSeaDataManager {
   /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
   /// [forceRefresh] If true, forces fetching from API regardless of useLocalStorage
   Future<void> fetchAirSeaRequests(
-      AirSeaController controller, bool useLocalStorage,
-      {bool forceRefresh = false}) async {
+      AirSeaController controller, bool useLocalStorage) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
     try {
       List<AirSeaModel> results;
-      if (!useLocalStorage || forceRefresh) {
+      if (!useLocalStorage) {
         logDebug(
-            'AirSeaDataManager: Fetching from API (useLocalStorage=$useLocalStorage, forceRefresh=$forceRefresh)');
+            'AirSeaDataManager: Fetching from API (useLocalStorage=$useLocalStorage,  forcing refresh)');
         results = await _repository.getAll(forceRefresh: true);
       } else {
         logDebug('AirSeaDataManager: Fetching from local DB first');

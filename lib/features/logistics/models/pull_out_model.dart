@@ -260,4 +260,32 @@ class PullOutModel {
           : CancelRemarksModel.empty,
     );
   }
+
+  /// Parse from local database JSON (DB column names)
+  factory PullOutModel.fromDbJson(Map<String, dynamic> json) {
+    return PullOutModel(
+      id: json['RequestID']?.toString() ?? '',
+      clientId: json['ClientID']?.toString() ?? '',
+      clientContactPerson: json['ClientContactPerson']?.toString() ?? '',
+      formCategoryId: json['FormCategoryID']?.toString() ?? '',
+      itemCategoryId: json['ItemCategoryID']?.toString() ?? '',
+      irrfNumber: json['IRRFNumber']?.toString() ?? '',
+      irrfDate: json['IRRFDate']?.toString() ?? '',
+      reasonForReturn: json['ReasonForReturn']?.toString() ?? '',
+      releasedBy: json['ReleasedBy']?.toString() ?? '',
+      pullOutDate: json['PullOutDate']?.toString() ?? '',
+      pullOutDateStartAt: json['PullOutDateStartAt']?.toString() ?? '',
+      pullOutDateEndAt: json['PullOutDateEndAt']?.toString() ?? '',
+      requestStatus: json['RequestStatus']?.toString() ?? '',
+      tripTicketNumber: json['TripTicketNumber']?.toString() ?? '',
+      driver: json['Driver']?.toString() ?? '',
+      helper: json['Helper']?.toString() ?? '',
+      mobileID: json['MobileID'] is int ? json['MobileID'] : int.tryParse(json['MobileID']?.toString() ?? ''),
+      mobileName: json['MobileName']?.toString() ?? '',
+      createdAt: json['CreatedAt']?.toString() ?? '',
+      updatedAt: json['UpdatedAt']?.toString() ?? '',
+      createdBy: json['CreatedBy']?.toString() ?? '',
+      requestedBy: json['RequestedBy']?.toString() ?? '',
+    );
+  }
 }

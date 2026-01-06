@@ -22,6 +22,7 @@ class LocalStorageDataController extends GetxController {
     'a_tblRequestRemarks',
     'a_tblRequestPickUp',
     'a_tblRequestAirSea',
+    'a_tblRequestPullOutReturnPickUp',
     'ACCMST_',
     'a_tblMobile',
     'Users',

@@ -67,7 +67,8 @@ class PickUpDataManager {
     try {
       List<PickUpModel> results;
       if (!useLocalStorage) {
-        logDebug('PickUpDataManager: Fetching from API (useLocalStorage=false, forcing refresh1)');
+        logDebug(
+            'PickUpDataManager: Fetching from API ($useLocalStorage=false, forcing refresh)');
         results = await _repository.getAll(forceRefresh: true);
       } else {
         logDebug('PickUpDataManager: Fetching from local DB first');

@@ -208,11 +208,44 @@ Future<void> createAllTables(Database db) async {
       WaybillNumber TEXT,
       ReceivedAt TEXT,
       ReceivedBy TEXT,
+      TripTicketNumber TEXT,
+      Driver TEXT,
+      Helper TEXT,
+      DispatchedAt TEXT,
+      DropOffAt TEXT,
       Status TEXT,
       Remarks TEXT,
       CreatedBy TEXT,
       CreatedAt TEXT,
       UpdatedAt TEXT
+    )
+  ''');
+
+  // Table: a_tblRequestPullOutReturnPickUp
+  await db.execute('''
+    CREATE TABLE a_tblRequestPullOutReturnPickUp (
+      RequestID INTEGER PRIMARY KEY,
+      ClientID TEXT,
+      ClientContactPerson TEXT,
+      FormCategoryID TEXT,
+      ItemCategoryID TEXT,
+      IRRFNumber TEXT,
+      IRRFDate TEXT,
+      ReasonForReturn TEXT,
+      ReleasedBy TEXT,
+      PullOutDate TEXT,
+      PullOutDateStartAt TEXT,
+      PullOutDateEndAt TEXT,
+      RequestStatus TEXT,
+      TripTicketNumber TEXT,
+      Driver TEXT,
+      Helper TEXT,
+      MobileID INTEGER,
+      MobileName TEXT,
+      CreatedAt TEXT,
+      UpdatedAt TEXT,
+      CreatedBy TEXT,
+      RequestedBy TEXT
     )
   ''');
 }

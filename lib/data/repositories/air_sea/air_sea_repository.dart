@@ -122,7 +122,6 @@ class AirSeaRepository extends GetxController {
       logDebug('AirSeaRepository: Fetching from API');
       final url = _uri(_resource);
 
-      print(url);
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);

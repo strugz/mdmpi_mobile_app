@@ -111,7 +111,8 @@ class AirSeaController extends GetxController {
 
   /// Returns the currently filtered list of Air/Sea requests.
   /// Applies active status and date filters from the filter manager.
-  List<AirSeaModel> get filteredAirSeaRequests => filterManager.filteredAirSeaRequests;
+  List<AirSeaModel> get filteredAirSeaRequests =>
+      filterManager.filteredAirSeaRequests;
 
   // ========================================================================
   // DATA LOADING & FETCHING
@@ -275,7 +276,7 @@ class AirSeaController extends GetxController {
 
       if (success) {
         // Refresh data to show updated status
-        await dataManager.fetchAirSeaRequests(this, useLocalStorage.value, forceRefresh: true);
+        await dataManager.fetchAirSeaRequests(this, useLocalStorage.value);
       } else {
         errorMessage.value = 'Failed to endorse item to guard';
       }
@@ -321,7 +322,7 @@ class AirSeaController extends GetxController {
 
       if (success) {
         // Refresh data to show updated status
-        await dataManager.fetchAirSeaRequests(this, useLocalStorage.value, forceRefresh: true);
+        await dataManager.fetchAirSeaRequests(this, useLocalStorage.value);
       } else {
         errorMessage.value = 'Failed to mark request as received';
       }
@@ -349,4 +350,3 @@ class AirSeaController extends GetxController {
     loadAirSeaRequests();
   }
 }
-

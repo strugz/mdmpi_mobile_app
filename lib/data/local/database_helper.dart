@@ -14,6 +14,7 @@ import '../../features/personalization/models/user_model.dart';
 import 'dao/standard_delivery/standard_delivery_dao.dart';
 import 'dao/pick_up/pick_up_dao.dart';
 import 'dao/air_sea/air_sea_dao.dart';
+import 'dao/pull_out/pull_out_dao.dart';
 import 'dao/common/document_reference_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
@@ -36,6 +37,7 @@ class DatabaseHelper {
   RequestDao? _requestDao;
   PickUpDao? _pickUpDao;
   AirSeaDao? _airSeaDao;
+  PullOutDao? _pullOutDao;
   DocumentReferenceDao? _documentReferenceDao;
   RemarksDao? _remarksDao;
   ClientDao? _clientDao;
@@ -56,7 +58,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 7,
+      version: 10,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -132,6 +134,7 @@ class DatabaseHelper {
               DropOffAt TEXT,
               Status TEXT,
               Remarks TEXT,
+              CreatedBy TEXT,
               CreatedAt TEXT,
               UpdatedAt TEXT
             )
@@ -185,6 +188,60 @@ class DatabaseHelper {
           try {
             await db.execute('ALTER TABLE a_tblRequest ADD COLUMN FormCategoryID TEXT');
           } catch (_) {}
+        }
+        if (oldVersion < 8) {
+          // Version 8: Ensure Air/Sea dispatch columns exist (fix for schema inconsistency)
+          // These columns should have been added in version 6, but base schema was missing them
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN TripTicketNumber TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Driver TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Helper TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DispatchedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DropOffAt TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 9) {
+          // Version 9: Add CreatedBy column to Air/Sea table (missing from version 4 creation)
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN CreatedBy TEXT');
+          } catch (_) {} // Column might already exist
+        }
+        if (oldVersion < 10) {
+          // Version 10: Add Pull-Out/Return/Pick-Up table
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestPullOutReturnPickUp (
+              RequestID INTEGER PRIMARY KEY,
+              ClientID TEXT,
+              ClientContactPerson TEXT,
+              FormCategoryID TEXT,
+              ItemCategoryID TEXT,
+              IRRFNumber TEXT,
+              IRRFDate TEXT,
+              ReasonForReturn TEXT,
+              ReleasedBy TEXT,
+              PullOutDate TEXT,
+              PullOutDateStartAt TEXT,
+              PullOutDateEndAt TEXT,
+              RequestStatus TEXT,
+              TripTicketNumber TEXT,
+              Driver TEXT,
+              Helper TEXT,
+              MobileID INTEGER,
+              MobileName TEXT,
+              CreatedAt TEXT,
+              UpdatedAt TEXT,
+              CreatedBy TEXT,
+              RequestedBy TEXT
+            )
+          ''');
         }
       },
     );
@@ -252,6 +309,13 @@ class DatabaseHelper {
     final db = await database;
     _airSeaDao = AirSeaDao(db);
     return _airSeaDao!;
+  }
+
+  Future<PullOutDao> get pullOutDao async {
+    if (_pullOutDao != null) return _pullOutDao!;
+    final db = await database;
+    _pullOutDao = PullOutDao(db);
+    return _pullOutDao!;
   }
 
   Future<ItemCategoryDao> get itemCategoryDao async {

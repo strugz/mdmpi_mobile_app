@@ -1,5 +1,6 @@
 import '../dtos/pull_out/pull_out_insert_dto.dart';
 import '../models/pull_out_model.dart';
+import '../models/standard_delivery_model.dart';
 import '../../../base/utils/formatters/formatters.dart';
 
 class PullOutMapper {
@@ -56,3 +57,4 @@ class PullOutMapper {
     return data;
   }
 }
+

@@ -9,6 +9,9 @@ import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart'
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/pull_out_mapper.dart';
+import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/pull_out/pull_out_dao.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class PullOutRepository extends GetxController {
   static PullOutRepository get instance => Get.find();
@@ -18,6 +21,16 @@ class PullOutRepository extends GetxController {
 
   static const String _resource = '/api4/RequestPullOutReturnPickUp';
 
+  PullOutDao? _daoInstance;
+
+  /// Lazy getter for PullOutDao to avoid late initialization errors.
+  /// Initializes the DAO on first access and caches it for subsequent calls.
+  Future<PullOutDao> get _dao async {
+    if (_daoInstance != null) return _daoInstance!;
+    final db = await DatabaseHelper.instance.database;
+    _daoInstance = PullOutDao(db);
+    return _daoInstance!;
+  }
   /// Decodes a dynamic JSON root into a list of items.
   List<dynamic> _decodeRootToList(dynamic decoded) {
     if (decoded is List) return decoded;
@@ -108,7 +121,7 @@ class PullOutRepository extends GetxController {
     return await getAll();
   }
 
-  /// Insert a new pull-out request. Set [silent] true to suppress snackbars.
+  /// Insert a new pull-out request to API and local DB.
   Future<void> insert(PullOutModel data, {bool silent = false}) async {
     try {
       final dto = PullOutMapper.toInsertDto(data);
@@ -117,6 +130,29 @@ class PullOutRepository extends GetxController {
 
       final response = await _safePost(url, payload);
       if (response.statusCode == 201) {
+        // Parse response to get the created ID if available
+        PullOutModel updatedData = data;
+        try {
+          final decoded = jsonDecode(response.body);
+
+          if (decoded is Map && decoded.containsKey('requestID')) {
+            updatedData = data.copyWith(id: decoded['requestID'].toString());
+            logDebug('PullOutRepository: Got RequestID from server: ${updatedData.id}');
+          }
+        } catch (parseError) {
+          logDebug('PullOutRepository: Could not parse RequestID from response: $parseError');
+        }
+
+        // Save to local DB with the correct ID
+        try {
+          final dao = await _dao;
+          await dao.insertPullOut(updatedData);
+          logDebug('PullOutRepository: Saved to local DB with ID: ${updatedData.id}');
+        } catch (dbError) {
+          logDebug('PullOutRepository: Failed to save to local DB: $dbError');
+          // Don't fail the whole operation if local DB save fails
+        }
+
         _showSuccess('Success saving...', silent: silent);
       } else {
         final msg =
@@ -134,6 +170,7 @@ class PullOutRepository extends GetxController {
       if (silent) rethrow;
       throw TPlatformException(e.code).message;
     } catch (e) {
+      logDebug('PullOutRepository.insert error: $e');
       if (silent) {
         rethrow;
       } else {
