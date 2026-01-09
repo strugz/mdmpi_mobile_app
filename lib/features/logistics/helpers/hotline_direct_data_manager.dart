@@ -15,23 +15,24 @@ import 'package:mdmpi_mobile_app/data/repositories/common/item_category_reposito
 import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
-/// Manager for Standard Delivery domain orchestration (save/update flows).
+/// Manager for Hotline Direct domain orchestration (save/update flows).
 ///
 /// Responsibilities:
-/// - CRUD operations for Standard Delivery requests
+/// - CRUD operations for Hotline Direct requests
 /// - API and local database synchronization
 /// - Image and signature upload handling
 /// - Category data loading
 /// - Cancel remarks fetching
 /// - Network connectivity validation
 /// - SMS notification sending
-class StandardDeliveryDataManager {
+/// - Uses StandardDeliveryRepository but filters for Hotline Direct category only
+class HotlineDirectDataManager {
   final StandardDeliveryRepository _repository =
       Get.find<StandardDeliveryRepository>();
   final CancelRemarksRepository _cancelRemarksRepository =
@@ -55,7 +56,7 @@ class StandardDeliveryDataManager {
     return true;
   }
 
-  /// Save a new Standard Delivery request from form state.
+  /// Save a new Hotline Direct request from form state.
   ///
   /// Validation includes:
   /// - Requested by must be selected
@@ -67,7 +68,7 @@ class StandardDeliveryDataManager {
   /// - Sends SMS to managers
   /// - Resets form state
   Future<void> saveRequestFromForm(
-      StandardDeliveryController controller) async {
+      HotlineDirectController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -141,7 +142,7 @@ class StandardDeliveryDataManager {
 
       // Send notifications
       _webSocketController.sendNotificationMessage(
-        NotificationModel(title: 'New', body: 'New Request Received!'),
+        NotificationModel(title: 'New', body: 'New Hotline Direct Request Received!'),
       );
 
       final managersPhoneNumber = await _dbHelper
@@ -172,7 +173,7 @@ class StandardDeliveryDataManager {
       await _repository.insertDelivery(newRequest);
 
       // Reload requests
-      await fetchStandardDeliveryRequests(
+      await fetchHotlineDirectRequests(
           controller, controller.useLocalStorage.value);
 
       // Reset form
@@ -201,7 +202,7 @@ class StandardDeliveryDataManager {
     StandardDeliveryModel request,
     String newStatus,
     String userInitial,
-    StandardDeliveryController controller,
+    HotlineDirectController controller,
   ) async {
     try {
       controller.isSaving.value = true;
@@ -359,7 +360,7 @@ class StandardDeliveryDataManager {
 
       // Send notifications
       _webSocketController.sendNotificationMessage(
-        NotificationModel(title: 'Update', body: updatedRequest.status),
+        NotificationModel(title: 'Hotline Direct Update', body: updatedRequest.status),
       );
 
       final managersPhoneNumber = await _dbHelper
@@ -387,7 +388,7 @@ class StandardDeliveryDataManager {
       controller.currentSelectedRequest.value = updatedRequest;
       formState.reset();
 
-      await fetchStandardDeliveryRequests(
+      await fetchHotlineDirectRequests(
           controller, controller.useLocalStorage.value);
 
       BLoaders.successSnackBar(title: 'Success', message: 'Request updated');
@@ -404,7 +405,7 @@ class StandardDeliveryDataManager {
     }
   }
 
-  /// Cancel a Standard Delivery request with remarks.
+  /// Cancel a Hotline Direct request with remarks.
   ///
   /// Handles both online and offline scenarios:
   /// - Online: Updates via API and local DB
@@ -415,7 +416,7 @@ class StandardDeliveryDataManager {
       StandardDeliveryModel request,
       String remarks,
       String user,
-      StandardDeliveryController controller) async {
+      HotlineDirectController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -453,7 +454,7 @@ class StandardDeliveryDataManager {
 
       _webSocketController.sendNotificationMessage(
         NotificationModel(
-            title: 'Request Cancelled!', body: 'Reason: $remarks'),
+            title: 'Hotline Direct Cancelled!', body: 'Reason: $remarks'),
       );
 
       List<String> managersPhoneNumber = [];
@@ -474,7 +475,7 @@ class StandardDeliveryDataManager {
       await _messageController.sendSmsMessage(
           managersPhoneNumber, BTexts.statusCancelled, request);
 
-      await fetchStandardDeliveryRequests(
+      await fetchHotlineDirectRequests(
           controller, controller.useLocalStorage.value);
 
       BLoaders.successSnackBar(
@@ -488,15 +489,15 @@ class StandardDeliveryDataManager {
     }
   }
 
-  /// Fetch Standard Delivery requests and assign to the controller.
+  /// Fetch Hotline Direct requests and assign to the controller.
   ///
   /// Data source selection:
   /// - useLocalStorage = false: Force API fetch
   /// - useLocalStorage = true: Try local DB first, fallback to API if empty
   ///
-  /// Applies active filters after loading data.
-  Future<void> fetchStandardDeliveryRequests(
-      StandardDeliveryController controller,
+  /// Filters for Hotline Direct category only and applies active filters after loading data.
+  Future<void> fetchHotlineDirectRequests(
+      HotlineDirectController controller,
       [bool useLocalStorage = true]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
@@ -507,34 +508,34 @@ class StandardDeliveryDataManager {
       if (!useLocalStorage) {
         // Force API fetch
         logDebug(
-            'StandardDeliveryDataManager: Fetching from API (useLocalStorage=false)');
+            'HotlineDirectDataManager: Fetching from API (useLocalStorage=false)');
         final apiRequests = await _repository.getAllPending();
         results = apiRequests;
         await _dbHelper.insertRequests(apiRequests);
       } else {
         // Try local DB first
-        logDebug('StandardDeliveryDataManager: Fetching from local DB first');
+        logDebug('HotlineDirectDataManager: Fetching from local DB first');
         results = await _dbHelper.getRequests();
         if (results.isEmpty) {
           logDebug(
-              'StandardDeliveryDataManager: Local DB empty, fetching from API');
+              'HotlineDirectDataManager: Local DB empty, fetching from API');
           final apiRequests = await _repository.getAllPending();
           results = apiRequests;
           await _dbHelper.insertRequests(apiRequests);
         } else {
           logDebug(
-              'StandardDeliveryDataManager: Loaded ${results.length} items from local DB');
+              'HotlineDirectDataManager: Loaded ${results.length} items from local DB');
         }
       }
 
-      // Filter for Standard Delivery category only (formCategoryID = '6')
-      final standardDeliveryRequests = results
-          .where((r) => r.formCategoryID == '6')
+      // Filter for Hotline Direct category only (formCategoryID = '8')
+      final hotlineDirectRequests = results
+          .where((r) => r.formCategoryID == '8')
           .toList();
 
-      controller.allPendingRequests.assignAll(standardDeliveryRequests);
+      controller.allPendingRequests.assignAll(hotlineDirectRequests);
       logDebug(
-          'StandardDeliveryDataManager: Assigned ${results.length} requests to controller');
+          'HotlineDirectDataManager: Assigned ${hotlineDirectRequests.length} Hotline Direct requests to controller');
 
       controller.filterManager
           .applyFilter(controller.allPendingRequests.toList());
@@ -542,7 +543,7 @@ class StandardDeliveryDataManager {
     } catch (e) {
       controller.errorMessage.value = e.toString();
       logDebug(
-          'StandardDeliveryDataManager.fetchStandardDeliveryRequests error: $e');
+          'HotlineDirectDataManager.fetchHotlineDirectRequests error: $e');
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;
@@ -552,11 +553,11 @@ class StandardDeliveryDataManager {
   /// Load item and form categories and populate the controller form state.
   ///
   /// Sets default category selections:
-  /// - Form category: Prefers "standard" category
+  /// - Form category: Prefers "hotline" or "direct" category
   /// - Item category: Prefers "reagent" category
   ///
   /// Safe to call multiple times; will not duplicate data.
-  Future<void> loadCategories(StandardDeliveryController controller) async {
+  Future<void> loadCategories(HotlineDirectController controller) async {
     try {
       final items = await Get.find<ItemCategoryRepository>().getAll();
       final forms = await Get.find<FormCategoryRepository>().getAll();
@@ -566,7 +567,8 @@ class StandardDeliveryDataManager {
       if (controller.formState.formCategory.text.trim().isEmpty &&
           controller.formState.formCategories.isNotEmpty) {
         final defaultForm = controller.formState.formCategories.firstWhere(
-          (e) => e.name.toLowerCase().contains('standard'),
+          (e) => e.name.toLowerCase().contains('hotline') ||
+                 e.name.toLowerCase().contains('direct'),
           orElse: () => controller.formState.formCategories.first,
         );
         controller.formState.formCategory.text = defaultForm.id;
@@ -581,7 +583,7 @@ class StandardDeliveryDataManager {
         controller.formState.itemCategory.text = defaultItem.id;
       }
     } catch (e) {
-      logDebug('StandardDeliveryDataManager.loadCategories failed: $e');
+      logDebug('HotlineDirectDataManager.loadCategories failed: $e');
     }
   }
 
@@ -592,7 +594,7 @@ class StandardDeliveryDataManager {
   Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
     try {
       logDebug(
-          '🔍 StandardDeliveryDataManager: Fetching cancel remarks for: $requestId');
+          '🔍 HotlineDirectDataManager: Fetching cancel remarks for: $requestId');
 
       // Try local DB first
       try {
@@ -600,11 +602,11 @@ class StandardDeliveryDataManager {
         if (exists) {
           final localRemarks = await _dbHelper.getRequestRemarks(requestId);
           logDebug(
-              '✅ StandardDeliveryDataManager: Found local remarks: "${localRemarks.remarks}"');
+              '✅ HotlineDirectDataManager: Found local remarks: "${localRemarks.remarks}"');
           return localRemarks;
         }
       } catch (e) {
-        logDebug('⚠️ StandardDeliveryDataManager: Local DB read failed: $e');
+        logDebug('⚠️ HotlineDirectDataManager: Local DB read failed: $e');
       }
 
       // Fallback to API
@@ -615,7 +617,7 @@ class StandardDeliveryDataManager {
           module: RequestModule.standardDelivery,
         );
         logDebug(
-            '✅ StandardDeliveryDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
+            '✅ HotlineDirectDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
 
         if (result != CancelRemarksModel.empty) {
           // Persist to local DB
@@ -624,25 +626,25 @@ class StandardDeliveryDataManager {
             await remarksDao.insertRemark(
                 requestId, result.remarks, result.date);
             logDebug(
-                '💾 StandardDeliveryDataManager: Persisted remarks to local DB');
+                '💾 HotlineDirectDataManager: Persisted remarks to local DB');
           } catch (e) {
             logDebug(
-                '⚠️ StandardDeliveryDataManager: Failed to persist remarks: $e');
+                '⚠️ HotlineDirectDataManager: Failed to persist remarks: $e');
           }
           return result;
         }
         return CancelRemarksModel.empty;
       } catch (e) {
-        logDebug('❌ StandardDeliveryDataManager: API fetch failed: $e');
+        logDebug('❌ HotlineDirectDataManager: API fetch failed: $e');
         return CancelRemarksModel.empty;
       }
     } catch (e) {
-      logDebug('❌ StandardDeliveryDataManager.fetchCancelRemarks FAILED: $e');
+      logDebug('❌ HotlineDirectDataManager.fetchCancelRemarks FAILED: $e');
       return CancelRemarksModel.empty;
     }
   }
 
-  /// Upload all modified requests from local DB to API.
+  /// Upload all modified Hotline Direct requests from local DB to API.
   ///
   /// Iterates through all requests in local DB and uploads any that are
   /// not in "New Request" status (i.e., have been modified).
@@ -651,13 +653,18 @@ class StandardDeliveryDataManager {
   Future<void> uploadModifiedRequest() async {
     try {
       final requests = await _dbHelper.getRequests();
-      for (var request in requests) {
+      // Filter for Hotline Direct category (formCategoryID = '8')
+      final hotlineDirectRequests = requests
+          .where((r) => r.formCategoryID == '8')
+          .toList();
+
+      for (var request in hotlineDirectRequests) {
         if (request.status != BTexts.statusNewRequest) {
           await _repository.updateDelivery(request);
         }
       }
       BLoaders.successSnackBar(
-          title: 'Success', message: 'Modified requests uploaded successfully');
+          title: 'Success', message: 'Modified Hotline Direct requests uploaded successfully');
     } catch (e) {
       BLoaders.errorSnackBar(
           title: 'Upload Failed',
@@ -665,3 +672,4 @@ class StandardDeliveryDataManager {
     }
   }
 }
+

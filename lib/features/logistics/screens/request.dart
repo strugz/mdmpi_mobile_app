@@ -8,12 +8,18 @@ import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_list.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/pull_out_return_pick_up_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/pick_up_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/air_sea_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/hotline_direct/hotline_direct_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/hotline_direct/widgets/hotline_direct_filter_dropdown.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/stock_receive/stock_receive_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/stock_receive/widgets/stock_receive_filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_filter_manager.dart';
@@ -137,12 +143,10 @@ class _RequestScreenState extends State<RequestScreen>
       return Get.find<PickUpController>();
     } else if (lowerName.contains('air') || lowerName.contains('sea')) {
       return Get.find<AirSeaController>();
-    } else if (lowerName.contains('hotline')) {
-      // Hotline Direct uses StandardDeliveryController for now
-      return Get.find<StandardDeliveryController>();
+    } else if (lowerName.contains('hotline') || lowerName.contains('direct')) {
+      return Get.find<HotlineDirectController>();
     } else if (lowerName.contains('stock') && lowerName.contains('receive')) {
-      // Stock Receive uses StandardDeliveryController for now
-      return Get.find<StandardDeliveryController>();
+      return Get.find<StockReceiveController>();
     }
     return null;
   }
@@ -158,12 +162,10 @@ class _RequestScreenState extends State<RequestScreen>
       return const PickUpList();
     } else if (lowerName.contains('air') || lowerName.contains('sea')) {
       return const AirSeaList();
-    } else if (lowerName.contains('hotline')) {
-      // Hotline Direct uses BList for now (similar to Standard Delivery)
-      return const BList();
+    } else if (lowerName.contains('hotline') || lowerName.contains('direct')) {
+      return const HotlineDirectList();
     } else if (lowerName.contains('stock') && lowerName.contains('receive')) {
-      // Stock Receive uses BList for now (similar to Standard Delivery)
-      return const BList();
+      return const StockReceiveList();
     }
     return Center(
       child: Padding(
@@ -284,6 +286,39 @@ class _RequestScreenState extends State<RequestScreen>
           ),
         ],
       );
+    } else if (lowerName.contains('hotline') || lowerName.contains('direct')) {
+      final hotlineDirectController = controller as HotlineDirectController;
+      return Column(
+        children: [
+          const HotlineDirectFilterDropdown(),
+          const SizedBox(height: BSizes.spaceBtwItems),
+          FilterDropdown(
+            selectedFilter:
+                hotlineDirectController.filterManager.selectedStatusFilter,
+            filterValues: StandardDeliveryStatusFilter.values,
+            getDisplayName: (filter) => filter.displayName,
+            onFilterChanged: (filter) {
+              hotlineDirectController.selectStatusFilter(filter);
+            },
+          ),
+        ],
+      );
+    } else if (lowerName.contains('stock') && lowerName.contains('receive')) {
+      final stockReceiveController = controller as StockReceiveController;
+      return Column(
+        children: [
+          const StockReceiveFilterDropdown(),
+          const SizedBox(height: BSizes.spaceBtwItems),
+          FilterDropdown<PullOutStatusFilter>(
+            selectedFilter: stockReceiveController.filterManager.selectedStatusFilter,
+            filterValues: PullOutStatusFilter.values,
+            getDisplayName: (f) => f.displayName,
+            onFilterChanged: (f) {
+              stockReceiveController.selectStatusFilter(f);
+            },
+          ),
+        ],
+      );
     }
 
     return const SizedBox.shrink();
@@ -358,6 +393,10 @@ class _RequestScreenState extends State<RequestScreen>
                     useLocalStorageValue = controller.useLocalStorage.value;
                   } else if (controller is AirSeaController) {
                     useLocalStorageValue = controller.useLocalStorage.value;
+                  } else if (controller is HotlineDirectController) {
+                    useLocalStorageValue = controller.useLocalStorage.value;
+                  } else if (controller is StockReceiveController) {
+                    useLocalStorageValue = controller.useLocalStorage.value;
                   }
 
                   final switchValue = !useLocalStorageValue;
@@ -381,6 +420,12 @@ class _RequestScreenState extends State<RequestScreen>
                               controller
                                   .toggleStoragePreference(newUseLocalStorage);
                             } else if (controller is AirSeaController) {
+                              controller
+                                  .toggleStoragePreference(newUseLocalStorage);
+                            } else if (controller is HotlineDirectController) {
+                              controller
+                                  .toggleStoragePreference(newUseLocalStorage);
+                            } else if (controller is StockReceiveController) {
                               controller
                                   .toggleStoragePreference(newUseLocalStorage);
                             }
