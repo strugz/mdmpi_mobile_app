@@ -57,6 +57,10 @@ class RequestController extends GetxController {
   /// Synced with both TabController and CarouselController.
   final RxInt currentTabIndex = 0.obs;
 
+  /// Currently selected form category based on active tab.
+  /// This is used to pre-select the form category when opening forms.
+  final Rx<FormCategoryModel?> currentSelectedCategory = Rx<FormCategoryModel?>(null);
+
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
   final RxnString errorMessage = RxnString();
@@ -104,9 +108,15 @@ class RequestController extends GetxController {
       final sortedCategories = _sortCategoriesByOrder(categories);
 
       formCategories.value = sortedCategories;
+
+      // Set initial selected category
+      if (sortedCategories.isNotEmpty) {
+        currentSelectedCategory.value = sortedCategories[0];
+      }
     } catch (e) {
       errorMessage.value = 'Failed to load categories: $e';
       formCategories.clear();
+      currentSelectedCategory.value = null;
     } finally {
       isLoadingCategories.value = false;
     }
@@ -366,7 +376,7 @@ class RequestController extends GetxController {
   // ========================================================================
 
   /// Opens the appropriate request form based on the currently selected category.
-  /// Passes the category as an argument so the form can pre-select it.
+  /// The form will read currentSelectedCategory from this controller to pre-select the category.
   void openFormForCurrentCategory() {
     if (formCategories.isEmpty) {
       return;
@@ -380,6 +390,9 @@ class RequestController extends GetxController {
     final category = formCategories[index];
     final lowerName = category.name.toLowerCase();
 
+    // Update current selected category for form to read
+    currentSelectedCategory.value = category;
+
     // Map category names to their appropriate form pages
     Widget? formPage;
 
@@ -392,16 +405,16 @@ class RequestController extends GetxController {
     } else if (lowerName.contains('air') || lowerName.contains('sea')) {
       formPage = AppRoutes.requestFormPages[3]; // AirSeaForm()
     } else if (lowerName.contains('hotline') || lowerName.contains('direct')) {
-      // Hotline Direct uses Standard Delivery form with category pre-selected
+      // Hotline Direct uses Standard Delivery form
       formPage = AppRoutes.requestFormPages[0]; // StandardDelivery()
     } else if (lowerName.contains('stock') && lowerName.contains('receive')) {
-      // Stock Receive uses Pull Out form with category pre-selected
+      // Stock Receive uses Pull Out form
       formPage = AppRoutes.requestFormPages[1]; // PullOutForm()
     }
 
     if (formPage != null) {
-      // Pass category ID as argument so form can pre-select it
-      Get.to(() => formPage!, arguments: {'id': category.id});
+      // No arguments needed - form will read from RequestController.currentSelectedCategory
+      Get.to(() => formPage!);
     }
   }
 
@@ -411,9 +424,11 @@ class RequestController extends GetxController {
 
   /// Update current tab index.
   /// Called when user swipes carousel or taps on tab.
+  /// Also updates the currentSelectedCategory for form pre-selection.
   void updateTabIndex(int index) {
     if (index >= 0 && index < formCategories.length) {
       currentTabIndex.value = index;
+      currentSelectedCategory.value = formCategories[index];
     }
   }
 

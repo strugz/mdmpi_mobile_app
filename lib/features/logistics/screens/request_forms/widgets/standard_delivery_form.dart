@@ -14,33 +14,32 @@ import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
 import '../../../../../data/repositories/common/item_category_repository.dart';
 import '../../../../../data/repositories/common/form_category_repository.dart';
 import '../../../controllers/standard_delivery_controller.dart';
+import '../../../controllers/request_controller.dart';
 
 class StandardDelivery extends StatelessWidget {
   const StandardDelivery({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final requestController = Get.find<StandardDeliveryController>();
+    final stdDeliveryController = Get.find<StandardDeliveryController>();
     final userCNTMSTController = Get.find<UserMdmpiController>();
     final itemCategoryRepo = Get.find<ItemCategoryRepository>();
     final formCategoryRepo = Get.find<FormCategoryRepository>();
 
     userCNTMSTController.filterUserFromLocal();
 
-    // Pre-select form category if passed as argument
-    final arguments = Get.arguments;
-    if (arguments != null) {
-      try {
-        final Map<String, dynamic>? argsMap = arguments is Map<String, dynamic> ? arguments : null;
-        final categoryId = argsMap?['id'] as String?;
-        if (categoryId != null && categoryId.isNotEmpty) {
-          // Set immediately before build
-          requestController.formState.formCategory.text = categoryId;
-          print('Pre-selected form category: $categoryId');
-        }
-      } catch (e) {
-        print('Error parsing arguments: $e');
+    // Pre-select form category from RequestController if available
+    try {
+      final requestController = Get.find<RequestController>();
+      final selectedCategory = requestController.currentSelectedCategory.value;
+
+      if (selectedCategory != null) {
+        // Set form category based on selected tab
+        stdDeliveryController.formState.formCategory.text = selectedCategory.id;
+        print('Pre-selected form category from RequestController: ${selectedCategory.name} (ID: ${selectedCategory.id})');
       }
+    } catch (e) {
+      print('RequestController not found or error reading category: $e');
     }
 
     // Get the bottom padding of the device
@@ -61,7 +60,7 @@ class StandardDelivery extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Form(
-                key: requestController.formState.formKey,
+                key: stdDeliveryController.formState.formKey,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
                   child: Column(
@@ -88,13 +87,13 @@ class StandardDelivery extends StatelessWidget {
                               }
                               if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
                                 return BDropdown(
-                                  controller: requestController.formState.itemCategory,
+                                  controller: stdDeliveryController.formState.itemCategory,
                                   label: 'Item Category',
                                   dropdownList: const [],
                                 );
                               }
                               return BDropDownDynamicList(
-                                controller: requestController.formState.itemCategory,
+                                controller: stdDeliveryController.formState.itemCategory,
                                 icon: Iconsax.box,
                                 label: 'Item Category',
                                 dropdownList: snapshot.data!.map((cat) => cat.toJson()).toList(),
@@ -114,13 +113,13 @@ class StandardDelivery extends StatelessWidget {
                               }
                               if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
                                 return BDropdown(
-                                  controller: requestController.formState.formCategory,
+                                  controller: stdDeliveryController.formState.formCategory,
                                   label: 'Form Category',
                                   dropdownList: const [],
                                 );
                               }
                               return BDropDownDynamicList(
-                                controller: requestController.formState.formCategory,
+                                controller: stdDeliveryController.formState.formCategory,
                                 icon: Iconsax.document,
                                 label: 'Form Category',
                                 dropdownList: snapshot.data!.map((cat) => cat.toJson()).toList(),
@@ -135,7 +134,7 @@ class StandardDelivery extends StatelessWidget {
 
                       /// Shipping Method dropdown
                       BDropdown(
-                        controller: requestController.formState.shippingMethod,
+                        controller: stdDeliveryController.formState.shippingMethod,
                         label: 'Shipping Method',
                         dropdownList: ['Land', 'Air', 'Sea'],
                       ),
@@ -143,7 +142,7 @@ class StandardDelivery extends StatelessWidget {
 
                       /// Delivery Terms dropdown
                       BDropdown(
-                          controller: requestController.formState.deliveryTerms,
+                          controller: stdDeliveryController.formState.deliveryTerms,
                           icon: Iconsax.truck,
                           label: 'Delivery Terms',
                           dropdownList: ['Partial', 'Full']),
@@ -151,7 +150,7 @@ class StandardDelivery extends StatelessWidget {
 
                       /// Target date
                       ReadOnlyDateFormField(
-                        controller: requestController.formState.targetDate,
+                        controller: stdDeliveryController.formState.targetDate,
                         label: 'Delivery Date',
                         includeTime: false,
                         icon: Iconsax.calendar,
@@ -162,7 +161,7 @@ class StandardDelivery extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
                             BDropdown(
-                                controller: requestController.formState.preference,
+                                controller: stdDeliveryController.formState.preference,
                                 icon: Iconsax.status_up,
                                 label: 'Priority',
                                 dropdownList: ['High', 'Medium', 'Low']),
@@ -178,7 +177,7 @@ class StandardDelivery extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
                               BDropDownDynamicList(
-                                controller: requestController.formState.requestedBy,
+                                controller: stdDeliveryController.formState.requestedBy,
                                 icon: Iconsax.personalcard,
                                 label: 'Requested By',
                                 dropdownList: userCNTMSTController.userList
@@ -202,7 +201,7 @@ class StandardDelivery extends StatelessWidget {
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.all(BSizes.sm),
           child: ElevatedButton(
-              onPressed: () => requestController.saveRequest(),
+              onPressed: () => stdDeliveryController.saveRequest(),
               child: Text('Create Request')),
         ),
       ),

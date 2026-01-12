@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.d
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
@@ -33,22 +34,18 @@ class PullOutForm extends StatelessWidget {
       stdController.addDocumentReferenceField();
     }
 
-    // Pre-select form category if passed as argument
-    final arguments = Get.arguments;
-    if (arguments != null) {
-      try {
-        final categoryId = arguments.id as String?;
-        if (categoryId != null && categoryId.isNotEmpty) {
-          // Use post-frame callback to set after build
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (controller.formState.formCategoryController.text.isEmpty) {
-              controller.formState.formCategoryController.text = categoryId;
-            }
-          });
-        }
-      } catch (e) {
-        // Ignore if arguments don't have expected structure
+    // Pre-select form category from RequestController if available
+    try {
+      final requestController = Get.find<RequestController>();
+      final selectedCategory = requestController.currentSelectedCategory.value;
+
+      if (selectedCategory != null) {
+        // Set form category based on selected tab
+        controller.formState.formCategoryController.text = selectedCategory.id;
+        print('Pre-selected form category from RequestController: ${selectedCategory.name} (ID: ${selectedCategory.id})');
       }
+    } catch (e) {
+      print('RequestController not found or error reading category: $e');
     }
 
     Future<void> onSave() async {
