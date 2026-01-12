@@ -33,6 +33,24 @@ class PullOutForm extends StatelessWidget {
       stdController.addDocumentReferenceField();
     }
 
+    // Pre-select form category if passed as argument
+    final arguments = Get.arguments;
+    if (arguments != null) {
+      try {
+        final categoryId = arguments.id as String?;
+        if (categoryId != null && categoryId.isNotEmpty) {
+          // Use post-frame callback to set after build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (controller.formState.formCategoryController.text.isEmpty) {
+              controller.formState.formCategoryController.text = categoryId;
+            }
+          });
+        }
+      } catch (e) {
+        // Ignore if arguments don't have expected structure
+      }
+    }
+
     Future<void> onSave() async {
       await controller.submitFromForm();
 

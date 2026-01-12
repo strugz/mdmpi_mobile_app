@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
+import 'package:mdmpi_mobile_app/bindings/request_bindings.dart';
 import 'package:mdmpi_mobile_app/features/authentication/screens/login/login.dart';
 import 'package:mdmpi_mobile_app/features/authentication/screens/password_configuration/forget_password.dart';
 import 'package:mdmpi_mobile_app/features/authentication/screens/signup/signup.dart';
@@ -31,7 +32,7 @@ class AppRoutes {
     GetPage(name: BRoutes.signIn, page: () => const LoginScreen()),
     GetPage(name: BRoutes.forgetPassword, page: () => const ForgetPassword()),
     GetPage(name: BRoutes.onBoarding, page: () => const OnboardingScreen()),
-    GetPage(name: BRoutes.request, page: () => const RequestScreen()),
+    GetPage(name: BRoutes.request, page: () => const RequestScreen(), binding: RequestBindings()),
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
     GetPage(name: BRoutes.pullOutForm, page: () => const PullOutForm()),
     GetPage(name: BRoutes.localStorageViewer, page: () => const LocalStorageDataViewer()),

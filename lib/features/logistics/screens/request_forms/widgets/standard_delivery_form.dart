@@ -27,6 +27,22 @@ class StandardDelivery extends StatelessWidget {
 
     userCNTMSTController.filterUserFromLocal();
 
+    // Pre-select form category if passed as argument
+    final arguments = Get.arguments;
+    if (arguments != null) {
+      try {
+        final Map<String, dynamic>? argsMap = arguments is Map<String, dynamic> ? arguments : null;
+        final categoryId = argsMap?['id'] as String?;
+        if (categoryId != null && categoryId.isNotEmpty) {
+          // Set immediately before build
+          requestController.formState.formCategory.text = categoryId;
+          print('Pre-selected form category: $categoryId');
+        }
+      } catch (e) {
+        print('Error parsing arguments: $e');
+      }
+    }
+
     // Get the bottom padding of the device
     final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final bool isGestureNavigation = bottomPadding > 0.0;

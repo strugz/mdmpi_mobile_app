@@ -51,6 +51,7 @@ import '../data/repositories/air_sea/air_sea_repository.dart';
 import '../features/logistics/controllers/air_sea_controller.dart';
 import '../features/logistics/controllers/hotline_direct_controller.dart';
 import '../features/logistics/controllers/stock_receive_controller.dart';
+import '../features/logistics/controllers/request_controller.dart';
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
 
@@ -85,6 +86,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => AirSeaController(), fenix: true);
     Get.lazyPut(() => HotlineDirectController(), fenix: true);
     Get.lazyPut(() => StockReceiveController(), fenix: true);
+    Get.lazyPut(() => RequestController(), fenix: true);
     Get.lazyPut(
         () => CameraHandlerController(
               cameraService: Get.find<ICameraService>(),
