@@ -19,6 +19,7 @@ class BDropDownDynamicList extends StatefulWidget {
   final String? hint;
   final bool isExpanded;
   final String? Function(String?)? validator; // NEW: optional validator
+  final bool readOnly; // NEW: whether dropdown is read-only
 
   const BDropDownDynamicList({
     super.key,
@@ -32,6 +33,7 @@ class BDropDownDynamicList extends StatefulWidget {
     this.hint,
     this.isExpanded = true,
     this.validator,
+    this.readOnly = false,
   });
 
   @override
@@ -141,7 +143,7 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
         hintText: widget.hint ?? 'Select',
       ),
       items: items,
-      onChanged: (String? newValue) {
+      onChanged: widget.readOnly ? null : (String? newValue) {
         setState(() => _selectedValue = newValue);
         if (widget.controller != null) {
           widget.controller!.text = newValue ?? '';

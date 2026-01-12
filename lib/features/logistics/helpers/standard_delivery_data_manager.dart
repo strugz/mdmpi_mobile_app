@@ -66,8 +66,7 @@ class StandardDeliveryDataManager {
   /// - Sends WebSocket notification
   /// - Sends SMS to managers
   /// - Resets form state
-  Future<void> saveRequestFromForm(
-      StandardDeliveryController controller) async {
+  Future<void> saveRequestFromForm(StandardDeliveryController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 

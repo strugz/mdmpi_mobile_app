@@ -24,7 +24,8 @@ import '../../../data/repositories/image/image_repository.dart';
 /// Manager for Pull-Out domain orchestration (save/update flows).
 class PullOutDataManager {
   final PullOutRepository _repository = Get.find<PullOutRepository>();
-  final CancelRemarksRepository _cancelRemarksRepository = Get.find<CancelRemarksRepository>();
+  final CancelRemarksRepository _cancelRemarksRepository =
+      Get.find<CancelRemarksRepository>();
 
   Future<bool> validateConnectivity() async {
     final isConnected = await NetworkManager.instance.isConnected();
@@ -254,8 +255,8 @@ class PullOutDataManager {
   }
 
   /// Cancel a pull-out request with remarks via API.
-  Future<void> cancelRequestWithRemarks(
-      PullOutModel request, String remarks, String user, PullOutController controller) async {
+  Future<void> cancelRequestWithRemarks(PullOutModel request, String remarks,
+      String user, PullOutController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -265,7 +266,8 @@ class PullOutDataManager {
     }
 
     try {
-      await _repository.cancelPullOutAPI(request.id, remarks, user, silent: true);
+      await _repository.cancelPullOutAPI(request.id, remarks, user,
+          silent: true);
       await fetchPullOuts(controller);
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');
@@ -284,7 +286,8 @@ class PullOutDataManager {
   ///
   /// [controller] The pull-out controller to update with fetched data
   /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
-  Future<void> fetchPullOuts(PullOutController controller, [bool useLocalStorage = true]) async {
+  Future<void> fetchPullOuts(PullOutController controller,
+      [bool useLocalStorage = true]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -294,7 +297,8 @@ class PullOutDataManager {
       if (!useLocalStorage) {
         // Force API fetch by passing forceRefresh: true
         // This bypasses local DB check even if it has data
-        logDebug('PullOutDataManager: Fetching from API (useLocalStorage=false, forcing refresh)');
+        logDebug(
+            'PullOutDataManager: Fetching from API (useLocalStorage=false, forcing refresh)');
         results = await _repository.getAll(forceRefresh: true);
       } else {
         logDebug('PullOutDataManager: Fetching from local DB first');
@@ -303,12 +307,17 @@ class PullOutDataManager {
           logDebug('PullOutDataManager: Local DB empty, fetching from API');
           results = await _repository.getAll();
         } else {
-          logDebug('PullOutDataManager: Loaded ${results.length} items from local DB');
+          logDebug(
+              'PullOutDataManager: Loaded ${results.length} items from local DB');
         }
       }
 
-      controller.pullOuts.assignAll(results);
-      logDebug('PullOutDataManager: Assigned ${results.length} pull-outs to controller');
+      final pullOutsRequests =
+          results.where((r) => r.formCategoryId == '4').toList();
+
+      controller.pullOuts.assignAll(pullOutsRequests);
+      logDebug(
+          'PullOutDataManager: Assigned ${results.length} pull-outs to controller');
 
       controller.filterManager.applyFilter(controller.pullOuts.toList());
     } catch (e) {
@@ -321,7 +330,8 @@ class PullOutDataManager {
   }
 
   /// Insert a PullOutModel and refresh controller list.
-  Future<void> insertPullOutModel(PullOutModel model, PullOutController controller) async {
+  Future<void> insertPullOutModel(
+      PullOutModel model, PullOutController controller) async {
     if (controller.isSaving.value) return;
     controller.isSaving.value = true;
     controller.errorMessage.value = null;
@@ -337,7 +347,6 @@ class PullOutDataManager {
       controller.isSaving.value = false;
     }
   }
-
 
   /// Load item and form categories and populate the controller caches.
   Future<void> loadCategories(PullOutController controller) async {
@@ -374,19 +383,23 @@ class PullOutDataManager {
   /// Uses the same shared repository as standard delivery.
   Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
     try {
-      logDebug('🔍 PullOutDataManager: Fetching cancel remarks for: $requestId');
+      logDebug(
+          '🔍 PullOutDataManager: Fetching cancel remarks for: $requestId');
       final result = await _cancelRemarksRepository.getCancelRemarksByRequestId(
         requestId,
         module: RequestModule.pullOut, // Specify pull-out module
       );
-      logDebug('✅ PullOutDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
+      logDebug(
+          '✅ PullOutDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
       if (result.remarks.isEmpty) {
-        logDebug('⚠️ PullOutDataManager: Remarks are EMPTY! Check if API endpoint exists and returns data.');
+        logDebug(
+            '⚠️ PullOutDataManager: Remarks are EMPTY! Check if API endpoint exists and returns data.');
       }
       return result;
     } catch (e) {
       logDebug('❌ PullOutDataManager.fetchCancelRemarks FAILED: $e');
-      logDebug('💡 Tip: Check if GET /api4/RequestPullOutReturnPickUp/cancel/$requestId endpoint exists');
+      logDebug(
+          '💡 Tip: Check if GET /api4/RequestPullOutReturnPickUp/cancel/$requestId endpoint exists');
       return CancelRemarksModel.empty;
     }
   }

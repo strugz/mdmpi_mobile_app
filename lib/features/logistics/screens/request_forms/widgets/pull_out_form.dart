@@ -42,7 +42,8 @@ class PullOutForm extends StatelessWidget {
       if (selectedCategory != null) {
         // Set form category based on selected tab
         controller.formState.formCategoryController.text = selectedCategory.id;
-        print('Pre-selected form category from RequestController: ${selectedCategory.name} (ID: ${selectedCategory.id})');
+        print(
+            'Pre-selected form category from RequestController: ${selectedCategory.name} (ID: ${selectedCategory.id})');
       }
     } catch (e) {
       print('RequestController not found or error reading category: $e');
@@ -117,34 +118,35 @@ class PullOutForm extends StatelessWidget {
 
                       /// Form Category (display name, store ID)
                       Obx(() => BDropDownDynamicList(
-                            controller: controller.formState.formCategoryController,
+                            controller:
+                                controller.formState.formCategoryController,
                             label: 'Form Category',
                             icon: null,
                             dropdownList: controller.formState.formCategories
-                                    .map((e) => e.toJson())
-                                    .toList(),
+                                .map((e) => e.toJson())
+                                .toList(),
                             valueKey: 'FormCategoryID',
                             displayKey: 'FormCategoryName',
-                            validator: (v) =>
-                                (v == null || v.trim().isEmpty)
-                                    ? 'Please select a form category'
-                                    : null,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Please select a form category'
+                                : null,
+                            readOnly: true,
                           )),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Item Category (display name, store ID)
                       Obx(() => BDropDownDynamicList(
-                            controller: controller.formState.itemCategoryController,
+                            controller:
+                                controller.formState.itemCategoryController,
                             label: 'Item Category',
                             dropdownList: controller.formState.itemCategories
-                                    .map((e) => e.toJson())
-                                    .toList(),
+                                .map((e) => e.toJson())
+                                .toList(),
                             valueKey: 'ItemCategoryID',
                             displayKey: 'ItemCategoryName',
-                            validator: (v) =>
-                                (v == null || v.trim().isEmpty)
-                                    ? 'Please select an item category'
-                                    : null,
+                            validator: (v) => (v == null || v.trim().isEmpty)
+                                ? 'Please select an item category'
+                                : null,
                           )),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
