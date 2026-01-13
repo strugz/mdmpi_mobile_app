@@ -209,6 +209,7 @@ class StandardDelivery extends StatelessWidget {
                                 onChanged: (String? newId) {},
                                 valueKey: 'CNTMNN',
                                 displayKey: 'CNTMCN',
+                                enableSearch: true,
                               ),
                             ],
                           ),

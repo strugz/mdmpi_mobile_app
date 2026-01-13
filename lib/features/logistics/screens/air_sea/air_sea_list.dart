@@ -95,12 +95,31 @@ class AirSeaList extends StatelessWidget {
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: ConstrainedBox(
                       constraints:
-                          BoxConstraints(minHeight: constraints.maxHeight),
+                      BoxConstraints(minHeight: constraints.maxHeight),
                       child: Center(
-                        child: Text(
-                          'No Data Found!',
-                          style: TextStyle(
-                              color: dark ? BColors.white : BColors.dark),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.inbox_outlined,
+                              size: 80,
+                              color: dark ? BColors.light : BColors.darkGrey,
+                            ),
+                            const SizedBox(height: BSizes.spaceBtwItems),
+                            Text(
+                              'No Air / Sea requests found',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: dark ? BColors.light : BColors.darkGrey,
+                              ),
+                            ),
+                            const SizedBox(height: BSizes.sm),
+                            Text(
+                              'Try adjusting your filters',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: dark ? BColors.light : BColors.darkGrey,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
