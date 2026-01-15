@@ -132,8 +132,12 @@ Purpose: Verify that the Login screen looks correct, is consistent with the appâ
 7.3 **Successful login**
 - [ ] With valid credentials, tapping the login button:
   - [ ] Shows a loading indication if there is a noticeable delay.
-  - [ ] Navigates to the expected next screen (e.g., dashboard, home) without freezing.
+  - [ ] Navigates to the expected next screen based on the login context:
+    - [ ] **First-time login (after email verification):** Navigates to the Onboarding screen (introduction/tutorial screens).
+    - [ ] **Returning user login:** Navigates directly to the main app with the bottom navigation menu visible (typically landing on the Home screen).
   - [ ] Does not leave you on the login screen without feedback.
+  - [ ] After successful login as a returning user, the bottom navigation bar with four tabs (Home, Request, Location, Settings) is visible at the bottom of the screen.
+  - [ ] The Home tab is selected by default and the Home screen content is displayed.
 
 7.4 **Authentication error scenarios**
 - [ ] With invalid credentials (wrong password, unknown account), the screen shows a clear error message.
@@ -162,6 +166,37 @@ Purpose: Verify that the Login screen looks correct, is consistent with the appâ
 - [ ] Tap targets (buttons, social icons, links) are large enough for comfortable tapping.
 - [ ] Contrast ratios are sufficient for text and primary visual elements.
 - [ ] Navigating fields via the keyboard "Next" button (if applicable) follows a logical top-to-bottom order.
+
+---
+
+## 10. Post-Login Navigation & Bottom Navigation Menu Integration
+
+10.1 **Navigation menu appearance after successful login**
+- [ ] After a successful login as a returning user, the app navigates to the main screen with the bottom navigation menu visible.
+- [ ] The bottom navigation bar displays four tabs with icons:
+  - [ ] Home icon (leftmost)
+  - [ ] Request/Quote icon (second from left)
+  - [ ] Activity/Location icon (third from left)
+  - [ ] Settings icon (rightmost)
+
+10.2 **Default tab selection**
+- [ ] The Home tab is selected by default after login.
+- [ ] The selected Home tab is visually highlighted/distinguished from other tabs.
+- [ ] The Home screen content is displayed above the navigation bar.
+
+10.3 **First-time user flow**
+- [ ] If this is the user's first time logging in (after email verification), the app navigates to the Onboarding screen instead of the main screen with navigation menu.
+- [ ] The Onboarding screen provides an introduction or tutorial about the app's features.
+- [ ] After completing or skipping the Onboarding, the user is taken to the main screen with the bottom navigation menu visible.
+
+10.4 **Navigation menu functionality after login**
+- [ ] All four tabs in the bottom navigation menu are immediately functional after login.
+- [ ] Tapping any tab switches to the corresponding screen without errors.
+- [ ] The navigation menu remains visible and functional across all main screens (Home, Request, Location, Settings).
+
+10.5 **Back navigation from main screen**
+- [ ] From the main screen with the navigation menu (after login), using the system back button or gesture does not return to the login screen.
+- [ ] Expected behavior: Back navigation either exits the app or shows a confirmation dialog, depending on design specifications.
 
 ---
 
