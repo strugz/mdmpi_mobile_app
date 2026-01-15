@@ -15,6 +15,132 @@ This QA focuses on:
 
 ---
 
+## Status Explanation – Pick-Up Request Lifecycle
+
+This section describes the lifecycle of a Pick-Up request from creation to completion. Understanding these statuses helps QA testers verify that the correct actions and UI elements appear at each stage.
+
+### Status Flow Overview
+
+```
+New Request 
+    ↓
+Getting Supplies Ready 
+    ↓
+Item Packed 
+    ↓
+Received (Final)
+```
+
+**Alternative Final Status:** `Cancelled` (can occur at any stage)
+
+### Status Definitions
+
+#### 1. **New Request**
+- **Description:** The initial status when a Pick-Up request is first created in the system.
+- **What it means:** The request has been submitted but no action has been taken yet. Items for pick-up have not been prepared.
+- **Who can advance it:**
+  - **Request role users:** Can mark the request as "Getting Supplies Ready" to start the preparation process.
+  - **Release role users:** Can also mark the request as "Getting Supplies Ready".
+- **Visual indicators:** The request appears in the list with "New Request" status badge/label.
+- **Available actions:**
+  - **Request/Release users:** Tapping opens a modal with a button (e.g., **"Mark Preparing"** or **"Prepare Item"**).
+  - **Courier/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 2. **Getting Supplies Ready**
+- **Description:** Items for the pick-up request are being gathered and prepared.
+- **What it means:** The preparation phase is active. Someone is collecting the items and preparing them for pick-up by the customer.
+- **Who can advance it:**
+  - **Release role users:** Can mark the request as "Item Packed" once all items are ready and packed.
+- **Visual indicators:** The request shows "Getting Supplies Ready" status.
+- **Available actions:**
+  - **Release users:** Tapping opens a modal with a button (e.g., **"Mark Item Packed"** or **"Packed and Ready"**).
+  - **Request/Courier/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 3. **Item Packed**
+- **Description:** All items have been packed and are ready for customer pick-up.
+- **What it means:** Items are prepared and awaiting collection by the customer or designated person.
+- **Who can advance it:**
+  - **Release role users:** Can mark the request as "Received" once the customer has picked up the items.
+- **Visual indicators:** The request shows "Item Packed" status.
+- **Available actions:**
+  - **Release users:** Tapping opens a modal with a button (e.g., **"Mark Received"** or **"Mark as Picked Up"**).
+  - **Request/Courier/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 4. **Received** (Final Status)
+- **Description:** The customer has successfully picked up the items.
+- **What it means:** The Pick-Up request lifecycle is complete. Items are now in the customer's possession.
+- **Who can advance it:** No one. This is a final status.
+- **Visual indicators:** The request shows "Received" status, possibly with a completion indicator.
+- **Available actions:**
+  - **All roles:** Tapping opens a view-only modal showing completion details (who received it, when, any final notes).
+- **Long-press:** No Remarks dialog (final status - long-press is disabled).
+
+---
+
+#### 5. **Cancelled**
+- **Description:** The request has been cancelled and will not be fulfilled.
+- **What it means:** The Pick-Up request was terminated before completion. Cancellation remarks should explain why.
+- **Who can cancel it:** Typically users with appropriate permissions (Release or Request roles, depending on system rules).
+- **Visual indicators:** The request shows "Cancelled" status, often with a distinct color (e.g., red or grey).
+- **Available actions:**
+  - **All roles:** Tapping opens a view-only modal showing:
+    - Cancellation remarks (reason for cancellation)
+    - Date of cancellation
+    - User who cancelled the request
+- **Long-press:** No Remarks dialog (final status - long-press is disabled).
+
+---
+
+### Status Summary Table (Quick Reference)
+
+| Status | Description | Who Can Advance | Next Status | Action Button Label |
+|---|---|---|---|---|
+| **New Request** | Request created, items not yet prepared | Request, Release | Getting Supplies Ready | "Mark Preparing" / "Prepare Item" |
+| **Getting Supplies Ready** | Items being gathered/prepared | Release | Item Packed | "Mark Item Packed" / "Packed and Ready" |
+| **Item Packed** | Items packed, ready for pick-up | Release | Received | "Mark Received" / "Mark as Picked Up" |
+| **Received** | ✅ Final: Customer picked up items | None (final) | N/A | View-only |
+| **Cancelled** | ❌ Request cancelled | None (final) | N/A | View-only (shows remarks) |
+
+---
+
+### Role-Based Status Advancement (Quick Reference)
+
+| Role | Can Advance From → To |
+|---|---|
+| **Request** | New Request → Getting Supplies Ready |
+| **Release** | New Request → Getting Supplies Ready<br>Getting Supplies Ready → Item Packed<br>Item Packed → Received |
+| **Courier** | None (view-only for Pick-Up requests) |
+| **Viewer** | None (view-only) |
+
+---
+
+### Key Characteristics of Pick-Up Workflow
+
+**Pick-Up vs Standard Delivery:**
+- **Customer collects items:** Pick-Up is for customers coming to collect items, not delivery to them
+- **Simpler flow:** Only 4 active statuses (New Request → Getting Supplies Ready → Item Packed → Received)
+- **No courier involvement:** Courier role has view-only access; this is handled by Request and Release roles
+- **No delivery proof:** Unlike Standard Delivery, no photos or signatures are required (customer picks up in person)
+
+**Pick-Up vs Air/Sea:**
+- **Shorter lifecycle:** Air/Sea has more steps (Endorsed to Guard, Dispatch paths)
+- **Different purpose:** Pick-Up is for customer collection, not shipping or long-distance transport
+
+**Pick-Up vs Pull Out / Return:**
+- **Similar flow length:** Both have simple 3-4 step workflows
+- **Different direction:** Pick-Up is customer collecting items; Pull Out is items being removed/returned
+
+---
+
 ## 1. Entry & Embedding
 
 1.1 **Visibility within Request flow**
@@ -107,71 +233,249 @@ This QA focuses on:
 
 ## 6. Interaction Components & What They Do
 
-### 6.1 Request Card (Tap)
+### 6.1 Request Card (Tap) - Overview
 
 **Component:** Each row is a tappable card (`PickUpRequestCard`) wrapped in an `InkWell`.
 
 **What QA sees & should verify:**
 - [ ] Cards show visual feedback when tapped (e.g., ripple/highlight within rounded corners).
-- [ ] Tapping a card selects that Pick-Up request and opens the appropriate action or detail flow.
+- [ ] Tapping a card opens a **modal bottom sheet** showing request details and status-appropriate actions.
 
-**Behavior summary (black-box, based on role & status):**
-- When a card is tapped, the app:
-  - [ ] Interprets this request as the **current selection**.
-  - [ ] Checks the request status (e.g., `New Request`, `In-progress`, `Received`, `Cancelled`).
-  - [ ] Checks the logged-in user’s roles (Request, Release, Courier, Viewer, etc.).
-  - [ ] Chooses the **most powerful applicable role** using the priority: Release > Courier > Request > Viewer.
-  - [ ] Opens a handler/action UI appropriate for that role and status.
+**Behavior summary:**
+- Tapping a request card opens a modal dialog with content and actions that vary based on:
+  1. The request's current **status** (New Request, Getting Supplies Ready, Item Packed, Received, Cancelled)
+  2. The logged-in user's **role** (Request, Release, Courier, Viewer)
 
-From a tester perspective:
-- **If status is `Received` or `Cancelled`:**
-  - [ ] Tapping the card opens a default, read-only handler or detail view (no further workflow actions).
-- **If status is not `Received`/`Cancelled`:**
-  - [ ] With **Release** privileges, tapping shows actions for preparing/releasing Pick-Up items.
-  - [ ] With **Courier** privileges, tapping shows delivery/pick-up related actions.
-  - [ ] With **Request-only** privileges, tapping allows only early-stage actions (e.g., advancing new requests) as defined in UX.
-  - [ ] With **Viewer-only** privileges, tapping shows view-only details without state-changing actions.
+**Detailed modal behavior by status is documented in Section 6.1.1 below.**
 
-> QA should use different test accounts to validate that the resulting dialog/screen and actions differ correctly per role and request status, without needing to know handler class names.
+---
 
-### 6.2 Request Card (Long Press – Remarks)
+### 6.1.1 Status-Based Modal Dialogs (Pick-Up)
 
-**Component:** Long-press gesture on each request card (`onLongPress`).
+**Component:** Bottom sheet modal dialog that opens when tapping any Pick-Up request.
 
-**What it does:**
-- [ ] Long-pressing a card with status **not** equal to `Received` and **not** equal to `Cancelled` opens a **Remarks** dialog.
-- [ ] The Remarks dialog allows the user to view and/or add remarks related to that Pick-Up request.
-- [ ] The dialog has actions to save/apply remarks or to cancel/close.
-- [ ] Long-pressing a card where status is `Received` or `Cancelled` does **not** open the Remarks dialog.
+**Entry:**
+- [ ] Tapping any request card opens a modal bottom sheet.
+- [ ] The modal loads without crashes, blank screens, or delays.
 
-QA should verify:
-- [ ] Long-press behavior is consistent across different statuses.
-- [ ] Correct remarks are shown for each request.
+#### Modal Layout & Design
 
-### 6.3 Pull-to-Refresh
+**Overall appearance:**
+- [ ] A modal bottom sheet slides up from the bottom of the screen.
+- [ ] The modal has rounded top corners (curved design).
+- [ ] Background color adapts to theme:
+  - [ ] Light mode: White or light background
+  - [ ] Dark mode: Black or dark background
+- [ ] The modal content is scrollable if it exceeds the visible area.
+- [ ] A safe area is respected (no content is cut off by device notches or system UI).
 
-**Component:** Pull-down gesture handled by `RefreshIndicator` around the list and empty state.
+**Modal header:**
+- [ ] The top of the modal displays request information:
+  - [ ] Request type (Pick-Up)
+  - [ ] Client or customer name
+  - [ ] Client address or contact details
+  - [ ] Request date and time
+  - [ ] Current status
+- [ ] Text is readable with appropriate color contrast.
+- [ ] Information is organized logically and aligned properly.
 
-**What it does:**
-- [ ] Pulling down from the top triggers `loadPickUps` and updates the Pick-Up list.
-- [ ] Spinner appears during reload and hides when done.
+#### Document References Section
 
-### 6.4 Scroll Interactions
+**Display:**
+- [ ] Below the header, a **Document References** section is visible (if the request has document references).
+- [ ] Document references are displayed as tappable items or expandable sections.
+- [ ] Tapping a document reference (if interactive) opens details or performs the expected action (e.g., viewing images, downloading documents).
 
-**Component:** Vertical scroll (`ListView` for list, `SingleChildScrollView` for empty view).
+#### Modal Footer
 
-**What it does:**
-- [ ] Enables scrolling through all available Pick-Up requests.
-- [ ] Works smoothly while respecting the top overscroll used by the pull-to-refresh gesture.
+**Display:**
+- [ ] At the bottom of the modal content (above the action button), a footer section displays additional request information:
+  - [ ] Prepared by (user initial and timestamp)
+  - [ ] Item packed by (user initial and timestamp, if applicable)
+  - [ ] Received by (user initial and timestamp, if applicable)
+  - [ ] Other relevant metadata
+- [ ] The footer is consistently styled and readable.
 
-### 6.5 Loading Lock (`AbsorbPointer`)
+---
 
-**Component:** Input blocking while data is loading.
+### 6.1.2 Action Buttons & Role-Based Behavior by Status
 
-**What it does:**
-- [ ] While `isLoading` is true, taps and long-presses over the list or empty state do nothing.
-- [ ] Prevents accidental actions during refresh or initial load.
-- [ ] After loading completes, interactions on cards function again.
+#### **Status: New Request**
+
+**For Request Role Users:**
+- [ ] Button is visible and labeled **"Mark Preparing"** or **"Prepare Item"**.
+- [ ] Tapping the button:
+  - [ ] Shows a loading indicator on the button.
+  - [ ] Updates the request status to **"Getting Supplies Ready"**.
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
+
+**For Release Role Users:**
+- [ ] Button is visible and labeled **"Mark Preparing"** or **"Prepare Item"**.
+- [ ] Same behavior as Request role (can advance the status).
+
+**For Courier Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+---
+
+#### **Status: Getting Supplies Ready**
+
+**For Request Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Only Release users can advance from "Getting Supplies Ready" to "Item Packed".
+
+**For Release Role Users:**
+- [ ] Button is visible and labeled **"Mark Item Packed"** or **"Packed and Ready"**.
+- [ ] Tapping the button:
+  - [ ] Shows a loading indicator on the button.
+  - [ ] Updates the request status to **"Item Packed"**.
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
+
+**For Courier Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+---
+
+#### **Status: Item Packed**
+
+**For Request Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Only Release users can mark as received.
+
+**For Release Role Users:**
+- [ ] Button is visible and labeled **"Mark Received"** or **"Mark as Picked Up"**.
+- [ ] Tapping the button:
+  - [ ] Shows a loading indicator on the button.
+  - [ ] Updates the request status to **"Received"** (final status).
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
+
+**For Courier Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+---
+
+#### **Status: Received (Final Status)**
+
+**For All Roles (Request, Release, Courier, Viewer):**
+- [ ] Button is **not visible** (this is a final status).
+- [ ] Modal displays completion details:
+  - [ ] Who picked up the items (customer/receiver name, if recorded)
+  - [ ] Who marked it as received (user initial)
+  - [ ] When it was received/picked up (timestamp)
+  - [ ] Any final notes or metadata
+- [ ] Modal is **read-only** for all users.
+- [ ] Closing the modal returns to the list.
+
+---
+
+#### **Status: Cancelled (Final Status)**
+
+**For All Roles (Request, Release, Courier, Viewer):**
+- [ ] Button is **not visible** (this is a final status).
+- [ ] Modal displays cancellation information:
+  - [ ] **"Cancel Remarks"** section with a divider (if applicable)
+  - [ ] Cancellation remarks text (reason for cancellation)
+  - [ ] Date of cancellation
+  - [ ] User who cancelled the request
+- [ ] Modal is **read-only** for all users.
+- [ ] Closing the modal returns to the list.
+
+---
+
+### 6.1.3 Modal Interaction & Behavior
+
+**Scrolling:**
+- [ ] If the modal content is long, you can scroll within the modal to see all information.
+- [ ] Scrolling is smooth without jank or lag.
+
+**Closing the modal:**
+- [ ] Tapping outside the modal (on the dimmed background) closes the modal and returns to the list.
+- [ ] Using the system back button or gesture closes the modal.
+- [ ] After closing, the list remains in a consistent state (no duplicated items or broken layout).
+
+**Loading state:**
+- [ ] When an action button is tapped and processing, the button shows a loading spinner.
+- [ ] The modal remains open during processing.
+- [ ] Other interactive elements are disabled during loading (cannot tap close or interact with content).
+
+**Success state:**
+- [ ] On successful status update, a success message (toast/snackbar) is displayed.
+- [ ] The modal automatically closes.
+- [ ] The list updates to reflect the new status (the request card shows the updated status).
+
+**Error state:**
+- [ ] On failure, an error message is displayed (toast/snackbar with a clear description).
+- [ ] The modal remains open.
+- [ ] The action button returns to the enabled state (user can retry).
+
+---
+
+### 6.1.4 Theme & Visual Consistency
+
+**Light mode:**
+- [ ] Modal background is light (white or light grey).
+- [ ] Text and icons are dark with good contrast.
+- [ ] Action buttons are clearly visible.
+
+**Dark mode:**
+- [ ] Modal background is dark (black or dark grey).
+- [ ] Text and icons are light with good contrast.
+- [ ] Action buttons are clearly visible.
+
+**Consistency:**
+- [ ] Typography, spacing, and colors match the app's design system.
+- [ ] Modal design is consistent with other modals/dialogs in the app (Standard Delivery, Air/Sea, Pull Out, etc.).
+
+---
+
+### 6.1.5 Role-Based Behavior Summary (Quick Reference Table)
+
+| Request Status | Request Role | Release Role | Courier Role | Viewer Role |
+|---|---|---|---|---|
+| **New Request** | ✅ "Mark Preparing" button | ✅ "Mark Preparing" button | ❌ View-only | ❌ View-only |
+| **Getting Supplies Ready** | ❌ View-only | ✅ "Mark Item Packed" button | ❌ View-only | ❌ View-only |
+| **Item Packed** | ❌ View-only | ✅ "Mark Received" button | ❌ View-only | ❌ View-only |
+| **Received** | 👁️ View completion details | 👁️ View completion details | 👁️ View completion details | 👁️ View completion details |
+| **Cancelled** | 👁️ View cancel remarks | 👁️ View cancel remarks | 👁️ View cancel remarks | 👁️ View cancel remarks |
+
+---
+
+### 6.1.6 Edge Cases & Validations
+
+**Rapid tapping:**
+- [ ] Rapidly tapping the action button does not trigger multiple status updates.
+- [ ] The button disables or shows loading immediately on first tap.
+
+**Network issues:**
+- [ ] If the network is unavailable when tapping the action button, an appropriate error message is shown.
+- [ ] The modal remains open, allowing the user to retry after resolving the network issue.
+
+**Permission edge cases:**
+- [ ] Users with multiple roles (e.g., both Request and Release) see the appropriate action based on their highest role capability.
+- [ ] For "New Request": Both Request and Release roles can advance to "Getting Supplies Ready".
+- [ ] For "Getting Supplies Ready" and "Item Packed": Only Release role can advance.
+
+**Status transition edge cases:**
+- [ ] If another user updates the request status while the modal is open, closing and reopening the modal shows the updated status.
+- [ ] The list refreshes correctly after successful status changes (pull-to-refresh or automatic refresh).
 
 ---
 
@@ -216,4 +520,3 @@ The app uses role priority mapping such that the **highest capability role** a u
 ---
 
 This checklist is intended for QA testers validating the Pick-Up list screen and its interaction behaviors (tap, long-press, scroll, refresh, role-based actions) based solely on what they see and can do in the app, without needing to inspect Dart code or GetX controllers.
-

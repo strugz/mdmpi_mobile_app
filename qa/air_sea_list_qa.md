@@ -15,6 +15,160 @@ This QA focuses on:
 
 ---
 
+## Status Explanation – Air/Sea Request Lifecycle
+
+This section describes the lifecycle of an Air/Sea request from creation to completion. Understanding these statuses helps QA testers verify that the correct actions and UI elements appear at each stage.
+
+### Status Flow Overview
+
+```
+New Request 
+    ↓
+Getting Supplies Ready 
+    ↓
+Item Packed 
+    ↓
+Endorsed to Guard (OR) Received (OR) Dispatch
+    ↓
+Received (from Endorsed to Guard)
+```
+
+### Status Definitions
+
+#### 1. **New Request**
+- **Description:** The initial status when an Air/Sea request is first created in the system.
+- **What it means:** The request has been submitted but no action has been taken yet. Items are not yet being prepared.
+- **Who can advance it:**
+  - **Request role users:** Can mark the request as "Getting Supplies Ready" to start the preparation process.
+  - **Release role users:** Can also mark the request as "Getting Supplies Ready".
+- **Visual indicators:** The request appears in the list with "New Request" status badge/label.
+- **Available actions:**
+  - **Request/Release users:** Tapping opens a modal with a button labeled **"Prepare Item"** or similar.
+  - **Courier/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 2. **Getting Supplies Ready**
+- **Description:** Items for this Air/Sea request are being gathered and prepared for shipping.
+- **What it means:** The preparation phase is active. Someone is collecting the items, packaging them, or performing necessary prep work.
+- **Who can advance it:**
+  - **Release role users:** Can mark the request as "Item Packed" once all items are ready and packed.
+- **Visual indicators:** The request shows "Getting Supplies Ready" status.
+- **Available actions:**
+  - **Release users:** Tapping opens a modal with a button labeled **"Packed and Ready"** or similar (to advance to "Item Packed").
+  - **Request/Courier/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 3. **Item Packed**
+- **Description:** All items have been packed and are ready for the next step.
+- **What it means:** Items are prepared and awaiting handover or dispatch. The Release user must decide the next action.
+- **Who can advance it:**
+  - **Release role users:** Can choose one of three paths:
+    1. **Endorsed to Guard:** Items are handed over to a guard for safekeeping before final receipt.
+    2. **Received:** Items are directly received (skip guard endorsement).
+    3. **Dispatch:** Items are dispatched for courier delivery (triggers courier workflow).
+- **Visual indicators:** The request shows "Item Packed" status.
+- **Available actions:**
+  - **Release users:** Tapping opens a modal with a **dropdown or selection** allowing the user to choose:
+    - "Endorsed to Guard"
+    - "Received"
+    - "Dispatch"
+  - **Request/Courier/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 4. **Endorsed to Guard**
+- **Description:** Items have been handed over to a guard for temporary safekeeping.
+- **What it means:** The items are with security/guard personnel, awaiting final receipt by the end recipient.
+- **Who can advance it:**
+  - **Release role users:** Can mark the request as "Received" once the items are picked up from the guard.
+- **Visual indicators:** The request shows "Endorsed to Guard" status.
+- **Available actions:**
+  - **Release users:** Tapping opens a modal with a button labeled **"Mark as Received"** or similar (to advance to "Received").
+  - **Request/Courier/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 5. **Dispatch** (Alternative path from Item Packed)
+- **Description:** Items have been dispatched for courier delivery.
+- **What it means:** The request has entered the courier/delivery workflow. A courier will handle the drop-off.
+- **Who can advance it:**
+  - **Courier role users:** Can mark the request as "Drop Off" once delivery is completed (with proof photo, receiver name, signature).
+- **Visual indicators:** The request shows "Dispatch" status.
+- **Available actions:**
+  - **Courier users:** Tapping opens a modal or transport screen with a button labeled **"Drop Off"** (with fields for proof capture, receiver name, signature).
+  - **Release/Request/Viewer users:** Tapping opens a view-only modal (no action buttons).
+- **Long-press:** Opens Remarks dialog (can add/view remarks).
+
+---
+
+#### 6. **Drop Off** (Final status from Dispatch)
+- **Description:** The courier has completed delivery and captured proof.
+- **What it means:** The items have been dropped off at the destination. Proof of delivery (photo, signature) has been recorded.
+- **Who can advance it:** No one. This is a final status.
+- **Visual indicators:** The request shows "Drop Off" status.
+- **Available actions:**
+  - **All roles:** Tapping opens a view-only modal showing delivery proof (photo, receiver name, signature).
+- **Long-press:** No Remarks dialog (final status).
+
+---
+
+#### 7. **Received** (Final status)
+- **Description:** Items have been successfully received by the intended recipient.
+- **What it means:** The Air/Sea request lifecycle is complete. Items are in the hands of the recipient.
+- **Who can advance it:** No one. This is a final status.
+- **Visual indicators:** The request shows "Received" status.
+- **Available actions:**
+  - **All roles:** Tapping opens a view-only modal showing received status and any relevant details (receiver info, proof if applicable).
+- **Long-press:** No Remarks dialog (final status).
+
+---
+
+#### 8. **Cancelled**
+- **Description:** The request has been cancelled and will not be fulfilled.
+- **What it means:** The Air/Sea request was terminated before completion. Cancellation remarks should explain why.
+- **Who can cancel it:** Typically users with appropriate permissions (Release or Request roles, depending on system rules).
+- **Visual indicators:** The request shows "Cancelled" status, often with a distinct color (e.g., red or grey).
+- **Available actions:**
+  - **All roles:** Tapping opens a view-only modal showing:
+    - Cancellation remarks (reason for cancellation)
+    - Date of cancellation
+    - User who cancelled the request
+- **Long-press:** No Remarks dialog (final status).
+
+---
+
+### Status Summary Table (Quick Reference)
+
+| Status | Description | Who Can Advance | Next Status(es) | Action Button Label |
+|---|---|---|---|---|
+| **New Request** | Request created, not yet prepared | Request, Release | Getting Supplies Ready | "Prepare Item" |
+| **Getting Supplies Ready** | Items being gathered/prepared | Release | Item Packed | "Packed and Ready" |
+| **Item Packed** | Items packed, awaiting next step | Release | Endorsed to Guard, Received, Dispatch | Dropdown selection |
+| **Endorsed to Guard** | Items with guard, awaiting pickup | Release | Received | "Mark as Received" |
+| **Dispatch** | Items dispatched for courier delivery | Courier | Drop Off | "Drop Off" |
+| **Drop Off** | ✅ Final: Courier completed delivery | None (final) | N/A | View-only |
+| **Received** | ✅ Final: Items received by recipient | None (final) | N/A | View-only |
+| **Cancelled** | ❌ Request cancelled | None (final) | N/A | View-only (shows remarks) |
+
+---
+
+### Role-Based Status Advancement (Quick Reference)
+
+| Role | Can Advance From → To |
+|---|---|
+| **Request** | New Request → Getting Supplies Ready |
+| **Release** | New Request → Getting Supplies Ready<br>Getting Supplies Ready → Item Packed<br>Item Packed → Endorsed to Guard / Received / Dispatch<br>Endorsed to Guard → Received |
+| **Courier** | Dispatch → Drop Off |
+| **Viewer** | None (view-only) |
+
+---
+
 ## 1. Entry & Embedding
 
 1.1 **Visibility within Request flow**
@@ -107,114 +261,364 @@ This QA focuses on:
 
 ## 6. Interaction Components & What They Do
 
-### 6.1 Air/Sea Card (Tap)
+### 6.1 Air/Sea Card (Tap) - Overview
 
 **Component:** Each row is a tappable card (`AirSeaRequestCard`) wrapped in an `InkWell`.
 
 **What QA sees & should verify:**
 - [ ] Cards show visual feedback when tapped (e.g., ripple/highlight respecting rounded corners).
-- [ ] Tapping a card selects that Air/Sea request and opens the appropriate action or detail flow.
+- [ ] Tapping a card opens a **modal bottom sheet** showing request details and status-appropriate actions.
 
-**Behavior summary (black-box, based on role & status):**
-- When a card is tapped, the app:
-  - [ ] Treats that Air/Sea request as the **current selection**.
-  - [ ] Checks the request’s status (e.g., `New`, `In-progress`, `Received`, `Cancelled`).
-  - [ ] Checks the logged-in user’s roles (Request, Release, Courier, Viewer, etc.).
-  - [ ] Chooses the **most powerful applicable role** using the priority: Release > Courier > Request > Viewer.
+**Behavior summary:**
+- Tapping a request card opens a modal dialog with content and actions that vary based on:
+  1. The request's current **status** (New Request, Getting Supplies Ready, Item Packed, Endorsed to Guard, Dispatch, Drop Off, Received, Cancelled)
+  2. The logged-in user's **role** (Request, Release, Courier, Viewer)
 
-From a tester’s perspective:
-- **If status is `Received` or `Cancelled`:**
-  - [ ] Tapping the card opens a default, read-only style handler (`AirSeaDefaultHandler` behavior), regardless of user role.
-- **If status is not `Received`/`Cancelled`:**
-  - [ ] With **Release** permissions, tapping shows actions for release/preparation around Air/Sea logistics.
-  - [ ] With **Courier** permissions, tapping shows courier/transport-related actions where applicable.
-  - [ ] With **Request-only** permissions, tapping allows only early-stage actions per UX.
-  - [ ] With **Viewer-only** permissions, tapping shows a view-only detail (no state-changing actions).
-
-> QA should use different test accounts to validate that tapping results in the correct dialog or screen for each role and status, without needing to know handler class names.
-
-### 6.2 Air/Sea Card (Long Press – Remarks)
-
-**Component:** Long-press gesture on each Air/Sea card (`onLongPress`).
-
-**What it does:**
-- [ ] Long-pressing a card with status **not** equal to `Received` and **not** equal to `Cancelled` opens a **Remarks** dialog.
-- [ ] The Remarks dialog lets the user:
-  - [ ] View existing remarks for that Air/Sea request.
-  - [ ] Add or edit remarks according to design.
-  - [ ] Save/apply remarks or cancel.
-- [ ] Long-pressing a card where status is `Received` or `Cancelled` does **not** open the Remarks dialog.
-
-QA should verify:
-- [ ] Remarks dialog appears only for in-progress/non-final requests.
-- [ ] The correct remarks are shown per request, and changes are preserved according to UX expectations.
-
-### 6.3 Pull-to-Refresh
-
-**Component:** `RefreshIndicator` around the list and empty state.
-
-**What it does:**
-- [ ] Pulling down from the top triggers `loadAirSeaRequests` and updates the Air/Sea list.
-- [ ] A spinner is visible during the refresh and disappears once it completes.
-
-### 6.4 Scroll Interactions
-
-**Component:** Vertical scrolling (`ListView.separated` for non-empty, `SingleChildScrollView` for empty view).
-
-**What it does:**
-- [ ] Allows users to browse all available Air/Sea requests.
-- [ ] Supports overscroll at the top for pull-to-refresh.
-- [ ] Maintains a stable layout while switching between loading, list, and empty states.
-
-### 6.5 Loading Lock (`AbsorbPointer`)
-
-**Component:** Input blocking while data is loading.
-
-**What it does:**
-- [ ] While the controller’s `isLoading` flag is active, taps and long-presses on the list or empty view are ignored.
-- [ ] Prevents users from triggering actions while data is refreshing.
-- [ ] After loading finishes, interactions resume normally.
+**Detailed modal behavior by status is documented in Section 6.1.1 below.**
 
 ---
 
-## 7. Role-Dependent Behavior (Black-Box)
+### 6.1.1 Status-Based Modal Dialogs (Air/Sea)
 
-The app parses the logged-in user’s roles and uses the `_rolePriority` map so that the highest capability role controls tap behavior.
+**Component:** Bottom sheet modal dialog that opens when tapping any Air/Sea request.
 
-7.1 **Recommended test accounts**
-- [ ] Request-only user
-- [ ] Release user
-- [ ] Courier user
-- [ ] Viewer-only user
-- [ ] Multi-role users (e.g., Release + Courier)
+**Entry:**
+- [ ] Tapping any request card opens a modal bottom sheet.
+- [ ] The modal loads without crashes, blank screens, or delays.
 
-7.2 **Expectations by role**
-- [ ] **Viewer-only:** tapping any card shows view-only details; no editing or workflow progression actions.
-- [ ] **Request-only:** tapping early-stage Air/Sea entries allows only limited request-level actions as defined by UX; no release or courier options.
-- [ ] **Courier:** tapping transport-stage entries shows courier-relevant actions as per flow definitions.
-- [ ] **Release:** tapping preparation/receiving-stage entries shows release/receive actions.
-- [ ] **Multi-role:** when a user has more than one role, the UI behaves according to the highest-priority role (Release > Courier > Request > Viewer).
+#### Modal Layout & Design
 
-7.3 **Final-status behavior**
-- [ ] For all roles, tapping an Air/Sea request with status `Received` or `Cancelled` results in a consistent, read-only handling (no further steps or state changes allowed).
+**Overall appearance:**
+- [ ] A modal bottom sheet slides up from the bottom of the screen.
+- [ ] The modal has rounded top corners (curved design).
+- [ ] Background color adapts to theme:
+  - [ ] Light mode: White or light background
+  - [ ] Dark mode: Black or dark background
+- [ ] The modal content is scrollable if it exceeds the visible area.
+- [ ] A safe area is respected (no content is cut off by device notches or system UI).
+
+**Modal header:**
+- [ ] The top of the modal displays request information:
+  - [ ] Request type (Air/Sea)
+  - [ ] Client name
+  - [ ] Client address
+  - [ ] Request date and time
+  - [ ] Current status
+- [ ] Text is readable with appropriate color contrast.
+- [ ] Information is organized logically and aligned properly.
+
+#### Document References Section
+
+**Display:**
+- [ ] Below the header, a **Document References** section is visible (if the request has document references).
+- [ ] Document references are displayed as tappable items or expandable sections.
+- [ ] Tapping a document reference (if interactive) opens details or performs the expected action (e.g., viewing images, downloading documents).
+
+#### Waybill Number Section
+
+**Display (when applicable):**
+- [ ] If the request has a waybill number, it is displayed with:
+  - [ ] Label: "Waybill Number"
+  - [ ] Icon (clipboard/document icon)
+  - [ ] The waybill number value
+  - [ ] A copy button/icon to copy the waybill number to clipboard
+- [ ] Tapping the copy icon copies the waybill number and shows a confirmation (toast/snackbar).
+
+#### Waybill Input Section (For "Endorsed to Guard" Status)
+
+**Display:**
+- [ ] When the status is **"Endorsed to Guard"**, a waybill input field is visible in the modal.
+- [ ] The field allows the user to enter or update the waybill number before marking as received.
+
+#### Dispatch Information Section
+
+**Display (when applicable):**
+- [ ] If dispatch-related fields are populated (dispatcher name, dispatch date, etc.), a "Dispatch Information" section is visible.
+- [ ] Shows relevant dispatch metadata in a readable format.
+
+#### Modal Footer
+
+**Display:**
+- [ ] At the bottom of the modal content (above the action button), a footer section displays additional request information:
+  - [ ] Prepared by (user initial and timestamp)
+  - [ ] Item packed by (user initial and timestamp, if applicable)
+  - [ ] Endorsed by (user initial and timestamp, if applicable)
+  - [ ] Received by (user initial and timestamp, if applicable)
+  - [ ] Other relevant metadata
+- [ ] The footer is consistently styled and readable.
 
 ---
 
-## 8. Error Handling & Edge Cases
+### 6.1.2 Action Buttons & Role-Based Behavior by Status
 
-8.1 **Network/data load errors**
-- [ ] If fetching Air/Sea data fails due to network issues, the app does not crash.
-- [ ] After restoring connectivity, pull-to-refresh successfully reloads and displays Air/Sea requests.
+#### **Status: New Request**
 
-8.2 **Rapid user actions**
-- [ ] Quickly tapping multiple Air/Sea cards does not cause overlapping dialogs or crashes.
-- [ ] Quickly long-pressing multiple cards does not show incorrect remarks or multiple stacked dialogs.
+**For Request Role Users:**
+- [ ] Button is visible and labeled **"Mark Preparing"** or similar.
+- [ ] Tapping the button:
+  - [ ] Shows a loading indicator on the button.
+  - [ ] Updates the request status to **"Getting Supplies Ready"**.
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
 
-8.3 **Background/foreground transitions**
-- [ ] While viewing the Air/Sea list, sending the app to background and then returning leaves the UI in a usable state.
-- [ ] If the data reloads on resume, transitions between loading and content remain visually clean.
+**For Release Role Users:**
+- [ ] Button is visible and labeled **"Mark Preparing"** or similar.
+- [ ] Same behavior as Request role (can advance the status).
+
+**For Courier Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
 
 ---
 
-This checklist is intended for QA testers validating the Air/Sea list screen and its interaction behaviors (tap, long-press, scroll, refresh, role-based actions) based solely on what they see and can do in the app, without needing to inspect Dart code or GetX controllers.
+#### **Status: Getting Supplies Ready**
 
+**For Request Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Only Release users can advance from "Getting Supplies Ready" to "Item Packed".
+
+**For Release Role Users:**
+- [ ] Button is visible and labeled **"Mark Item Packed"** or **"Packed and Ready"**.
+- [ ] Tapping the button:
+  - [ ] Shows a loading indicator on the button.
+  - [ ] Updates the request status to **"Item Packed"**.
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
+
+**For Courier Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+---
+
+#### **Status: Item Packed**
+
+**For Request Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Only Release users can choose the next path.
+
+**For Release Role Users:**
+- [ ] A **dropdown or selection field** is visible, allowing the user to choose one of three options:
+  - [ ] **"Endorsed to Guard"** - Items will be handed to a guard
+  - [ ] **"Received"** - Items are directly received (skip guard)
+  - [ ] **"Dispatch"** - Items are dispatched for courier delivery
+- [ ] Button is visible (label may vary, e.g., **"Proceed"** or **"Confirm Selection"**).
+- [ ] Tapping the button:
+  - [ ] Validates that a selection has been made from the dropdown.
+  - [ ] If no selection, shows an error message prompting to select an option.
+  - [ ] If selection is made, shows a loading indicator on the button.
+  - [ ] Updates the request status based on the selection:
+    - [ ] **"Endorsed to Guard"** → Status becomes "Endorsed to Guard"
+    - [ ] **"Received"** → Status becomes "Received" (final status)
+    - [ ] **"Dispatch"** → Status becomes "Dispatch"
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
+
+**For Courier Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+---
+
+#### **Status: Endorsed to Guard**
+
+**For Request Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Only Release users can mark as received.
+
+**For Release Role Users:**
+- [ ] A **waybill input field** is visible, allowing the user to enter or update the waybill number.
+- [ ] Button is visible and labeled **"Mark Received"** or **"Mark as Received"**.
+- [ ] Tapping the button:
+  - [ ] Shows a loading indicator on the button.
+  - [ ] Updates the request status to **"Received"** (final status).
+  - [ ] Saves the waybill number if entered.
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
+
+**For Courier Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+---
+
+#### **Status: Dispatch**
+
+**For Request Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Only Courier users can mark as drop-off.
+
+**For Release Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Couriers handle dispatch → drop-off.
+
+**For Courier Role Users:**
+- [ ] Button is visible and labeled **"Mark Drop Off"** or **"Drop Off"**.
+- [ ] Tapping the button may open additional fields or screens for:
+  - [ ] Proof of delivery photo
+  - [ ] Receiver name
+  - [ ] Receiver signature
+- [ ] After capturing all required information:
+  - [ ] Shows a loading indicator on the button.
+  - [ ] Updates the request status to **"Drop Off"** (final status).
+  - [ ] On success: Shows a success message and closes the modal, returning to the list with the updated status.
+  - [ ] On failure: Shows an error message, button returns to enabled state.
+
+**For Viewer Role Users:**
+- [ ] Button is **not visible** (modal is view-only).
+- [ ] Modal shows request details but no action can be taken.
+
+---
+
+#### **Status: Drop Off (Final Status)**
+
+**For All Roles (Request, Release, Courier, Viewer):**
+- [ ] Button is **not visible** (this is a final status).
+- [ ] Modal displays delivery completion details:
+  - [ ] Proof of delivery photo (if applicable)
+  - [ ] Receiver name
+  - [ ] Receiver signature (if applicable)
+  - [ ] Delivery timestamp
+  - [ ] Courier who completed the delivery
+- [ ] Modal is **read-only** for all users.
+- [ ] Closing the modal returns to the list.
+
+---
+
+#### **Status: Received (Final Status)**
+
+**For All Roles (Request, Release, Courier, Viewer):**
+- [ ] Button is **not visible** (this is a final status).
+- [ ] Modal displays received status and details:
+  - [ ] Waybill number (if applicable)
+  - [ ] Who received the items (user initial)
+  - [ ] When it was received (timestamp)
+  - [ ] Any final notes or metadata
+- [ ] Modal is **read-only** for all users.
+- [ ] Closing the modal returns to the list.
+
+---
+
+#### **Status: Cancelled (Final Status)**
+
+**For All Roles (Request, Release, Courier, Viewer):**
+- [ ] Button is **not visible** (this is a final status).
+- [ ] Modal displays cancellation information:
+  - [ ] **"Cancel Remarks"** section with a divider
+  - [ ] Cancellation remarks text (reason for cancellation)
+  - [ ] Date of cancellation
+  - [ ] User who cancelled the request
+- [ ] Modal is **read-only** for all users.
+- [ ] Closing the modal returns to the list.
+
+---
+
+### 6.1.3 Modal Interaction & Behavior
+
+**Scrolling:**
+- [ ] If the modal content is long, you can scroll within the modal to see all information.
+- [ ] Scrolling is smooth without jank or lag.
+
+**Closing the modal:**
+- [ ] Tapping outside the modal (on the dimmed background) closes the modal and returns to the list.
+- [ ] Using the system back button or gesture closes the modal.
+- [ ] After closing, the list remains in a consistent state (no duplicated items or broken layout).
+
+**Loading state:**
+- [ ] When an action button is tapped and processing, the button shows a loading spinner.
+- [ ] The modal remains open during processing.
+- [ ] Other interactive elements are disabled during loading (cannot tap close or interact with content).
+
+**Success state:**
+- [ ] On successful status update, a success message (toast/snackbar) is displayed.
+- [ ] The modal automatically closes.
+- [ ] The list updates to reflect the new status (the request card shows the updated status).
+
+**Error state:**
+- [ ] On failure, an error message is displayed (toast/snackbar with a clear description).
+- [ ] The modal remains open.
+- [ ] The action button returns to the enabled state (user can retry).
+
+---
+
+### 6.1.4 Theme & Visual Consistency
+
+**Light mode:**
+- [ ] Modal background is light (white or light grey).
+- [ ] Text and icons are dark with good contrast.
+- [ ] Action buttons are clearly visible.
+- [ ] Dropdown selections and input fields are styled appropriately.
+
+**Dark mode:**
+- [ ] Modal background is dark (black or dark grey).
+- [ ] Text and icons are light with good contrast.
+- [ ] Action buttons are clearly visible.
+- [ ] Dropdown selections and input fields are styled appropriately.
+
+**Consistency:**
+- [ ] Typography, spacing, and colors match the app's design system.
+- [ ] Modal design is consistent with other modals/dialogs in the app (Standard Delivery, Pull Out, etc.).
+
+---
+
+### 6.1.5 Role-Based Behavior Summary (Quick Reference Table)
+
+| Request Status | Request Role | Release Role | Courier Role | Viewer Role |
+|---|---|---|---|---|
+| **New Request** | ✅ "Mark Preparing" button | ✅ "Mark Preparing" button | ❌ View-only | ❌ View-only |
+| **Getting Supplies Ready** | ❌ View-only | ✅ "Mark Item Packed" button | ❌ View-only | ❌ View-only |
+| **Item Packed** | ❌ View-only | ✅ Dropdown selection (3 paths) | ❌ View-only | ❌ View-only |
+| **Endorsed to Guard** | ❌ View-only | ✅ "Mark Received" button + waybill input | ❌ View-only | ❌ View-only |
+| **Dispatch** | ❌ View-only | ❌ View-only | ✅ "Mark Drop Off" button | ❌ View-only |
+| **Drop Off** | 👁️ View delivery proof | 👁️ View delivery proof | 👁️ View delivery proof | 👁️ View delivery proof |
+| **Received** | 👁️ View received details | 👁️ View received details | 👁️ View received details | 👁️ View received details |
+| **Cancelled** | 👁️ View cancel remarks | 👁️ View cancel remarks | 👁️ View cancel remarks | 👁️ View cancel remarks |
+
+---
+
+### 6.1.6 Edge Cases & Validations
+
+**Rapid tapping:**
+- [ ] Rapidly tapping the action button does not trigger multiple status updates.
+- [ ] The button disables or shows loading immediately on first tap.
+
+**Network issues:**
+- [ ] If the network is unavailable when tapping the action button, an appropriate error message is shown.
+- [ ] The modal remains open, allowing the user to retry after resolving the network issue.
+
+**Permission edge cases:**
+- [ ] Users with multiple roles (e.g., both Release and Courier) see the appropriate action based on status and role priority:
+  - [ ] For "New Request", "Getting Supplies Ready", "Item Packed", "Endorsed to Guard": Release actions are shown.
+  - [ ] For "Dispatch": Courier actions are shown.
+- [ ] The highest-priority role handler is selected (Release > Courier > Request > Viewer).
+
+**Dropdown validation (Item Packed status):**
+- [ ] If Release user tries to proceed from "Item Packed" without selecting a path from the dropdown, an error message is shown.
+- [ ] The error message is clear and instructs the user to make a selection.
+
+**Waybill number (Endorsed to Guard status):**
+- [ ] Waybill input field accepts alphanumeric input.
+- [ ] If waybill is required, attempting to proceed without entering it shows an appropriate error message.
+- [ ] Waybill number is saved correctly when marking as received.
+
+**Status transition edge cases:**
+- [ ] If another user updates the request status while the modal is open, closing and reopening the modal shows the updated status.
+- [ ] The list refreshes correctly after successful status changes (pull-to-refresh or automatic refresh).
+
+---
