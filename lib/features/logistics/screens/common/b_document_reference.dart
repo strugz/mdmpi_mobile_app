@@ -40,6 +40,18 @@ class BDocumentReference extends StatelessWidget {
                               requestController.removeDocumentReferenceField(controller);
                             },
                             icon: Icon(Iconsax.close_circle))),
+                    validator: (value) {
+                      final text = value?.trim() ?? '';
+                      if (text.isEmpty) return 'Document Reference is required';
+                      // Optional: prevent duplicates
+                      final all = requestController.formState.documentReferenceControllers
+                          .map((c) => c.text.trim())
+                          .where((s) => s.isNotEmpty)
+                          .toList();
+                      final count = all.where((s) => s == text).length;
+                      if (count > 1) return 'Duplicate document reference';
+                      return null;
+                    },
                   ),
                 );
               }).toList(),

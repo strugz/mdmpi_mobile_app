@@ -10,14 +10,23 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
-import '../../../common/widgets/signature/signature_pad.dart';
 import '../../../common/widgets/texts/product_title_text.dart';
 import '../../../data/controllers/app_data/user_initial_controller.dart';
 import '../../../features/authentication/controllers/signup/signup_controller.dart';
+import '../../../features/logistics/controllers/air_sea_controller.dart';
 import '../../../features/logistics/controllers/standard_delivery_controller.dart';
 import '../../../features/logistics/models/standard_delivery_model.dart';
+import '../../../features/logistics/models/pull_out_model.dart';
+import '../../../features/logistics/models/pick_up_model.dart';
+import '../../../features/logistics/models/air_sea_model.dart';
 
 /// A utility class for managing a full-screen loading dialog.
 class BFullScreenLoader {
@@ -51,8 +60,8 @@ class BFullScreenLoader {
   }
 
   /// Open a half screen dialog for Pick and Dispatch Items and Delivery of Items
-  static void showRequestForReleasingDialog1(
-      BuildContext context, StandardDeliveryModel requestModel, VoidCallback onPressed) {
+  static void showRequestForReleasingDialog1(BuildContext context,
+      StandardDeliveryModel requestModel, VoidCallback onPressed) {
     showModalBottomSheet<void>(
         enableDrag: true,
         context: context,
@@ -106,7 +115,8 @@ class BFullScreenLoader {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           requestModel.status == BTexts.statusForDelivery ||
-                                  requestModel.status == BTexts.statusDoneDelivery
+                                  requestModel.status ==
+                                      BTexts.statusDoneDelivery
                               ? BProductTitleText(
                                   title: "Delivered By: MAR",
                                   maxLines: 2,
@@ -133,11 +143,12 @@ class BFullScreenLoader {
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: onPressed,
-                              child: requestModel.status == BTexts.statusNewRequest
-                                  ? Text("Prepare Item")
-                                  : requestModel.status == "Dispatch Items"
-                                      ? Text("Dispatch")
-                                      : Text("Drop Off"),
+                              child:
+                                  requestModel.status == BTexts.statusNewRequest
+                                      ? Text("Prepare Item")
+                                      : requestModel.status == "Dispatch Items"
+                                          ? Text("Dispatch")
+                                          : Text("Drop Off"),
                             ),
                           ),
                   )
@@ -156,8 +167,10 @@ class BFullScreenLoader {
   }
 
   /// Open a half screen dialog with a text and list to search for a client to select
-  static void showSearchSheet(BuildContext context,
-      ClientController clientController, StandardDeliveryController requestController) {
+  static void showSearchSheet(
+      BuildContext context,
+      ClientController clientController,
+      StandardDeliveryController requestController) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true, // Important for height
@@ -357,38 +370,20 @@ class BFullScreenLoader {
 
   static void showRequestTransportSignatureDialog(
       BuildContext context, StandardDeliveryController requestController) {
-    showDialog(
+    BSignatureCaptureDialog.show(
       context: context,
-      builder: (BuildContext dialogContext) {
-        final dark = BHelperFunctions.isDarkMode(context);
-        return AlertDialog(
-          backgroundColor: dark ? BColors.black : BColors.light,
-          contentPadding: EdgeInsets.zero, // Remove default padding
-          titlePadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: 400,
-            height: 345, // Give it a fixed size
-            child: SingleChildScrollView(
-              // To handle potential overflow if content is too tall
-              child: Column(
-                children: [
-                  SignaturePadWidget(
-                    onSave: (Uint8List? signatureBytes) {
-                      requestController.setSignature(signatureBytes);
-                      Navigator.of(dialogContext).pop(); // Close the dialog
-                      if (signatureBytes != null) {
-                        BHelperFunctions.showSnackBar("Signature saved!");
-                      } else {
-                        BHelperFunctions.showSnackBar(
-                            "Signature pad was empty.");
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+      onSave: (Uint8List? signatureBytes) {
+        requestController.setSignature(signatureBytes);
+      },
+    );
+  }
+
+  static void showSignatureDialogForPullOut(
+      BuildContext context, PullOutController requestController) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (Uint8List? signatureBytes) {
+        requestController.setSignature(signatureBytes);
       },
     );
   }
@@ -396,6 +391,7 @@ class BFullScreenLoader {
   static void showRequestForReleasingDialog(BuildContext context,
       StandardDeliveryModel requestModel, VoidCallback onPressed, bool status) {
     final dark = BHelperFunctions.isDarkMode(context);
+
     showModalBottomSheet<void>(
       backgroundColor: dark ? BColors.black : BColors.light,
       context: context,
@@ -408,6 +404,102 @@ class BFullScreenLoader {
             status: status,
           ),
         );
+      },
+    );
+  }
+
+  static void showPullOutDialog(
+    BuildContext context,
+    PullOutModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: PullOutModal(
+            requestModel: requestModel,
+            onPressed: onPressed,
+            isActionVisible: isActionVisible,
+          ),
+        );
+      },
+    );
+  }
+
+  static void showSignatureDialogForPickUp(
+      BuildContext context, PickUpController requestController) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (Uint8List? signatureBytes) {
+        requestController.formState.setSignature(signatureBytes);
+      },
+    );
+  }
+
+  static void showPickUpDialog(
+    BuildContext context,
+    PickUpModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: PickUpModal(
+            requestModel: requestModel,
+            onPressed: onPressed,
+            isActionVisible: isActionVisible,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show Air/Sea request modal dialog
+  static void showAirSeaDialog(
+    BuildContext context,
+    AirSeaModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: AirSeaModal(
+              requestModel: requestModel,
+              onPressed: onPressed,
+              isActionVisible: isActionVisible,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show signature capture dialog for Air/Sea
+  static void showSignatureDialogForAirSea(
+      BuildContext context, AirSeaController controller) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (bytes) {
+        controller.formState.setSignature(bytes);
       },
     );
   }

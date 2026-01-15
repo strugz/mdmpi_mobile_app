@@ -116,3 +116,35 @@ These replace the earlier generic sample instructions and reflect the actual pat
 Adhering to these guidelines will keep the architecture consistent and maintainable as the project grows.
 
 ---
+
+## Module Documentation
+
+### Logistics Module
+
+#### Air/Sea Module
+Complete documentation for the Air/Sea logistics request management system.
+
+📄 **[Air/Sea Module Documentation](docs/modules/air-sea/AIR_SEA_MODULE_DOCUMENTATION.md)**
+
+**Topics Covered**:
+- Complete status flow and lifecycle
+- Role-based access control (Request, Release, Courier, Viewer)
+- Data model and field usage
+- GetX architecture implementation
+- Feature implementations:
+  - Item Packed dual-path selection (Endorsed to Guard / Received)
+  - Waybill number input
+  - Digital signature capture
+  - Proof image documentation
+  - Dispatch information management
+  - Drop-off confirmation workflow
+- UI components and widget hierarchy
+- API integration and endpoints
+- Testing guide and scenarios
+- Troubleshooting common issues
+- Performance optimization tips
+
+**Status**: ✅ Production Ready | **Version**: 2.0 | **Last Updated**: December 17, 2025
+
+---
+

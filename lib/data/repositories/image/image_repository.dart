@@ -22,6 +22,7 @@ class ImageRepository extends GetxController {
     required String type,
   }) async {
     try {
+
       final parts = base64Image.split(',');
       final payload = parts.length > 1 ? parts.last : base64Image;
       final Uint8List bytes = base64Decode(payload);
@@ -31,7 +32,7 @@ class ImageRepository extends GetxController {
       final multipart = http.MultipartRequest('POST', uri);
 
       multipart.fields['RequestID'] = requestId;
-      multipart.fields['Type'] = type; // e.g. "Signature"
+      multipart.fields['Type'] = type;
 
       final filename = '${requestId}_$type.png';
       multipart.files.add(http.MultipartFile.fromBytes(
@@ -41,11 +42,15 @@ class ImageRepository extends GetxController {
         contentType: MediaType('image', 'png'),
       ));
 
-      final streamed = await multipart.send().timeout(const Duration(seconds: 90));
+
+      final streamed =
+          await multipart.send().timeout(const Duration(seconds: 90));
+
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200) {
-        BLoaders.successSnackBar(title: 'Information', message: 'File uploaded');
+        BLoaders.successSnackBar(
+            title: 'Information', message: 'File uploaded');
       } else {
         BLoaders.errorSnackBar(
             title: 'Upload Failed',
@@ -57,23 +62,27 @@ class ImageRepository extends GetxController {
     } on PlatformException catch (e) {
       throw TPlatformException(e.code).message;
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Upload Error', message: 'An error occurred: $e');
+      BLoaders.errorSnackBar(
+          title: 'Upload Error', message: 'An error occurred: $e');
     }
   }
 
   /// Download a file from a full URL and return raw bytes.
   Future<Uint8List> getFileFromUrl(String url) async {
     try {
-      final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 60));
+      final response =
+          await http.get(Uri.parse(url)).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return response.bodyBytes;
       } else {
-        throw Exception('Failed to download file. Status: ${response.statusCode}');
+        throw Exception(
+            'Failed to download file. Status: ${response.statusCode}');
       }
     } on PlatformException catch (e) {
       throw TPlatformException(e.code).message;
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Download Error', message: 'An error occurred: $e');
+      BLoaders.errorSnackBar(
+          title: 'Download Error', message: 'An error occurred: $e');
       rethrow;
     }
   }
@@ -87,22 +96,24 @@ class ImageRepository extends GetxController {
     try {
       final base = dotenv.env['API_URL'] ?? '';
       var uri = Uri.parse('$base$endpoint');
+
       if (queryParameters != null && queryParameters.isNotEmpty) {
         uri = uri.replace(queryParameters: queryParameters);
       }
-
+      print(uri);
       final response = await http.get(uri).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return response.bodyBytes;
       } else {
-        throw Exception('Failed to download file. Status: ${response.statusCode}');
+        throw Exception(
+            'Failed to download file. Status: ${response.statusCode}');
       }
     } on PlatformException catch (e) {
       throw TPlatformException(e.code).message;
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Download Error', message: 'An error occurred: $e');
+      BLoaders.errorSnackBar(
+          title: 'Download Error', message: 'An error occurred: $e');
       rethrow;
     }
   }
 }
-

@@ -80,7 +80,6 @@ class CameraHandlerController extends GetxController
   /// --- Scan text from the camera preview and update the recognizedText variable ---
   Future<void> scanText(TextEditingController controller) async {
     if (!_cameraService.isInitialized || isProcessing.value) {
-      // isProcessing could also come from cameraService
       return;
     }
     isProcessing.value = true;
@@ -116,6 +115,54 @@ class CameraHandlerController extends GetxController
     }
   }
 
+  /// Scans text and populates a single field with the first matched pattern.
+  /// Used for single-field scenarios like waybill numbers, tracking codes, etc.
+  Future<void> scanSingleField(TextEditingController controller) async {
+    if (!_cameraService.isInitialized || isProcessing.value) {
+      return;
+    }
+    isProcessing.value = true;
+    recognizedText.value = 'Processing...';
+
+    try {
+      final XFile? imageFile = await _cameraService.takePicture();
+      if (imageFile == null) {
+        recognizedText.value = 'Failed to capture image.';
+        isProcessing.value = false;
+        return;
+      }
+
+      final inputImage = InputImage.fromFile(File(imageFile.path));
+      final String rawRecognizedText =
+          await _textRecognitionService.processImage(inputImage);
+
+      final List<String> extractedMatches =
+          _textExtractor.extractPatterns(rawRecognizedText);
+
+      if (extractedMatches.isNotEmpty) {
+        // Take the first matched pattern and populate the field
+        controller.text = extractedMatches.first;
+        recognizedText.value = 'Scanned: ${extractedMatches.first}';
+        Get.back(); // Return to previous screen
+      } else {
+        recognizedText.value = 'No relevant information found.';
+        BLoaders.warningSnackBar(
+          title: 'No Text Found',
+          message: 'Could not detect any text. Please try again.',
+        );
+      }
+    } catch (e) {
+      logDebug('Error recognizing text: $e');
+      recognizedText.value = 'Error processing text.';
+      BLoaders.errorSnackBar(
+        title: 'Scan Error',
+        message: 'Failed to process image. Please try again.',
+      );
+    } finally {
+      isProcessing.value = false;
+    }
+  }
+
   Future<void> scannedTextValidation(List<String> strValidations,
       TextEditingController displayController) async {
     List<bool> isDuplicate = [];
@@ -143,7 +190,6 @@ class CameraHandlerController extends GetxController
   /// --- Take Picture and Save to the device ---
   Future<void> takePicture(String pictureName) async {
     if (!_cameraService.isInitialized || isProcessing.value) {
-      // isProcessing could also come from cameraService
       return;
     }
 
@@ -160,7 +206,23 @@ class CameraHandlerController extends GetxController
   Future<void> takePictureWithAnimation(String requestId) async {
     isFlashing.value = true;
     _flashAnimController.forward(from: 0.0);
-    await takePicture(requestId); // Your existing takePicture logic
+    await takePicture(requestId);
+  }
+
+  /// --- Pause the camera preview to release resources ---
+  Future<void> pausePreview() async {
+    await _cameraService.pausePreview();
+  }
+
+  /// --- Resume the camera preview ---
+  Future<void> resumePreview() async {
+    await _cameraService.resumePreview();
+  }
+
+  /// --- Stop flash animation ---
+  void stopFlashAnimation() {
+    _flashAnimController.stop();
+    isFlashing.value = false;
   }
 
   Widget? getCameraPreviewWidget() {

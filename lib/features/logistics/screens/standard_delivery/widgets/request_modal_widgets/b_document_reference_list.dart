@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 
 import '../../../../../../base/utils/constants/sizes.dart';
 import '../../../../../../common/widgets/texts/product_title_text.dart';
@@ -22,11 +23,12 @@ class DocumentReferenceList extends StatelessWidget {
       itemCount: documentReferences.length,
       itemBuilder: (_, index) {
         final String reference = documentReferences[index];
-        return BProductTitleText(
-          title: reference,
+        return BLabelValueText(
+          label: 'Doc Ref',
+          value: reference,
+          showLabel: false,
           maxLines: 1,
-          smallSize: true,
-          fontColor: textColor,
+          copyable: true,
         );
       },
     );

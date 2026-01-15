@@ -12,12 +12,17 @@ import '../../features/personalization/models/user_model.dart';
 
 // DAO imports
 import 'dao/standard_delivery/standard_delivery_dao.dart';
+import 'dao/pick_up/pick_up_dao.dart';
+import 'dao/air_sea/air_sea_dao.dart';
+import 'dao/pull_out/pull_out_dao.dart';
 import 'dao/common/document_reference_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
 import 'dao/common/mobile_dao.dart';
 import 'dao/common/user_dao.dart';
 import 'dao/common/cntmst_dao.dart';
+import 'dao/common/item_category_dao.dart';
+import 'dao/common/form_category_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -30,12 +35,17 @@ class DatabaseHelper {
 
   // Cached DAO instances
   RequestDao? _requestDao;
+  PickUpDao? _pickUpDao;
+  AirSeaDao? _airSeaDao;
+  PullOutDao? _pullOutDao;
   DocumentReferenceDao? _documentReferenceDao;
   RemarksDao? _remarksDao;
   ClientDao? _clientDao;
   MobileDao? _mobileDao;
   UserDao? _userDao;
   CntmstDao? _cntmstDao;
+  ItemCategoryDao? _itemCategoryDao;
+  FormCategoryDao? _formCategoryDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -46,9 +56,195 @@ class DatabaseHelper {
   Future<Database> _initDB(String fileName) async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, fileName);
-    return await openDatabase(path, version: 1, onCreate: (db, version) async {
-      await createAllTables(db);
-    });
+    return await openDatabase(
+      path,
+      version: 10,
+      onCreate: (db, version) async {
+        await createAllTables(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          // Add pick-up main table for version 2
+          // Pick-up requests reuse the existing shared support tables:
+          // - a_tblRequestDocumentReference
+          // - a_tblRequestReceiverSignature
+          // - a_tblRequestImage
+          // - a_tblRequestRemarks
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestPickUp (
+              RequestID INTEGER PRIMARY KEY,
+              ClientID TEXT,
+              ItemCategoryID TEXT,
+              ItemCategoryName TEXT,
+              PreparedBy TEXT,
+              ItemPreparedAt TEXT,
+              ItemPreparedEndAt TEXT,
+              DatePickUp TEXT,
+              Remarks TEXT,
+              Status TEXT,
+              ReleasedBy TEXT,
+              ReceivedBy TEXT,
+              CreatedBy TEXT,
+              CreatedAt TEXT,
+              UpdatedAt TEXT
+            )
+          ''');
+        }
+        if (oldVersion < 3) {
+          // Add ItemCategory and FormCategory tables for version 3
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblItemCategory (
+              ItemCategoryID TEXT PRIMARY KEY,
+              ItemCategoryName TEXT
+            )
+          ''');
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblFormCategory (
+              FormCategoryID TEXT PRIMARY KEY,
+              FormCategoryName TEXT
+            )
+          ''');
+        }
+        if (oldVersion < 4) {
+          // Add Air/Sea main table for version 4
+          // Air/Sea requests reuse the existing shared support tables:
+          // - a_tblRequestDocumentReference
+          // - a_tblRequestReceiverSignature
+          // - a_tblRequestImage
+          // - a_tblRequestRemarks
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestAirSea (
+              RequestID INTEGER PRIMARY KEY,
+              ClientID TEXT,
+              ItemCategoryID TEXT,              MobileID INTEGER,
+              DatePickUp TEXT,
+              ItemPreparedAt TEXT,
+              ItemPreparedEndAt TEXT,              
+              PreparedBy TEXT,
+              EndorsedTo TEXT,
+              EndorsedAt TEXT,
+              EndorsedBy TEXT,
+              WaybillNumber TEXT,
+              ReceivedAt TEXT,
+              ReceivedBy TEXT,
+              TripTicketNumber TEXT,
+              Driver TEXT,
+              Helper TEXT,
+              DispatchedAt TEXT,
+              DropOffAt TEXT,
+              Status TEXT,
+              Remarks TEXT,
+              CreatedBy TEXT,
+              CreatedAt TEXT,
+              UpdatedAt TEXT
+            )
+          ''');
+        }
+        if (oldVersion < 5) {
+          // Version 5: Ensure all Air/Sea columns exist (fix for databases created with incomplete schema)
+          // Add missing columns if they don't exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedTo TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedBy TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN WaybillNumber TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN ReceivedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN ReceivedBy TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 6) {
+          // Version 6: Add dispatch-related columns (TripTicketNumber, Driver, Helper, DispatchedAt, DropOffAt)
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN TripTicketNumber TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Driver TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Helper TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DispatchedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DropOffAt TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 7) {
+          // Version 7: Add ItemCategoryID and FormCategoryID columns to a_tblRequest
+          try {
+            await db.execute('ALTER TABLE a_tblRequest ADD COLUMN ItemCategoryID TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequest ADD COLUMN FormCategoryID TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 8) {
+          // Version 8: Ensure Air/Sea dispatch columns exist (fix for schema inconsistency)
+          // These columns should have been added in version 6, but base schema was missing them
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN TripTicketNumber TEXT');
+          } catch (_) {} // Column might already exist
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Driver TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Helper TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DispatchedAt TEXT');
+          } catch (_) {}
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DropOffAt TEXT');
+          } catch (_) {}
+        }
+        if (oldVersion < 9) {
+          // Version 9: Add CreatedBy column to Air/Sea table (missing from version 4 creation)
+          try {
+            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN CreatedBy TEXT');
+          } catch (_) {} // Column might already exist
+        }
+        if (oldVersion < 10) {
+          // Version 10: Add Pull-Out/Return/Pick-Up table
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestPullOutReturnPickUp (
+              RequestID INTEGER PRIMARY KEY,
+              ClientID TEXT,
+              ClientContactPerson TEXT,
+              FormCategoryID TEXT,
+              ItemCategoryID TEXT,
+              IRRFNumber TEXT,
+              IRRFDate TEXT,
+              ReasonForReturn TEXT,
+              ReleasedBy TEXT,
+              PullOutDate TEXT,
+              PullOutDateStartAt TEXT,
+              PullOutDateEndAt TEXT,
+              RequestStatus TEXT,
+              TripTicketNumber TEXT,
+              Driver TEXT,
+              Helper TEXT,
+              MobileID INTEGER,
+              MobileName TEXT,
+              CreatedAt TEXT,
+              UpdatedAt TEXT,
+              CreatedBy TEXT,
+              RequestedBy TEXT
+            )
+          ''');
+        }
+      },
+    );
   }
 
   // --- DAO getters ---
@@ -99,6 +295,41 @@ class DatabaseHelper {
     final db = await database;
     _cntmstDao = CntmstDao(db);
     return _cntmstDao!;
+  }
+
+  Future<PickUpDao> get pickUpDao async {
+    if (_pickUpDao != null) return _pickUpDao!;
+    final db = await database;
+    _pickUpDao = PickUpDao(db);
+    return _pickUpDao!;
+  }
+
+  Future<AirSeaDao> get airSeaDao async {
+    if (_airSeaDao != null) return _airSeaDao!;
+    final db = await database;
+    _airSeaDao = AirSeaDao(db);
+    return _airSeaDao!;
+  }
+
+  Future<PullOutDao> get pullOutDao async {
+    if (_pullOutDao != null) return _pullOutDao!;
+    final db = await database;
+    _pullOutDao = PullOutDao(db);
+    return _pullOutDao!;
+  }
+
+  Future<ItemCategoryDao> get itemCategoryDao async {
+    if (_itemCategoryDao != null) return _itemCategoryDao!;
+    final db = await database;
+    _itemCategoryDao = ItemCategoryDao(db);
+    return _itemCategoryDao!;
+  }
+
+  Future<FormCategoryDao> get formCategoryDao async {
+    if (_formCategoryDao != null) return _formCategoryDao!;
+    final db = await database;
+    _formCategoryDao = FormCategoryDao(db);
+    return _formCategoryDao!;
   }
 
   // --- Request operations (delegated to RequestDao) ---
@@ -297,6 +528,36 @@ class DatabaseHelper {
     _mobileDao = null;
     _userDao = null;
     _cntmstDao = null;
+  }
+
+  /// Delete the database file and reset the instance.
+  /// WARNING: This will delete all local data!
+  /// Use only for debugging or testing purposes.
+  Future<void> deleteDatabase() async {
+    try {
+      if (_database != null) {
+        await _database!.close();
+        _database = null;
+      }
+      final dbPath = await getDatabasesPath();
+      final path = join(dbPath, 'app.db');
+      await databaseFactory.deleteDatabase(path);
+
+      // Clear all cached DAOs
+      _requestDao = null;
+      _pickUpDao = null;
+      _airSeaDao = null;
+      _documentReferenceDao = null;
+      _remarksDao = null;
+      _clientDao = null;
+      _mobileDao = null;
+      _userDao = null;
+      _cntmstDao = null;
+      _itemCategoryDao = null;
+      _formCategoryDao = null;
+    } catch (e) {
+      // Ignore errors during deletion
+    }
   }
 }
 

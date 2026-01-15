@@ -20,17 +20,16 @@ class BProofImage {
   /// Load image bytes for the given request id.
   /// Returns bytes from local DB if present; otherwise, if [fetchIfMissing]
   /// is true, attempts to fetch from the API and stores the result in DB.
-  Future<Uint8List?> loadRequestImageBytes(String requestId,
+  Future<Uint8List?> loadRequestImageBytes(String requestId,String apiController,
       {bool fetchIfMissing = false}) async {
-    // Try DB first
+
     final local = await _db.loadSavedRequestImageBytes(requestId);
     if (local != null && local.isNotEmpty) return local;
-
     if (!fetchIfMissing) return null;
 
     try {
       final bytes = await _imageRepo.getFileFromApi(
-        endpoint: '/api4/Request/image',
+        endpoint: '/api4/$apiController/image',
         queryParameters: {'requestid': requestId, 'type': 'Proof'},
       );
       if (bytes.isNotEmpty) {

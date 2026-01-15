@@ -34,6 +34,19 @@ class BFormatter {
     }
   }
 
+  static String formatDateTimeCustomizable(
+      String inputDate, String originalFormat, String desiredFormat) {
+    try {
+      final originalDateFormat = DateFormat(originalFormat);
+      final dateTime = originalDateFormat.parse(inputDate);
+
+      final desiredDateFormat = DateFormat(desiredFormat);
+      return desiredDateFormat.format(dateTime);
+    } catch (e) {
+      return '';
+    }
+  }
+
   static bool isToday(DateTime date) {
     final now = DateTime.now();
     return date.year == now.year &&
@@ -67,5 +80,37 @@ class BFormatter {
     return date.year == tomorrow.year &&
         date.month == tomorrow.month &&
         date.day == tomorrow.day;
+  }
+
+  /// Normalize a date/time string to an ISO-8601 datetime string when possible.
+  ///
+  /// Accepts ISO-8601 input, epoch milliseconds (as a string/int), or epoch
+  /// seconds (10-digit). Returns `null` for null/empty input or the original
+  /// string as a fallback when parsing fails. Optionally convert to UTC.
+  static String? normalizeToIsoDatetime(String? s, {bool toUtc = false}) {
+    if (s == null) return null;
+    final trimmed = s.trim();
+    if (trimmed.isEmpty) return null;
+
+    // Try ISO-8601 parse first
+    try {
+      final dt = DateTime.parse(trimmed);
+      return toUtc ? dt.toUtc().toIso8601String() : dt.toIso8601String();
+    } catch (_) {}
+
+    // If it's a pure digits string, treat as epoch seconds or millis
+    final digitsOnly = RegExp(r'^\d+$');
+    if (digitsOnly.hasMatch(trimmed)) {
+      try {
+        final n = int.parse(trimmed);
+        // 10-digit -> seconds, else -> millis
+        final epochMs = trimmed.length == 10 ? n * 1000 : n;
+        final dt = DateTime.fromMillisecondsSinceEpoch(epochMs, isUtc: toUtc);
+        return toUtc ? dt.toUtc().toIso8601String() : dt.toIso8601String();
+      } catch (_) {}
+    }
+
+    // Fallback: return original trimmed string
+    return trimmed;
   }
 }

@@ -92,8 +92,9 @@ class _Args {
 
     for (var i = 0; i < args.length; i++) {
       final a = args[i];
-      if (a == '--name') name = args[++i];
-      else if (a == '--area') area = args[++i];
+      if (a == '--name') {
+        name = args[++i];
+      } else if (a == '--area') area = args[++i];
       else if (a == '--routes') routes = args[++i];
       else if (a == '--flag') flag = args[++i];
       else if (a == '--owner') owner = args[++i];
@@ -144,12 +145,12 @@ String _idPrefix(String area, String slug) {
 List<String> _seedCases(String prefix) {
   // Provide 6 common cases to start; edit as needed per module.
   return <String>[
-    '${prefix}-M01,Module,Happy path flow,,,Works end-to-end without errors',
-    '${prefix}-M02,Module,Validation error states,,,Inline messages shown; submit blocked',
-    '${prefix}-M03,Module,Offline flow,,,Queued and syncs on reconnect',
-    '${prefix}-M04,Module,Permission denied path,,,Graceful fallback with guidance',
-    '${prefix}-M05,Module,Notification/Realtime updates,,,Updates reflected correctly',
-    '${prefix}-M06,Module,Performance on low-end device,,,Within acceptable limits',
+    '$prefix-M01,Module,Happy path flow,,,Works end-to-end without errors',
+    '$prefix-M02,Module,Validation error states,,,Inline messages shown; submit blocked',
+    '$prefix-M03,Module,Offline flow,,,Queued and syncs on reconnect',
+    '$prefix-M04,Module,Permission denied path,,,Graceful fallback with guidance',
+    '$prefix-M05,Module,Notification/Realtime updates,,,Updates reflected correctly',
+    '$prefix-M06,Module,Performance on low-end device,,,Within acceptable limits',
   ];
 }
 

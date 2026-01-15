@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -30,9 +28,6 @@ class RequestDao {
       LEFT JOIN a_tblMobile AS m ON r.MobileID = m.MobileID
       ORDER BY r.RequestID DESC
     ''');
-
-
-    print(jsonEncode(maps));
 
     if (maps.isEmpty) return [];
 
@@ -89,6 +84,8 @@ class RequestDao {
       'RequestDriverHelper': requestModel.helper,
       'Receiver': requestModel.receiver,
       'TripTicketNumber': requestModel.tripTicketNumber,
+      'ItemCategoryID': requestModel.itemCategoryID,
+      'FormCategoryID': requestModel.formCategoryID,
     };
 
     final int requestId = await db.insert('a_tblRequest', requestData, conflictAlgorithm: ConflictAlgorithm.ignore);
@@ -155,6 +152,8 @@ class RequestDao {
         'RequestDriverHelper': requestModel.helper,
         'Receiver': requestModel.receiver,
         'TripTicketNumber': requestModel.tripTicketNumber,
+        'ItemCategoryID': requestModel.itemCategoryID,
+        'FormCategoryID': requestModel.formCategoryID,
       };
 
       batch.insert('a_tblRequest', requestData, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -231,12 +230,14 @@ class RequestDao {
       'RequestDriverHelper': requestModel.helper,
       'Receiver': requestModel.receiver,
       'TripTicketNumber': requestModel.tripTicketNumber,
+      'ItemCategoryID': requestModel.itemCategoryID,
+      'FormCategoryID': requestModel.formCategoryID,
     };
 
     await db.update('a_tblRequest', requestData, where: 'RequestID = ?', whereArgs: [requestModel.id]);
 
     // NOTE: media (signature/image) persistence is handled via saveRequestMedia()
-    // which is invoked by the caller (RequestDataManager) to centralize upload
+    // which is invoked by the caller (StandardDeliveryDataManager) to centralize upload
     // and local-save logic. This keeps updateRequest focused on the main row.
   }
 

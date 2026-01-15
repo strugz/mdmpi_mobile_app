@@ -187,8 +187,11 @@ class RequestTransportController extends GetxController {
         distance.value = data["routes"][0]["legs"][0]["distance"]["text"];
         eta.value = data["routes"][0]["legs"][0]["duration"]["text"];
 
-        mapController.value!.animateCamera(CameraUpdate.newLatLngBounds(
-            getLatLngBounds(location, destination), 100));
+        // Only animate camera if map controller is initialized
+        if (mapController.value != null) {
+          mapController.value!.animateCamera(CameraUpdate.newLatLngBounds(
+              getLatLngBounds(location, destination), 100));
+        }
 
         addressTextController.text = address;
 
@@ -261,6 +264,26 @@ class RequestTransportController extends GetxController {
     }
   }
 
+  /// Initialize route after address is set by the screen.
+  /// Call this method after setting addressTextController.text in the UI.
+  Future<void> initializeRoute() async {
+    // Wait for current location to be available
+    if (currentLocation.value == LatLng(0, 0)) {
+      // Location not ready yet, wait a bit
+      await Future.delayed(Duration(milliseconds: 500));
+      if (currentLocation.value == LatLng(0, 0)) {
+        logDebug('RequestTransportController: Current location not available for route initialization');
+        return;
+      }
+    }
+
+    // If address is set, calculate the route
+    if (addressTextController.text.isNotEmpty) {
+      logDebug('RequestTransportController: Initializing route for address: ${addressTextController.text}');
+      await getCoordinatesFromPlace(addressTextController.text);
+    }
+  }
+
   Future<void> getUserLocation() async {
     bool serviceEnabled;
     LocationPermission permission;
@@ -311,30 +334,8 @@ class RequestTransportController extends GetxController {
     mapController.value
         ?.animateCamera(CameraUpdate.newLatLngZoom(currentLocation.value, 14));
 
-    // If there's text in the destination text field, it implies a destination was previously entered or loaded.
-    // Try to get coordinates for it. getCoordinatesFromPlace will reset isRouteLoaded.
-    if (addressTextController.text.isNotEmpty) {
-      // We call this, which will set destination.value and also reset
-      // isRouteLoaded.value = false and _currentRouteDestination.value = null.
-      // The startLocationTracking method will then pick up this change
-      // and call getRoute if necessary.
-      await getCoordinatesFromPlace(addressTextController.text);
-    }
-    // If a destination is already set (e.g. from a previous session, not via text input)
-    // AND no route is currently loaded for it, then fetch the route.
-    // This handles cases where destination.value might be populated by other means
-    // than the textEditingController (e.g., loaded from GetStorage onInit).
-    else if (destination.value != LatLng(0, 0) &&
-        (!isRouteLoaded.value ||
-            _currentRouteDestination.value != destination.value)) {
-      // Ensure currentLocation is valid before trying to fetch a route.
-      if (currentLocation.value != LatLng(0, 0)) {
-        // Call getRoute directly.
-        // No need to await if you want it to happen in the background,
-        // but awaiting ensures it completes before any subsequent logic relying on it.
-        await getRoute(currentLocation.value, destination.value);
-      }
-    }
+    // Note: We no longer fetch the route here automatically.
+    // The screen should call initializeRoute() after setting the address.
   }
 
   Set<Marker> buildMarkers() {

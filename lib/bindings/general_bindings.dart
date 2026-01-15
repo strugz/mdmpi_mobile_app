@@ -44,6 +44,16 @@ import '../features/logistics/controllers/web_socket_notification_controller.dar
 import '../features/personalization/controller/update_name_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
 import '../data/repositories/pull_out/pull_out_repository.dart';
+import '../features/logistics/controllers/pull_out_controller.dart';
+import '../data/repositories/pick_up/pick_up_repository.dart';
+import '../features/logistics/controllers/pick_up_controller.dart';
+import '../data/repositories/air_sea/air_sea_repository.dart';
+import '../features/logistics/controllers/air_sea_controller.dart';
+import '../features/logistics/controllers/hotline_direct_controller.dart';
+import '../features/logistics/controllers/stock_receive_controller.dart';
+import '../features/logistics/controllers/request_controller.dart';
+import '../data/repositories/common/item_category_repository.dart';
+import '../data/repositories/common/form_category_repository.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -52,7 +62,6 @@ class GeneralBindings extends Bindings {
     Get.put(WebSocketNotificationController());
     Get.put(MessagingController());
     Get.put(UserController(), permanent: true);
-    /// Controllers
     Get.lazyPut(() => UserInitialController(), fenix: true);
     Get.lazyPut(() => StandardDeliveryController(), fenix: true);
 
@@ -72,6 +81,12 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UpdateNameController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);
     Get.lazyPut(() => MobileController(), fenix: true);
+    Get.lazyPut(() => PullOutController(), fenix: true);
+    Get.lazyPut(() => PickUpController(), fenix: true);
+    Get.lazyPut(() => AirSeaController(), fenix: true);
+    Get.lazyPut(() => HotlineDirectController(), fenix: true);
+    Get.lazyPut(() => StockReceiveController(), fenix: true);
+    Get.lazyPut(() => RequestController(), fenix: true);
     Get.lazyPut(
         () => CameraHandlerController(
               cameraService: Get.find<ICameraService>(),
@@ -84,10 +99,7 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
-    // Feature toggles service (used to gate unfinished modules)
-    /// Repositories
     Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
-    // Image repository used across request flow (upload/download); register globally
     Get.lazyPut(() => ImageRepository(), fenix: true);
     Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
     Get.lazyPut(() => UserRepository());
@@ -100,7 +112,10 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
-    // Register PullOutRepository
     Get.lazyPut(() => PullOutRepository(), fenix: true);
+    Get.lazyPut(() => PickUpRepository(), fenix: true);
+    Get.lazyPut(() => AirSeaRepository(), fenix: true);
+    Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
+    Get.lazyPut(() => FormCategoryRepository(), fenix: true);
   }
 }

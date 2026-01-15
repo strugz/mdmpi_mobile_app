@@ -4,94 +4,177 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_data_manager.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
-import '../helpers/request_data_manager.dart';
-import '../helpers/request_filter_manager.dart';
-import '../helpers/request_form_state.dart';
-
-enum RequestFilter {
-  today('Today'),
-  yesterday('Yesterday'),
-  tomorrow('Tomorrow'),
-  fiveDaysAgo('5 Days Ago'),
-  thirtyDaysAgo('30 Days Ago'),
-  all('All');
-
-  const RequestFilter(this.displayName);
-  final String displayName;
-}
-
-enum RequestStatusFilter {
-  statusNewRequest('New Request'),
-  statusGettingSuppliesReady('Getting supplies ready'),
-  statusItemPrepared('Item Prepared'),
-  statusForDelivery('For Delivery'),
-  statusDoneDelivery('Delivered'),
-  statusCancelled('Cancelled'),
-  all('All');
-
-  const RequestStatusFilter(this.displayName);
-  final String displayName;
-}
-
+/// Controller for managing Standard Delivery requests lifecycle, state, and business operations.
+///
+/// Responsibilities:
+/// - Manages Standard Delivery request data (list, selection, CRUD operations)
+/// - Handles filtering by status and date range
+/// - Coordinates form state for create/update operations
+/// - Manages local DB and API synchronization
+/// - Handles signature capture and image proof uploads
+/// - Tracks request counts by status
 class StandardDeliveryController extends GetxController {
   static StandardDeliveryController get instance => Get.find();
 
-  // State
-  final isLoading = false.obs;
-  final isSaving = false.obs;
-  final isFetchingRequests = false.obs;
-  final useLocalStorage = true.obs;
-  final totalRequest = 0.obs;
-  final gettingSuppliesReady = 0.obs;
-  final itemPrepared = 0.obs;
-  final forDelivery = 0.obs;
-  final delivered = 0.obs;
-  final allPendingRequests = <StandardDeliveryModel>[].obs;
-  final currentSelectedRequest = Rx<StandardDeliveryModel?>(null);
-  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  /// Cache of cancel remarks keyed by request ID
-  final RxMap<String, CancelRemarksModel> cancelRemarksCache = <String, CancelRemarksModel>{}.obs;
-  /// Loading flags per request id to avoid duplicate fetches
-  final RxMap<String, bool> cancelRemarksLoading = <String, bool>{}.obs;
-  // Managers
-  late final RequestFormState formState;
-  late final RequestDataManager dataManager;
-  late final RequestFilterManager filterManager;
-  late final WebSocketNotificationController _webSocketController;
+  // ========================================================================
+  // STATE PROPERTIES
+  // ========================================================================
+
+  /// Complete list of Standard Delivery requests loaded from repository.
+  /// This is the unfiltered source data.
+  final RxList<StandardDeliveryModel> allPendingRequests = <StandardDeliveryModel>[].obs;
+
+  /// Currently selected Standard Delivery request for detail view or editing.
+  /// Null when no request is selected.
+  final Rx<StandardDeliveryModel?> currentSelectedRequest = Rx<StandardDeliveryModel?>(null);
+
+  /// Indicates whether a fetch/load operation is in progress.
+  /// Used to show loading indicators in the UI.
+  final RxBool isLoading = false.obs;
+
+  /// Indicates whether a save/update/delete operation is in progress.
+  /// Prevents duplicate submissions during async operations.
+  final RxBool isSaving = false.obs;
+
+  /// Storage preference flag for data source selection.
+  /// - true: Use local database (offline-first approach)
+  /// - false: Fetch directly from API/server (default)
+  final RxBool useLocalStorage = false.obs;
+
+  /// Stores the most recent error message from failed operations.
+  /// Null when no error has occurred.
+  final RxnString errorMessage = RxnString();
+
+  /// Cancellation remarks data for the currently viewed Standard Delivery request.
+  /// Contains remarks and cancellation date when a request is cancelled.
+  final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
+
+  /// Request count by status for dashboard/statistics display.
+  final RxInt totalRequest = 0.obs;
+  final RxInt gettingSuppliesReady = 0.obs;
+  final RxInt itemPrepared = 0.obs;
+  final RxInt forDelivery = 0.obs;
+  final RxInt delivered = 0.obs;
+
+  /// Identity of the user who created the current request.
+  /// Automatically populated from logged-in user's initials.
+  String createdBy = '';
+
+  // ========================================================================
+  // MANAGERS & DEPENDENCIES
+  // ========================================================================
+
+  /// Manages filtering logic for Standard Delivery requests (by status and date).
+  late final StandardDeliveryFilterManager filterManager;
+
+  /// Handles data operations including CRUD, validation, and API calls.
+  late final StandardDeliveryDataManager dataManager;
+
+  /// Encapsulates all form-related state (text controllers, categories, dates, signatures).
+  late final StandardDeliveryFormState formState;
+
+  /// Reference to user controller for accessing logged-in user information.
+  late final UserController userController;
+
+  // ========================================================================
+  // LIFECYCLE METHODS
+  // ========================================================================
 
   @override
   Future<void> onInit() async {
     super.onInit();
-    formState = RequestFormState();
-    dataManager = RequestDataManager();
-    filterManager = RequestFilterManager();
-    _webSocketController = Get.find<WebSocketNotificationController>();
 
+    // Initialize managers
+    filterManager = StandardDeliveryFilterManager();
+    dataManager = StandardDeliveryDataManager();
+
+    // Initialize form state with default values
+    formState = StandardDeliveryFormState();
     formState.initializeDefaultDate();
 
-    if (await _dbHelper.isRequestTableNotEmpty()) {
-      await dataManager.loadDataFromSqfLite(allPendingRequests, filterManager);
-      updateRequestCounts();
-    } else {
-      loadRequests();
-    }
+    // Load initial data
+    dataManager.loadCategories(this);
+    await loadRequests();
 
-    _webSocketController.registerNotificationListener(_handleNotification);
+    // Set up user context
+    userController = Get.find<UserController>();
+    createdBy = userController.user.value.initial;
   }
 
   @override
   void onClose() {
-    formState.dispose();
+    try {
+      formState.dispose();
+    } catch (_) {
+      // Silently handle disposal errors
+    }
     super.onClose();
   }
 
+  // ========================================================================
+  // COMPUTED PROPERTIES
+  // ========================================================================
+
+  /// Returns the currently filtered list of Standard Delivery requests.
+  /// Applies active status and date filters from the filter manager.
+  List<StandardDeliveryModel> get filteredRequests => filterManager.filteredRequests;
+
+  // ========================================================================
+  // DATA LOADING & FETCHING
+  // ========================================================================
+
+  /// Fetches all Standard Delivery requests from the configured data source.
+  /// Uses local database if [useLocalStorage] is true, otherwise fetches from API.
+  /// Automatically updates the [allPendingRequests] list and applies active filters.
+  Future<void> loadRequests() async {
+    await dataManager.fetchStandardDeliveryRequests(this, useLocalStorage.value);
+  }
+
+  /// Loads item categories from the repository and populates form state.
+  /// Safe to call multiple times; will not duplicate data.
+  /// Sets default category selection (prefers 'reagent' if available).
+  Future<void> loadCategories() async {
+    await dataManager.loadCategories(this);
+  }
+
+  /// Fetches cancellation remarks for a specific Standard Delivery request.
+  /// Updates [cancelRemarks] with the retrieved data or empty model on failure.
+  ///
+  /// [requestId] The unique identifier of the Standard Delivery request
+  Future<void> loadCancelRemarks(String requestId) async {
+    try {
+      final repo = Get.find<CancelRemarksRepository>();
+      final result = await repo.getCancelRemarksByRequestId(
+        requestId,
+        module: RequestModule.standardDelivery,
+      );
+      cancelRemarks.value = result;
+    } catch (e) {
+      cancelRemarks.value = CancelRemarksModel.empty;
+    }
+  }
+
+  /// Refresh requests by clearing local database and fetching from API.
+  /// Forces a fresh data load from the server.
+  Future<void> refreshRequests() async {
+    await dataManager.fetchStandardDeliveryRequests(this, false);
+  }
+
+  // ========================================================================
+  // REQUEST COUNT TRACKING
+  // ========================================================================
+
+  /// Update request counts by status for dashboard statistics.
+  /// Counts requests in each status category from the unfiltered list.
   void updateRequestCounts() {
     totalRequest.value = allPendingRequests.length;
     gettingSuppliesReady.value = allPendingRequests
@@ -108,49 +191,132 @@ class StandardDeliveryController extends GetxController {
         .length;
   }
 
-  Future<void> _handleNotification(NotificationModel notification) async {
-    if (notification.title == 'New' || notification.title == 'Update') {
-      await loadRequests();
-    }
+  // ========================================================================
+  // FILTERING OPERATIONS
+  // ========================================================================
+
+  /// Updates the active status filter and reapplies filtering to the Standard Delivery list.
+  ///
+  /// Available status filters:
+  /// - All: Shows all Standard Delivery requests
+  /// - New Request: Shows only newly created requests
+  /// - Getting Supplies Ready: Shows requests being prepared
+  /// - Item Prepared: Shows requests with prepared items
+  /// - For Delivery: Shows requests out for delivery
+  /// - Delivered: Shows completed deliveries
+  ///
+  /// [statusFilter] The status filter to apply
+  void selectStatusFilter(StandardDeliveryStatusFilter statusFilter) {
+    filterManager.selectStatusFilter(statusFilter, allPendingRequests);
   }
 
-  Future<void> loadRequests() async {
-    try {
-      isLoading.value = true;
-      if (useLocalStorage.value) {
-        await dataManager.fetchPendingRequestsAPI(
-            allPendingRequests, filterManager);
-      } else {
-        await dataManager.loadDataFromSqfLite(
-            allPendingRequests, filterManager);
-      }
-      updateRequestCounts();
-    } finally {
-      isLoading.value = false;
-    }
+  /// Updates the active date range filter and reapplies filtering to the Standard Delivery list.
+  ///
+  /// Available date filters:
+  /// - Today: Shows requests from current date
+  /// - Yesterday: Shows requests from previous day
+  /// - Tomorrow: Shows requests for next day
+  /// - Last 5 Days: Shows requests from the last 5 days
+  /// - Last 30 Days: Shows requests from the last 30 days
+  /// - All: Shows all requests regardless of date
+  ///
+  /// [filter] The date filter to apply
+  void selectFilter(RequestFilter filter) {
+    filterManager.selectFilter(filter, allPendingRequests);
   }
 
-  Future<void> refreshRequests() async {
-    await DatabaseHelper.instance.deleteRequest();
-    if (await dataManager.validateConnectivity()) {
-      await dataManager.fetchPendingRequestsAPI(
-          allPendingRequests, filterManager);
-    }
+  // ========================================================================
+  // CRUD OPERATIONS
+  // ========================================================================
+
+  /// Creates a new Standard Delivery request from the current form state.
+  /// Validates all required fields (client, document references, delivery date).
+  /// Shows loading dialog during submission and displays success/error feedback.
+  ///
+  /// Validation includes:
+  /// - Client selection is required
+  /// - At least one document reference must be provided
+  /// - Requested by must be selected
+  ///
+  /// Note: Form reset is handled by the data manager after successful save.
+  Future<void> saveRequest() async {
+    await dataManager.saveRequestFromForm(this);
   }
 
+  /// Updates the status of a Standard Delivery request with automatic field population.
+  /// Handles status-specific business logic:
+  ///
+  /// - "Getting supplies ready": Records preparation start timestamp and preparer's name
+  /// - "Item Prepared": Records driver, helper, mobile, trip ticket, and end timestamp
+  /// - "For Delivery": Records delivery start timestamp and location
+  /// - "Delivered": Records delivery end time, location, receiver, signature, and proof images
+  ///
+  /// For "Delivered" status, uploads signature and proof images to server if connected,
+  /// otherwise saves locally for later synchronization.
+  ///
+  /// [requestModel] The Standard Delivery request to update
+  /// [newStatus] The new status to set (must be a valid status string)
+  /// [userInitial] The initial of the user performing the status update
+  Future<void> updateRequestStatus(StandardDeliveryModel requestModel,
+      String newStatus, String userInitial) async {
+    await dataManager.updateRequestStatus(
+      requestModel,
+      newStatus,
+      userInitial,
+      this,
+    );
+  }
+
+  /// Cancels a Standard Delivery request with mandatory remarks explaining the reason.
+  /// Validates network connectivity before submission.
+  /// Refreshes the Standard Delivery list after successful cancellation.
+  ///
+  /// The cancellation is recorded with:
+  /// - Requesting user's identifier
+  /// - Cancellation remarks/reason
+  /// - Current timestamp
+  ///
+  /// [requestModel] The Standard Delivery request to cancel
+  /// [remarks] Explanation for the cancellation (required)
+  /// [showLoader] Whether to show loading dialog (default: true)
+  Future<void> updateRequestForCancellation(
+      StandardDeliveryModel requestModel, String remarks,
+      {bool showLoader = true}) async {
+    final user = userController.user.value.initial;
+    await dataManager.cancelRequestWithRemarks(requestModel, remarks, user, this);
+  }
+
+  // ========================================================================
+  // FORM STATE MANAGEMENT
+  // ========================================================================
+
+  /// Adds a new empty document reference field to the form.
+  /// Creates a new TextEditingController and adds it to the reactive list.
   void addDocumentReferenceField() {
     formState.documentReferenceControllers.add(TextEditingController());
   }
 
+  /// Removes a specific document reference field from the form.
+  /// Disposes the controller to prevent memory leaks.
+  ///
+  /// [controller] The TextEditingController to remove and dispose
   void removeDocumentReferenceField(TextEditingController controller) {
     controller.dispose();
     formState.documentReferenceControllers.remove(controller);
   }
 
+  /// Updates the client information in the form state.
+  /// Triggers reactive updates in the UI.
+  ///
+  /// [clientDetails] The new client information to set
   void updateRequestClientInformation(ClientModel clientDetails) {
     formState.clientInformation.value = clientDetails;
   }
 
+  /// Sets the receiver's signature for delivery confirmation.
+  /// Converts the signature bytes to Base64 for storage and transmission.
+  ///
+  /// [signature] The signature image bytes, or null to clear
   void setSignature(Uint8List? signature) {
     formState.receiverSignatureBytes.value = signature;
     formState.receiverSignatureBase64.value =
@@ -159,74 +325,20 @@ class StandardDeliveryController extends GetxController {
             : "";
   }
 
-  Future<void> saveRequest() async {
-    if (isSaving.value) return;
-    isSaving.value = true;
-    try {
-      await dataManager.saveRequest(formState);
-      await loadRequests();
-    } finally {
-      isSaving.value = false;
-    }
-  }
+  // ========================================================================
+  // SETTINGS & PREFERENCES
+  // ========================================================================
 
-  Future<void> updateRequestStatus(
-      StandardDeliveryModel requestModel, String newStatus, String userInitial) async {
-    await dataManager.updateRequestStatus(
-      requestModel,
-      newStatus,
-      userInitial,
-      formState,
-      currentSelectedRequest,
-      useLocalStorage.value,
-    );
-    await loadRequests();
-  }
-
-  Future<void> updateRequestForCancellation(
-      StandardDeliveryModel requestModel, String remarks,
-      {bool showLoader = true}) async {
-    await dataManager.cancelRequestWithRemarks(
-        requestModel, remarks, useLocalStorage.value && showLoader);
-    await loadRequests();
-  }
-
+  /// Toggles the data source preference between local database and API.
+  /// Automatically reloads Standard Delivery data using the newly selected source.
+  ///
+  /// Use cases:
+  /// - Enable local storage for offline mode or faster loading
+  /// - Disable local storage to force fresh data from server
+  ///
+  /// [value] True to use local storage, false to use API directly
   void toggleStoragePreference(bool value) {
     useLocalStorage.value = value;
     loadRequests();
-  }
-
-  void selectFilter(RequestFilter filter) {
-    filterManager.selectFilter(filter, allPendingRequests);
-  }
-
-  void selectStatusFilter(RequestStatusFilter statusFilter) {
-    filterManager.selectStatusFilter(statusFilter, allPendingRequests);
-  }
-
-  /// Fetch cancel remarks for a request ID. Prefer local DB; if missing call API.
-  /// Stores the result in [cancelRemarksCache] and persists API results to local DB when available.
-  Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
-    // Avoid duplicate fetches
-    if (cancelRemarksCache.containsKey(requestId)) return cancelRemarksCache[requestId]!;
-    if (cancelRemarksLoading[requestId] == true) {
-      // Wait until loading finishes
-      while (cancelRemarksLoading[requestId] == true) {
-        await Future.delayed(const Duration(milliseconds: 50));
-      }
-      return cancelRemarksCache[requestId] ?? CancelRemarksModel.empty;
-    }
-
-    cancelRemarksLoading[requestId] = true;
-    try {
-      final result = await dataManager.fetchCancelRemarks(requestId);
-      cancelRemarksCache[requestId] = result;
-      return result;
-    } catch (_) {
-      cancelRemarksCache[requestId] = CancelRemarksModel.empty;
-      return CancelRemarksModel.empty;
-    } finally {
-      cancelRemarksLoading.remove(requestId);
-    }
   }
 }

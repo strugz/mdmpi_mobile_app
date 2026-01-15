@@ -1,43 +1,40 @@
-// filepath: c:\Users\JayBryanCAbaoag\Documents\VuexJaysWayFile\VuexJaysWayFile\MDMPIMobileApp\mdmpi_mobile_app\lib\features\logistics\models\pull_out_model.dart
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 
 /// Pull-out request model.
-///
-/// Notes:
-/// - Keep date/time fields as String to match API payloads (ISO strings) and avoid
-///   premature parsing in UI code.
-/// - JSON keys follow backend casing (e.g., `RequestID`, `ClientID`).
 class PullOutModel {
-  // Identifiers and client
-  String id; // maps to JSON 'RequestID'
-  String clientId; // maps to JSON 'ClientID'
-  String clientContactPerson; // 'ClientContactPerson'
-  String formCategoryId; // 'FormCategoryID'
-  String itemCategoryId; // 'ItemCategoryID'
+  String id;
+  String clientId;
+  String clientContactPerson;
+  String formCategoryId;
+  String itemCategoryId;
 
-  // Document/IRRF and reason
-  String slipNo; // 'SlipNo'
-  String irrfNumber; // 'IRRFNumber'
-  String irrfDate; // 'IRRFDate'
-  String reasonForReturn; // 'ReasonForReturn'
+  String irrfNumber;
+  String irrfDate;
+  String reasonForReturn;
 
   // Logistics details
-  String releasedBy; // 'ReleasedBy'
-  String pullOutDate; // 'PullOutDate'
-  String pullOutDateStartAt; // 'PullOutDateStartAt'
-  String pullOutDateEndAt; // 'PullOutDateEndAt'
-  String requestStatus; // 'RequestStatus'
-  String tripTicketNumber; // 'TripTicketNumber'
-  String driver; // 'Driver'
-  String helper; // 'Helper'
+  String releasedBy;
+  String pullOutDate;
+  String pullOutDateStartAt;
+  String pullOutDateEndAt;
+  String requestStatus;
+  String tripTicketNumber;
+  String driver;
+  String helper;
+  int? mobileID;
+  String mobileName;
 
   // Audit
-  String createdAt; // 'CreatedAt'
-  String updatedAt; // 'UpdatedAt'
+  String createdAt;
+  String updatedAt;
+  String createdBy;
+  String requestedBy;
 
   // Aggregates
-  ClientModel client; // 'Client'
-  List<String> documentReference; // 'DocumentReference'
+  ClientModel client;
+  List<String> documentReference;
+  CancelRemarksModel cancelRemarks;
 
   PullOutModel({
     this.id = '',
@@ -45,7 +42,6 @@ class PullOutModel {
     this.clientContactPerson = '',
     this.formCategoryId = '',
     this.itemCategoryId = '',
-    this.slipNo = '',
     this.irrfNumber = '',
     this.irrfDate = '',
     this.reasonForReturn = '',
@@ -57,12 +53,18 @@ class PullOutModel {
     this.tripTicketNumber = '',
     this.driver = '',
     this.helper = '',
+    this.mobileID,
+    this.mobileName = '',
     this.createdAt = '',
     this.updatedAt = '',
+    this.createdBy = '',
+    this.requestedBy = '',
     ClientModel? client,
     List<String>? documentReference,
+    CancelRemarksModel? cancelRemarks,
   })  : client = client ?? ClientModel.empty(),
-        documentReference = documentReference ?? <String>[];
+        documentReference = documentReference ?? <String>[],
+        cancelRemarks = cancelRemarks ?? CancelRemarksModel.empty;
 
   /// Convenience empty factory
   static PullOutModel empty() => PullOutModel();
@@ -73,7 +75,6 @@ class PullOutModel {
     String? clientContactPerson,
     String? formCategoryId,
     String? itemCategoryId,
-    String? slipNo,
     String? irrfNumber,
     String? irrfDate,
     String? reasonForReturn,
@@ -85,10 +86,15 @@ class PullOutModel {
     String? tripTicketNumber,
     String? driver,
     String? helper,
+    int? mobileID,
+    String? mobileName,
     String? createdAt,
     String? updatedAt,
+    String? createdBy,
+    String? requestedBy,
     ClientModel? client,
     List<String>? documentReference,
+    CancelRemarksModel? cancelRemarks,
   }) {
     return PullOutModel(
       id: id ?? this.id,
@@ -96,7 +102,6 @@ class PullOutModel {
       clientContactPerson: clientContactPerson ?? this.clientContactPerson,
       formCategoryId: formCategoryId ?? this.formCategoryId,
       itemCategoryId: itemCategoryId ?? this.itemCategoryId,
-      slipNo: slipNo ?? this.slipNo,
       irrfNumber: irrfNumber ?? this.irrfNumber,
       irrfDate: irrfDate ?? this.irrfDate,
       reasonForReturn: reasonForReturn ?? this.reasonForReturn,
@@ -108,10 +113,15 @@ class PullOutModel {
       tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber,
       driver: driver ?? this.driver,
       helper: helper ?? this.helper,
+      mobileID: mobileID ?? this.mobileID,
+      mobileName: mobileName ?? this.mobileName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      createdBy: createdBy ?? this.createdBy,
+      requestedBy: requestedBy ?? this.requestedBy,
       client: client ?? this.client,
       documentReference: documentReference ?? this.documentReference,
+      cancelRemarks: cancelRemarks ?? this.cancelRemarks,
     );
   }
 
@@ -123,7 +133,6 @@ class PullOutModel {
       'ClientContactPerson': clientContactPerson,
       'FormCategoryID': formCategoryId,
       'ItemCategoryID': itemCategoryId,
-      'SlipNo': slipNo,
       'IRRFNumber': irrfNumber,
       'IRRFDate': irrfDate,
       'ReasonForReturn': reasonForReturn,
@@ -135,62 +144,148 @@ class PullOutModel {
       'TripTicketNumber': tripTicketNumber,
       'Driver': driver,
       'Helper': helper,
+      'MobileID': mobileID,
+      'MobileName': mobileName,
       'CreatedAt': createdAt,
       'UpdatedAt': updatedAt,
+      'CreatedBy': createdBy,
+      'RequestedBy': requestedBy,
       'Client': client.toJson(),
       'DocumentReference': documentReference,
-    };
-  }
-
-  /// Minimal JSON for inserts; adjust to backend-required fields
-  Map<String, dynamic> toJsonInsert() {
-    return {
-      'ClientID': clientId,
-      'ClientContactPerson': clientContactPerson,
-      'FormCategoryID': formCategoryId,
-      'ItemCategoryID': itemCategoryId,
-      'SlipNo': slipNo,
-      'IRRFNumber': irrfNumber,
-      'IRRFDate': irrfDate,
-      'ReasonForReturn': reasonForReturn,
-      'ReleasedBy': releasedBy,
-      'PullOutDate': pullOutDate,
-      'RequestStatus': requestStatus,
-      'TripTicketNumber': tripTicketNumber,
-      'Driver': driver,
-      'Helper': helper,
+      'CancelRemarks': cancelRemarks.toJson(),
     };
   }
 
   /// Parse from API JSON
   factory PullOutModel.fromJson(Map<String, dynamic> json) {
+    String firstPresent(Map<String, dynamic> m, List<String> keys,
+        {String fallback = ''}) {
+      for (final k in keys) {
+        if (m.containsKey(k) && m[k] != null) return m[k].toString();
+      }
+      return fallback;
+    }
+
+    int? firstPresentInt(Map<String, dynamic> m, List<String> keys) {
+      for (final k in keys) {
+        if (m.containsKey(k) && m[k] != null) {
+          final v = m[k];
+          if (v is int) return v;
+          final parsed = int.tryParse(v.toString());
+          if (parsed != null) return parsed;
+        }
+      }
+      return null;
+    }
+
     return PullOutModel(
-      id: (json['RequestID']?.toString() ?? ''),
-      clientId: (json['ClientID']?.toString() ?? ''),
-      clientContactPerson: (json['ClientContactPerson']?.toString() ?? ''),
-      formCategoryId: (json['FormCategoryID']?.toString() ?? ''),
-      itemCategoryId: (json['ItemCategoryID']?.toString() ?? ''),
-      slipNo: (json['SlipNo']?.toString() ?? ''),
-      irrfNumber: (json['IRRFNumber']?.toString() ?? ''),
-      irrfDate: (json['IRRFDate']?.toString() ?? ''),
-      reasonForReturn: (json['ReasonForReturn']?.toString() ?? ''),
-      releasedBy: (json['ReleasedBy']?.toString() ?? ''),
-      pullOutDate: (json['PullOutDate']?.toString() ?? ''),
-      pullOutDateStartAt: (json['PullOutDateStartAt']?.toString() ?? ''),
-      pullOutDateEndAt: (json['PullOutDateEndAt']?.toString() ?? ''),
-      requestStatus: (json['RequestStatus']?.toString() ?? ''),
-      tripTicketNumber: (json['TripTicketNumber']?.toString() ?? ''),
-      driver: (json['Driver']?.toString() ?? ''),
-      helper: (json['Helper']?.toString() ?? ''),
-      createdAt: (json['CreatedAt']?.toString() ?? ''),
-      updatedAt: (json['UpdatedAt']?.toString() ?? ''),
+      id: firstPresent(json,
+          ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
+      clientId: firstPresent(
+          json, ['ClientID', 'clientID', 'clientId', 'ClientId', 'clientId']),
+      clientContactPerson: firstPresent(json, [
+        'ClientContactPerson',
+        'clientContactPerson',
+        'ClientContactperson',
+        'clientcontactperson'
+      ]),
+      formCategoryId: firstPresent(json, [
+        'FormCategoryID',
+        'formCategoryID',
+        'FormCategoryId',
+        'formCategoryId'
+      ]),
+      itemCategoryId: firstPresent(json, [
+        'ItemCategoryID',
+        'itemCategoryID',
+        'ItemCategoryId',
+        'itemCategoryId'
+      ]),
+      irrfNumber: firstPresent(
+          json, ['IRRFNumber', 'irrfNumber', 'IrrfNumber', 'irrfnumber']),
+      irrfDate:
+          firstPresent(json, ['IRRFDate', 'irrfDate', 'IrrfDate', 'irrfdate']),
+      reasonForReturn: firstPresent(json, [
+        'ReasonForReturn',
+        'reasonForReturn',
+        'ReasonforReturn',
+        'reasonforreturn'
+      ]),
+      releasedBy: firstPresent(
+          json, ['ReleasedBy', 'releasedBy', 'Releasedby', 'releasedby']),
+      pullOutDate: firstPresent(
+          json, ['PullOutDate', 'pullOutDate', 'PulloutDate', 'pulloutDate']),
+      pullOutDateStartAt: firstPresent(json, [
+        'PullOutDateStartAt',
+        'pullOutDateStartAt',
+        'PullOutDateStartat',
+        'pulloutdatestartat'
+      ]),
+      pullOutDateEndAt: firstPresent(json, [
+        'PullOutDateEndAt',
+        'pullOutDateEndAt',
+        'PullOutDateEndat',
+        'pulloutdateendat'
+      ]),
+      requestStatus: firstPresent(json,
+          ['RequestStatus', 'requestStatus', 'Requeststatus', 'requeststatus']),
+      tripTicketNumber: firstPresent(json, [
+        'TripTicketNumber',
+        'tripTicketNumber',
+        'TripTicketnumber',
+        'tripticketnumber'
+      ]),
+      driver: firstPresent(json, ['Driver', 'driver']),
+      helper: firstPresent(json, ['Helper', 'helper']),
+      mobileID: firstPresentInt(json, ['MobileID', 'mobileID', 'Mobileid', 'mobileid']),
+      mobileName: firstPresent(json, ['MobileName', 'mobileName', 'Mobile', 'mobile']),
+      createdAt: firstPresent(
+          json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
+      updatedAt: firstPresent(
+          json, ['UpdatedAt', 'updatedAt', 'Updatedat', 'updatedat']),
+      createdBy: firstPresent(
+          json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
+      requestedBy: firstPresent(
+          json, ['RequestedBy', 'requestedBy', 'Requestedby', 'requestedby']),
       client: json['Client'] != null
           ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
           : ClientModel.empty(),
-      documentReference: json['DocumentReference'] != null
-          ? List<String>.from((json['DocumentReference'] as List).map((e) => e?.toString() ?? ''))
-          : <String>[],
+      documentReference:
+          json['DocumentReference'] != null && json['DocumentReference'] is List
+              ? List<String>.from((json['DocumentReference'] as List)
+                  .map((e) => e?.toString() ?? ''))
+              : <String>[],
+      cancelRemarks: json['CancelRemarks'] != null
+          ? CancelRemarksModel.fromJson(Map<String, dynamic>.from(json['CancelRemarks']))
+          : CancelRemarksModel.empty,
+    );
+  }
+
+  /// Parse from local database JSON (DB column names)
+  factory PullOutModel.fromDbJson(Map<String, dynamic> json) {
+    return PullOutModel(
+      id: json['RequestID']?.toString() ?? '',
+      clientId: json['ClientID']?.toString() ?? '',
+      clientContactPerson: json['ClientContactPerson']?.toString() ?? '',
+      formCategoryId: json['FormCategoryID']?.toString() ?? '',
+      itemCategoryId: json['ItemCategoryID']?.toString() ?? '',
+      irrfNumber: json['IRRFNumber']?.toString() ?? '',
+      irrfDate: json['IRRFDate']?.toString() ?? '',
+      reasonForReturn: json['ReasonForReturn']?.toString() ?? '',
+      releasedBy: json['ReleasedBy']?.toString() ?? '',
+      pullOutDate: json['PullOutDate']?.toString() ?? '',
+      pullOutDateStartAt: json['PullOutDateStartAt']?.toString() ?? '',
+      pullOutDateEndAt: json['PullOutDateEndAt']?.toString() ?? '',
+      requestStatus: json['RequestStatus']?.toString() ?? '',
+      tripTicketNumber: json['TripTicketNumber']?.toString() ?? '',
+      driver: json['Driver']?.toString() ?? '',
+      helper: json['Helper']?.toString() ?? '',
+      mobileID: json['MobileID'] is int ? json['MobileID'] : int.tryParse(json['MobileID']?.toString() ?? ''),
+      mobileName: json['MobileName']?.toString() ?? '',
+      createdAt: json['CreatedAt']?.toString() ?? '',
+      updatedAt: json['UpdatedAt']?.toString() ?? '',
+      createdBy: json['CreatedBy']?.toString() ?? '',
+      requestedBy: json['RequestedBy']?.toString() ?? '',
     );
   }
 }
-

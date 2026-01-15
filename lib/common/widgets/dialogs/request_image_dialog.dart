@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'dart:typed_data';
 
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_network_image_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/request_network_image_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_proof_image.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 
@@ -36,7 +36,8 @@ class ImageBytesDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -65,7 +66,8 @@ class ImageBytesDialog extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -83,16 +85,16 @@ class ImageBytesDialog extends StatelessWidget {
   }
 }
 
-Future<void> showRequestImageDialog(
-  BuildContext context, {
-  required String requestId,
-  bool fetchIfMissing = true,
-  String? title,
-  String? closeButtonText,
-  String? semanticsLabel,
-}) async {
-  final Uint8List? localOrFetched =
-      await BProofImage.instance.loadRequestImageBytes(requestId, fetchIfMissing: fetchIfMissing);
+Future<void> showRequestImageDialog(BuildContext context,
+    {required String requestId,
+    bool fetchIfMissing = true,
+    String? title,
+    String? closeButtonText,
+    String? semanticsLabel,
+    String? apiController}) async {
+  final Uint8List? localOrFetched = await BProofImage.instance
+      .loadRequestImageBytes(requestId, apiController!,
+          fetchIfMissing: fetchIfMissing);
 
   // If bytes are available, show the bytes dialog.
   if (localOrFetched != null && localOrFetched.isNotEmpty) {
@@ -103,8 +105,10 @@ Future<void> showRequestImageDialog(
         return ImageBytesDialog(
           bytes: localOrFetched,
           title: title ?? BTexts.requestModalDeliveryShotTitle,
-          closeButtonText: closeButtonText ?? BTexts.requestModalCloseButtonText,
-          semanticsLabel: semanticsLabel ?? 'Delivered item image for request $requestId',
+          closeButtonText:
+              closeButtonText ?? BTexts.requestModalCloseButtonText,
+          semanticsLabel:
+              semanticsLabel ?? 'Delivered item image for request $requestId',
         );
       },
     );

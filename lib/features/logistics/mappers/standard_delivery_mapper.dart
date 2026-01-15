@@ -1,11 +1,11 @@
-import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery_dto.dart';
+import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/client_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/remarks_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/image_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/signature_dto.dart';
-import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery_insert_dto.dart';
-import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery_update_dto.dart';
+import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_insert_dto.dart';
+import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_update_dto.dart';
 
 // Import the concrete models used by helpers
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -44,6 +44,8 @@ class StandardDeliveryMapper {
       image: dto.image?.path ?? '',
       tripTicketNumber: dto.tripTicketNumber ?? '',
       cancelRemarks: dto.cancelRemarks != null ? _remarksDtoToModel(dto.cancelRemarks!) : CancelRemarksModel.empty,
+      itemCategoryID: dto.itemCategoryID?.toString() ?? '',
+      formCategoryID: dto.formCategoryID?.toString() ?? '',
     );
   }
 
@@ -77,6 +79,8 @@ class StandardDeliveryMapper {
       cancelRemarks: _cancelRemarksModelToDto(m.cancelRemarks),
       image: m.image.isNotEmpty ? ImageDto(path: m.image) : null,
       signature: m.signature.isNotEmpty ? SignatureDto(path: m.signature) : null,
+      itemCategoryID: m.itemCategoryID.isNotEmpty ? int.tryParse(m.itemCategoryID) : null,
+      formCategoryID: m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
     );
   }
 
@@ -97,7 +101,7 @@ class StandardDeliveryMapper {
   }
 
   static CancelRemarksModel _remarksDtoToModel(RemarksDto dto) {
-    return CancelRemarksModel(requestId: '', remarks: dto.remarks ?? '', date: '');
+    return CancelRemarksModel(requestId: '', remarks: dto.remarks ?? '', date: '', userUpdated: '');
   }
 
   static RemarksDto _cancelRemarksModelToDto(CancelRemarksModel m) {
@@ -116,6 +120,8 @@ class StandardDeliveryMapper {
       requestBy: m.requestBy.isNotEmpty ? m.requestBy : null,
       requestCreatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
       documentReference: m.documentReference.isNotEmpty ? m.documentReference : null,
+      itemCategoryID: m.itemCategoryID.isNotEmpty ? int.tryParse(m.itemCategoryID) : null,
+      formCategoryID: m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
     );
   }
 
@@ -137,7 +143,7 @@ class StandardDeliveryMapper {
     }
 
     Map<String, dynamic>? remarks;
-    if (m.cancelRemarks != null && m.cancelRemarks.remarks.isNotEmpty) {
+    if (m.cancelRemarks.remarks.isNotEmpty) {
       remarks = {'requestID': nestedRequestId, 'remarks': m.cancelRemarks.remarks, 'date': m.cancelRemarks.date};
     }
 
@@ -159,6 +165,8 @@ class StandardDeliveryMapper {
       image: image,
       signature: signature,
       remarks: remarks,
+      itemCategoryID: m.itemCategoryID.isNotEmpty ? m.itemCategoryID : null,
+      formCategoryID: m.formCategoryID.isNotEmpty ? m.formCategoryID : null,
     );
   }
 }

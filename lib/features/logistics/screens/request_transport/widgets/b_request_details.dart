@@ -16,11 +16,12 @@ import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
 class BRequestDetails extends StatelessWidget {
-  const BRequestDetails(
-      {super.key,
-      required this.requestController,
-      required this.requestTransportController,
-      required this.userController});
+  const BRequestDetails({
+    super.key,
+    required this.requestController,
+    required this.requestTransportController,
+    required this.userController,
+  });
 
   final StandardDeliveryController requestController;
   final RequestTransportController requestTransportController;
@@ -31,7 +32,7 @@ class BRequestDetails extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final textColor = dark ? BColors.light : BColors.black;
     final iconColor = dark ? BColors.light : BColors.black;
-    final cameraController = Get.find<CameraHandlerController>();
+      final cameraController = Get.find<CameraHandlerController>();
     return Obx(
       () => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,48 +45,47 @@ class BRequestDetails extends StatelessWidget {
           ),
           const SizedBox(height: BSizes.xs),
           BProductTitleText(
-            title:
-                requestController.currentSelectedRequest.value!.client.address,
+            title: requestController.currentSelectedRequest.value!.client.address,
             maxLines: 1,
             smallSize: true,
             fontColor: textColor,
           ),
           const SizedBox(height: BSizes.xs),
           BProductTitleText(
-              title: "ETA: ${requestTransportController.eta}",
-              maxLines: 2,
-              smallSize: true,
-              fontColor: textColor),
+            title: "ETA: ${requestTransportController.eta}",
+            maxLines: 2,
+            smallSize: true,
+            fontColor: textColor,
+          ),
           const SizedBox(height: BSizes.xs),
-          BDocumentReference(
-              request: requestController.currentSelectedRequest.value!),
+          BDocumentReference(request: requestController.currentSelectedRequest.value!),
           const SizedBox(height: BSizes.md),
-          if (requestController.currentSelectedRequest.value!.status ==
-              BTexts.statusForDelivery)
+          if (requestController.currentSelectedRequest.value!.status == BTexts.statusForDelivery)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: BSizes.xs),
               child: Obx(
                 () => Column(
                   children: [
-                    /// Drop Off Camera
                     Center(
                       child: Column(
                         children: [
                           IconButton(
                             onPressed: () => Get.to(
                               () => BDropOffCapture(
-                                  request: requestController
-                                      .currentSelectedRequest.value!,
-                                  requestController: requestController),
+                                title: 'Proof Picture',
+                                onCapture: (camera) async => camera.takePictureWithAnimation(
+                                  requestController.currentSelectedRequest.value!.id,
+                                ),
+                              ),
                             ),
-                            icon: Icon(Iconsax.camera,
-                                size: 25, color: iconColor),
+                            icon: Icon(Iconsax.camera, size: 25, color: iconColor),
                           ),
                           BProductTitleText(
-                              title: cameraController.imageProofPath.value,
-                              maxLines: 1,
-                              smallSize: true,
-                              fontColor: textColor),
+                            title: cameraController.imageProofPath.value,
+                            maxLines: 1,
+                            smallSize: true,
+                            fontColor: textColor,
+                          ),
                         ],
                       ),
                     ),
@@ -102,53 +102,42 @@ class BRequestDetails extends StatelessWidget {
                     ),
                     const SizedBox(height: BSizes.xs),
                     TextButton.icon(
-                      // Use Obx to rebuild if signature changes
-                      onPressed: () =>
-                          BFullScreenLoader.showRequestTransportSignatureDialog(
-                              context, requestController),
+                      onPressed: () => BFullScreenLoader.showRequestTransportSignatureDialog(
+                        context,
+                        requestController,
+                      ),
                       icon: Icon(
-                        requestController
-                                    .formState.receiverSignatureBytes.value ==
-                                null
-                            ? Iconsax
-                                .edit // Or another icon for "add signature"
-                            : Iconsax
-                                .document_upload, // Or an icon for "view/change signature"
+                        requestController.formState.receiverSignatureBytes.value == null
+                            ? Iconsax.edit
+                            : Iconsax.document_upload,
                         color: textColor,
                       ),
                       label: Text(
-                        requestController
-                                    .formState.receiverSignatureBytes.value ==
-                                null
+                        requestController.formState.receiverSignatureBytes.value == null
                             ? 'Capture Signature'
                             : 'Signature Captured (Tap to Redo)',
                         style: TextStyle(color: textColor),
                       ),
                     ),
-
-                    // Optionally display the signature image if captured
-                    if (requestController
-                            .formState.receiverSignatureBytes.value !=
-                        null)
+                    if (requestController.formState.receiverSignatureBytes.value != null)
                       Padding(
                         padding: const EdgeInsets.only(top: BSizes.sm),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Captured Signature:",
-                              style: TextStyle(
-                                  color: textColor,
-                                  fontWeight: FontWeight.bold),
+                              'Captured Signature:',
+                              style: TextStyle(color: textColor, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: BSizes.xs),
                             Container(
-                              height: 200, // Adjust as needed
+                              height: 200,
                               decoration: BoxDecoration(
                                 border: Border.all(color: BColors.grey),
                               ),
-                              child: Image.memory(requestController
-                                  .formState.receiverSignatureBytes.value!),
+                              child: Image.memory(
+                                requestController.formState.receiverSignatureBytes.value!,
+                              ),
                             ),
                           ],
                         ),

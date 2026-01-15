@@ -22,7 +22,6 @@ class RequestModalHeader extends StatelessWidget {
 
   final StandardDeliveryModel requestModel;
 
-  /// Safely returns a truncated string (no exceptions if [s] is null).
   String _shortString(String? s, [int length = 16]) {
     final v = s ?? '';
     return v.length <= length ? v : v.substring(0, length);
@@ -34,7 +33,6 @@ class RequestModalHeader extends StatelessWidget {
     final userController = Get.find<UserInitialController>();
     final requestController = Get.find<StandardDeliveryController>();
 
-    // Show 'Prepared/Preparing By' only when status is not New and there's a non-empty name
     final showPreparedBy = requestModel.status != BTexts.statusNewRequest && requestModel.itemPreparedBy.isNotEmpty;
     final preparedByTitle = requestModel.status == BTexts.statusGettingSuppliesReady
         ? 'Preparing By: ${requestModel.itemPreparedBy}'
@@ -140,7 +138,6 @@ class RequestModalHeader extends StatelessWidget {
         if (requestModel.status == BTexts.statusGettingSuppliesReady)
           Column(
             children: [
-              // Driver dropdown
               Obx(
                 () => userController.userList.isEmpty
                     ? const Center(child: CircularProgressIndicator())

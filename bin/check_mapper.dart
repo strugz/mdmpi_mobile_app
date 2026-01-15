@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery_dto.dart';
+import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/standard_delivery_mapper.dart';
 
 void main() {

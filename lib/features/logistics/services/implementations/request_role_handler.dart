@@ -26,7 +26,6 @@ abstract class RequestActionHandler {
         context, request, onConfirm ?? () {}, canEdit);
   }
 }
-
 class RequestRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
@@ -70,6 +69,7 @@ class ReleaseRoleHandler extends RequestActionHandler {
     UserController userController,
     String userInitial,
   ) {
+
     if (request.status == BTexts.statusNewRequest) {
       _showDialog(
         context,
@@ -124,7 +124,9 @@ class CourierRoleHandler extends RequestActionHandler {
     } else if (request.status == BTexts.statusItemPrepared) {
       Get.to(() => RequestTransport(
           request: request, requestController: requestController));
-    } else if (request.status == BTexts.statusForDelivery && request.deliveredBy != userInitial && request.helper != userInitial) {
+    } else if (request.status == BTexts.statusForDelivery &&
+        request.deliveredBy != userInitial &&
+        request.helper != userInitial) {
       BFullScreenLoader.showRequestForReleasingDialog(
           context, request, () {}, false);
     } else if (request.status == BTexts.statusForDelivery &&
@@ -159,6 +161,7 @@ class DefaultRequestHandler extends RequestActionHandler {
     UserController userController,
     String userInitial,
   ) {
+
     BFullScreenLoader.showRequestForReleasingDialog(
         context, request, () {}, false);
   }

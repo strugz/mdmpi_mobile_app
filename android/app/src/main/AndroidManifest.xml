@@ -33,7 +33,6 @@
 
     <application
         android:label="MDMPI APP"
-        android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:requestLegacyExternalStorage="true"
@@ -41,7 +40,7 @@
         android:usesCleartextTraffic="true">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyCT7YYQC4CNoyAdJXvfzqMxxTW-NggMeCY" />
+            android:value="${mapsApiKey}" />
 
 
 
