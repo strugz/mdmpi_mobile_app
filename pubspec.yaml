@@ -45,7 +45,6 @@ dependencies:
   #  connectivity_plus: ^5.0.1
   connectivity_plus: ^6.1.4
   url_launcher: ^6.3.1
-  package_info_plus: ^8.1.2
   flutter_native_splash: ^2.4.6
   smooth_page_indicator: ^1.2.0+3
   permission_handler: ^12.0.0+1
