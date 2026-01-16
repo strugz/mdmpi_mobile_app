@@ -1,10 +1,15 @@
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_mdmpi_repository.dart';
 import 'package:mdmpi_mobile_app/features/authentication/controllers/loading_screen/loading_screen_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/controllers/login/login_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/controllers/signup/signup_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/repositories/i_authentication_repository.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_email_password_usecase.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_google_usecase.dart';
+import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 
 import '../base/utils/helpers/network_manager.dart';
 import '../common/services/abstracts/i_camera_service.dart';
@@ -58,10 +63,45 @@ import '../data/repositories/common/form_category_repository.dart';
 class GeneralBindings extends Bindings {
   @override
   void dependencies() {
+    // ========================================================================
+    // Core Services
+    // ========================================================================
     Get.put(NetworkManager());
     Get.put(WebSocketNotificationController());
     Get.put(MessagingController());
     Get.put(UserController(), permanent: true);
+
+    // ========================================================================
+    // Authentication - Repository Interface & Use Cases (NEW - Phase 2)
+    // ========================================================================
+    // Register repository interface
+    Get.lazyPut<IAuthenticationRepository>(
+      () => AuthenticationRepository(),
+      fenix: true,
+    );
+
+    // Register login use cases
+    Get.lazyPut(
+      () => LoginWithEmailPasswordUseCase(
+        authRepository: Get.find<IAuthenticationRepository>(),
+        networkManager: Get.find<NetworkManager>(),
+        localStorage: GetStorage(),
+      ),
+      fenix: true,
+    );
+
+    Get.lazyPut(
+      () => LoginWithGoogleUseCase(
+        authRepository: Get.find<IAuthenticationRepository>(),
+        userRepository: Get.find<UserRepository>(),
+        networkManager: Get.find<NetworkManager>(),
+      ),
+      fenix: true,
+    );
+
+    // ========================================================================
+    // Controllers
+    // ========================================================================
     Get.lazyPut(() => UserInitialController(), fenix: true);
     Get.lazyPut(() => StandardDeliveryController(), fenix: true);
 

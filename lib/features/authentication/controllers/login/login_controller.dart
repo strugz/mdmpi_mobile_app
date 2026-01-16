@@ -2,10 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
-import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_request.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_email_password_usecase.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_google_usecase.dart';
 import 'package:mdmpi_mobile_app/features/authentication/controllers/loading_screen/loading_screen_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -21,30 +23,31 @@ class LoginController extends GetxController {
   GlobalKey<FormState> loginFormKey = GlobalKey<FormState>();
 
   final userController = Get.find<UserController>();
-
   final loadingController = Get.find<LoadingScreenController>();
+
+  // Use cases
+  late final LoginWithEmailPasswordUseCase _loginUseCase;
+  late final LoginWithGoogleUseCase _loginWithGoogleUseCase;
 
   @override
   void onInit() {
     email.text = localStorage.read('REMEMBER_ME_EMAIL') ?? '';
     password.text = localStorage.read('REMEMBER_ME_PASSWORD') ?? '';
+
+    // Initialize use cases
+    _loginUseCase = Get.find<LoginWithEmailPasswordUseCase>();
+    _loginWithGoogleUseCase = Get.find<LoginWithGoogleUseCase>();
+
     super.onInit();
   }
 
   /// --  Email and Password SignIn
   Future<void> emailAndPasswordSignIn() async {
-    final isConnected = await NetworkManager.instance.isConnected();
-
-    if (!isConnected) {
-      BLoaders.errorSnackBar(
-          title: 'Internet', message: 'No Internet Connection');
-      return;
-    }
-
     //  Form Validation
     if (!loginFormKey.currentState!.validate()) {
       BLoaders.errorSnackBar(
-          title: 'Authentication', message: 'Invalid Credentials');
+          title: 'Validation Error',
+          message: 'Please fill in all required fields');
       return;
     }
 
@@ -52,22 +55,36 @@ class LoginController extends GetxController {
       BFullScreenLoader.openLoadingDialog(
           'Logging you in...', BImages.docerAnimation);
 
-      if (rememberMe.value) {
-        localStorage.write('REMEMBER_ME_EMAIL', email.text.trim());
-        localStorage.write('REMEMBER_ME_PASSWORD', password.text.trim());
-      }
+      // Build request
+      final request = LoginRequest(
+        email: email.text.trim(),
+        password: password.text.trim(),
+        rememberMe: rememberMe.value,
+      );
 
-      await AuthenticationRepository.instance
-          .loginWithEmailAndPassword(email.text.trim(), password.text.trim());
+      // Execute use case
+      final result = await _loginUseCase.execute(request);
 
-      //  Remove Loader
+      // Remove Loader
       BFullScreenLoader.stopLoading();
 
-      //  Redirect
-      await loadingController.loadInitialData();
+      // Handle result
+      if (result.isSuccess) {
+        // Success: load initial data and navigate
+        await loadingController.loadInitialData();
+      } else {
+        // Failure: show error
+        BLoaders.errorSnackBar(
+          title: 'Login Failed',
+          message: result.error,
+        );
+      }
     } catch (e) {
       BFullScreenLoader.stopLoading();
-      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      BLoaders.errorSnackBar(
+        title: 'Unexpected Error',
+        message: e.toString(),
+      );
     }
   }
 
@@ -78,30 +95,32 @@ class LoginController extends GetxController {
       BFullScreenLoader.openLoadingDialog(
           'Logging you in...', BImages.docerAnimation);
 
-      //  Check Internet Connectivity
-      final isConnected = await NetworkManager.instance.isConnected();
-      if (!isConnected) {
-        BFullScreenLoader.stopLoading();
-        return;
-      }
-
-      //  Google Authentication
-      final userCredentials =
-          await AuthenticationRepository.instance.signInWithGoogle();
-
-      //  Save User Record
-      await userController.saveUserRecord(userCredentials);
+      // Execute Google login use case
+      final result = await _loginWithGoogleUseCase.execute();
 
       //  Remove Loader
       BFullScreenLoader.stopLoading();
 
-      //  Redirect
-      await loadingController.loadInitialData();
+      // Handle result
+      if (result.isSuccess) {
+        // Success: load initial data and navigate
+        await loadingController.loadInitialData();
 
-      //  Redirect
-      AuthenticationRepository.instance.screenRedirect();
+        // Redirect to appropriate screen
+        AuthenticationRepository.instance.screenRedirect();
+      } else {
+        // Failure: show error
+        BLoaders.errorSnackBar(
+          title: 'Google Sign-In Failed',
+          message: result.error,
+        );
+      }
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Oh Snap', message: e.toString());
+      BFullScreenLoader.stopLoading();
+      BLoaders.errorSnackBar(
+        title: 'Unexpected Error',
+        message: e.toString(),
+      );
     }
   }
 }

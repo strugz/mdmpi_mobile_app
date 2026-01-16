@@ -172,10 +172,20 @@ class UserController extends GetxController {
       if (provider.isNotEmpty) {
         //  Re Verify Auth Email
         if (provider == 'google.com') {
-          await auth.signInWithGoogle();
-          await auth.deleteAccount();
-          BFullScreenLoader.stopLoading();
-          Get.offAll(() => const LoginScreen());
+          final result = await auth.loginWithGoogle();
+          if (result.isSuccess) {
+            final deleteResult = await auth.deleteAccount();
+            if (deleteResult.isSuccess) {
+              BFullScreenLoader.stopLoading();
+              Get.offAll(() => const LoginScreen());
+            } else {
+              BFullScreenLoader.stopLoading();
+              BLoaders.errorSnackBar(title: 'Error', message: deleteResult.error);
+            }
+          } else {
+            BFullScreenLoader.stopLoading();
+            BLoaders.errorSnackBar(title: 'Authentication Failed', message: result.error);
+          }
         } else if (provider == 'password') {
           BFullScreenLoader.stopLoading();
           Get.to(() => const ReAuthLoginForm());
@@ -204,10 +214,25 @@ class UserController extends GetxController {
         return;
       }
 
-      await AuthenticationRepository.instance
-          .reAuthenticateWithEmailAndPassword(
-              verifyEmail.text.trim(), verifyPassword.text.trim());
-      await AuthenticationRepository.instance.deleteAccount();
+      final reAuthResult = await AuthenticationRepository.instance.reAuthenticate(
+        email: verifyEmail.text.trim(),
+        password: verifyPassword.text.trim(),
+      );
+
+      if (reAuthResult.isFailure) {
+        BFullScreenLoader.stopLoading();
+        BLoaders.errorSnackBar(title: 'Authentication Failed', message: reAuthResult.error);
+        return;
+      }
+
+      final deleteResult = await AuthenticationRepository.instance.deleteAccount();
+
+      if (deleteResult.isFailure) {
+        BFullScreenLoader.stopLoading();
+        BLoaders.errorSnackBar(title: 'Delete Failed', message: deleteResult.error);
+        return;
+      }
+
       BFullScreenLoader.stopLoading();
       Get.offAll(() => const LoginScreen());
     } catch (e) {
