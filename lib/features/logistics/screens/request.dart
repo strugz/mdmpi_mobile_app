@@ -29,29 +29,28 @@ class _RequestScreenState extends State<RequestScreen>
   late final RequestController controller;
   TabController? _tabController;
   CarouselSliderController? _carouselController;
+  Worker? _categoriesWorker;
+  Worker? _tabIndexWorker;
 
   @override
   void initState() {
     super.initState();
     controller = Get.find<RequestController>();
 
+    // Initialize controllers immediately if categories are already loaded
+    if (controller.formCategories.isNotEmpty) {
+      _initializeControllers();
+    }
+
     // Listen to formCategories changes to initialize controllers when data is loaded
-    ever(controller.formCategories, (_) {
+    _categoriesWorker = ever(controller.formCategories, (_) {
       if (controller.formCategories.isNotEmpty && mounted) {
-        // Initialize TabController and CarouselController after categories are loaded
-        setState(() {
-          _tabController = TabController(
-            length: controller.formCategories.length,
-            vsync: this,
-            initialIndex: controller.currentTabIndex.value,
-          );
-          _carouselController = CarouselSliderController();
-        });
+        _initializeControllers();
       }
     });
 
     // Listen to tab index changes from controller to sync TabController
-    ever(controller.currentTabIndex, (index) {
+    _tabIndexWorker = ever(controller.currentTabIndex, (index) {
       if (_tabController != null && mounted) {
         if (_tabController!.index != index) {
           _tabController!.animateTo(index);
@@ -60,8 +59,27 @@ class _RequestScreenState extends State<RequestScreen>
     });
   }
 
+  /// Initialize TabController and CarouselController
+  void _initializeControllers() {
+    if (_tabController != null) {
+      // Already initialized
+      return;
+    }
+
+    setState(() {
+      _tabController = TabController(
+        length: controller.formCategories.length,
+        vsync: this,
+        initialIndex: controller.currentTabIndex.value,
+      );
+      _carouselController = CarouselSliderController();
+    });
+  }
+
   @override
   void dispose() {
+    _categoriesWorker?.dispose();
+    _tabIndexWorker?.dispose();
     _tabController?.dispose();
     super.dispose();
   }
