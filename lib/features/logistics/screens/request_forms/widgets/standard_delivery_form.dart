@@ -108,7 +108,6 @@ class StandardDelivery extends StatelessWidget {
                                     .toList(),
                                 valueKey: 'ItemCategoryID',
                                 displayKey: 'ItemCategoryName',
-                                readOnly: true,
                               );
                             },
                           ),

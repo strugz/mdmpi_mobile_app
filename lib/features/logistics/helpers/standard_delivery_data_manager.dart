@@ -66,7 +66,8 @@ class StandardDeliveryDataManager {
   /// - Sends WebSocket notification
   /// - Sends SMS to managers
   /// - Resets form state
-  Future<void> saveRequestFromForm(StandardDeliveryController controller) async {
+  Future<void> saveRequestFromForm(
+      StandardDeliveryController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -410,11 +411,9 @@ class StandardDeliveryDataManager {
   /// - Offline: Updates local DB only with sync warning
   ///
   /// Sends WebSocket notification and SMS to relevant personnel.
-  Future<void> cancelRequestWithRemarks(
-      StandardDeliveryModel request,
-      String remarks,
-      String user,
-      StandardDeliveryController controller) async {
+  Future<void> cancelRequestWithRemarks(StandardDeliveryModel request,
+      String remarks, String user, StandardDeliveryController controller,
+      [bool useLocalStorage = true]) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -424,7 +423,7 @@ class StandardDeliveryDataManager {
     }
 
     try {
-      if (!controller.useLocalStorage.value) {
+      if (useLocalStorage) {
         await _dbHelper.cancelRequestWithRemarks(
             requestID: request.id,
             remarks: remarks,
@@ -527,9 +526,8 @@ class StandardDeliveryDataManager {
       }
 
       // Filter for Standard Delivery category only (formCategoryID = '6')
-      final standardDeliveryRequests = results
-          .where((r) => r.formCategoryID == '6')
-          .toList();
+      final standardDeliveryRequests =
+          results.where((r) => r.formCategoryID == '6').toList();
 
       controller.allPendingRequests.assignAll(standardDeliveryRequests);
       logDebug(

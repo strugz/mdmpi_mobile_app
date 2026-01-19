@@ -31,11 +31,13 @@ class StandardDeliveryController extends GetxController {
 
   /// Complete list of Standard Delivery requests loaded from repository.
   /// This is the unfiltered source data.
-  final RxList<StandardDeliveryModel> allPendingRequests = <StandardDeliveryModel>[].obs;
+  final RxList<StandardDeliveryModel> allPendingRequests =
+      <StandardDeliveryModel>[].obs;
 
   /// Currently selected Standard Delivery request for detail view or editing.
   /// Null when no request is selected.
-  final Rx<StandardDeliveryModel?> currentSelectedRequest = Rx<StandardDeliveryModel?>(null);
+  final Rx<StandardDeliveryModel?> currentSelectedRequest =
+      Rx<StandardDeliveryModel?>(null);
 
   /// Indicates whether a fetch/load operation is in progress.
   /// Used to show loading indicators in the UI.
@@ -126,7 +128,8 @@ class StandardDeliveryController extends GetxController {
 
   /// Returns the currently filtered list of Standard Delivery requests.
   /// Applies active status and date filters from the filter manager.
-  List<StandardDeliveryModel> get filteredRequests => filterManager.filteredRequests;
+  List<StandardDeliveryModel> get filteredRequests =>
+      filterManager.filteredRequests;
 
   // ========================================================================
   // DATA LOADING & FETCHING
@@ -136,7 +139,8 @@ class StandardDeliveryController extends GetxController {
   /// Uses local database if [useLocalStorage] is true, otherwise fetches from API.
   /// Automatically updates the [allPendingRequests] list and applies active filters.
   Future<void> loadRequests() async {
-    await dataManager.fetchStandardDeliveryRequests(this, useLocalStorage.value);
+    await dataManager.fetchStandardDeliveryRequests(
+        this, useLocalStorage.value);
   }
 
   /// Loads item categories from the repository and populates form state.
@@ -283,7 +287,8 @@ class StandardDeliveryController extends GetxController {
       StandardDeliveryModel requestModel, String remarks,
       {bool showLoader = true}) async {
     final user = userController.user.value.initial;
-    await dataManager.cancelRequestWithRemarks(requestModel, remarks, user, this);
+    await dataManager.cancelRequestWithRemarks(
+        requestModel, remarks, user, this, useLocalStorage.value);
   }
 
   // ========================================================================
