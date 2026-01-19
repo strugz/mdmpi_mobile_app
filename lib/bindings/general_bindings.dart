@@ -3,13 +3,13 @@ import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_mdmpi_repository.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/loading_screen/loading_screen_controller.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/login/login_controller.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/signup/signup_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/loading_screen_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/login_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/domain/repositories/i_authentication_repository.dart';
 import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_email_password_usecase.dart';
 import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_google_usecase.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/signup_controller.dart';
 
 import '../base/utils/helpers/network_manager.dart';
 import '../common/services/abstracts/i_camera_service.dart';
@@ -34,9 +34,9 @@ import '../data/repositories/standard_delivery/standard_delivery_repository.dart
 import '../data/repositories/image/image_repository.dart';
 import '../data/repositories/user/user_repository.dart';
 import '../data/services/messaging_controller.dart';
-import '../features/authentication/controllers/forget_password/forget_password_controller.dart';
-import '../features/authentication/controllers/onboarding/onboarding_controller.dart';
-import '../features/authentication/controllers/signup/verify_email_controller.dart';
+import '../features/authentication/presentation/controllers/forget_password_controller.dart';
+import '../features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
+import '../features/authentication/presentation/controllers/verify_email_controller.dart';
 import '../common/controllers/camera_controller.dart';
 import '../features/logistics/controllers/chart_controller.dart';
 import '../features/logistics/controllers/delivery_location_controller.dart';
@@ -116,7 +116,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => DeliveryLocationController(), fenix: true);
     Get.lazyPut(() => SignupController(), fenix: true);
     Get.lazyPut(() => VerifyEmailController(), fenix: true);
-    Get.lazyPut(() => OnBoardingController(), fenix: true);
+    Get.lazyPut(() => LogisticsOnboardingController(), fenix: true);
     Get.lazyPut(() => ForgetPasswordController(), fenix: true);
     Get.lazyPut(() => UpdateNameController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);

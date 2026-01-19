@@ -9,7 +9,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
-import 'package:mdmpi_mobile_app/features/authentication/screens/login/login.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/login.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/widgets/re_authenticate_user_login_form.dart';
 
 import '../../../data/local/database_helper.dart';

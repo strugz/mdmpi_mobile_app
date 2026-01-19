@@ -3,7 +3,7 @@ import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/features/authentication/domain/entities/auth_user.dart';
 import 'package:mdmpi_mobile_app/features/authentication/domain/repositories/i_authentication_repository.dart';
-import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_request.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/params/login_request.dart';
 
 /// Use case for logging in a user with email and password.
 ///

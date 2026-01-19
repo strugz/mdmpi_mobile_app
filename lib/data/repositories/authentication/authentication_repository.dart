@@ -13,10 +13,9 @@ import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/features/authentication/domain/entities/auth_user.dart';
 import 'package:mdmpi_mobile_app/features/authentication/domain/repositories/i_authentication_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
-import 'package:mdmpi_mobile_app/features/authentication/screens/login/login.dart';
-import 'package:mdmpi_mobile_app/features/authentication/screens/signup/verify_email.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/onboarding.dart';
-import 'package:mdmpi_mobile_app/navigation_menu.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/login.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/verify_email.dart';
+import 'package:mdmpi_mobile_app/app_router.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class AuthenticationRepository extends GetxController implements IAuthenticationRepository {
@@ -40,26 +39,25 @@ class AuthenticationRepository extends GetxController implements IAuthentication
   }
 
   /// Function to Show Relevant Screen
+  ///
+  /// Redirects user based on authentication status:
+  /// - Not authenticated → LoginScreen
+  /// - Authenticated but email not verified → VerifyEmailScreen
+  /// - Authenticated and verified → AppRouter (which handles onboarding)
   void screenRedirect() async {
     final user = _auth.currentUser;
 
     if (user != null) {
       // If the user is logged in
       if (user.emailVerified) {
-        // Local Storage
-        deviceStorage.writeIfNull('IsFirstTime', true);
-
-        // Check if it's the first time the user has opened the app
-        deviceStorage.read('IsFirstTime') != true
-            ? Get.offAll(() =>
-                const NavigationMenu()) // Redirect to Navigation Menu Screen if not the first time
-            : Get.offAll(() =>
-                const OnboardingScreen()); // Redirect to OnBoarding Screen if it's the first time
+        // Redirect to AppRouter - it will handle onboarding check and routing
+        Get.offAll(() => const AppRouter());
       } else {
         // If the user's email is not verified, navigate to the VerifyEmailScreen
         Get.offAll(() => VerifyEmailScreen(email: _auth.currentUser?.email));
       }
     } else {
+      // Not authenticated - go to login
       Get.offAll(() => const LoginScreen());
     }
   }

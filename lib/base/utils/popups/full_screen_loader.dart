@@ -20,7 +20,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart
 
 import '../../../common/widgets/texts/product_title_text.dart';
 import '../../../data/controllers/app_data/user_initial_controller.dart';
-import '../../../features/authentication/controllers/signup/signup_controller.dart';
+import '../../../features/authentication/presentation/controllers/signup_controller.dart';
 import '../../../features/logistics/controllers/air_sea_controller.dart';
 import '../../../features/logistics/controllers/standard_delivery_controller.dart';
 import '../../../features/logistics/models/standard_delivery_model.dart';

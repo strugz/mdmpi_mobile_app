@@ -3,8 +3,12 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/navigation_menu.dart';
 
-class OnBoardingController extends GetxController {
-  static OnBoardingController get instance => Get.find();
+/// Logistics department onboarding controller
+///
+/// Handles the onboarding flow specifically for the Logistics department.
+/// Manages page navigation, progress tracking, and completion.
+class LogisticsOnboardingController extends GetxController {
+  static LogisticsOnboardingController get instance => Get.find();
 
   /// Variables
   final PageController pageController = PageController();
@@ -24,7 +28,10 @@ class OnBoardingController extends GetxController {
     if (currentPageIndex.value == 2) {
       final storage = GetStorage();
 
+      // Mark logistics onboarding as complete
       storage.write('IsFirstTime', false);
+      storage.write('LogisticsOnboardingComplete', true);
+
       Get.offAll(() => const NavigationMenu());
     } else {
       int page = currentPageIndex.value + 1;
@@ -36,7 +43,19 @@ class OnBoardingController extends GetxController {
   void skipPage() {
     currentPageIndex.value = 2;
     if (currentPageIndex.value == 2) {
+      final storage = GetStorage();
+
+      // Mark logistics onboarding as complete
+      storage.write('IsFirstTime', false);
+      storage.write('LogisticsOnboardingComplete', true);
+
       Get.offAll(() => const NavigationMenu());
     }
+  }
+
+  @override
+  void onClose() {
+    pageController.dispose();
+    super.onClose();
   }
 }
