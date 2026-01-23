@@ -9,16 +9,15 @@ class CollectionSummaryCard extends StatelessWidget {
   final Color color;
 
   const CollectionSummaryCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.value,
     required this.icon,
     this.color = Colors.blue,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Use withAlpha instead of withOpacity to avoid deprecated API usage.
     final backgroundColor = color.withAlpha((0.08 * 255).round());
 
     return Container(

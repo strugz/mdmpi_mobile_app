@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/action_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
@@ -73,17 +74,17 @@ class CollectionHomeScreen extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _ActionButton(
+                ActionButton(
                   icon: Icons.add_box,
                   label: 'New Collection',
                   onTap: () {},
                 ),
-                _ActionButton(
+                ActionButton(
                   icon: Icons.search,
                   label: 'Search',
                   onTap: () {},
                 ),
-                _ActionButton(
+                ActionButton(
                   icon: Icons.filter_list,
                   label: 'Filters',
                   onTap: () {},
@@ -133,45 +134,6 @@ class CollectionHomeScreen extends StatelessWidget {
           const SizedBox(height: BSizes.spaceBtwSections),
         ],
       )),
-    );
-  }
-}
-
-/// Small action button used on the home screen. Pure UI only.
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ActionButton({
-    Key? key,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Theme.of(context).primaryColor),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
     );
   }
 }
