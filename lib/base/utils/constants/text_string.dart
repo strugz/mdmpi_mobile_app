@@ -9,6 +9,9 @@ class BTexts {
   static const String onBoardingSubTitle2 = "Enter the details of the deliverable, including the requester, document reference and client information.";
   static const String onBoardingSubTitle3= "Stay updated with real-time tracking and notifications for every step of the delivery process.";
 
+  //Collection Home Texts
+  static const String collectionHomeTitle1 = "Welcome to MDMPI APP!";
+
   // Home Texts
   static const String homeTitle1 = "Dispatch an Item";
   static const String homeTitle2 = "Good morning";
@@ -16,11 +19,12 @@ class BTexts {
   // Home
   static const String homeSubTitle1 = "Awaiting to Dispatch";
   static const String homeSubTitle2 = "Vehicles";
+  static const String homeSubTitle3 = 'How would you like to start?';
 
   // Sign up Text
   static const String signupTitle = "Let's create your account";
   static const String firstname = "First name";
-  static const String middleinitial = "Middle Initial";
+  static const String middleInitial = "Middle Initial";
   static const String lastname = "Last name";
   static const String initial = "Initial";
   static const String department = "Department";

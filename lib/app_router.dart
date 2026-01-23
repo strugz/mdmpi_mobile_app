@@ -3,6 +3,8 @@ import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/onboarding.dart';
 import 'package:mdmpi_mobile_app/navigation_menu.dart';
 
+import 'features/collection/presentation/pages/onboarding/onboarding.dart';
+
 /// App Entry Point Router
 ///
 /// Handles routing logic after authentication is complete.
@@ -38,7 +40,7 @@ class AppRouter extends StatelessWidget {
         if (!collectionComplete) {
           // TODO: Create CollectionOnboardingScreen
           // return const CollectionOnboardingScreen();
-          return const NavigationMenu(); // Temporary: skip to menu
+          return const CollectionOnBoardingScreen(); // Temporary: skip to menu
         }
         break;
 

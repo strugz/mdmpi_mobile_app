@@ -36,7 +36,7 @@ class HomeScreen extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
               child: BSectionHeading(
-                  title: 'How would you like to start?',
+                  title: BTexts.homeSubTitle3,
                   showActionButton: false),
             ),
             BRequestForm(
