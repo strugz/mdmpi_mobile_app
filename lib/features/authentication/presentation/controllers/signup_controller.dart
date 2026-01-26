@@ -29,6 +29,16 @@ class SignupController extends GetxController {
   final initial = TextEditingController();
   final department = TextEditingController();
 
+  // FocusNodes for explicit focus ordering in the sign up form
+  final firstnameFocus = FocusNode();
+  final lastNameFocus = FocusNode();
+  final usernameFocus = FocusNode();
+  final emailFocus = FocusNode();
+  final initialFocus = FocusNode();
+  final selectedRoleFocus = FocusNode();
+  final phoneNumberFocus = FocusNode();
+  final passwordFocus = FocusNode();
+
   final roles = Rx<List<RoleModel>>(List<RoleModel>.empty());
 
   final departments = Rx<List<DepartmentModel>>(List<DepartmentModel>.empty());
@@ -46,6 +56,20 @@ class SignupController extends GetxController {
     super.onInit();
     fetchAllRoles();
     fetchAllDepartments();
+  }
+
+  @override
+  void onClose() {
+    // Dispose focus nodes
+    firstnameFocus.dispose();
+    lastNameFocus.dispose();
+    usernameFocus.dispose();
+    emailFocus.dispose();
+    initialFocus.dispose();
+    selectedRoleFocus.dispose();
+    phoneNumberFocus.dispose();
+    passwordFocus.dispose();
+    super.onClose();
   }
 
   /// --  SIGNUP

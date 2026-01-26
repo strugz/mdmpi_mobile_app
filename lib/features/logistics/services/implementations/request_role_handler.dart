@@ -7,14 +7,13 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/re
 import '../../../../base/utils/constants/text_string.dart';
 import '../../../../base/utils/popups/full_screen_loader.dart';
 import '../../../personalization/controller/user_controller.dart';
-import '../../controllers/standard_delivery_controller.dart';
 import '../../models/standard_delivery_model.dart';
 
 abstract class RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial, // Pass userInitial directly
   );
@@ -26,12 +25,13 @@ abstract class RequestActionHandler {
         context, request, onConfirm ?? () {}, canEdit);
   }
 }
+
 class RequestRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -65,7 +65,7 @@ class ReleaseRoleHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -111,7 +111,7 @@ class CourierRoleHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -142,7 +142,7 @@ class ViewerRoleHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
@@ -157,7 +157,7 @@ class DefaultRequestHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {

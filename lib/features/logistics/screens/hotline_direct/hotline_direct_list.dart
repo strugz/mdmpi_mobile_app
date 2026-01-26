@@ -180,15 +180,15 @@ class HotlineDirectList extends StatelessWidget {
     // Handle done/cancelled status with default handler
     if (request.status == BTexts.statusDoneDelivery ||
         request.status == BTexts.statusCancelled) {
-      DefaultRequestHandler().handleAction(
-          context, request, requestController as dynamic, userController, userInitial);
+      DefaultRequestHandler().handleAction(context, request,
+          requestController as dynamic, userController, userInitial);
       return;
     }
 
     if (activeRole == null) {
       // No valid role - show view-only dialog
-      DefaultRequestHandler().handleAction(
-          context, request, requestController as dynamic, userController, userInitial);
+      DefaultRequestHandler().handleAction(context, request,
+          requestController as dynamic, userController, userInitial);
       return;
     }
 
@@ -202,9 +202,8 @@ class HotlineDirectList extends StatelessWidget {
 
     // Invoke only the selected handler
     if (handlers.containsKey(activeRole)) {
-      handlers[activeRole]!.handleAction(
-          context, request, requestController as dynamic, userController, userInitial);
+      handlers[activeRole]!.handleAction(context, request,
+          requestController as dynamic, userController, userInitial);
     }
   }
 }
-

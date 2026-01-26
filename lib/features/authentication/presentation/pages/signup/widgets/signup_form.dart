@@ -30,6 +30,12 @@ class SignUpForm extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: controller.firstname,
+                    focusNode: controller.firstnameFocus,
+                    textInputAction: TextInputAction.next,
+                    onEditingComplete: () =>
+                        FocusScope.of(context).requestFocus(controller.lastNameFocus),
+                    onFieldSubmitted: (_) =>
+                        FocusScope.of(context).requestFocus(controller.lastNameFocus),
                     validator: (value) =>
                         BValidator.validateEmptyText('First name', value),
                     decoration: const InputDecoration(
@@ -41,6 +47,12 @@ class SignUpForm extends StatelessWidget {
                 Expanded(
                   child: TextFormField(
                     controller: controller.lastName,
+                    focusNode: controller.lastNameFocus,
+                    textInputAction: TextInputAction.next,
+                    onEditingComplete: () =>
+                        FocusScope.of(context).requestFocus(controller.usernameFocus),
+                    onFieldSubmitted: (_) =>
+                        FocusScope.of(context).requestFocus(controller.usernameFocus),
                     validator: (value) =>
                         BValidator.validateEmptyText('Last name', value),
                     decoration: const InputDecoration(
@@ -55,6 +67,12 @@ class SignUpForm extends StatelessWidget {
             /// Username
             TextFormField(
               controller: controller.username,
+              focusNode: controller.usernameFocus,
+              textInputAction: TextInputAction.next,
+              onEditingComplete: () =>
+                  FocusScope.of(context).requestFocus(controller.emailFocus),
+              onFieldSubmitted: (_) =>
+                  FocusScope.of(context).requestFocus(controller.emailFocus),
               validator: (value) =>
                   BValidator.validateEmptyText('Username', value),
               decoration: const InputDecoration(
@@ -66,6 +84,13 @@ class SignUpForm extends StatelessWidget {
             /// Email
             TextFormField(
                 controller: controller.email,
+                focusNode: controller.emailFocus,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                onEditingComplete: () =>
+                    FocusScope.of(context).requestFocus(controller.initialFocus),
+                onFieldSubmitted: (_) =>
+                    FocusScope.of(context).requestFocus(controller.initialFocus),
                 validator: (value) => BValidator.validateEmail(value),
                 decoration: const InputDecoration(
                     labelText: BTexts.email, prefixIcon: Icon(Iconsax.direct))),
@@ -74,6 +99,12 @@ class SignUpForm extends StatelessWidget {
             /// Initial
             TextFormField(
               controller: controller.initial,
+              focusNode: controller.initialFocus,
+              textInputAction: TextInputAction.next,
+              onEditingComplete: () =>
+                  FocusScope.of(context).requestFocus(controller.selectedRoleFocus),
+              onFieldSubmitted: (_) =>
+                  FocusScope.of(context).requestFocus(controller.selectedRoleFocus),
               validator: (value) =>
                   BValidator.validateEmptyText('Initial', value),
               decoration: const InputDecoration(labelText: BTexts.initial),
@@ -93,9 +124,16 @@ class SignUpForm extends StatelessWidget {
             /// Multi select
             TextFormField(
               controller: controller.selectedRole,
+              focusNode: controller.selectedRoleFocus,
+              readOnly: true,
+              textInputAction: TextInputAction.next,
               onTap: () {
                 BFullScreenLoader.showRoleChecklistItem(context, controller);
               },
+              onEditingComplete: () =>
+                  FocusScope.of(context).requestFocus(controller.phoneNumberFocus),
+              onFieldSubmitted: (_) =>
+                  FocusScope.of(context).requestFocus(controller.phoneNumberFocus),
               decoration: InputDecoration(
                   prefixIcon: Icon(Iconsax.document_code), labelText: 'Role'),
             ),
@@ -105,6 +143,13 @@ class SignUpForm extends StatelessWidget {
             /// Mobile Number
             TextFormField(
               controller: controller.phoneNumber,
+              focusNode: controller.phoneNumberFocus,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              onEditingComplete: () =>
+                  FocusScope.of(context).requestFocus(controller.passwordFocus),
+              onFieldSubmitted: (_) =>
+                  FocusScope.of(context).requestFocus(controller.passwordFocus),
               validator: (value) => BValidator.validatePhoneNumber(value),
               decoration: const InputDecoration(
                   labelText: BTexts.mobile, prefixIcon: Icon(Iconsax.call)),
@@ -115,7 +160,10 @@ class SignUpForm extends StatelessWidget {
             TextFormField(
               validator: (value) => BValidator.validatePassword(value),
               controller: controller.password,
+              focusNode: controller.passwordFocus,
               obscureText: controller.hidePassword.value,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => controller.signup(),
               decoration: InputDecoration(
                   labelText: BTexts.password,
                   prefixIcon: const Icon(Iconsax.password_check),

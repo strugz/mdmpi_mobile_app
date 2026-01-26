@@ -33,11 +33,13 @@ class HotlineDirectController extends GetxController {
 
   /// Complete list of Hotline Direct requests loaded from repository.
   /// This is the unfiltered source data.
-  final RxList<StandardDeliveryModel> allPendingRequests = <StandardDeliveryModel>[].obs;
+  final RxList<StandardDeliveryModel> allPendingRequests =
+      <StandardDeliveryModel>[].obs;
 
   /// Currently selected Hotline Direct request for detail view or editing.
   /// Null when no request is selected.
-  final Rx<StandardDeliveryModel?> currentSelectedRequest = Rx<StandardDeliveryModel?>(null);
+  final Rx<StandardDeliveryModel?> currentSelectedRequest =
+      Rx<StandardDeliveryModel?>(null);
 
   /// Indicates whether a fetch/load operation is in progress.
   /// Used to show loading indicators in the UI.
@@ -128,7 +130,8 @@ class HotlineDirectController extends GetxController {
 
   /// Returns the currently filtered list of Hotline Direct requests.
   /// Applies active status and date filters from the filter manager.
-  List<StandardDeliveryModel> get filteredRequests => filterManager.filteredRequests;
+  List<StandardDeliveryModel> get filteredRequests =>
+      filterManager.filteredRequests;
 
   // ========================================================================
   // DATA LOADING & FETCHING
@@ -294,7 +297,8 @@ class HotlineDirectController extends GetxController {
       StandardDeliveryModel requestModel, String remarks,
       {bool showLoader = true}) async {
     final user = userController.user.value.initial;
-    await dataManager.cancelRequestWithRemarks(requestModel, remarks, user, this);
+    await dataManager.cancelRequestWithRemarks(
+        requestModel, remarks, user, this);
   }
 
   // ========================================================================
@@ -353,4 +357,3 @@ class HotlineDirectController extends GetxController {
     loadRequests();
   }
 }
-

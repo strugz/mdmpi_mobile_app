@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
@@ -21,9 +22,9 @@ class LoginController extends GetxController {
   final email = TextEditingController();
   final password = TextEditingController();
 
-
-  final userController = Get.find<UserController>();
-  final loadingController = Get.find<LoadingScreenController>();
+  // Lazy getters to avoid dependency issues during initialization
+  UserController get userController => Get.find<UserController>();
+  LoadingScreenController get loadingController => Get.find<LoadingScreenController>();
 
   // Use cases
   late final LoginWithEmailPasswordUseCase _loginUseCase;

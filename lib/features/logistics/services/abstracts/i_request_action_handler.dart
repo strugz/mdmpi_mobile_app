@@ -4,14 +4,13 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/re
 
 import '../../../../base/utils/popups/full_screen_loader.dart';
 import '../../../personalization/controller/user_controller.dart';
-import '../../controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 abstract class RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial, // Pass userInitial directly
   );
@@ -25,7 +24,7 @@ abstract class RequestActionHandler {
 
   // Helper to navigate
   void navigateToRequestTransport(BuildContext context, StandardDeliveryModel request,
-      StandardDeliveryController requestController) {
+      dynamic requestController) {
     Get.to(() => RequestTransport(
         request: request, requestController: requestController));
   }

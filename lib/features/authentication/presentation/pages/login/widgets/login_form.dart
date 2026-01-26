@@ -21,18 +21,43 @@ class LoginForm extends StatefulWidget {
 class _LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
 
+  // Local FocusNodes to control focus traversal inside this form
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+
+  // Local hide password to avoid rebuilding the whole TextFormField with Obx
+  bool _hidePassword = true;
+
+  // Cache controller reference to prevent repeated Get.find calls
+  late final LoginController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.find<LoginController>();
+  }
+
+  @override
+  void dispose() {
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<LoginController>();
     return Form(
       key: _formKey,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: BSizes.spaceBtwSections),
         child: Column(
           children: [
-            /// Username
+            /// Username - Next action moves to password field
             TextFormField(
               controller: controller.email,
+              focusNode: _emailFocus,
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
               validator: (value) => BValidator.validateEmail(value),
               decoration: const InputDecoration(
                 prefixIcon: Icon(Iconsax.direct_right),
@@ -41,21 +66,23 @@ class _LoginFormState extends State<LoginForm> {
             ),
             const SizedBox(height: BSizes.spaceBtwInputFields),
 
-            /// Password
-            Obx(
-              () => TextFormField(
-                validator: (value) => BValidator.validatePassword(value),
-                controller: controller.password,
-                obscureText: controller.hidePassword.value,
-                decoration: InputDecoration(
-                    labelText: BTexts.password,
-                    prefixIcon: const Icon(Iconsax.password_check),
-                    suffixIcon: IconButton(
-                        onPressed: () => controller.hidePassword.value =
-                            !controller.hidePassword.value,
-                        icon: Icon(controller.hidePassword.value
-                            ? Iconsax.eye_slash
-                            : Iconsax.eye))),
+            /// Password - Done action submits the form
+            TextFormField(
+              validator: (value) => BValidator.validatePassword(value),
+              controller: controller.password,
+              focusNode: _passwordFocus,
+              obscureText: _hidePassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => controller.emailAndPasswordSignIn(_formKey),
+              decoration: InputDecoration(
+                labelText: BTexts.password,
+                prefixIcon: const Icon(Iconsax.password_check),
+                suffixIcon: IconButton(
+                  onPressed: () {
+                    setState(() => _hidePassword = !_hidePassword);
+                  },
+                  icon: Icon(_hidePassword ? Iconsax.eye_slash : Iconsax.eye),
+                ),
               ),
             ),
             const SizedBox(height: BSizes.spaceBtwInputFields / 2),
