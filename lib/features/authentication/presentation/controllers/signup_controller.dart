@@ -69,7 +69,34 @@ class SignupController extends GetxController {
     selectedRoleFocus.dispose();
     phoneNumberFocus.dispose();
     passwordFocus.dispose();
+
+    // Dispose text controllers
+    email.dispose();
+    lastName.dispose();
+    username.dispose();
+    password.dispose();
+    firstname.dispose();
+    phoneNumber.dispose();
+    initial.dispose();
+    department.dispose();
+    selectedRole.dispose();
+
     super.onClose();
+  }
+
+  /// Clear all form fields
+  void clearForm() {
+    email.clear();
+    lastName.clear();
+    username.clear();
+    password.clear();
+    firstname.clear();
+    phoneNumber.clear();
+    initial.clear();
+    department.clear();
+    selectedRole.clear();
+    privacyPolicy.value = true;
+    hidePassword.value = true;
   }
 
   /// --  SIGNUP
@@ -133,6 +160,9 @@ class SignupController extends GetxController {
 
       //  Move to Verify Email Screen
       Get.to(() => VerifyEmailScreen(email: email.text.trim()));
+
+      //  Clear form data after successful signup
+      clearForm();
     } catch (e) {
       //  Remove Loader
       BFullScreenLoader.stopLoading();

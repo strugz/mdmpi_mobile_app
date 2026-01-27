@@ -101,6 +101,26 @@ class GeneralBindings extends Bindings {
     );
 
     // ========================================================================
+    // Repositories (must be registered before controllers that depend on them)
+    // ========================================================================
+    Get.lazyPut(() => RoleRepository(), fenix: true);
+    Get.lazyPut(() => DepartmentRepository(), fenix: true);
+    Get.lazyPut(() => UserRepository());
+    Get.lazyPut(() => UserInitialRepository(), fenix: true);
+    Get.lazyPut(() => ClientRepository(), fenix: true);
+    Get.lazyPut(() => MobileRepository(), fenix: true);
+    Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
+    Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+    Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
+    Get.lazyPut(() => ImageRepository(), fenix: true);
+    Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
+    Get.lazyPut(() => PullOutRepository(), fenix: true);
+    Get.lazyPut(() => PickUpRepository(), fenix: true);
+    Get.lazyPut(() => AirSeaRepository(), fenix: true);
+    Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
+    Get.lazyPut(() => FormCategoryRepository(), fenix: true);
+
+    // ========================================================================
     // Controllers
     // ========================================================================
     Get.lazyPut(() => UserInitialController(), fenix: true);
@@ -115,7 +135,9 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UserMdmpiController(), fenix: true);
     Get.lazyPut(() => WebSocketDeliveryController(), fenix: true);
     Get.lazyPut(() => DeliveryLocationController(), fenix: true);
-    Get.lazyPut(() => SignupController(), fenix: true);
+    // SignupController kept as singleton to retain form data when navigating back
+    // Dependencies: RoleRepository, DepartmentRepository (registered above)
+    Get.put(SignupController(), permanent: false);
     Get.lazyPut(() => VerifyEmailController(), fenix: true);
     Get.lazyPut(() => LogisticsOnboardingController(), fenix: true);
     // Collection onboarding controller registration
@@ -142,23 +164,11 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
-    Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
-    Get.lazyPut(() => ImageRepository(), fenix: true);
-    Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
-    Get.lazyPut(() => UserRepository());
-    Get.lazyPut(() => UserInitialRepository(), fenix: true);
-    Get.lazyPut(() => ClientRepository(), fenix: true);
-    Get.lazyPut(() => MobileRepository(), fenix: true);
-    Get.lazyPut(() => RoleRepository(), fenix: true);
-    Get.lazyPut(() => DepartmentRepository(), fenix: true);
-    Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
-    Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+
+    // ========================================================================
+    // Platform Services
+    // ========================================================================
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
-    Get.lazyPut(() => PullOutRepository(), fenix: true);
-    Get.lazyPut(() => PickUpRepository(), fenix: true);
-    Get.lazyPut(() => AirSeaRepository(), fenix: true);
-    Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
-    Get.lazyPut(() => FormCategoryRepository(), fenix: true);
   }
 }

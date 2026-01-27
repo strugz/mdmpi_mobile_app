@@ -53,11 +53,15 @@ class BTexts {
   static const String loginSubTitle = "Logistics";
   static const String confirmEmail = "Verify your email address!";
   static const String confirmEmailSubTitle = "Congratulations! Your Account Awaits: Verify Your Email to Start Shopping and Experience a World of Unrivaled Deals and Personalized Offers.";
+  static const String signInTitle = "Sign In";
+
+
   // Login Authentication Texts
   static const String username = "Username";
   static const String password = "Password";
   static const String email = "Email";
-  static const String signIn = "Sign In";
+  static const String signIn = "Log In";
+  static const String signUp = "Sign Up";
   static const String rememberMe = "Remember Me?";
   static const String forgetPassword = "Forget Password?";
   static const String createAccount = "Create account.";

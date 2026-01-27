@@ -18,7 +18,7 @@ class LoginScreen extends StatelessWidget {
           children: [
             AuthHeader(
               title: BTexts.loginTitle,
-              subtitle: BTexts.loginSubTitle,
+              subtitle: BTexts.signInTitle,
             ),
             LoginForm(),
           ],

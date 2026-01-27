@@ -76,14 +76,14 @@ class LoginController extends GetxController {
       } else {
         // Failure: show error
         BLoaders.errorSnackBar(
-          title: 'Login Failed',
-          message: result.error,
+          title: 'Credential error',
+          message: 'Username or Password incorrect!',
         );
       }
     } catch (e) {
       BFullScreenLoader.stopLoading();
       BLoaders.errorSnackBar(
-        title: 'Unexpected Error',
+        title: 'System Error',
         message: e.toString(),
       );
     }

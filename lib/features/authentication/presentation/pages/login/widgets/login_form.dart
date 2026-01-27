@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/validators/validation.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/login_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/password_configuration/forget_password.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/signup.dart';
@@ -73,7 +74,8 @@ class _LoginFormState extends State<LoginForm> {
               focusNode: _passwordFocus,
               obscureText: _hidePassword,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => controller.emailAndPasswordSignIn(_formKey),
+              onFieldSubmitted: (_) =>
+                  controller.emailAndPasswordSignIn(_formKey),
               decoration: InputDecoration(
                 labelText: BTexts.password,
                 prefixIcon: const Icon(Iconsax.password_check),
