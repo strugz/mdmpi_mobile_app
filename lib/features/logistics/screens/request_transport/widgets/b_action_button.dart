@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../base/utils/helpers/helper_functions.dart';
+import '../../../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
 
@@ -27,15 +28,27 @@ class BActionButton extends StatelessWidget {
         // Get the signature state
         final bool hasSignature =
             requestController.formState.receiverSignatureBytes.value != null;
+
         final userController = Get.find<UserController>();
 
         return ElevatedButton(
           onPressed: isLoading
               ? null
               : () async {
+                  final String? proofImage =
+                      await BImageHelperFunctions.getDeliveryImageAsBase64(
+                          currentStatus,
+                          requestController.currentSelectedRequest.value!.id);
+                  if (proofImage == null || proofImage.isEmpty) {
+                    BHelperFunctions.showSnackBar(
+                        "Please capture the delivery proof image.");
+                    return;
+                  }
                   // VALIDATION START
                   if (currentStatus == BTexts.statusForDelivery) {
-                    if (requestController.formState.receiver.text.trim().isEmpty) {
+                    if (requestController.formState.receiver.text
+                        .trim()
+                        .isEmpty) {
                       BHelperFunctions.showSnackBar(
                           "Please enter the receiver's name.");
                       return;
@@ -46,6 +59,7 @@ class BActionButton extends StatelessWidget {
                           "Please capture the receiver's signature.");
                       return;
                     }
+                    // Validate proof of delivery
                   }
                   await requestTransportController
                       .processRequestDispatchOrDropOff(

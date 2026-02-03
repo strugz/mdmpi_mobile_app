@@ -323,11 +323,6 @@ class StandardDeliveryDataManager {
                   'Image proof could not be uploaded. It will be synced when connection is available.',
             );
           }
-        } else {
-          BLoaders.warningSnackBar(
-              title: 'No Internet',
-              message:
-                  'Image saved locally. It will be uploaded when internet connection is available.');
         }
       }
 
