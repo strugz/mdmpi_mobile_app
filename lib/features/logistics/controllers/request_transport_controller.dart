@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/location_alternative_
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
+import '../../../base/utils/local_storage/text_storage_service.dart';
 import '../models/rider_location_model.dart';
 
 class RequestTransportController extends GetxController {
@@ -33,6 +34,7 @@ class RequestTransportController extends GetxController {
   final lastCameraPosition = Rx<CameraPosition?>(null);
   final selectedDestinationMarkerId = Rx<MarkerId?>(null);
   final placeController = Rx<String?>("");
+  final imageProofPath = Rx<String?>("");
 
   final addressTextController = TextEditingController();
   final suggestions = RxList([]);
@@ -76,7 +78,7 @@ class RequestTransportController extends GetxController {
   final Rx<LocationAlternativeModel?> currentLocationAlternative =
       Rx<LocationAlternativeModel?>(null);
   final RxList<LocationAlternativeModel> savedAlternatives = RxList([]);
-
+  final TextStorageService _textStorageService = TextStorageService();
   @override
   void onInit() {
     super.onInit();
@@ -86,6 +88,8 @@ class RequestTransportController extends GetxController {
     _locationTrackingService = Get.find<ILocationTrackingService>();
     _locationAlternativeService = Get.find<ILocationAlternativeService>();
 
+
+    reInitialize();
     getUserLocation();
     startLocationTracking();
   }
@@ -96,12 +100,18 @@ class RequestTransportController extends GetxController {
     super.dispose();
   }
 
+  Future<void> reInitialize() async {
+    if (imageProofPath.value!.isEmpty) {
+      imageProofPath.value = _textStorageService.getText("proofImagePath");
+    }
+  }
+
   Future<void> startLocationTracking() async {
     positionStream = _locationTrackingService
         .startTracking(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 20,
-        )
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 20,
+    )
         .listen((Position position) {
       LatLng newPosition = LatLng(position.latitude, position.longitude);
 
@@ -213,8 +223,7 @@ class RequestTransportController extends GetxController {
     _currentRouteDestination.value = null; // Clear previous route destination
 
     try {
-      final addressData =
-          await _mapsService.getAddressFromCoordinates(latLng);
+      final addressData = await _mapsService.getAddressFromCoordinates(latLng);
 
       final address = addressData['address'] ?? "Address not found";
       placeController.value = address;
@@ -254,14 +263,16 @@ class RequestTransportController extends GetxController {
     await loadLocationAlternatives();
 
     logDebug('✓ hasLocationAlternative: ${hasLocationAlternative.value}');
-    logDebug('✓ currentAlternative address: ${currentLocationAlternative.value?.address}');
+    logDebug(
+        '✓ currentAlternative address: ${currentLocationAlternative.value?.address}');
 
     // Check if we have a saved alternative
     if (hasLocationAlternative.value &&
         currentLocationAlternative.value != null) {
       final savedLocation = currentLocationAlternative.value;
 
-      logDebug('📍 Using saved location alternative: ${savedLocation?.address}');
+      logDebug(
+          '📍 Using saved location alternative: ${savedLocation?.address}');
 
       // Use saved alternative coordinates directly (no need to geocode)
       destination.value =
@@ -279,7 +290,8 @@ class RequestTransportController extends GetxController {
       logDebug('📝 addressTextController.text: ${addressTextController.text}');
 
       if (addressTextController.text.isNotEmpty) {
-        logDebug('🔍 Calling getCoordinatesFromPlace with address: ${addressTextController.text}');
+        logDebug(
+            '🔍 Calling getCoordinatesFromPlace with address: ${addressTextController.text}');
         await getCoordinatesFromPlace(addressTextController.text);
         logDebug('✓ Route initialized from address');
       } else {
@@ -320,8 +332,8 @@ class RequestTransportController extends GetxController {
 
       currentLocation.value = LatLng(position.latitude, position.longitude);
 
-      mapController.value
-          ?.animateCamera(CameraUpdate.newLatLngZoom(currentLocation.value, 14));
+      mapController.value?.animateCamera(
+          CameraUpdate.newLatLngZoom(currentLocation.value, 14));
 
       // Note: We no longer fetch the route here automatically.
       // The screen should call initializeRoute() after setting the address.

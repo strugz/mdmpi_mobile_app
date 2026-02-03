@@ -84,7 +84,8 @@ class _BDropOffCaptureState extends State<BDropOffCapture> {
     logDebug('📸 Camera button tapped');
 
     // Take picture with animation
-    final imagePath = await cameraController.takePictureForReviewWithAnimation();
+    final imagePath =
+        await cameraController.takePictureForReviewWithAnimation();
 
     if (imagePath != null && mounted) {
       logDebug('✅ Photo captured, showing review: $imagePath');
