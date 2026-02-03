@@ -80,6 +80,14 @@ class BTexts {
   static const String homeAppbarTitle = "Logistics Dashboard";
   static const String homeAppbarSubTitle = "Good Day!";
 
+  /// Dashboard Texts
+  static const String dashboardTitle = "Activity Dashboard";
+  static const String dashboardTotalRequests = "Total Requests:";
+  static const String dashboardGettingSuppliesReady = "Getting Supplies Ready:";
+  static const String dashboardItemsPrepared = "Items Prepared:";
+  static const String dashboardForDelivery = "For Delivery:";
+  static const String dashboardDelivered = "Delivered:";
+
   /// Request Texts
   static const String requestPackageIconText = "Request";
 
@@ -134,10 +142,10 @@ class BTexts {
   // Labels
   static List<String> requestFormLabels = [
     'Standard Delivery',
+    'Pull out',
+    'Pick up',
     'Air / Sea',
     'Hotline Direct',
-    'Pick up',
-    'Pull out',
     'Stock receive',
   ];
 

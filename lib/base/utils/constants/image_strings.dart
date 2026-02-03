@@ -64,10 +64,10 @@ class BImages {
   // Icon paths
   static List<String> requestFormIconPaths = [
     'assets/icons/request/delivery.png',
+    'assets/icons/request/pullOut.png',
+    'assets/icons/request/pickUp.png',
     'assets/icons/request/seaAir.png',
     'assets/icons/request/hotlineDirect.png',
-    'assets/icons/request/pickUp.png',
-    'assets/icons/request/pullOut.png',
     'assets/icons/request/inventoryStock.png',
   ];
 }

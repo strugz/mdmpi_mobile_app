@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transport_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_client_search.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_dispatcher.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_route_loading_overlay.dart';
 
 import '../../controllers/standard_delivery_controller.dart';
 import '../../models/standard_delivery_model.dart';
@@ -37,6 +38,8 @@ class RequestTransport extends StatelessWidget {
     }
 
     // Initialize route after setting the address
+    // The initializeRoute() method will check for saved location alternatives
+    // in the local database and use them if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       reqTranController.initializeRoute();
     });
@@ -139,6 +142,18 @@ class RequestTransport extends StatelessWidget {
                   child: const Icon(Icons.my_location, color: BColors.dark),
                 ),
               ),
+
+              /// Route loading overlay - shown while route is being calculated
+              if (!reqTranController.isRouteLoaded.value)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 200,
+                  child: Center(
+                    child: const RouteLoadingOverlay(),
+                  ),
+                ),
             ],
           ),
         ),

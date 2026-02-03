@@ -171,10 +171,17 @@ class BFullScreenLoader {
       BuildContext context,
       ClientController clientController,
       StandardDeliveryController requestController) {
+    final FocusNode searchFocusNode = FocusNode();
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true, // Important for height
       builder: (BuildContext context) {
+        // Request focus when modal is shown
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          searchFocusNode.requestFocus();
+        });
+
         return Padding(
           padding:
               EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -185,6 +192,7 @@ class BFullScreenLoader {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 TextFormField(
+                  focusNode: searchFocusNode,
                   controller: clientController.query,
                   decoration: InputDecoration(
                       labelText: 'Search by Client:',

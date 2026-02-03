@@ -209,6 +209,38 @@ class CameraHandlerController extends GetxController
     await takePicture(requestId);
   }
 
+  /// --- Take Picture and Return Path (without saving) ---
+  /// Used for photo review screens where user can confirm/retake
+  Future<String?> takePictureForReview() async {
+    if (!_cameraService.isInitialized || isProcessing.value) {
+      return null;
+    }
+
+    try {
+      logDebug('📸 Taking picture for review...');
+      final XFile? imageFile = await _cameraService.takePicture();
+
+      if (imageFile == null) {
+        logDebug('❌ Failed to capture image');
+        return null;
+      }
+
+      logDebug('✅ Picture captured: ${imageFile.path}');
+      return imageFile.path;
+    } catch (e) {
+      logDebug('❌ Error taking picture: $e');
+      BLoaders.errorSnackBar(title: 'Capture Error', message: e.toString());
+      return null;
+    }
+  }
+
+  /// --- Take Picture with Flash Animation for Review ---
+  Future<String?> takePictureForReviewWithAnimation() async {
+    isFlashing.value = true;
+    _flashAnimController.forward(from: 0.0);
+    return await takePictureForReview();
+  }
+
   /// --- Pause the camera preview to release resources ---
   Future<void> pausePreview() async {
     await _cameraService.pausePreview();

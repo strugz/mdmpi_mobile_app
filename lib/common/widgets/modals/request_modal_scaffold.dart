@@ -46,14 +46,13 @@ class RequestModalScaffold extends StatelessWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: BSizes.sm),
+              padding: const EdgeInsets.symmetric(vertical: BSizes.xxs),
               child: header ??
                   _DefaultHeader(
                       title: title ?? '',
                       subtitle: subtitle ?? '',
                       textColor: textColor),
             ),
-            const SizedBox(height: BSizes.xs),
             // Document references
             if (documentReferences.isNotEmpty)
               BTextDivider(text: 'Document References'),
@@ -62,16 +61,6 @@ class RequestModalScaffold extends StatelessWidget {
               documentReferences: documentReferences,
               textColor: textColor,
             ),
-            if (documentReferences.isNotEmpty)
-              docsBottomDivider
-                  ? Column(
-                      children: const [
-                        SizedBox(height: BSizes.xs),
-                        Divider(),
-                        SizedBox(height: BSizes.xs),
-                      ],
-                    )
-                  : const SizedBox(height: BSizes.xs),
             // Body
             ...children,
             const SizedBox(height: BSizes.xs),

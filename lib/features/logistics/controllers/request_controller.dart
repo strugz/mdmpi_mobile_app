@@ -59,7 +59,8 @@ class RequestController extends GetxController {
 
   /// Currently selected form category based on active tab.
   /// This is used to pre-select the form category when opening forms.
-  final Rx<FormCategoryModel?> currentSelectedCategory = Rx<FormCategoryModel?>(null);
+  final Rx<FormCategoryModel?> currentSelectedCategory =
+      Rx<FormCategoryModel?>(null);
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
@@ -124,7 +125,8 @@ class RequestController extends GetxController {
 
   /// Sort categories according to the predefined order.
   /// Categories not in the order list are appended at the end.
-  List<FormCategoryModel> _sortCategoriesByOrder(List<FormCategoryModel> categories) {
+  List<FormCategoryModel> _sortCategoriesByOrder(
+      List<FormCategoryModel> categories) {
     final sorted = <FormCategoryModel>[];
 
     // Add categories in the defined order
@@ -164,7 +166,8 @@ class RequestController extends GetxController {
         return Get.find<PickUpController>();
       } else if (lowerName.contains('air') || lowerName.contains('sea')) {
         return Get.find<AirSeaController>();
-      } else if (lowerName.contains('hotline') || lowerName.contains('direct')) {
+      } else if (lowerName.contains('hotline') ||
+          lowerName.contains('direct')) {
         return Get.find<HotlineDirectController>();
       } else if (lowerName.contains('stock') && lowerName.contains('receive')) {
         return Get.find<StockReceiveController>();
@@ -241,7 +244,8 @@ class RequestController extends GetxController {
           const BFilterDropdown(),
           const SizedBox(height: BSizes.spaceBtwItems),
           FilterDropdown(
-            selectedFilter: requestController.filterManager.selectedStatusFilter,
+            selectedFilter:
+                requestController.filterManager.selectedStatusFilter,
             filterValues: StandardDeliveryStatusFilter.values,
             getDisplayName: (filter) => filter.displayName,
             onFilterChanged: (filter) {
@@ -267,7 +271,8 @@ class RequestController extends GetxController {
           ),
           const SizedBox(height: BSizes.spaceBtwItems),
           FilterDropdown<PullOutStatusFilter>(
-            selectedFilter: pullOutController.filterManager.selectedStatusFilter,
+            selectedFilter:
+                pullOutController.filterManager.selectedStatusFilter,
             filterValues: PullOutStatusFilter.values,
             getDisplayName: (f) => f.displayName,
             onFilterChanged: (f) {
@@ -338,7 +343,8 @@ class RequestController extends GetxController {
           const HotlineDirectFilterDropdown(),
           const SizedBox(height: BSizes.spaceBtwItems),
           FilterDropdown(
-            selectedFilter: hotlineDirectController.filterManager.selectedStatusFilter,
+            selectedFilter:
+                hotlineDirectController.filterManager.selectedStatusFilter,
             filterValues: StandardDeliveryStatusFilter.values,
             getDisplayName: (filter) => filter.displayName,
             onFilterChanged: (filter) {
@@ -357,7 +363,8 @@ class RequestController extends GetxController {
           const StockReceiveFilterDropdown(),
           const SizedBox(height: BSizes.spaceBtwItems),
           FilterDropdown<PullOutStatusFilter>(
-            selectedFilter: stockReceiveController.filterManager.selectedStatusFilter,
+            selectedFilter:
+                stockReceiveController.filterManager.selectedStatusFilter,
             filterValues: PullOutStatusFilter.values,
             getDisplayName: (f) => f.displayName,
             onFilterChanged: (f) {
@@ -464,7 +471,8 @@ class RequestController extends GetxController {
   }
 
   /// Toggle storage preference for the current category controller.
-  void toggleStoragePreferenceForCategory(String categoryName, bool useLocalStorage) {
+  void toggleStoragePreferenceForCategory(
+      String categoryName, bool useLocalStorage) {
     final controller = getControllerForCategory(categoryName);
 
     if (controller == null) {
@@ -486,4 +494,3 @@ class RequestController extends GetxController {
     }
   }
 }
-

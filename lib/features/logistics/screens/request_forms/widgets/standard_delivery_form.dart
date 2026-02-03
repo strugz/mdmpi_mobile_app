@@ -36,8 +36,6 @@ class StandardDelivery extends StatelessWidget {
       if (selectedCategory != null) {
         // Set form category based on selected tab
         stdDeliveryController.formState.formCategory.text = selectedCategory.id;
-        print(
-            'Pre-selected form category from RequestController: ${selectedCategory.name} (ID: ${selectedCategory.id})');
       }
     } catch (e) {
       print('RequestController not found or error reading category: $e');

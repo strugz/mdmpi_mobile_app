@@ -29,6 +29,7 @@ class LocalStorageDataController extends GetxController {
     'CNTMST',
     'a_tblItemCategory',
     'a_tblFormCategory',
+    'a_tblLocationAlternative'
   ];
 
   @override

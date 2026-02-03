@@ -17,10 +17,18 @@ import '../common/services/abstracts/i_text_extractor.dart';
 import '../common/services/abstracts/i_text_recognition_service.dart';
 import '../common/services/abstracts/i_notification_service.dart';
 import '../common/services/abstracts/i_permission_service.dart';
+import '../common/services/abstracts/location_alternative_service.dart';
+import '../common/services/abstracts/i_maps_service.dart';
+import '../common/services/abstracts/i_places_service.dart';
+import '../common/services/abstracts/i_location_tracking_service.dart';
 import '../common/services/implementations/flutter_camera_service.dart';
 import '../common/services/implementations/google_ml_kit_text_recognizer.dart';
 import '../common/services/implementations/notification_service.dart';
 import '../common/services/implementations/permission_service.dart';
+import '../common/services/implementations/location_alternative_service.dart';
+import '../common/services/implementations/maps_service.dart';
+import '../common/services/implementations/places_service.dart';
+import '../common/services/implementations/location_tracking_service.dart';
 import '../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../data/controllers/client_controller.dart';
 import '../data/repositories/app_data/department_repository.dart';
@@ -41,6 +49,7 @@ import '../common/controllers/camera_controller.dart';
 import '../features/logistics/controllers/chart_controller.dart';
 import '../features/logistics/controllers/delivery_location_controller.dart';
 import '../features/logistics/controllers/delivery_vehicle_controller.dart';
+import '../features/logistics/controllers/home_controller.dart';
 import '../features/logistics/controllers/standard_delivery_controller.dart';
 import '../features/logistics/controllers/request_transport_controller.dart';
 import '../features/logistics/controllers/web_socket_delivery_controller.dart';
@@ -125,6 +134,7 @@ class GeneralBindings extends Bindings {
     // ========================================================================
     Get.lazyPut(() => UserInitialController(), fenix: true);
     Get.lazyPut(() => StandardDeliveryController(), fenix: true);
+    Get.lazyPut(() => HomeController(), fenix: true);
 
     Get.lazyPut(() => LoginController(), fenix: true);
     Get.lazyPut(() => LoadingScreenController(), fenix: true);
@@ -170,5 +180,9 @@ class GeneralBindings extends Bindings {
     // ========================================================================
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
+    Get.lazyPut<ILocationAlternativeService>(() => LocationAlternativeService(), fenix: true);
+    Get.lazyPut<IMapsService>(() => MapsService(), fenix: true);
+    Get.lazyPut<IPlacesService>(() => PlacesService(), fenix: true);
+    Get.lazyPut<ILocationTrackingService>(() => LocationTrackingService(), fenix: true);
   }
 }

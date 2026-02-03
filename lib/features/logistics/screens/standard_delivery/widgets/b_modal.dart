@@ -16,6 +16,12 @@ import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dar
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_header.dart';
 
+/// Modal widget that displays detailed information about a standard delivery request.
+///
+/// This modal adapts its content based on the request status:
+/// - Shows delivery details and signature for completed deliveries
+/// - Displays cancel remarks for cancelled requests
+/// - Provides status-specific action buttons for pending requests
 class BModal extends StatelessWidget {
   final StandardDeliveryModel requestModel;
   final VoidCallback onPressed;
@@ -28,16 +34,25 @@ class BModal extends StatelessWidget {
     this.status = true,
   });
 
+  /// Builds the modal UI with status-conditional content sections.
+  ///
+  /// Displays different content based on [requestModel.status]:
+  /// - Done Delivery: Shows receiver info, signature, and delivered item image
+  /// - Cancelled: Shows cancellation remarks
+  /// - Other statuses: Shows appropriate action buttons
   @override
   Widget build(BuildContext context) {
+    // Determine theme mode and colors
     final bool dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
+
+    // Check request status flags
     final bool isDoneDelivery =
         requestModel.status == BTexts.statusDoneDelivery;
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
     final controller = Get.find<StandardDeliveryController>();
 
-    // Load cancel remarks if cancelled
+    // Preload cancel remarks for cancelled requests
     if (isCancelled) {
       final requestIdForRemarks =
           requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
@@ -48,10 +63,12 @@ class BModal extends StatelessWidget {
       header: RequestModalHeader(requestModel: requestModel),
       documentReferences: requestModel.documentReference,
       docsBottomDivider: true,
+      // Status-specific action button (Prepare Item, Packed and Ready, etc.)
       bottomAction: StatusActionButton(
         status: requestModel.status,
         onPressed: onPressed,
         isVisible: status,
+        // Map status to appropriate button text
         statusToTextMapper: (status) {
           switch (status) {
             case BTexts.statusNewRequest:
@@ -64,7 +81,9 @@ class BModal extends StatelessWidget {
         },
       ),
       children: [
-        if (isDoneDelivery)
+        // Section: Delivery Details (only for completed deliveries)
+        if (isDoneDelivery) ...[
+          BTextDivider(text: "Delivery details"),
           Center(
             child: BProductTitleText(
                 title: "Received By: ${requestModel.receiver}",
@@ -72,11 +91,17 @@ class BModal extends StatelessWidget {
                 smallSize: true,
                 fontColor: dark ? BColors.light : BColors.black),
           ),
+        ],
+
+        // Display captured signature for completed deliveries
         if (isDoneDelivery) CapturedSignatureImage(requestId: requestModel.id),
-        if (isDoneDelivery)
+
+        // Button to view delivered item image
+        if (isDoneDelivery) ...[
           ViewDeliveredItemButton(
             textColor: textColor,
             onPressed: () {
+              // Use appropriate request ID for database lookup
               final requestIdForDb = requestModel.id.isNotEmpty
                   ? requestModel.id
                   : requestModel.requestID;
@@ -87,21 +112,35 @@ class BModal extends StatelessWidget {
                       'Delivered item image for request ${requestModel.id}',
                   apiController: 'Request');
             },
-          ),
-        if (isCancelled)
+          )
+        ],
+
+        // Section: Cancel Remarks (only for cancelled requests)
+        if (isCancelled) ...[
           Obx(() {
+            // Reactively load and display cancel remarks
             controller.loadCancelRemarks(requestModel.id);
             final remarks = controller.cancelRemarks.value;
+
+            // Hide section if no remarks available
             if (remarks == null || remarks.remarks.isEmpty) {
               return const SizedBox.shrink();
             }
-            BTextDivider(text: 'Cancel Remarks');
-            return BCancelRemarks(
-              remarks: remarks.remarks,
-              date: remarks.date,
-              user: remarks.userUpdated,
+
+            return Column(
+              children: [
+                BTextDivider(text: 'Cancel Remarks'),
+                BCancelRemarks(
+                  remarks: remarks.remarks,
+                  date: remarks.date,
+                  user: remarks.userUpdated,
+                ),
+              ],
             );
           }),
+        ],
+
+        // Footer with request metadata
         RequestModalFooter(requestModel: requestModel),
       ],
     );
