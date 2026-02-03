@@ -25,12 +25,12 @@ class StandardDelivery extends StatelessWidget {
     final userCNTMSTController = Get.find<UserMdmpiController>();
     final itemCategoryRepo = Get.find<ItemCategoryRepository>();
     final formCategoryRepo = Get.find<FormCategoryRepository>();
+    final requestController = Get.find<RequestController>();
 
     userCNTMSTController.filterUserFromLocal();
 
     // Pre-select form category from RequestController if available
     try {
-      final requestController = Get.find<RequestController>();
       final selectedCategory = requestController.currentSelectedCategory.value;
 
       if (selectedCategory != null) {
@@ -49,8 +49,12 @@ class StandardDelivery extends StatelessWidget {
       bottom: !isGestureNavigation,
       child: Scaffold(
         appBar: BAppBar(
-          title: Text(BTexts.requestFormTitle,
-              style: Theme.of(context).textTheme.bodyLarge),
+          title: Text(
+            BTexts.getRequestFormTitle(
+              requestController.currentSelectedCategory.value?.name,
+            ),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           showBackArrow: true,
           leadingOnPressed: () => Get.back(),
         ),

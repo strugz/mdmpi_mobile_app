@@ -96,26 +96,23 @@ class BRequestDetails extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: BProductTitleText(
-                                  title: textStorage
-                                          .getText('proofImagePath') ??
-                                      cameraController.imageProofPath.value ??
-                                      'No image captured',
+                                  title:
+                                      textStorage.getText('proofImagePath') ??
+                                          cameraController.imageProofPath.value,
                                   maxLines: 1,
                                   smallSize: true,
                                   fontColor: textColor,
                                 ),
                               ),
                               if ((textStorage.getText('proofImagePath') ??
-                                          cameraController.imageProofPath.value)
-                                      .isNotEmpty ??
-                                  false)
+                                      cameraController.imageProofPath.value)
+                                  .isNotEmpty)
                                 Listener(
                                   onPointerDown: (_) {
                                     final imagePath = textStorage
                                             .getText('proofImagePath') ??
                                         cameraController.imageProofPath.value;
-                                    if (imagePath != null &&
-                                        imagePath.isNotEmpty) {
+                                    if (imagePath.isNotEmpty) {
                                       _showImagePreview(context, imagePath);
                                     }
                                   },

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
@@ -20,6 +22,7 @@ class PickUpForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final PickUpController controller = Get.find();
     final StandardDeliveryController stdController = Get.find();
+    final RequestController requestController = Get.find();
 
     final stdFormRefs = stdController.formState.documentReferenceControllers;
     if (stdFormRefs.isEmpty) {
@@ -60,8 +63,12 @@ class PickUpForm extends StatelessWidget {
       bottom: !isGestureNavigation,
       child: Scaffold(
         appBar: BAppBar(
-          title: Text('Pick-Up Request Form',
-              style: Theme.of(context).textTheme.bodyLarge),
+          title: Text(
+            BTexts.getRequestFormTitle(
+              requestController.currentSelectedCategory.value?.name,
+            ),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           showBackArrow: true,
           leadingOnPressed: () => Get.back(),
         ),

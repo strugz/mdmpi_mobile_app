@@ -26,6 +26,7 @@ class PullOutForm extends StatelessWidget {
     final PullOutController controller = Get.find();
     final StandardDeliveryController stdController = Get.find();
     final UserMdmpiController userController = Get.find();
+    final RequestController requestController = Get.find();
 
     userController.filterUserFromLocal();
 
@@ -36,7 +37,6 @@ class PullOutForm extends StatelessWidget {
 
     // Pre-select form category from RequestController if available
     try {
-      final requestController = Get.find<RequestController>();
       final selectedCategory = requestController.currentSelectedCategory.value;
 
       if (selectedCategory != null) {
@@ -84,8 +84,12 @@ class PullOutForm extends StatelessWidget {
       bottom: !isGestureNavigation,
       child: Scaffold(
         appBar: BAppBar(
-          title: Text(BTexts.requestFormTitle,
-              style: Theme.of(context).textTheme.bodyLarge),
+          title: Text(
+            BTexts.getRequestFormTitle(
+              requestController.currentSelectedCategory.value?.name,
+            ),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           showBackArrow: true,
           leadingOnPressed: () => Get.back(),
         ),

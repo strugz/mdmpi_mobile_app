@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request/components/request_controller_components.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
@@ -20,6 +21,7 @@ class HotlineDirectForm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final requestController = Get.find<StandardDeliveryController>();
+    final requestControllerData = Get.find<RequestController>();
     final userCNTMSTController = Get.find<UserMdmpiController>();
     userCNTMSTController.filterUserFromLocal();
 
@@ -31,8 +33,12 @@ class HotlineDirectForm extends StatelessWidget {
       bottom: !isGestureNavigation,
       child: Scaffold(
         appBar: BAppBar(
-          title: Text(BTexts.requestFormTitle,
-              style: Theme.of(context).textTheme.bodyLarge),
+          title: Text(
+            BTexts.getRequestFormTitle(
+              requestControllerData.currentSelectedCategory.value?.name,
+            ),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           showBackArrow: true,
           leadingOnPressed: () => Get.back(),
         ),

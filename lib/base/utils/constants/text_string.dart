@@ -1,13 +1,15 @@
 class BTexts {
-
   // On boarding Texts
   static const String onBoardingTitle1 = "Welcome to MDMPI APP!";
   static const String onBoardingTitle2 = "Add Your Deliveries";
   static const String onBoardingTitle3 = "Track Your Deliveries";
 
-  static const String onBoardingSubTitle1 = "We’re thrilled to have you on board. With MDMPI APP - Logistics, managing and tracking your day to day deliveries is a breeze.";
-  static const String onBoardingSubTitle2 = "Enter the details of the deliverable, including the requester, document reference and client information.";
-  static const String onBoardingSubTitle3= "Stay updated with real-time tracking and notifications for every step of the delivery process.";
+  static const String onBoardingSubTitle1 =
+      "We’re thrilled to have you on board. With MDMPI APP - Logistics, managing and tracking your day to day deliveries is a breeze.";
+  static const String onBoardingSubTitle2 =
+      "Enter the details of the deliverable, including the requester, document reference and client information.";
+  static const String onBoardingSubTitle3 =
+      "Stay updated with real-time tracking and notifications for every step of the delivery process.";
 
   //Collection Home Texts
   static const String collectionHomeTitle1 = "Welcome to MDMPI APP!";
@@ -35,8 +37,6 @@ class BTexts {
   static const String privacyPolicy = "Privacy Policy";
   static const String and = "and";
 
-
-
   // Generate Shipment Texts
   static const String genShipmentTitle = "Generate \n Shipment Order";
 
@@ -52,9 +52,9 @@ class BTexts {
   static const String loginTitle = "MDMPI APP";
   static const String loginSubTitle = "Logistics";
   static const String confirmEmail = "Verify your email address!";
-  static const String confirmEmailSubTitle = "Congratulations! Your Account Awaits: Verify Your Email to Start Shopping and Experience a World of Unrivaled Deals and Personalized Offers.";
+  static const String confirmEmailSubTitle =
+      "Congratulations! Your Account Awaits: Verify Your Email to Start Shopping and Experience a World of Unrivaled Deals and Personalized Offers.";
   static const String signInTitle = "Sign In";
-
 
   // Login Authentication Texts
   static const String username = "Username";
@@ -67,15 +67,21 @@ class BTexts {
   static const String createAccount = "Create account.";
   static const String orSignInWith = "or sign in with";
   static const String accountCreated = "Account Created Successfully!";
-  static const String accountLoginToYour = "You can now log in to your account.";
+  static const String accountLoginToYour =
+      "You can now log in to your account.";
   static const String tContinue = "Continue";
   static const String resendEmail = "Resend Email";
-  static const String yourAccountCreatedTitle = "Your account successfully created!";
-  static const String yourAccountCreatedSubTitle = "Welcome to Your Ultimate Shopping Destination: Your Account is Created, Unleash the Joy of Seamless Online Shopping!";
+  static const String yourAccountCreatedTitle =
+      "Your account successfully created!";
+  static const String yourAccountCreatedSubTitle =
+      "Welcome to Your Ultimate Shopping Destination: Your Account is Created, Unleash the Joy of Seamless Online Shopping!";
   static const String forgetPasswordTitle = "Forget password";
-  static const String forgetPasswordSubTitle = "Don’t worry sometimes people can forget too, enter your email and we will send you a password reset link.";
+  static const String forgetPasswordSubTitle =
+      "Don’t worry sometimes people can forget too, enter your email and we will send you a password reset link.";
   static const String changeYourPasswordTitle = "Password Reset Email Sent";
-  static const String changeYourPasswordSubTitle = "Your Account Security is Our Priority! We've Sent You a Secure Link to Safely Change Your Password and Keep Your Account Protected.";
+  static const String changeYourPasswordSubTitle =
+      "Your Account Security is Our Priority! We've Sent You a Secure Link to Safely Change Your Password and Keep Your Account Protected.";
+
   /// AppBar Texts
   static const String homeAppbarTitle = "Logistics Dashboard";
   static const String homeAppbarSubTitle = "Good Day!";
@@ -99,6 +105,17 @@ class BTexts {
 
   /// Request Form Texts
   static const String requestFormTitle = "Let's Create Request";
+
+  /// Generates a dynamic form title based on the category name
+  /// Returns "Let's Create {categoryName} Request" if categoryName is provided
+  /// Falls back to [requestFormTitle] if categoryName is null or empty
+  static String getRequestFormTitle(String? categoryName) {
+    if (categoryName == null || categoryName.trim().isEmpty) {
+      return requestFormTitle;
+    }
+    return "$categoryName Form";
+  }
+
   static const String client = "Client";
   static const String address = "Address";
   static const String phoneAddress = "Phone Number";
@@ -119,17 +136,19 @@ class BTexts {
   static const String statusReceived = "Received";
   static const String statusItemPacked = "Item Packed";
   static const String statusEndorsedToGuard = "Endorsed to Guard";
-  static const String statusDispatch ="Dispatch";
+  static const String statusDispatch = "Dispatch";
   static const String statusDropOff = "Drop Off";
 
   /// Request Modal Specific Texts
   static const String requestModalDeliveryShotTitle = "Delivery Shot";
   static const String requestModalCloseButtonText = "Close";
-  static const String requestModalImageNotFoundError = "Error: Delivery shot image not found.";
+  static const String requestModalImageNotFoundError =
+      "Error: Delivery shot image not found.";
   static const String requestModalViewItemDeliveredText = "View Item Delivered";
   static const String requestModalViewItemReceivedText = "View Item Received";
   static const String requestModalPrepareItemButtonText = "Prepare Item";
-  static const String requestModalPackedAndReadyButtonText = "Packed and Ready to Ship";
+  static const String requestModalPackedAndReadyButtonText =
+      "Packed and Ready to Ship";
   static const String requestModalDropOffButtonText = "Drop Off";
 
   /// User Role
@@ -148,5 +167,4 @@ class BTexts {
     'Hotline Direct',
     'Stock receive',
   ];
-
 }
