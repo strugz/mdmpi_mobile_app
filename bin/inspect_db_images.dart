@@ -5,7 +5,7 @@ Future<void> main() async {
   try {
     final helper = DatabaseHelper.instance;
     // Ensure DB initialized
-    final db = await helper.database;
+    await helper.database;
     print('Database path opened.');
 
     final sigs = await helper.requestDao.then((d) => d.getAllReceiverSignatures());

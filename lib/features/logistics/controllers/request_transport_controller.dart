@@ -404,7 +404,7 @@ class RequestTransportController extends GetxController {
         title: 'Location Saved',
         message: 'Corrected location saved. Delete on drop-off if accepted.',
       );
-    } catch (e, stackTrace) {
+    } catch (e) {
       BLoaders.errorSnackBar(
         title: 'Error',
         message: 'Failed to save corrected location: $e',

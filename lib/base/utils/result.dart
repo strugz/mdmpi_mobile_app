@@ -103,6 +103,7 @@ sealed class Result<T> {
 
 /// Successful result containing a value.
 class Success<T> extends Result<T> {
+  @override
   final T value;
   const Success(this.value);
 
@@ -122,6 +123,7 @@ class Success<T> extends Result<T> {
 
 /// Failed result containing an error message.
 class Failure<T> extends Result<T> {
+  @override
   final String error;
   const Failure(this.error);
 

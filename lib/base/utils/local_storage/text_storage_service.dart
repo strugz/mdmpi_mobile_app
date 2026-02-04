@@ -10,6 +10,7 @@
 /// final email = await storage.getText('userEmail');
 /// await storage.removeText('userEmail');
 /// ```
+library;
 
 import 'package:get_storage/get_storage.dart';
 

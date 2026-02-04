@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/validators/validation.dart';
-import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/login_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/password_configuration/forget_password.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/signup.dart';

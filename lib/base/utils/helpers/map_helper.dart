@@ -104,6 +104,4 @@ class MapHelper {
     return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
   }
 
-  /// Converts degrees to radians.
-  static double _toRad(double value) => value * pi / 180;
 }

@@ -259,12 +259,12 @@ class AuthenticationRepository extends GetxController implements IAuthentication
         return Result.failure('Google sign-in was cancelled');
       }
 
-      final GoogleSignInAuthentication? googleAuth =
+      final GoogleSignInAuthentication googleAuth =
           await userAccount.authentication;
 
       final credentials = GoogleAuthProvider.credential(
-        accessToken: googleAuth?.accessToken,
-        idToken: googleAuth?.idToken,
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
       final userCredential = await _auth.signInWithCredential(credentials);
