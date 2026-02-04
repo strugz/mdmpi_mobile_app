@@ -21,6 +21,30 @@ const _rolePriority = {
   BTexts.roleViewer: 4, // View-only access
 };
 
+/// Selects the appropriate role based on status and available roles.
+/// Prioritizes roles by status context, then by priority map.
+String? _selectActiveRole(List<String> roles, String status) {
+  // Picked-up/Cancelled: handled with default handler (no role selection needed)
+  if (status.toLowerCase() == 'picked-up' ||
+      status.toLowerCase() == 'cancelled') {
+    return null;
+  }
+
+  // Default: find highest-priority role
+  String? highestRole;
+  int highestPriority = 999;
+
+  for (final role in roles) {
+    final priority = _rolePriority[role] ?? 999;
+    if (priority < highestPriority) {
+      highestPriority = priority;
+      highestRole = role;
+    }
+  }
+
+  return highestRole;
+}
+
 /// List widget for displaying Stock Receive requests.
 ///
 /// Displays filtered Stock Receive requests in a scrollable list with:
@@ -155,9 +179,20 @@ void _handleStockReceiveTap(
       .toList();
   final userInitial = userController.user.value.initial;
 
+  // Normalize status comparison for consistency
+  final statusLower = request.requestStatus.toLowerCase();
+
   // Handle cancelled/picked-up status with default handler
-  if (request.requestStatus.toLowerCase() == 'cancelled' ||
-      request.requestStatus.toLowerCase() == 'picked-up') {
+  if (statusLower == 'cancelled' || statusLower == 'picked-up') {
+    PullOutDefaultHandler().handleAction(
+        context, request, controller as dynamic, userController, userInitial);
+    return;
+  }
+
+  final activeRole = _selectActiveRole(roles, request.requestStatus);
+
+  if (activeRole == null) {
+    // No valid role - show default handler
     PullOutDefaultHandler().handleAction(
         context, request, controller as dynamic, userController, userInitial);
     return;
@@ -170,23 +205,13 @@ void _handleStockReceiveTap(
     BTexts.roleViewer: PullOutViewerRoleHandler(),
   };
 
-  // Find the highest-priority role the user has
-  String? selectedRole;
-  int highestPriority = 999;
-
-  for (final role in roles) {
-    if (handlers.containsKey(role)) {
-      final priority = _rolePriority[role] ?? 999;
-      if (priority < highestPriority) {
-        highestPriority = priority;
-        selectedRole = role;
-      }
-    }
-  }
-
   // Invoke only the selected handler
-  if (selectedRole != null && handlers.containsKey(selectedRole)) {
-    handlers[selectedRole]!.handleAction(
+  if (handlers.containsKey(activeRole)) {
+    handlers[activeRole]!.handleAction(
+        context, request, controller as dynamic, userController, userInitial);
+  } else {
+    // Fallback if no handler is registered for the selected role
+    PullOutDefaultHandler().handleAction(
         context, request, controller as dynamic, userController, userInitial);
   }
 }
