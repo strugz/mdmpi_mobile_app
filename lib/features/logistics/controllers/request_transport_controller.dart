@@ -8,11 +8,13 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/map_helper.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_maps_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/location_alternative_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -48,12 +50,9 @@ class RequestTransportController extends GetxController {
   /// Variables for Location Listening
   StreamSubscription<Position>? positionStream;
 
-  /// WebSocket Controller
-  final webSocketController = Get.find<WebSocketDispatcherController>();
-
-  /// Request Controller
-  final StandardDeliveryController _requestController =
-      Get.find<StandardDeliveryController>();
+  /// WebSocket Controller - Lazy getter
+  WebSocketDispatcherController get webSocketController =>
+      Get.find<WebSocketDispatcherController>();
 
   /// New loading state
   final RxBool isLoadingAction = false.obs;
@@ -79,6 +78,7 @@ class RequestTransportController extends GetxController {
       Rx<LocationAlternativeModel?>(null);
   final RxList<LocationAlternativeModel> savedAlternatives = RxList([]);
   final TextStorageService _textStorageService = TextStorageService();
+
   @override
   void onInit() {
     super.onInit();
@@ -88,6 +88,7 @@ class RequestTransportController extends GetxController {
     _locationTrackingService = Get.find<ILocationTrackingService>();
     _locationAlternativeService = Get.find<ILocationAlternativeService>();
 
+    // Request controller is lazily initialized on first access via getter
 
     reInitialize();
     getUserLocation();
@@ -100,9 +101,29 @@ class RequestTransportController extends GetxController {
     super.dispose();
   }
 
+  /// Lazy getter for request controller - tries to find the appropriate controller
+  /// when accessed, not during onInit
+  IDeliveryRequestController get _requestController {
+    try {
+      // Try StandardDeliveryController first
+      return Get.find<StandardDeliveryController>();
+    } catch (e) {
+      try {
+        // Try HotlineDirectController second
+        return Get.find<HotlineDirectController>();
+      } catch (e) {
+        throw Exception(
+          'Request controller not found in DI. '
+          'Make sure StandardDeliveryController or HotlineDirectController is registered.',
+        );
+      }
+    }
+  }
+
   Future<void> reInitialize() async {
-    if (imageProofPath.value!.isEmpty) {
-      imageProofPath.value = _textStorageService.getText("proofImagePath");
+    if (imageProofPath.value?.isEmpty ?? true) {
+      imageProofPath.value =
+          _textStorageService.getText("proofImagePath") ?? "";
     }
   }
 
@@ -123,23 +144,22 @@ class RequestTransportController extends GetxController {
       );
 
       // Only send rider location updates when in delivery status
-      // Route is already calculated in initializeRoute() - no need to recalculate here
-      if (_requestController.currentSelectedRequest.value!.status ==
-          BTexts.statusForDelivery) {
+      final currentRequest = _requestController.currentSelectedRequest.value;
+      if (currentRequest == null) return;
+
+      if (currentRequest.status == BTexts.statusForDelivery) {
         if (webSocketController.isConnected.value) {
           final riderLocation = RiderLocationModel(
             type: 'location_update',
-            requestId: _requestController.currentSelectedRequest.value!.id,
+            requestId: currentRequest.id,
             latitude: position.latitude,
             longitude: position.longitude,
             timestamp: position.timestamp,
             status: 'en_route',
-            riderInitial:
-                _requestController.currentSelectedRequest.value!.deliveredBy,
+            riderInitial: currentRequest.deliveredBy,
             eta: eta.value ?? "Calculating...",
             distance: distance.value ?? "Calculating...",
-            client:
-                _requestController.currentSelectedRequest.value!.client.name,
+            client: currentRequest.client.name,
           );
           webSocketController.sendMessage(jsonEncode(riderLocation.toJson()));
         } else {
@@ -161,7 +181,6 @@ class RequestTransportController extends GetxController {
       suggestions.value = result;
     } catch (e) {
       suggestions.clear();
-      logDebug('✗ Error getting suggestions: $e');
     }
   }
 
@@ -197,7 +216,6 @@ class RequestTransportController extends GetxController {
     } catch (e) {
       isRouteLoaded.value = false;
       _currentRouteDestination.value = null;
-      logDebug('✗ Error getting route: $e');
     }
   }
 
@@ -244,56 +262,32 @@ class RequestTransportController extends GetxController {
   /// Initialize route after address is set by the screen.
   /// Call this method after setting addressTextController.text in the UI.
   Future<void> initializeRoute() async {
-    logDebug('🚀 initializeRoute() called');
-
     // Wait for current location to be available
     if (currentLocation.value == LatLng(0, 0)) {
-      logDebug('⏳ Current location not available, waiting...');
       await Future.delayed(const Duration(milliseconds: 500));
       if (currentLocation.value == LatLng(0, 0)) {
-        logDebug('❌ Current location still not available after wait');
         return;
       }
     }
 
-    logDebug('📍 Current location ready: ${currentLocation.value}');
-
     // Load saved location alternatives from local database
-    logDebug('📂 Loading location alternatives from database...');
     await loadLocationAlternatives();
-
-    logDebug('✓ hasLocationAlternative: ${hasLocationAlternative.value}');
-    logDebug(
-        '✓ currentAlternative address: ${currentLocationAlternative.value?.address}');
 
     // Check if we have a saved alternative
     if (hasLocationAlternative.value &&
         currentLocationAlternative.value != null) {
       final savedLocation = currentLocationAlternative.value;
 
-      logDebug(
-          '📍 Using saved location alternative: ${savedLocation?.address}');
-
       // Use saved alternative coordinates directly (no need to geocode)
       destination.value =
           LatLng(savedLocation!.latitude, savedLocation.longitude);
       addressTextController.text = savedLocation.address;
 
-      logDebug('🗺️ Destination set: ${destination.value}');
-
       // Calculate route with saved coordinates directly
       await getRoute(currentLocation.value, destination.value);
-      logDebug('✓ Route calculated with saved coordinates');
     } else {
-      // Standard route initialization using address geocoding
-      logDebug('📝 No saved alternative - using address geocoding');
-      logDebug('📝 addressTextController.text: ${addressTextController.text}');
-
       if (addressTextController.text.isNotEmpty) {
-        logDebug(
-            '🔍 Calling getCoordinatesFromPlace with address: ${addressTextController.text}');
         await getCoordinatesFromPlace(addressTextController.text);
-        logDebug('✓ Route initialized from address');
       } else {
         logDebug('⚠️ No address set for route initialization');
       }
@@ -305,7 +299,15 @@ class RequestTransportController extends GetxController {
   /// Load all saved location alternatives for current request
   Future<void> loadLocationAlternatives() async {
     try {
-      final requestId = _requestController.currentSelectedRequest.value!.id;
+      final currentRequest = _requestController.currentSelectedRequest.value;
+      if (currentRequest == null) {
+        hasLocationAlternative.value = false;
+        currentLocationAlternative.value = null;
+        savedAlternatives.clear();
+        return;
+      }
+
+      final requestId = currentRequest.id;
 
       savedAlternatives.value = await _locationAlternativeService
           .getLocationAlternativesByRequestId(requestId);
@@ -371,18 +373,14 @@ class RequestTransportController extends GetxController {
   /// Save a corrected location when user taps the map to correct wrong address
   Future<void> saveLocationAlternative(
     LatLng coordinates,
-    String address, {
+    String address,
+    String id, {
     String? notes,
   }) async {
     try {
-      final requestId = _requestController.currentSelectedRequest.value!.id;
       final now = DateTime.now().toIso8601String();
-
-      logDebug(
-          '📍 Attempting to save location alternative for request: $requestId');
-
       final model = LocationAlternativeModel.fromStringId(
-        stringRequestId: requestId,
+        stringRequestId: id,
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         address: address,
@@ -391,8 +389,7 @@ class RequestTransportController extends GetxController {
       );
 
       // Save to database
-      final id =
-          await _locationAlternativeService.saveLocationAlternative(model);
+      await _locationAlternativeService.saveLocationAlternative(model);
 
       // Update reactive state
       currentLocationAlternative.value = model;
@@ -400,14 +397,11 @@ class RequestTransportController extends GetxController {
 
       // Reload alternatives list
       await loadLocationAlternatives();
-      BLoaders.successSnackBar(
-        title: 'Location Saved',
-        message: 'Corrected location saved. Delete on drop-off if accepted.',
-      );
     } catch (e) {
+      logDebug('Failed to save corrected location: $e');
       BLoaders.errorSnackBar(
         title: 'Error',
-        message: 'Failed to save corrected location: $e',
+        message: 'Failed to save location: $e',
       );
     }
   }
@@ -415,7 +409,13 @@ class RequestTransportController extends GetxController {
   /// Clear all location alternatives for current request (called on drop-off)
   Future<void> clearLocationAlternativesOnDropOff() async {
     try {
-      final requestId = _requestController.currentSelectedRequest.value!.id;
+      final currentRequest = _requestController.currentSelectedRequest.value;
+      if (currentRequest == null) {
+        logDebug('⚠️ No request selected');
+        return;
+      }
+
+      final requestId = currentRequest.id;
       await _locationAlternativeService.deleteLocationAlternativesByRequestId(
         requestId,
       );
@@ -424,10 +424,6 @@ class RequestTransportController extends GetxController {
       savedAlternatives.clear();
       currentLocationAlternative.value = null;
       hasLocationAlternative.value = false;
-
-      logDebug(
-        '✓ Cleared all location alternatives for request $requestId on drop-off',
-      );
     } catch (e) {
       logDebug('✗ Error clearing location alternatives: $e');
     }
@@ -439,7 +435,6 @@ class RequestTransportController extends GetxController {
       await _locationAlternativeService.deleteLocationAlternativeById(id);
       savedAlternatives.removeWhere((alt) => alt.requestId == id);
       hasLocationAlternative.value = savedAlternatives.isNotEmpty;
-      logDebug('✓ Deleted location alternative ID: $id');
     } catch (e) {
       logDebug('✗ Error deleting location alternative: $e');
     }
@@ -478,11 +473,14 @@ class RequestTransportController extends GetxController {
   }
 
   Future<void> processRequestDispatchOrDropOff(
-      StandardDeliveryModel currentRequest, userInitial) async {
+    StandardDeliveryModel currentRequest,
+    String userInitial,
+    IDeliveryRequestController requestController,
+  ) async {
     if (isLoadingAction.value) return;
     isLoadingAction.value = true; // <--- Start loading
 
-    if (eta.value!.isEmpty &&
+    if ((eta.value?.isEmpty ?? true) &&
         currentRequest.status == BTexts.statusItemPrepared) {
       BLoaders.warningSnackBar(
           title: 'Error', message: 'Please check address, No Route found.');
@@ -500,6 +498,7 @@ class RequestTransportController extends GetxController {
         await saveLocationAlternative(
           destination.value,
           addressTextController.text,
+          currentRequest.id,
           notes: 'User-corrected location from map tap',
         );
       } else if (currentRequest.status == BTexts.statusForDelivery) {
@@ -509,12 +508,14 @@ class RequestTransportController extends GetxController {
 
         // CLEAR location alternatives on successful drop-off
         await clearLocationAlternativesOnDropOff();
+        _textStorageService.clearAll();
 
         webSocketController.onClose();
       } else {
         isLoadingAction.value = false; // <--- Stop loading on error
       }
-      await _requestController.updateRequestStatus(
+
+      await requestController.updateRequestStatus(
           currentRequest, newStatus, userInitial);
     } catch (e) {
       BLoaders.errorSnackBar(

@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/local_storage/file_storage_service.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
@@ -16,6 +19,8 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
@@ -67,7 +72,7 @@ class StandardDeliveryDataManager {
   /// - Sends SMS to managers
   /// - Resets form state
   Future<void> saveRequestFromForm(
-      StandardDeliveryController controller) async {
+      IDeliveryRequestController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -171,14 +176,31 @@ class StandardDeliveryDataManager {
       // Save to repository
       await _repository.insertDelivery(newRequest);
 
-      // Reload requests
-      await fetchStandardDeliveryRequests(
-          controller, controller.useLocalStorage.value);
+      // Reload requests based on form category
+      // If it's Hotline Direct (form category ID '8'), refresh HotlineDirectController
+      // Otherwise, refresh StandardDeliveryController
+      if (normalizedFormCategory == '8') {
+        try {
+          final hotlineDirectController = Get.find<HotlineDirectController>();
+          await hotlineDirectController.dataManager.fetchHotlineDirectRequests(
+              hotlineDirectController,
+              hotlineDirectController.useLocalStorage.value);
+          hotlineDirectController.filterManager
+              .applyFilter(hotlineDirectController.allPendingRequests.toList());
+        } catch (e) {
+          logDebug('⚠️ Could not refresh Hotline Direct list: $e');
+        }
+      } else {
+        // Refresh Standard Delivery list
+        await fetchStandardDeliveryRequests(
+            controller, controller.useLocalStorage.value);
+      }
 
       // Reset form
       formState.reset();
 
       controller.errorMessage.value = null;
+      BLoaders.successSnackBar(title: 'Success', message: 'Request created');
     } catch (e) {
       controller.errorMessage.value = 'An error occurred: $e';
       BLoaders.errorSnackBar(
@@ -201,7 +223,7 @@ class StandardDeliveryDataManager {
     StandardDeliveryModel request,
     String newStatus,
     String userInitial,
-    StandardDeliveryController controller,
+    IDeliveryRequestController controller,
   ) async {
     try {
       controller.isSaving.value = true;
@@ -331,7 +353,9 @@ class StandardDeliveryDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
+
           await _repository.updateDelivery(updatedRequest);
+
           await _dbHelper.updateRequest(requestModel: updatedRequest);
         } else {
           await _dbHelper.updateRequest(requestModel: updatedRequest);
@@ -378,12 +402,26 @@ class StandardDeliveryDataManager {
       await _messageController.sendSmsMessage(
           managersPhoneNumber, newStatus, updatedRequest);
 
-      // Update controller state
-      controller.currentSelectedRequest.value = updatedRequest;
-      formState.reset();
+      // Force reactive update by nullifying first, then setting the new value
+      // This ensures GetX Obx widgets detect the change
+      controller.currentSelectedRequest.value = null;
 
-      await fetchStandardDeliveryRequests(
-          controller, controller.useLocalStorage.value);
+      // Small delay to ensure the null is registered
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      // Now set the updated request - this will trigger Obx rebuild
+      controller.currentSelectedRequest.value = updatedRequest;
+
+      // Update the request in the allPendingRequests list so it reflects the new status
+      final index = controller.allPendingRequests
+          .indexWhere((req) => req.id == updatedRequest.id);
+      if (index != -1) {
+        controller.allPendingRequests[index] = updatedRequest;
+        // Trigger update notification for RxList
+        controller.allPendingRequests.refresh();
+      }
+
+      formState.reset();
 
       BLoaders.successSnackBar(title: 'Success', message: 'Request updated');
     } catch (e) {
@@ -407,7 +445,7 @@ class StandardDeliveryDataManager {
   ///
   /// Sends WebSocket notification and SMS to relevant personnel.
   Future<void> cancelRequestWithRemarks(StandardDeliveryModel request,
-      String remarks, String user, StandardDeliveryController controller,
+      String remarks, String user, IDeliveryRequestController controller,
       [bool useLocalStorage = true]) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
@@ -489,7 +527,7 @@ class StandardDeliveryDataManager {
   ///
   /// Applies active filters after loading data.
   Future<void> fetchStandardDeliveryRequests(
-      StandardDeliveryController controller,
+      IDeliveryRequestController controller,
       [bool useLocalStorage = true]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
@@ -499,24 +537,16 @@ class StandardDeliveryDataManager {
 
       if (!useLocalStorage) {
         // Force API fetch
-        logDebug(
-            'StandardDeliveryDataManager: Fetching from API (useLocalStorage=false)');
         final apiRequests = await _repository.getAllPending();
         results = apiRequests;
         await _dbHelper.insertRequests(apiRequests);
       } else {
         // Try local DB first
-        logDebug('StandardDeliveryDataManager: Fetching from local DB first');
         results = await _dbHelper.getRequests();
         if (results.isEmpty) {
-          logDebug(
-              'StandardDeliveryDataManager: Local DB empty, fetching from API');
           final apiRequests = await _repository.getAllPending();
           results = apiRequests;
           await _dbHelper.insertRequests(apiRequests);
-        } else {
-          logDebug(
-              'StandardDeliveryDataManager: Loaded ${results.length} items from local DB');
         }
       }
 
@@ -525,16 +555,20 @@ class StandardDeliveryDataManager {
           results.where((r) => r.formCategoryID == '6').toList();
 
       controller.allPendingRequests.assignAll(standardDeliveryRequests);
-      logDebug(
-          'StandardDeliveryDataManager: Assigned ${results.length} requests to controller');
 
-      controller.filterManager
-          .applyFilter(controller.allPendingRequests.toList());
+      // Only apply filter if controller has filterManager (StandardDeliveryController)
+      try {
+        if (controller is StandardDeliveryController) {
+          controller.filterManager
+              .applyFilter(controller.allPendingRequests.toList());
+        }
+      } catch (e) {
+        logDebug('⚠️ Could not apply filterManager: $e');
+      }
+
       controller.updateRequestCounts();
     } catch (e) {
       controller.errorMessage.value = e.toString();
-      logDebug(
-          'StandardDeliveryDataManager.fetchStandardDeliveryRequests error: $e');
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;
@@ -548,7 +582,7 @@ class StandardDeliveryDataManager {
   /// - Item category: Prefers "reagent" category
   ///
   /// Safe to call multiple times; will not duplicate data.
-  Future<void> loadCategories(StandardDeliveryController controller) async {
+  Future<void> loadCategories(IDeliveryRequestController controller) async {
     try {
       final items = await Get.find<ItemCategoryRepository>().getAll();
       final forms = await Get.find<FormCategoryRepository>().getAll();
@@ -583,16 +617,10 @@ class StandardDeliveryDataManager {
   /// Persists API results to local DB for offline access.
   Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
     try {
-      logDebug(
-          '🔍 StandardDeliveryDataManager: Fetching cancel remarks for: $requestId');
-
-      // Try local DB first
       try {
         final bool exists = await _dbHelper.isRequestRemarkExisting(requestId);
         if (exists) {
           final localRemarks = await _dbHelper.getRequestRemarks(requestId);
-          logDebug(
-              '✅ StandardDeliveryDataManager: Found local remarks: "${localRemarks.remarks}"');
           return localRemarks;
         }
       } catch (e) {
@@ -606,17 +634,12 @@ class StandardDeliveryDataManager {
           requestId,
           module: RequestModule.standardDelivery,
         );
-        logDebug(
-            '✅ StandardDeliveryDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
-
         if (result != CancelRemarksModel.empty) {
           // Persist to local DB
           try {
             final remarksDao = await _dbHelper.remarksDao;
             await remarksDao.insertRemark(
                 requestId, result.remarks, result.date);
-            logDebug(
-                '💾 StandardDeliveryDataManager: Persisted remarks to local DB');
           } catch (e) {
             logDebug(
                 '⚠️ StandardDeliveryDataManager: Failed to persist remarks: $e');
@@ -625,11 +648,9 @@ class StandardDeliveryDataManager {
         }
         return CancelRemarksModel.empty;
       } catch (e) {
-        logDebug('❌ StandardDeliveryDataManager: API fetch failed: $e');
         return CancelRemarksModel.empty;
       }
     } catch (e) {
-      logDebug('❌ StandardDeliveryDataManager.fetchCancelRemarks FAILED: $e');
       return CancelRemarksModel.empty;
     }
   }

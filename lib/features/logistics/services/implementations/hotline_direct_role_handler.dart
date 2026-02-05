@@ -10,123 +10,127 @@ import '../../../../base/utils/popups/full_screen_loader.dart';
 import '../../../personalization/controller/user_controller.dart';
 import '../../models/standard_delivery_model.dart';
 
-abstract class RequestActionHandler {
+/// Abstract base class for Hotline Direct action handlers.
+abstract class HotlineDirectActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    dynamic requestController,
+    IDeliveryRequestController requestController,
     UserController userController,
-    String userInitial, // Pass userInitial directly
+    String userInitial,
   );
 
-  // Helper to show the dialog, can be part of the abstract class or a utility
-  void _showDialog(BuildContext context, StandardDeliveryModel request,
-      VoidCallback? onConfirm, bool canEdit,
+  /// Helper to show the dialog
+  void _showDialog(
+      BuildContext context,
+      StandardDeliveryModel request,
+      VoidCallback? onConfirm,
+      bool canEdit,
       IDeliveryRequestController requestController) {
     BFullScreenLoader.showRequestForReleasingDialog(
         context, request, onConfirm ?? () {}, canEdit, requestController);
   }
 }
 
-class RequestRoleHandler extends RequestActionHandler {
+/// Handler for "Request" role actions on Hotline Direct requests.
+class HotlineDirectRequestRoleHandler extends HotlineDirectActionHandler {
   @override
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    dynamic requestController,
+    IDeliveryRequestController requestController,
     UserController userController,
     String userInitial,
   ) {
-    final controller = requestController as IDeliveryRequestController;
     if (request.status == BTexts.statusNewRequest &&
         userController.user.value.role.contains('Request')) {
-      _showDialog(context, request, null, false, controller);
+      _showDialog(context, request, null, false, requestController);
     } else if (request.status == BTexts.statusNewRequest &&
         !userController.user.value.role.contains('Release')) {
-      _showDialog(context, request, null, false, controller);
+      _showDialog(context, request, null, false, requestController);
     } else if (request.status == BTexts.statusGettingSuppliesReady &&
         !userController.user.value.role.contains('Release')) {
-      _showDialog(context, request, null, false, controller);
+      _showDialog(context, request, null, false, requestController);
     } else if (request.status == BTexts.statusItemPrepared &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     } else if (request.status == BTexts.statusForDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     } else if (request.status == BTexts.statusDoneDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     }
   }
 }
 
-class ReleaseRoleHandler extends RequestActionHandler {
+/// Handler for "Release" role actions on Hotline Direct requests.
+class HotlineDirectReleaseRoleHandler extends HotlineDirectActionHandler {
   @override
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    dynamic requestController,
+    IDeliveryRequestController requestController,
     UserController userController,
     String userInitial,
   ) {
-    final controller = requestController as IDeliveryRequestController;
     if (request.status == BTexts.statusNewRequest) {
       _showDialog(
         context,
         request,
-        () => controller.updateRequestStatus(
+        () => requestController.updateRequestStatus(
             request, BTexts.statusGettingSuppliesReady, userInitial),
         true,
-        controller,
+        requestController,
       );
     } else if (request.status == BTexts.statusGettingSuppliesReady &&
         request.itemPreparedBy == userInitial) {
       _showDialog(
         context,
         request,
-        () => controller.updateRequestStatus(
+        () => requestController.updateRequestStatus(
             request, BTexts.statusItemPrepared, userInitial),
         true,
-        controller,
+        requestController,
       );
     } else if (request.status == BTexts.statusGettingSuppliesReady &&
         request.itemPreparedBy != userInitial) {
-      _showDialog(context, request, null, false, controller);
+      _showDialog(context, request, null, false, requestController);
     } else if (request.status == BTexts.statusItemPrepared &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     } else if (request.status == BTexts.statusForDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     } else if (request.status == BTexts.statusDoneDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     }
   }
 }
 
-class CourierRoleHandler extends RequestActionHandler {
+/// Handler for "Courier" role actions on Hotline Direct requests.
+class HotlineDirectCourierRoleHandler extends HotlineDirectActionHandler {
   @override
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    dynamic requestController,
+    IDeliveryRequestController requestController,
     UserController userController,
     String userInitial,
   ) {
-    final controller = requestController as IDeliveryRequestController;
     if (request.status == BTexts.statusNewRequest) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     } else if (request.status == BTexts.statusGettingSuppliesReady) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     } else if (request.status == BTexts.statusItemPrepared) {
       Get.to(() => RequestTransport(
           request: request, requestController: requestController));
@@ -134,7 +138,7 @@ class CourierRoleHandler extends RequestActionHandler {
         request.deliveredBy != userInitial &&
         request.helper != userInitial) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, controller);
+          context, request, () {}, false, requestController);
     } else if (request.status == BTexts.statusForDelivery &&
         (request.deliveredBy == userInitial || request.helper == userInitial)) {
       Get.to(() => RequestTransport(
@@ -143,33 +147,32 @@ class CourierRoleHandler extends RequestActionHandler {
   }
 }
 
-class ViewerRoleHandler extends RequestActionHandler {
+/// Handler for "Viewer" role actions on Hotline Direct requests.
+class HotlineDirectViewerRoleHandler extends HotlineDirectActionHandler {
   @override
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    dynamic requestController,
+    IDeliveryRequestController requestController,
     UserController userController,
     String userInitial,
   ) {
-    final controller = requestController as IDeliveryRequestController;
     BFullScreenLoader.showRequestForReleasingDialog(
-        context, request, () {}, false, controller);
+        context, request, () {}, false, requestController);
   }
 }
 
-// A default handler if no specific role matches or for common cases
-class DefaultRequestHandler extends RequestActionHandler {
+/// Default handler for Hotline Direct requests when no specific role handler applies.
+class HotlineDirectDefaultHandler extends HotlineDirectActionHandler {
   @override
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    dynamic requestController,
+    IDeliveryRequestController requestController,
     UserController userController,
     String userInitial,
   ) {
-    final controller = requestController as IDeliveryRequestController;
     BFullScreenLoader.showRequestForReleasingDialog(
-        context, request, () {}, false, controller);
+        context, request, () {}, false, requestController);
   }
 }

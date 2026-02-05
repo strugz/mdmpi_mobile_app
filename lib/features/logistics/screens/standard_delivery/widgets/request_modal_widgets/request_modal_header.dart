@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_mobile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
@@ -19,9 +19,11 @@ class RequestModalHeader extends StatelessWidget {
   const RequestModalHeader({
     super.key,
     required this.requestModel,
+    required this.requestController,
   });
 
   final StandardDeliveryModel requestModel;
+  final IDeliveryRequestController requestController;
 
   String _shortString(String? s, [int length = 16]) {
     final v = s ?? '';
@@ -32,7 +34,6 @@ class RequestModalHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     final userController = Get.find<UserInitialController>();
-    final requestController = Get.find<StandardDeliveryController>();
 
     final showPreparedBy = requestModel.status != BTexts.statusNewRequest &&
         requestModel.itemPreparedBy.isNotEmpty;

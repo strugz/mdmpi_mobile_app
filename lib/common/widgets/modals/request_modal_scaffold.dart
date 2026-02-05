@@ -35,6 +35,7 @@ class RequestModalScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
+
     return BRoundedContainer(
       backgroundColor: dark ? BColors.black : BColors.light,
       radius: 0,

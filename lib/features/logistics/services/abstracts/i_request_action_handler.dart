@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/request_transport.dart';
 
 import '../../../../base/utils/popups/full_screen_loader.dart';
@@ -17,9 +18,10 @@ abstract class RequestActionHandler {
 
   // Helper to show the dialog, can be part of the abstract class or a utility
   void showDialog(BuildContext context, StandardDeliveryModel request,
-      VoidCallback? onConfirm, bool canEdit) {
+      VoidCallback? onConfirm, bool canEdit,
+      IDeliveryRequestController requestController) {
     BFullScreenLoader.showRequestForReleasingDialog(
-        context, request, onConfirm ?? () {}, canEdit);
+        context, request, onConfirm ?? () {}, canEdit, requestController);
   }
 
   // Helper to navigate
@@ -29,3 +31,5 @@ abstract class RequestActionHandler {
         request: request, requestController: requestController));
   }
 }
+
+

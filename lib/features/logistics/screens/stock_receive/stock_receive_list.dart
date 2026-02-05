@@ -8,7 +8,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_co
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/pull_out_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/services/implementations/pull_out_role_handler.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/implementations/stock_receive_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
@@ -184,7 +184,7 @@ void _handleStockReceiveTap(
 
   // Handle cancelled/picked-up status with default handler
   if (statusLower == 'cancelled' || statusLower == 'picked-up') {
-    PullOutDefaultHandler().handleAction(
+    StockReceiveDefaultHandler().handleAction(
         context, request, controller as dynamic, userController, userInitial);
     return;
   }
@@ -193,16 +193,16 @@ void _handleStockReceiveTap(
 
   if (activeRole == null) {
     // No valid role - show default handler
-    PullOutDefaultHandler().handleAction(
+    StockReceiveDefaultHandler().handleAction(
         context, request, controller as dynamic, userController, userInitial);
     return;
   }
 
-  final handlers = <String, PullOutActionHandler>{
-    BTexts.roleRequest: PullOutRequestRoleHandler(),
-    BTexts.roleRelease: PullOutReleaseRoleHandler(),
-    BTexts.roleCourier: PullOutCourierRoleHandler(),
-    BTexts.roleViewer: PullOutViewerRoleHandler(),
+  final handlers = <String, StockReceiveActionHandler>{
+    BTexts.roleRequest: StockReceiveRequestRoleHandler(),
+    BTexts.roleRelease: StockReceiveReleaseRoleHandler(),
+    BTexts.roleCourier: StockReceiveCourierRoleHandler(),
+    BTexts.roleViewer: StockReceiveViewerRoleHandler(),
   };
 
   // Invoke only the selected handler
@@ -211,7 +211,7 @@ void _handleStockReceiveTap(
         context, request, controller as dynamic, userController, userInitial);
   } else {
     // Fallback if no handler is registered for the selected role
-    PullOutDefaultHandler().handleAction(
+    StockReceiveDefaultHandler().handleAction(
         context, request, controller as dynamic, userController, userInitial);
   }
 }

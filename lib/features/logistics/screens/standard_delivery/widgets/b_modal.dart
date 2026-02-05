@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
@@ -26,11 +26,13 @@ class BModal extends StatelessWidget {
   final StandardDeliveryModel requestModel;
   final VoidCallback onPressed;
   final bool status;
+  final IDeliveryRequestController requestController;
 
   const BModal({
     super.key,
     required this.requestModel,
     required this.onPressed,
+    required this.requestController,
     this.status = true,
   });
 
@@ -50,17 +52,19 @@ class BModal extends StatelessWidget {
     final bool isDoneDelivery =
         requestModel.status == BTexts.statusDoneDelivery;
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
-    final controller = Get.find<StandardDeliveryController>();
 
     // Preload cancel remarks for cancelled requests
     if (isCancelled) {
       final requestIdForRemarks =
           requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
-      controller.loadCancelRemarks(requestIdForRemarks);
+      requestController.loadCancelRemarks(requestIdForRemarks);
     }
 
     return RequestModalScaffold(
-      header: RequestModalHeader(requestModel: requestModel),
+      header: RequestModalHeader(
+        requestModel: requestModel,
+        requestController: requestController,
+      ),
       documentReferences: requestModel.documentReference,
       docsBottomDivider: true,
       // Status-specific action button (Prepare Item, Packed and Ready, etc.)
@@ -119,8 +123,8 @@ class BModal extends StatelessWidget {
         if (isCancelled) ...[
           Obx(() {
             // Reactively load and display cancel remarks
-            controller.loadCancelRemarks(requestModel.id);
-            final remarks = controller.cancelRemarks.value;
+            requestController.loadCancelRemarks(requestModel.id);
+            final remarks = requestController.cancelRemarks.value;
 
             // Hide section if no remarks available
             if (remarks == null || remarks.remarks.isEmpty) {

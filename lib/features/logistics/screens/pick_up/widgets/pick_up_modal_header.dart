@@ -23,28 +23,14 @@ class PickUpRequestModalHeader extends StatelessWidget {
 
   final PickUpModel requestModel;
 
-  String _formatDate(String value) {
-    if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy HH:mm').format(dt);
-    } catch (_) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final Color textColor = dark ? BColors.light : BColors.black;
+
     final hasAddress = requestModel.client.address.isNotEmpty;
     final hasPreparedBy = requestModel.preparedBy.isNotEmpty;
     final hasCreatedBy = requestModel.createdBy.isNotEmpty;
-    final hasReceivedBy = requestModel.receivedBy.isNotEmpty;
+
     final hasItemPreparedEndAt = requestModel.itemPreparedEndAt.isNotEmpty;
 
     return SingleChildScrollView(
@@ -79,7 +65,7 @@ class PickUpRequestModalHeader extends StatelessWidget {
             ),
             BLabelValueText(
               label: 'Item prepared at',
-              value: _formatDate(
+              value: BFormatter.formatDate2(
                 BFormatter.formatDateTimeCustomizable(
                   requestModel.itemPreparedAt,
                   "yyyy-MM-ddTHH:mm:ss.SSSSSS",
@@ -93,7 +79,7 @@ class PickUpRequestModalHeader extends StatelessWidget {
             if (hasItemPreparedEndAt)
               BLabelValueText(
                 label: 'Item prepared end at',
-                value: _formatDate(
+                value: BFormatter.formatDate2(
                   BFormatter.formatDateTimeCustomizable(
                     requestModel.itemPreparedEndAt,
                     "yyyy-MM-ddTHH:mm:ss.SSSSSS",
@@ -104,51 +90,6 @@ class PickUpRequestModalHeader extends StatelessWidget {
                 icon: Iconsax.calendar_1,
                 padding: EdgeInsets.zero,
               ),
-          ],
-          if (requestModel.status == BTexts.statusReceived) ...[
-            const SizedBox(height: BSizes.xs),
-            const BTextDivider(text: 'Release Details'),
-            if (hasReceivedBy) ...[
-              const SizedBox(height: BSizes.sm),
-              BLabelValueText(
-                label: 'Received By',
-                value: requestModel.receivedBy,
-                showLabel: false,
-                icon: Iconsax.user_octagon,
-                padding: EdgeInsets.zero,
-                mainAlignment: MainAxisAlignment.center,
-              ),
-              BLabelValueText(
-                label: 'Received at',
-                value: _formatDate(
-                  BFormatter.formatDateTimeCustomizable(
-                    requestModel.updatedAt,
-                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                    "yyyy-MM-dd HH:mm",
-                  ),
-                ),
-                showLabel: false,
-                icon: Iconsax.calendar_1,
-                padding: EdgeInsets.zero,
-                mainAlignment: MainAxisAlignment.center,
-              ),
-              const SizedBox(height: BSizes.sm),
-              CapturedSignatureImage(requestId: requestModel.id),
-              ViewDeliveredItemButton(
-                textColor: textColor,
-                labelTitle: BTexts.requestModalViewItemReceivedText,
-                onPressed: () {
-                  final requestIdForDb = requestModel.id;
-                  showRequestImageDialog(context,
-                      requestId: requestIdForDb,
-                      fetchIfMissing: true,
-                      semanticsLabel:
-                          'Delivered item image for request ${requestModel.id}',
-                      apiController: 'RequestPickUp',
-                      title: 'Pick Up Item');
-                },
-              )
-            ],
           ],
         ],
       ),

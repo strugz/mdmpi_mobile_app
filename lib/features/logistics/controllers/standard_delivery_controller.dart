@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -22,7 +23,8 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 /// - Manages local DB and API synchronization
 /// - Handles signature capture and image proof uploads
 /// - Tracks request counts by status
-class StandardDeliveryController extends GetxController {
+class StandardDeliveryController extends GetxController
+    implements IDeliveryRequestController {
   static StandardDeliveryController get instance => Get.find();
 
   // ========================================================================
@@ -31,44 +33,57 @@ class StandardDeliveryController extends GetxController {
 
   /// Complete list of Standard Delivery requests loaded from repository.
   /// This is the unfiltered source data.
+  @override
   final RxList<StandardDeliveryModel> allPendingRequests =
       <StandardDeliveryModel>[].obs;
 
   /// Currently selected Standard Delivery request for detail view or editing.
   /// Null when no request is selected.
+  @override
   final Rx<StandardDeliveryModel?> currentSelectedRequest =
       Rx<StandardDeliveryModel?>(null);
 
   /// Indicates whether a fetch/load operation is in progress.
   /// Used to show loading indicators in the UI.
+  @override
   final RxBool isLoading = false.obs;
 
   /// Indicates whether a save/update/delete operation is in progress.
   /// Prevents duplicate submissions during async operations.
+  @override
   final RxBool isSaving = false.obs;
 
   /// Storage preference flag for data source selection.
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
+  @override
   final RxBool useLocalStorage = false.obs;
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
+  @override
   final RxnString errorMessage = RxnString();
 
   /// Cancellation remarks data for the currently viewed Standard Delivery request.
   /// Contains remarks and cancellation date when a request is cancelled.
+  @override
   final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
 
   /// Request count by status for dashboard/statistics display.
+  @override
   final RxInt totalRequest = 0.obs;
+  @override
   final RxInt gettingSuppliesReady = 0.obs;
+  @override
   final RxInt itemPrepared = 0.obs;
+  @override
   final RxInt forDelivery = 0.obs;
+  @override
   final RxInt delivered = 0.obs;
 
   /// Identity of the user who created the current request.
   /// Automatically populated from logged-in user's initials.
+  @override
   String createdBy = '';
 
   // ========================================================================
@@ -82,9 +97,11 @@ class StandardDeliveryController extends GetxController {
   late final StandardDeliveryDataManager dataManager;
 
   /// Encapsulates all form-related state (text controllers, categories, dates, signatures).
+  @override
   late final StandardDeliveryFormState formState;
 
   /// Reference to user controller for accessing logged-in user information.
+  @override
   late final UserController userController;
 
   // ========================================================================
@@ -128,6 +145,7 @@ class StandardDeliveryController extends GetxController {
 
   /// Returns the currently filtered list of Standard Delivery requests.
   /// Applies active status and date filters from the filter manager.
+  @override
   List<StandardDeliveryModel> get filteredRequests =>
       filterManager.filteredRequests;
 
@@ -138,6 +156,7 @@ class StandardDeliveryController extends GetxController {
   /// Fetches all Standard Delivery requests from the configured data source.
   /// Uses local database if [useLocalStorage] is true, otherwise fetches from API.
   /// Automatically updates the [allPendingRequests] list and applies active filters.
+  @override
   Future<void> loadRequests() async {
     await dataManager.fetchStandardDeliveryRequests(
         this, useLocalStorage.value);
@@ -146,6 +165,7 @@ class StandardDeliveryController extends GetxController {
   /// Loads item categories from the repository and populates form state.
   /// Safe to call multiple times; will not duplicate data.
   /// Sets default category selection (prefers 'reagent' if available).
+  @override
   Future<void> loadCategories() async {
     await dataManager.loadCategories(this);
   }
@@ -154,6 +174,7 @@ class StandardDeliveryController extends GetxController {
   /// Updates [cancelRemarks] with the retrieved data or empty model on failure.
   ///
   /// [requestId] The unique identifier of the Standard Delivery request
+  @override
   Future<void> loadCancelRemarks(String requestId) async {
     try {
       final repo = Get.find<CancelRemarksRepository>();
@@ -169,6 +190,7 @@ class StandardDeliveryController extends GetxController {
 
   /// Refresh requests by clearing local database and fetching from API.
   /// Forces a fresh data load from the server.
+  @override
   Future<void> refreshRequests() async {
     await dataManager.fetchStandardDeliveryRequests(this, false);
   }
@@ -179,6 +201,7 @@ class StandardDeliveryController extends GetxController {
 
   /// Update request counts by status for dashboard statistics.
   /// Counts requests in each status category from the unfiltered list.
+  @override
   void updateRequestCounts() {
     totalRequest.value = allPendingRequests.length;
     gettingSuppliesReady.value = allPendingRequests
@@ -210,6 +233,7 @@ class StandardDeliveryController extends GetxController {
   /// - Delivered: Shows completed deliveries
   ///
   /// [statusFilter] The status filter to apply
+  @override
   void selectStatusFilter(StandardDeliveryStatusFilter statusFilter) {
     filterManager.selectStatusFilter(statusFilter, allPendingRequests);
   }
@@ -225,6 +249,7 @@ class StandardDeliveryController extends GetxController {
   /// - All: Shows all requests regardless of date
   ///
   /// [filter] The date filter to apply
+  @override
   void selectFilter(RequestFilter filter) {
     filterManager.selectFilter(filter, allPendingRequests);
   }
@@ -243,6 +268,7 @@ class StandardDeliveryController extends GetxController {
   /// - Requested by must be selected
   ///
   /// Note: Form reset is handled by the data manager after successful save.
+  @override
   Future<void> saveRequest() async {
     await dataManager.saveRequestFromForm(this);
   }
@@ -261,6 +287,7 @@ class StandardDeliveryController extends GetxController {
   /// [requestModel] The Standard Delivery request to update
   /// [newStatus] The new status to set (must be a valid status string)
   /// [userInitial] The initial of the user performing the status update
+  @override
   Future<void> updateRequestStatus(StandardDeliveryModel requestModel,
       String newStatus, String userInitial) async {
     await dataManager.updateRequestStatus(
@@ -283,6 +310,7 @@ class StandardDeliveryController extends GetxController {
   /// [requestModel] The Standard Delivery request to cancel
   /// [remarks] Explanation for the cancellation (required)
   /// [showLoader] Whether to show loading dialog (default: true)
+  @override
   Future<void> updateRequestForCancellation(
       StandardDeliveryModel requestModel, String remarks,
       {bool showLoader = true}) async {
@@ -297,6 +325,7 @@ class StandardDeliveryController extends GetxController {
 
   /// Adds a new empty document reference field to the form.
   /// Creates a new TextEditingController and adds it to the reactive list.
+  @override
   void addDocumentReferenceField() {
     formState.documentReferenceControllers.add(TextEditingController());
   }
@@ -305,6 +334,7 @@ class StandardDeliveryController extends GetxController {
   /// Disposes the controller to prevent memory leaks.
   ///
   /// [controller] The TextEditingController to remove and dispose
+  @override
   void removeDocumentReferenceField(TextEditingController controller) {
     controller.dispose();
     formState.documentReferenceControllers.remove(controller);
@@ -314,6 +344,7 @@ class StandardDeliveryController extends GetxController {
   /// Triggers reactive updates in the UI.
   ///
   /// [clientDetails] The new client information to set
+  @override
   void updateRequestClientInformation(ClientModel clientDetails) {
     formState.clientInformation.value = clientDetails;
   }
@@ -322,6 +353,7 @@ class StandardDeliveryController extends GetxController {
   /// Converts the signature bytes to Base64 for storage and transmission.
   ///
   /// [signature] The signature image bytes, or null to clear
+  @override
   void setSignature(Uint8List? signature) {
     formState.receiverSignatureBytes.value = signature;
     formState.receiverSignatureBase64.value =
@@ -342,6 +374,7 @@ class StandardDeliveryController extends GetxController {
   /// - Disable local storage to force fresh data from server
   ///
   /// [value] True to use local storage, false to use API directly
+  @override
   void toggleStoragePreference(bool value) {
     useLocalStorage.value = value;
     loadRequests();

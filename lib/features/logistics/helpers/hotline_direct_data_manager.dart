@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -67,8 +69,7 @@ class HotlineDirectDataManager {
   /// - Sends WebSocket notification
   /// - Sends SMS to managers
   /// - Resets form state
-  Future<void> saveRequestFromForm(
-      HotlineDirectController controller) async {
+  Future<void> saveRequestFromForm(HotlineDirectController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -142,7 +143,8 @@ class HotlineDirectDataManager {
 
       // Send notifications
       _webSocketController.sendNotificationMessage(
-        NotificationModel(title: 'New', body: 'New Hotline Direct Request Received!'),
+        NotificationModel(
+            title: 'New', body: 'New Hotline Direct Request Received!'),
       );
 
       final managersPhoneNumber = await _dbHelper
@@ -280,6 +282,8 @@ class HotlineDirectDataManager {
             : request.tripTicketNumber,
       );
 
+      print('HEY2: ${jsonEncode(updatedRequest)}');
+
       // Handle signature upload
       final bool signatureWasAdded = newStatus == BTexts.statusDoneDelivery &&
           request.signature.isEmpty &&
@@ -360,7 +364,8 @@ class HotlineDirectDataManager {
 
       // Send notifications
       _webSocketController.sendNotificationMessage(
-        NotificationModel(title: 'Hotline Direct Update', body: updatedRequest.status),
+        NotificationModel(
+            title: 'Hotline Direct Update', body: updatedRequest.status),
       );
 
       final managersPhoneNumber = await _dbHelper
@@ -384,12 +389,30 @@ class HotlineDirectDataManager {
       await _messageController.sendSmsMessage(
           managersPhoneNumber, newStatus, updatedRequest);
 
-      // Update controller state
+      // Force reactive update by nullifying first, then setting the new value
+      // This ensures GetX Obx widgets detect the change
+      controller.currentSelectedRequest.value = null;
+
+      // Small delay to ensure the null is registered
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      // Now set the updated request - this will trigger Obx rebuild
       controller.currentSelectedRequest.value = updatedRequest;
+
+      // Update the request in the allPendingRequests list so it reflects the new status
+      final index = controller.allPendingRequests
+          .indexWhere((req) => req.id == updatedRequest.id);
+      if (index != -1) {
+        controller.allPendingRequests[index] = updatedRequest;
+        // Trigger update notification for RxList
+        controller.allPendingRequests.refresh();
+      }
+
       formState.reset();
 
-      await fetchHotlineDirectRequests(
-          controller, controller.useLocalStorage.value);
+      // Ensure filter is reapplied to update the displayed list
+      controller.filterManager
+          .applyFilter(controller.allPendingRequests.toList());
 
       BLoaders.successSnackBar(title: 'Success', message: 'Request updated');
     } catch (e) {
@@ -412,11 +435,8 @@ class HotlineDirectDataManager {
   /// - Offline: Updates local DB only with sync warning
   ///
   /// Sends WebSocket notification and SMS to relevant personnel.
-  Future<void> cancelRequestWithRemarks(
-      StandardDeliveryModel request,
-      String remarks,
-      String user,
-      HotlineDirectController controller) async {
+  Future<void> cancelRequestWithRemarks(StandardDeliveryModel request,
+      String remarks, String user, HotlineDirectController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -478,6 +498,10 @@ class HotlineDirectDataManager {
       await fetchHotlineDirectRequests(
           controller, controller.useLocalStorage.value);
 
+      // Ensure filter is reapplied to update the displayed list
+      controller.filterManager
+          .applyFilter(controller.allPendingRequests.toList());
+
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');
     } catch (e) {
@@ -496,8 +520,7 @@ class HotlineDirectDataManager {
   /// - useLocalStorage = true: Try local DB first, fallback to API if empty
   ///
   /// Filters for Hotline Direct category only and applies active filters after loading data.
-  Future<void> fetchHotlineDirectRequests(
-      HotlineDirectController controller,
+  Future<void> fetchHotlineDirectRequests(HotlineDirectController controller,
       [bool useLocalStorage = true]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
@@ -507,43 +530,31 @@ class HotlineDirectDataManager {
 
       if (!useLocalStorage) {
         // Force API fetch
-        logDebug(
-            'HotlineDirectDataManager: Fetching from API (useLocalStorage=false)');
         final apiRequests = await _repository.getAllPending();
         results = apiRequests;
         await _dbHelper.insertRequests(apiRequests);
       } else {
         // Try local DB first
-        logDebug('HotlineDirectDataManager: Fetching from local DB first');
         results = await _dbHelper.getRequests();
         if (results.isEmpty) {
-          logDebug(
-              'HotlineDirectDataManager: Local DB empty, fetching from API');
           final apiRequests = await _repository.getAllPending();
           results = apiRequests;
           await _dbHelper.insertRequests(apiRequests);
-        } else {
-          logDebug(
-              'HotlineDirectDataManager: Loaded ${results.length} items from local DB');
         }
       }
 
       // Filter for Hotline Direct category only (formCategoryID = '8')
-      final hotlineDirectRequests = results
-          .where((r) => r.formCategoryID == '8')
-          .toList();
+      final hotlineDirectRequests =
+          results.where((r) => r.formCategoryID == '8').toList();
 
       controller.allPendingRequests.assignAll(hotlineDirectRequests);
-      logDebug(
-          'HotlineDirectDataManager: Assigned ${hotlineDirectRequests.length} Hotline Direct requests to controller');
 
       controller.filterManager
           .applyFilter(controller.allPendingRequests.toList());
+
       controller.updateRequestCounts();
     } catch (e) {
       controller.errorMessage.value = e.toString();
-      logDebug(
-          'HotlineDirectDataManager.fetchHotlineDirectRequests error: $e');
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;
@@ -567,8 +578,9 @@ class HotlineDirectDataManager {
       if (controller.formState.formCategory.text.trim().isEmpty &&
           controller.formState.formCategories.isNotEmpty) {
         final defaultForm = controller.formState.formCategories.firstWhere(
-          (e) => e.name.toLowerCase().contains('hotline') ||
-                 e.name.toLowerCase().contains('direct'),
+          (e) =>
+              e.name.toLowerCase().contains('hotline') ||
+              e.name.toLowerCase().contains('direct'),
           orElse: () => controller.formState.formCategories.first,
         );
         controller.formState.formCategory.text = defaultForm.id;
@@ -654,9 +666,8 @@ class HotlineDirectDataManager {
     try {
       final requests = await _dbHelper.getRequests();
       // Filter for Hotline Direct category (formCategoryID = '8')
-      final hotlineDirectRequests = requests
-          .where((r) => r.formCategoryID == '8')
-          .toList();
+      final hotlineDirectRequests =
+          requests.where((r) => r.formCategoryID == '8').toList();
 
       for (var request in hotlineDirectRequests) {
         if (request.status != BTexts.statusNewRequest) {
@@ -664,7 +675,8 @@ class HotlineDirectDataManager {
         }
       }
       BLoaders.successSnackBar(
-          title: 'Success', message: 'Modified Hotline Direct requests uploaded successfully');
+          title: 'Success',
+          message: 'Modified Hotline Direct requests uploaded successfully');
     } catch (e) {
       BLoaders.errorSnackBar(
           title: 'Upload Failed',
@@ -672,4 +684,3 @@ class HotlineDirectDataManager {
     }
   }
 }
-

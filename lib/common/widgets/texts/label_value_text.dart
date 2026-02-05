@@ -12,6 +12,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 /// - Set [showLabel] to false to render only the value without a label or colon.
 /// - Truncates to a single line by default; set maxLines for multi-line values.
 /// - When [copyable] is true and [value] is not empty, shows a trailing copy icon.
+/// - Set [smallSize] to true to use smaller text styles.
 class BLabelValueText extends StatelessWidget {
   const BLabelValueText({
     super.key,
@@ -26,6 +27,7 @@ class BLabelValueText extends StatelessWidget {
     this.showLabel = true,
     this.padding,
     this.mainAlignment = MainAxisAlignment.start,
+    this.smallSize = false,
   });
 
   final String label;
@@ -39,12 +41,14 @@ class BLabelValueText extends StatelessWidget {
   final bool showLabel;
   final EdgeInsetsGeometry? padding;
   final MainAxisAlignment mainAlignment;
+  final bool smallSize;
 
   @override
   Widget build(BuildContext context) {
     final color = textColor ??
         (BHelperFunctions.isDarkMode(context) ? BColors.light : BColors.black);
-    final baseStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+    final textTheme = Theme.of(context).textTheme;
+    final baseStyle = (smallSize ? textTheme.labelLarge : textTheme.bodyMedium)?.copyWith(
           color: color,
           height: dense ? 1.1 : null,
         );
