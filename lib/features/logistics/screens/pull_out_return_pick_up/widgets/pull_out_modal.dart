@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dar
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal_header.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_request_modal_footer.dart';
 
 class PullOutModal extends StatelessWidget {
@@ -55,20 +56,28 @@ class PullOutModal extends StatelessWidget {
         },
       ),
       children: [
+        // Cancel Remarks Section
         if (isCancelled)
-          BTextDivider(text: 'Cancel Remarks'),
           Obx(() {
-            controller.loadCancelRemarks(requestModel.id);
             final remarks = controller.cancelRemarks.value;
             if (remarks == null || remarks.remarks.isEmpty) {
               return const SizedBox.shrink();
             }
-            return BCancelRemarks(
-              remarks: remarks.remarks,
-              date: remarks.date,
-              user: remarks.userUpdated,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const BTextDivider(text: 'Cancel Remarks'),
+                BCancelRemarks(
+                  remarks: remarks.remarks,
+                  date: remarks.date,
+                  user: remarks.userUpdated,
+                ),
+              ],
             );
           }),
+        // Body with all sections (Delivery Info, Pull out Info, IRRF, Receiver Details)
+        PullOutModalBody(requestModel: requestModel),
+        // Footer with delivery details and proof of pull out
         PullOutRequestModalFooter(requestModel: requestModel),
       ],
     );

@@ -39,9 +39,11 @@ class PullOutRequestModalFooter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// -- For Out Transit --
+        /// -- Proof of Pull out (for In Transit status) --
         if (requestModel.requestStatus == BTexts.statusInTransit) ...[
+          const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Proof of Pull out'),
+          const SizedBox(height: BSizes.sm),
           Obx(
             () => Center(
               child: Column(
@@ -58,31 +60,32 @@ class PullOutRequestModalFooter extends StatelessWidget {
                     ),
                     icon: Icon(Iconsax.camera, size: 25, color: iconColor),
                   ),
-                  BProductTitleText(
-                    title: cameraController.imageProofPath.value,
-                    maxLines: 1,
-                    smallSize: true,
-                    fontColor: textColor,
-                  ),
+                  if (cameraController.imageProofPath.value.isNotEmpty)
+                    BProductTitleText(
+                      title: cameraController.imageProofPath.value,
+                      maxLines: 1,
+                      smallSize: true,
+                      fontColor: textColor,
+                    ),
                 ],
               ),
             ),
           ),
+          const SizedBox(height: BSizes.spaceBtwItems),
           BTextFormField(
             controller: requestController.formState.releasedByController,
             label: 'Released By',
             keyboardType: TextInputType.text,
           ),
+          const SizedBox(height: BSizes.sm),
           Center(
             child: TextButton.icon(
-              // Use Obx to rebuild if signature changes
               onPressed: () => BFullScreenLoader.showSignatureDialogForPullOut(
                   context, requestController),
               icon: Icon(
                 requestController.formState.receiverSignatureBytes.value == null
-                    ? Iconsax.edit // Or another icon for "add signature"
-                    : Iconsax
-                        .document_upload, // Or an icon for "view/change signature"
+                    ? Iconsax.edit
+                    : Iconsax.document_upload,
                 color: textColor,
               ),
               label: Text(
@@ -107,7 +110,7 @@ class PullOutRequestModalFooter extends StatelessWidget {
                     ),
                     const SizedBox(height: BSizes.xs),
                     Container(
-                      height: 200, // Adjust as needed
+                      height: 200,
                       decoration: BoxDecoration(
                         border: Border.all(color: BColors.grey),
                       ),
@@ -119,28 +122,39 @@ class PullOutRequestModalFooter extends StatelessWidget {
               ),
             ),
         ],
-        if (hasDriver || hasHelper) ...[
-          BTextDivider(text: 'Delivery details'),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (hasDriver)
-                BProductTitleText(
-                  title: 'Driver: ${requestModel.driver}',
-                  maxLines: 2,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.black,
-                ),
-              if (hasHelper)
-                BProductTitleText(
-                  title: 'Helper: ${requestModel.helper}',
-                  maxLines: 2,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.black,
-                ),
-            ],
-          ),
-          if (hasDeparted)
+
+        /// -- Delivery Details (when driver/helper/dates are available) --
+        if (hasDriver || hasHelper || hasDeparted || hasPullOut) ...[
+          const SizedBox(height: BSizes.md),
+          const BTextDivider(text: 'Delivery Details'),
+          const SizedBox(height: BSizes.sm),
+          if (hasDriver || hasHelper)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                if (hasDriver)
+                  Expanded(
+                    child: BProductTitleText(
+                      title: 'Driver: ${requestModel.driver}',
+                      maxLines: 2,
+                      smallSize: true,
+                      fontColor: textColor,
+                    ),
+                  ),
+                if (hasDriver && hasHelper) const SizedBox(width: BSizes.xs),
+                if (hasHelper)
+                  Expanded(
+                    child: BProductTitleText(
+                      title: 'Helper: ${requestModel.helper}',
+                      maxLines: 2,
+                      smallSize: true,
+                      fontColor: textColor,
+                    ),
+                  ),
+              ],
+            ),
+          if (hasDeparted) ...[
+            const SizedBox(height: BSizes.sm),
             BProductTitleText(
               title: 'Departed At: ${BFormatter.formatDateTimeCustomizable(
                 requestModel.pullOutDateStartAt,
@@ -149,10 +163,11 @@ class PullOutRequestModalFooter extends StatelessWidget {
               )}',
               maxLines: 1,
               smallSize: true,
-              fontColor: dark ? BColors.light : BColors.black,
+              fontColor: textColor,
             ),
-          const SizedBox(height: BSizes.xs),
-          if (hasPullOut)
+          ],
+          if (hasPullOut) ...[
+            const SizedBox(height: BSizes.sm),
             BProductTitleText(
               title: 'Pull Out At: ${BFormatter.formatDateTimeCustomizable(
                 requestModel.pullOutDateEndAt,
@@ -161,9 +176,9 @@ class PullOutRequestModalFooter extends StatelessWidget {
               )}',
               maxLines: 1,
               smallSize: true,
-              fontColor: dark ? BColors.light : BColors.black,
+              fontColor: textColor,
             ),
-          const SizedBox(height: BSizes.xs),
+          ],
         ],
       ],
     );
