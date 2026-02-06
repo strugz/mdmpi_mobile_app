@@ -37,7 +37,7 @@ class PullOutFormState {
   void initializeDefaultDate() {
     final defaultDate = DateTime.now();
     pullOutDateController.text = DateFormat('yyyy-MM-dd').format(defaultDate);
-    irrfDateController.text = DateFormat('yyyy-MM-dd').format(defaultDate);
+    // IRRF Date is optional - no default value
   }
 
   void reset() {

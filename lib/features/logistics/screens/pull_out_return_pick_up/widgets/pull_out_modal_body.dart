@@ -55,6 +55,55 @@ class PullOutModalBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // ========== SUB BODY: Pull out Info ==========
+        if (hasRequestedBy || hasPullOutDate) ...[
+          const SizedBox(height: BSizes.sm),
+          const BTextDivider(text: 'Pull out Info'),
+          const SizedBox(height: BSizes.sm),
+          Row(
+            children: [
+              if (hasRequestedBy)
+                Expanded(
+                  child: BLabelValueText(
+                    label: 'Requested By',
+                    value: requestModel.requestedBy,
+                    showLabel: false,
+                    icon: Iconsax.user,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              if (hasRequestedBy && hasPullOutDate)
+                const SizedBox(width: BSizes.xs),
+              if (hasPullOutDate)
+                Expanded(
+                  child: BLabelValueText(
+                    label: 'Pull-Out Date',
+                    value: _formatDate(requestModel.pullOutDate),
+                    showLabel: false,
+                    icon: Iconsax.calendar_1,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+            ],
+          ),
+          if (hasReasonForReturn) ...[
+            if (hasIrrfDate) const SizedBox(height: BSizes.sm),
+            Row(
+              children: [
+                Expanded(
+                  child: BLabelValueText(
+                    label: 'Reason',
+                    value: requestModel.reasonForReturn,
+                    maxLines: 3,
+                    icon: Iconsax.message_text,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+
         // ========== BODY: Delivery Info (for new requests) ==========
         if (requestModel.requestStatus == BTexts.statusNewRequest) ...[
           const SizedBox(height: BSizes.sm),
@@ -121,42 +170,9 @@ class PullOutModalBody extends StatelessWidget {
             );
           }),
         ],
-
-        // ========== SUB BODY: Pull out Info ==========
-        if (hasRequestedBy || hasPullOutDate) ...[
-          const SizedBox(height: BSizes.sm),
-          const BTextDivider(text: 'Pull out Info'),
-          const SizedBox(height: BSizes.sm),
-          Row(
-            children: [
-              if (hasRequestedBy)
-                Expanded(
-                  child: BLabelValueText(
-                    label: 'Requested By',
-                    value: requestModel.requestedBy,
-                    showLabel: false,
-                    icon: Iconsax.user,
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-              if (hasRequestedBy && hasPullOutDate)
-                const SizedBox(width: BSizes.xs),
-              if (hasPullOutDate)
-                Expanded(
-                  child: BLabelValueText(
-                    label: 'Pull-Out Date',
-                    value: _formatDate(requestModel.pullOutDate),
-                    showLabel: false,
-                    icon: Iconsax.calendar_1,
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-            ],
-          ),
-        ],
-
+        const SizedBox(height: BSizes.spaceBtwItems),
         // ========== SUB BODY: IRRF ==========
-        if (hasIrrfDate || hasReasonForReturn) ...[
+        if (hasIrrfDate) ...[
           const SizedBox(height: BSizes.sm),
           const BTextDivider(text: 'IRRF'),
           const SizedBox(height: BSizes.sm),
@@ -185,23 +201,6 @@ class PullOutModalBody extends StatelessWidget {
                 ),
               ],
             ),
-          if (hasReasonForReturn) ...[
-            if (hasIrrfDate) const SizedBox(height: BSizes.sm),
-            Row(
-              children: [
-                Expanded(
-                  child: BLabelValueText(
-                    label: 'Reason',
-                    value: requestModel.reasonForReturn,
-                    showLabel: false,
-                    maxLines: 3,
-                    icon: Iconsax.message_text,
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
       ],
     );
