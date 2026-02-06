@@ -74,12 +74,95 @@ class AirSeaReleaseRoleHandler extends AirSeaActionHandler {
         }
 
         if (selectedStatus == 'Endorsed to Guard') {
+          // Validate Guard Name
+          if (controller.formState.receivedByController.text.trim().isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please enter Guard Name',
+            );
+            return;
+          }
+
+          // Validate Guard Signature
+          if (controller.formState.receiverSignatureBytes.value == null ||
+              controller.formState.receiverSignatureBytes.value!.isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please capture Guard Signature',
+            );
+            return;
+          }
+
           await controller.updateStatusWithInputs(
               request, BTexts.statusEndorsedToGuard);
         } else if (selectedStatus == 'Received') {
+          // Validate Receiver Name
+          if (controller.formState.receivedByController.text.trim().isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please enter Receiver Name',
+            );
+            return;
+          }
+
+          // Validate Waybill Number
+          if (controller.formState.waybillNumberController.text.trim().isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please enter Waybill Number',
+            );
+            return;
+          }
+
+          // Validate Receiver Signature
+          if (controller.formState.receiverSignatureBytes.value == null ||
+              controller.formState.receiverSignatureBytes.value!.isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please capture Receiver Signature',
+            );
+            return;
+          }
+
           await controller.updateStatusWithInputs(
               request, BTexts.statusReceived);
         } else if (selectedStatus == BTexts.statusDispatch) {
+          // Validate Trip Ticket Number
+          if (controller.formState.tripTicketController.text.trim().isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please enter Trip Ticket Number',
+            );
+            return;
+          }
+
+          // Validate Driver
+          if (controller.formState.driverController.text.trim().isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please select Driver',
+            );
+            return;
+          }
+
+          // Validate Helper
+          if (controller.formState.helperController.text.trim().isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please select Helper',
+            );
+            return;
+          }
+
+          // Validate Vehicle
+          if (controller.formState.vehicleController.text.trim().isEmpty) {
+            BLoaders.errorSnackBar(
+              title: 'Validation Error',
+              message: 'Please select Vehicle',
+            );
+            return;
+          }
+
           await controller.updateStatusWithInputs(
               request, BTexts.statusDispatch);
         }
