@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -62,6 +63,16 @@ class AirSeaReleaseRoleHandler extends AirSeaActionHandler {
     } else if (request.status == BTexts.statusItemPacked) {
       BFullScreenLoader.showAirSeaDialog(context, request, () async {
         final selectedStatus = controller.formState.endorsedToController.text;
+
+        // Validate that a status is selected
+        if (selectedStatus.isEmpty) {
+          BLoaders.errorSnackBar(
+            title: 'Validation Error',
+            message: 'Please select a status',
+          );
+          return;
+        }
+
         if (selectedStatus == 'Endorsed to Guard') {
           await controller.updateStatusWithInputs(
               request, BTexts.statusEndorsedToGuard);

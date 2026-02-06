@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/air_sea_request_card.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/implementations/air_sea_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
