@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -26,7 +25,8 @@ class PullOutModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isCancelled = requestModel.requestStatus == BTexts.statusCancelled;
+    final bool isCancelled =
+        requestModel.requestStatus == BTexts.statusCancelled;
     final controller = Get.find<PullOutController>();
 
     // Load cancel remarks if cancelled

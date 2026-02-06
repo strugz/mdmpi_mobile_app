@@ -144,7 +144,7 @@ class BTexts {
   static const String requestModalCloseButtonText = "Close";
   static const String requestModalImageNotFoundError =
       "Error: Delivery shot image not found.";
-  static const String requestModalViewItemDeliveredText = "View Item Delivered";
+  static const String requestModalViewItemDeliveredText = "Proof Item Delivered";
   static const String requestModalViewItemReceivedText = "View Item Received";
   static const String requestModalPrepareItemButtonText = "Prepare Item";
   static const String requestModalPackedAndReadyButtonText =

@@ -23,28 +23,31 @@ class PullOutRequestModalHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Client Name
+        // Client Name - responsive with flexible text wrapping
         BProductTitleText(
           title: requestModel.client.name,
-          maxLines: 2,
+          maxLines: 3,
           bold: true,
           fontColor: dark ? BColors.light : BColors.black,
         ),
-        // Client Address
+        // Client Address - responsive
         if (hasAddress) ...[
           const SizedBox(height: BSizes.xs),
           BProductTitleText(
             title: requestModel.client.address,
-            maxLines: 2,
+            maxLines: 3,
             smallSize: true,
             fontColor: dark ? BColors.light : BColors.black,
           ),
         ],
-        // Status Chip
+        // Status Chip - responsive
         const SizedBox(height: BSizes.xs),
-        StatusChip(
-          status: requestModel.requestStatus,
-          compact: false,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: StatusChip(
+            status: requestModel.requestStatus,
+            compact: false,
+          ),
         ),
       ],
     );

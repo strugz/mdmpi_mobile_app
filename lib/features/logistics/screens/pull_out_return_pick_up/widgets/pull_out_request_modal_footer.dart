@@ -6,6 +6,9 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 
 import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../base/utils/constants/sizes.dart';
@@ -35,6 +38,8 @@ class PullOutRequestModalFooter extends StatelessWidget {
     final hasHelper = requestModel.helper.isNotEmpty;
     final hasDeparted = requestModel.pullOutDateStartAt.isNotEmpty;
     final hasPullOut = requestModel.pullOutDateEndAt.isNotEmpty;
+
+    final hasReleasedBy = requestModel.releasedBy.isNotEmpty;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,60 +128,137 @@ class PullOutRequestModalFooter extends StatelessWidget {
             ),
         ],
 
-        /// -- Delivery Details (when driver/helper/dates are available) --
-        if (hasDriver || hasHelper || hasDeparted || hasPullOut) ...[
+        /// -- Delivery Details --
+        if (hasDriver ||
+            hasHelper ||
+            hasReleasedBy ||
+            hasDeparted ||
+            hasPullOut) ...[
           const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Delivery Details'),
           const SizedBox(height: BSizes.sm),
-          if (hasDriver || hasHelper)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                if (hasDriver)
-                  Expanded(
-                    child: BProductTitleText(
-                      title: 'Driver: ${requestModel.driver}',
-                      maxLines: 2,
-                      smallSize: true,
-                      fontColor: textColor,
+
+          // Signature as watermark behind entire section - responsive
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate signature size based on available width
+              final screenWidth = constraints.maxWidth;
+              final signatureWidth = (screenWidth * 0.35).clamp(80.0, 130.0);
+              final signatureHeight = (signatureWidth * 0.5).clamp(40.0, 65.0);
+
+              return Stack(
+                children: [
+                  // Signature watermark - right aligned and faded
+                  if (hasReleasedBy)
+                    Positioned(
+                      top: 20,
+                      right: 0,
+                      child: Container(
+                        color: Colors.white,
+                        child: SizedBox(
+                          width: signatureWidth,
+                          height: signatureHeight,
+                          child: CapturedSignatureImage(
+                            requestId: requestModel.id,
+                          ),
+                        ),
+                      ),
                     ),
+                  // Main content on top
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Driver/Helper and Receiver row - always horizontal
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left column: Driver and Helper
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (hasDriver)
+                                  BProductTitleText(
+                                    title: 'Driver: ${requestModel.driver}',
+                                    maxLines: 3,
+                                    smallSize: true,
+                                    fontColor: textColor,
+                                  ),
+                                if (hasDriver && hasHelper)
+                                  const SizedBox(height: BSizes.xs),
+                                if (hasHelper)
+                                  BProductTitleText(
+                                    title: 'Helper: ${requestModel.helper}',
+                                    maxLines: 3,
+                                    smallSize: true,
+                                    fontColor: textColor,
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: BSizes.sm),
+                          // Right column: Receiver (signature overlays here)
+                          if (hasReleasedBy)
+                            Expanded(
+                              child: BProductTitleText(
+                                title: 'Receiver: ${requestModel.releasedBy}',
+                                maxLines: 3,
+                                smallSize: true,
+                                fontColor: textColor,
+                              ),
+                            ),
+                        ],
+                      ),
+                      // Timestamps
+                      if (hasDeparted) ...[
+                        const SizedBox(height: BSizes.sm),
+                        BProductTitleText(
+                          title:
+                              'Departed At: ${BFormatter.formatDateTimeCustomizable(
+                            requestModel.pullOutDateStartAt,
+                            "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                            "yyyy-MM-dd HH:mm",
+                          )}',
+                          maxLines: 2,
+                          smallSize: true,
+                          fontColor: textColor,
+                        ),
+                      ],
+                      if (hasPullOut) ...[
+                        const SizedBox(height: BSizes.sm),
+                        BProductTitleText(
+                          title:
+                              'Pull Out At: ${BFormatter.formatDateTimeCustomizable(
+                            requestModel.pullOutDateEndAt,
+                            "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                            "yyyy-MM-dd HH:mm",
+                          )}',
+                          maxLines: 2,
+                          smallSize: true,
+                          fontColor: textColor,
+                        ),
+                      ],
+                    ],
                   ),
-                if (hasDriver && hasHelper) const SizedBox(width: BSizes.xs),
-                if (hasHelper)
-                  Expanded(
-                    child: BProductTitleText(
-                      title: 'Helper: ${requestModel.helper}',
-                      maxLines: 2,
-                      smallSize: true,
-                      fontColor: textColor,
-                    ),
-                  ),
-              ],
-            ),
-          if (hasDeparted) ...[
+                ],
+              );
+            },
+          ),
+
+          // View Delivered Item Button
+          if (hasReleasedBy) ...[
             const SizedBox(height: BSizes.sm),
-            BProductTitleText(
-              title: 'Departed At: ${BFormatter.formatDateTimeCustomizable(
-                requestModel.pullOutDateStartAt,
-                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                "yyyy-MM-dd HH:mm",
-              )}',
-              maxLines: 1,
-              smallSize: true,
-              fontColor: textColor,
-            ),
-          ],
-          if (hasPullOut) ...[
-            const SizedBox(height: BSizes.sm),
-            BProductTitleText(
-              title: 'Pull Out At: ${BFormatter.formatDateTimeCustomizable(
-                requestModel.pullOutDateEndAt,
-                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                "yyyy-MM-dd HH:mm",
-              )}',
-              maxLines: 1,
-              smallSize: true,
-              fontColor: textColor,
+            ViewDeliveredItemButton(
+              textColor: textColor,
+              onPressed: () {
+                final requestIdForDb = requestModel.id;
+                showRequestImageDialog(context,
+                    requestId: requestIdForDb,
+                    fetchIfMissing: true,
+                    semanticsLabel:
+                        'Delivered item image for request ${requestModel.id}',
+                    apiController: 'RequestPullOutReturnPickUp');
+              },
             ),
           ],
         ],
