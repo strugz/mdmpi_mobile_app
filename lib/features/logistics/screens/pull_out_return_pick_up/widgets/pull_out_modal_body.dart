@@ -203,10 +203,7 @@ class PullOutModalBody extends StatelessWidget {
             ),
           ],
         ],
-
-
       ],
     );
   }
 }
-

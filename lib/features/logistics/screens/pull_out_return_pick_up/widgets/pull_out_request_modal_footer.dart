@@ -152,7 +152,7 @@ class PullOutRequestModalFooter extends StatelessWidget {
                   if (hasReleasedBy)
                     Positioned(
                       top: 20,
-                      right: 0,
+                      right: 30,
                       child: Container(
                         color: Colors.white,
                         child: SizedBox(
@@ -201,7 +201,8 @@ class PullOutRequestModalFooter extends StatelessWidget {
                           if (hasReleasedBy)
                             Expanded(
                               child: BProductTitleText(
-                                title: 'Receiver: ${requestModel.releasedBy}',
+                                title:
+                                    'Released By: ${requestModel.releasedBy}',
                                 maxLines: 3,
                                 smallSize: true,
                                 fontColor: textColor,
