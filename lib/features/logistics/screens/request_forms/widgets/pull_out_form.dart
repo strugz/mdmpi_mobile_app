@@ -215,8 +215,10 @@ class PullOutForm extends StatelessWidget {
                                 dropdownList: userController.userList
                                     .map((user) => user.toJson())
                                     .toList(),
+                                onChanged: (String? newId) {},
                                 valueKey: 'CNTMNN',
                                 displayKey: 'CNTMCN',
+                                enableSearch: true,
                                 validator: (v) =>
                                     (v == null || v.trim().isEmpty)
                                         ? 'Please select requestor'

@@ -29,14 +29,50 @@ class PickUpForm extends StatelessWidget {
       stdController.addDocumentReferenceField();
     }
 
+    // Initialize Pick-Up Date to today when form opens
+    if (controller.formState.datePickUpController.text.isEmpty) {
+      controller.formState.initializeDefaultDate();
+    }
+
     Future<void> onSave() async {
+      // Validate Client Information
+      if (stdController.formState.clientInformation.value == null ||
+          stdController.formState.clientInformation.value!.id.isEmpty) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please select a client',
+        );
+        return;
+      }
+
+      // Validate Document Reference
+      final hasDocumentReference = stdFormRefs.any((controller) =>
+        controller.text.trim().isNotEmpty
+      );
+      if (!hasDocumentReference) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please add at least one document reference',
+        );
+        return;
+      }
+
+      // Validate Item Category
+      if (controller.formState.itemCategoryController.text.trim().isEmpty) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please select an item category',
+        );
+        return;
+      }
+
       await controller.submitFromForm();
 
       if ((controller.errorMessage.value ?? '').isEmpty) {
         controller.formState.preparedByController.clear();
         controller.formState.itemPreparedAtController.clear();
         controller.formState.itemPreparedEndAtController.clear();
-        controller.formState.datePickUpController.clear();
+        // Keep datePickUpController to retain the last selected date
         controller.formState.remarksController.clear();
         controller.formState.releasedByController.clear();
         controller.formState.receivedByController.clear();
