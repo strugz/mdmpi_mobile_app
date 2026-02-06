@@ -57,7 +57,6 @@ class RequestModalScaffold extends StatelessWidget {
             // Document references
             if (documentReferences.isNotEmpty)
               BTextDivider(text: 'Document References'),
-            const SizedBox(height: BSizes.xs),
             DocumentReferenceList(
               documentReferences: documentReferences,
               textColor: textColor,

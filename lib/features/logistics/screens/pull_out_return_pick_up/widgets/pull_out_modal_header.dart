@@ -202,8 +202,6 @@ class PullOutRequestModalHeader extends StatelessWidget {
               ),
             ],
           ],
-
-          /// -- For In Transit --
           if (requestModel.requestStatus == BTexts.statusNewRequest) ...[
             const BTextDivider(text: 'Delivery Info'),
             const SizedBox(height: BSizes.spaceBtwItems),
