@@ -263,4 +263,15 @@ Future<void> createAllTables(Database db) async {
       FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
     )
   ''');
+
+  // Table: a_tblClientContactPerson
+  // Stores client contact person names for autocomplete functionality
+  await db.execute('''
+    CREATE TABLE a_tblClientContactPerson (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      usageCount INTEGER DEFAULT 1,
+      lastUsedAt TEXT NOT NULL
+    )
+  ''');
 }

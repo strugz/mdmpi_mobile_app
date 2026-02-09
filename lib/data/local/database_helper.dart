@@ -23,6 +23,7 @@ import 'dao/common/user_dao.dart';
 import 'dao/common/cntmst_dao.dart';
 import 'dao/common/item_category_dao.dart';
 import 'dao/common/form_category_dao.dart';
+import 'dao/common/client_contact_person_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -46,6 +47,7 @@ class DatabaseHelper {
   CntmstDao? _cntmstDao;
   ItemCategoryDao? _itemCategoryDao;
   FormCategoryDao? _formCategoryDao;
+  ClientContactPersonDao? _clientContactPersonDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -58,7 +60,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 10,
+      version: 11,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -243,6 +245,17 @@ class DatabaseHelper {
             )
           ''');
         }
+        if (oldVersion < 11) {
+          // Version 11: Add ClientContactPerson autocomplete table
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblClientContactPerson (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL UNIQUE,
+              usageCount INTEGER DEFAULT 1,
+              lastUsedAt TEXT NOT NULL
+            )
+          ''');
+        }
       },
     );
   }
@@ -330,6 +343,13 @@ class DatabaseHelper {
     final db = await database;
     _formCategoryDao = FormCategoryDao(db);
     return _formCategoryDao!;
+  }
+
+  Future<ClientContactPersonDao> get clientContactPersonDao async {
+    if (_clientContactPersonDao != null) return _clientContactPersonDao!;
+    final db = await database;
+    _clientContactPersonDao = ClientContactPersonDao(db);
+    return _clientContactPersonDao!;
   }
 
   // --- Request operations (delegated to RequestDao) ---

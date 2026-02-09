@@ -15,6 +15,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_autocomplete_text_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_submit_button.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
@@ -50,9 +51,18 @@ class PullOutForm extends StatelessWidget {
     }
 
     Future<void> onSave() async {
+      // Save contact person name for autocomplete before clearing
+      final contactPersonName =
+          controller.formState.clientContactPersonController.text.trim();
+
       await controller.submitFromForm();
 
       if ((controller.errorMessage.value ?? '').isEmpty) {
+        // Save contact person to database for future autocomplete
+        if (contactPersonName.isNotEmpty) {
+          await saveClientContactPerson(contactPersonName);
+        }
+
         controller.formState.clientContactPersonController.clear();
         controller.formState.irrfNumberController.clear();
         controller.formState.irrfDateController.clear();
@@ -155,10 +165,15 @@ class PullOutForm extends StatelessWidget {
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Client Contact Person
-                      BTextFormField(
+                      BAutocompleteTextField(
                         controller:
                             controller.formState.clientContactPersonController,
+                        autocompleteController:
+                            controller.formState.clientContactPersonAutocomplete,
                         label: 'Client Contact Person',
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter client contact person'
+                            : null,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
