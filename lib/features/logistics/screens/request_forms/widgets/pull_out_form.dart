@@ -5,6 +5,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_autocomplete_text_field.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -15,7 +16,6 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
-import 'package:mdmpi_mobile_app/common/widgets/form/b_autocomplete_text_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_submit_button.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
@@ -168,8 +168,8 @@ class PullOutForm extends StatelessWidget {
                       BAutocompleteTextField(
                         controller:
                             controller.formState.clientContactPersonController,
-                        autocompleteController:
-                            controller.formState.clientContactPersonAutocomplete,
+                        autocompleteController: controller
+                            .formState.clientContactPersonAutocomplete,
                         label: 'Client Contact Person',
                         validator: (v) => (v == null || v.trim().isEmpty)
                             ? 'Please enter client contact person'
@@ -202,6 +202,15 @@ class PullOutForm extends StatelessWidget {
                         controller: controller.formState.reasonController,
                         label: 'Reason for Return',
                         maxLines: 3,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Reason for Return is required';
+                          }
+                          if (value.trim().length < 10) {
+                            return 'Reason must be at least 10 characters long';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 

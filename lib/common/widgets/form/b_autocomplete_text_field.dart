@@ -6,23 +6,6 @@ import 'package:mdmpi_mobile_app/common/controllers/autocomplete_controller.dart
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/models/client_contact_person_model.dart';
 
-/// A reusable autocomplete text field that stores and suggests previously
-/// entered values from a local database.
-///
-/// Usage:
-/// ```dart
-/// // In controller or form state:
-/// final autocompleteController = AutocompleteController();
-/// autocompleteController.initialize(myTextController);
-///
-/// // In widget:
-/// BAutocompleteTextField(
-///   controller: myController,
-///   autocompleteController: autocompleteController,
-///   label: 'Client Contact Person',
-///   validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-/// )
-/// ```
 class BAutocompleteTextField extends StatelessWidget {
   const BAutocompleteTextField({
     super.key,
