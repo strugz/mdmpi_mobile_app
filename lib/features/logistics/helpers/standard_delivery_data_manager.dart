@@ -85,31 +85,16 @@ class StandardDeliveryDataManager {
       final userCtrl = Get.find<UserController>();
       final formState = controller.formState;
 
-      // Validation
-      if (formState.requestedBy.text.isEmpty) {
-        BLoaders.errorSnackBar(
-            title: 'Request', message: 'Please select a requested by.');
-        return;
-      }
+      // Note: Input validation is now handled by UI form validators
+      // Only business logic and data transformation remain here
 
-      final client = formState.clientInformation.value;
-      if (client == null || client.id.isEmpty) {
-        BLoaders.errorSnackBar(
-            title: 'Client', message: 'Please select a Client.');
-        return;
-      }
+      final client = formState.clientInformation.value!; // Safe due to UI validation
 
       final docRefs = formState.documentReferenceControllers
           .map((c) => c.text.trim())
           .toList();
-      if (docRefs.isEmpty || docRefs.any((e) => e.isEmpty)) {
-        BLoaders.errorSnackBar(
-            title: 'Document Reference',
-            message: 'Please enter at least one document reference.');
-        return;
-      }
 
-      // Normalize category IDs
+      // Normalize category IDs (data transformation logic)
       String ensureCategoryId(TextEditingController ctrl, List<dynamic> list) {
         final v = ctrl.text.trim();
         if (v.isEmpty) return '';

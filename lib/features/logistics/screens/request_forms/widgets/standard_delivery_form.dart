@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
@@ -38,7 +39,7 @@ class StandardDelivery extends StatelessWidget {
         stdDeliveryController.formState.formCategory.text = selectedCategory.id;
       }
     } catch (e) {
-      print('RequestController not found or error reading category: $e');
+      logDebug('RequestController not found or error reading category: $e');
     }
 
     // Get the bottom padding of the device
@@ -74,6 +75,32 @@ class StandardDelivery extends StatelessWidget {
                         children: [
                           /// Search Client
                           const BClientInformation(),
+
+                          /// Hidden validator for client selection
+                          FormField<String>(
+                            validator: (_) {
+                              final client = stdDeliveryController.formState.clientInformation.value;
+                              if (client == null || client.id.isEmpty) {
+                                return 'Please select a client';
+                              }
+                              return null;
+                            },
+                            builder: (formFieldState) {
+                              return formFieldState.hasError
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(left: BSizes.sm, top: 4.0),
+                                      child: Text(
+                                        formFieldState.errorText ?? '',
+                                        style: TextStyle(
+                                          color: Theme.of(context).colorScheme.error,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink();
+                            },
+                          ),
+
                           const Divider(),
                           const SizedBox(height: BSizes.sm),
 
@@ -110,6 +137,9 @@ class StandardDelivery extends StatelessWidget {
                                     .toList(),
                                 valueKey: 'ItemCategoryID',
                                 displayKey: 'ItemCategoryName',
+                                validator: (v) => (v == null || v.trim().isEmpty)
+                                    ? 'Please select an item category'
+                                    : null,
                               );
                             },
                           ),
@@ -145,6 +175,9 @@ class StandardDelivery extends StatelessWidget {
                                 valueKey: 'FormCategoryID',
                                 displayKey: 'FormCategoryName',
                                 readOnly: true,
+                                validator: (v) => (v == null || v.trim().isEmpty)
+                                    ? 'Please select a form category'
+                                    : null,
                               );
                             },
                           ),
@@ -158,6 +191,9 @@ class StandardDelivery extends StatelessWidget {
                             stdDeliveryController.formState.shippingMethod,
                         label: 'Shipping Method',
                         dropdownList: ['Land', 'Air', 'Sea'],
+                        validator: (v) => (v == null || v.toString().trim().isEmpty)
+                            ? 'Please select a shipping method'
+                            : null,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
@@ -167,7 +203,11 @@ class StandardDelivery extends StatelessWidget {
                               stdDeliveryController.formState.deliveryTerms,
                           icon: Iconsax.truck,
                           label: 'Delivery Terms',
-                          dropdownList: ['Partial', 'Full']),
+                          dropdownList: ['Partial', 'Full'],
+                          validator: (v) => (v == null || v.toString().trim().isEmpty)
+                              ? 'Please select delivery terms'
+                              : null,
+                      ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Target date
@@ -176,6 +216,9 @@ class StandardDelivery extends StatelessWidget {
                         label: 'Delivery Date',
                         includeTime: false,
                         icon: Iconsax.calendar,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please select a delivery date'
+                            : null,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
                       Center(
@@ -187,7 +230,11 @@ class StandardDelivery extends StatelessWidget {
                                     stdDeliveryController.formState.preference,
                                 icon: Iconsax.status_up,
                                 label: 'Priority',
-                                dropdownList: ['High', 'Medium', 'Low']),
+                                dropdownList: ['High', 'Medium', 'Low'],
+                                validator: (v) => (v == null || v.toString().trim().isEmpty)
+                                    ? 'Please select a priority level'
+                                    : null,
+                            ),
                           ],
                         ),
                       ),
@@ -211,6 +258,9 @@ class StandardDelivery extends StatelessWidget {
                                 valueKey: 'CNTMNN',
                                 displayKey: 'CNTMCN',
                                 enableSearch: true,
+                                validator: (v) => (v == null || v.trim().isEmpty)
+                                    ? 'Please select who requested this'
+                                    : null,
                               ),
                             ],
                           ),
@@ -226,7 +276,12 @@ class StandardDelivery extends StatelessWidget {
         bottomNavigationBar: Padding(
           padding: const EdgeInsets.all(BSizes.sm),
           child: ElevatedButton(
-              onPressed: () => stdDeliveryController.saveRequest(),
+              onPressed: () {
+                // Validate form before submission
+                if (stdDeliveryController.formState.formKey.currentState?.validate() ?? false) {
+                  stdDeliveryController.saveRequest();
+                }
+              },
               child: Text('Create Request')),
         ),
       ),
