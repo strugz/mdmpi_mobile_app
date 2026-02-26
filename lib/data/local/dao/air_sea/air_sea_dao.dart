@@ -15,7 +15,10 @@ class AirSeaDao {
     'Getting Supplies Ready': 2,
     'Item Packed': 3,
     'Endorsed to Guard': 4,
-    'Received': 5,
+    'For Dispatch': 5,
+    'Dispatch': 6,
+    'Drop Off': 7,
+    'Received': 8,
     'Cancelled': 99,
   };
 

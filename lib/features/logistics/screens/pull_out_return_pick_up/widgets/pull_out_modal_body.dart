@@ -15,6 +15,7 @@ import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dar
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
 /// Body content for Pull Out modal - contains all sections except header
@@ -46,10 +47,17 @@ class PullOutModalBody extends StatelessWidget {
     final hasPullOutDate = requestModel.pullOutDate.isNotEmpty;
     final hasIrrfDate = requestModel.irrfDate.isNotEmpty;
     final hasReasonForReturn = requestModel.reasonForReturn.isNotEmpty;
+    final hasIrrfNumber = requestModel.irrfNumber.isNotEmpty;
+
 
     final PullOutController requestController = Get.find();
-    final userController = Get.find<UserInitialController>();
+    final userInitialController = Get.find<UserInitialController>();
     final MobileController mobileController = Get.find();
+    final UserController userController = Get.find();
+
+    final role = userController.user.value.role;
+    final hasRestrictedRole =
+    ['Request', 'Release'].any((r) => role.contains(r));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,7 +113,7 @@ class PullOutModalBody extends StatelessWidget {
         ],
 
         // ========== BODY: Delivery Info (for new requests) ==========
-        if (requestModel.requestStatus == BTexts.statusNewRequest) ...[
+        if (requestModel.requestStatus == BTexts.statusNewRequest && !hasRestrictedRole) ...[
           const SizedBox(height: BSizes.sm),
           const BTextDivider(text: 'Delivery Info'),
           const SizedBox(height: BSizes.spaceBtwItems),
@@ -117,7 +125,7 @@ class PullOutModalBody extends StatelessWidget {
           ),
           const SizedBox(height: BSizes.spaceBtwItems),
           Obx(() {
-            final users = userController.userList.toList();
+            final users = userInitialController.userList.toList();
             if (users.isEmpty) {
               return const SizedBox(
                   height: 24,
@@ -176,31 +184,31 @@ class PullOutModalBody extends StatelessWidget {
           const SizedBox(height: BSizes.sm),
           const BTextDivider(text: 'IRRF'),
           const SizedBox(height: BSizes.sm),
-          if (hasIrrfDate)
-            Row(
-              children: [
-                Expanded(
-                  child: BLabelValueText(
-                    label: 'IRRF No',
-                    value: requestModel.irrfNumber,
-                    showLabel: false,
-                    copyable: true,
-                    icon: Iconsax.receipt_2,
-                    padding: EdgeInsets.zero,
-                  ),
+          Row(
+            children: [
+              if (hasIrrfNumber)
+              Expanded(
+                child: BLabelValueText(
+                  label: 'IRRF No',
+                  value: requestModel.irrfNumber,
+                  showLabel: false,
+                  copyable: true,
+                  icon: Iconsax.receipt_2,
+                  padding: EdgeInsets.zero,
                 ),
-                const SizedBox(width: BSizes.xs),
-                Expanded(
-                  child: BLabelValueText(
-                    label: 'IRRF Date',
-                    value: _formatDate(requestModel.irrfDate),
-                    showLabel: false,
-                    icon: Iconsax.calendar_1,
-                    padding: EdgeInsets.zero,
-                  ),
+              ),
+              const SizedBox(width: BSizes.xs),
+              Expanded(
+                child: BLabelValueText(
+                  label: 'IRRF Date',
+                  value: _formatDate(requestModel.irrfDate),
+                  showLabel: false,
+                  icon: Iconsax.calendar_1,
+                  padding: EdgeInsets.zero,
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
         ],
       ],
     );

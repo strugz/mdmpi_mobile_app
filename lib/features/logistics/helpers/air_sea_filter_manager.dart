@@ -12,6 +12,9 @@ enum AirSeaStatusFilter {
   statusGettingSuppliesReady('Getting Supplies Ready'),
   statusItemPacked('Item Packed'),
   statusEndorsedToGuard('Endorsed to Guard'),
+  statusForDispatch('For Dispatch'),
+  statusDispatch('Dispatch'),
+  statusDropOff('Drop Off'),
   statusReceived('Received'),
   statusCancelled('Cancelled'),
   all('All');

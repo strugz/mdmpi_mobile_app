@@ -41,7 +41,7 @@ class AirSeaRequestRoleHandler extends AirSeaActionHandler {
 }
 
 /// Handler for users with Release role.
-/// Allows full status progression: New Request → Getting Supplies Ready → Item Packed → Endorsed to Guard → Received.
+/// Allows full status progression: New Request → Getting Supplies Ready → Item Packed → Endorsed to Guard / Received / For Dispatch.
 class AirSeaReleaseRoleHandler extends AirSeaActionHandler {
   @override
   void handleAction(
@@ -126,7 +126,7 @@ class AirSeaReleaseRoleHandler extends AirSeaActionHandler {
 
           await controller.updateStatusWithInputs(
               request, BTexts.statusReceived);
-        } else if (selectedStatus == BTexts.statusDispatch) {
+        } else if (selectedStatus == BTexts.statusForDispatch) {
           // Validate Trip Ticket Number
           if (controller.formState.tripTicketController.text.trim().isEmpty) {
             BLoaders.errorSnackBar(
@@ -164,7 +164,7 @@ class AirSeaReleaseRoleHandler extends AirSeaActionHandler {
           }
 
           await controller.updateStatusWithInputs(
-              request, BTexts.statusDispatch);
+              request, BTexts.statusForDispatch);
         }
       }, true);
     } else if (request.status == BTexts.statusEndorsedToGuard) {
@@ -178,7 +178,7 @@ class AirSeaReleaseRoleHandler extends AirSeaActionHandler {
 }
 
 /// Handler for users with Courier role.
-/// View-only access to Air/Sea requests.
+/// Handles For Dispatch → Dispatch (accept) and Dispatch → Drop Off (deliver).
 class AirSeaCourierRoleHandler extends AirSeaActionHandler {
   @override
   void handleAction(
@@ -187,7 +187,12 @@ class AirSeaCourierRoleHandler extends AirSeaActionHandler {
       AirSeaController controller,
       UserController userController,
       String userInitial) {
-    if (request.status == BTexts.statusDispatch) {
+    if (request.status == BTexts.statusForDispatch) {
+      BFullScreenLoader.showAirSeaDialog(context, request, () async {
+        await controller.updateStatusWithInputs(
+            request, BTexts.statusDispatch);
+      }, true);
+    } else if (request.status == BTexts.statusDispatch) {
       BFullScreenLoader.showAirSeaDialog(context, request, () async {
         await controller.updateStatusWithInputs(request, BTexts.statusDropOff);
       }, true);

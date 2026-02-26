@@ -29,7 +29,7 @@ class AirSeaRequestModalFooter extends StatelessWidget {
           AirSeaItemPackedSection(requestModel: requestModel),
         ],
 
-        /// -- Drop Off Status Section --
+        /// -- Drop Off Status Section (shown when Courier is actively delivering) --
         if (requestModel.status == BTexts.statusDispatch) ...[
           AirSeaDropOffSection(requestModel: requestModel),
         ],

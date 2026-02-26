@@ -62,7 +62,8 @@ class AirSeaList extends StatelessWidget {
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
-                        if (item.status != 'Received' &&
+                        if (item.status != BTexts.statusReceived &&
+                            item.status != BTexts.statusDropOff &&
                             item.status.toLowerCase() != 'cancelled') {
                           controller.currentSelectedAirSea.value = item;
                           await BDialog.showRemarksDialog(context, item);
@@ -149,10 +150,20 @@ void _handleAirSeaTap(
       .toList();
   final userInitial = userController.user.value.initial;
 
-  // Handle cancelled/received status with default handler
+  // Handle cancelled/received/drop off status with default handler
   if (request.status.toLowerCase() == 'cancelled' ||
-      request.status == 'Received') {
+      request.status == BTexts.statusReceived ||
+      request.status == BTexts.statusDropOff) {
     AirSeaDefaultHandler().handleAction(
+        context, request, controller, userController, userInitial);
+    return;
+  }
+
+  // Force Courier handler for For Dispatch / Dispatch statuses
+  if ((request.status == BTexts.statusForDispatch ||
+          request.status == BTexts.statusDispatch) &&
+      roles.contains(BTexts.roleCourier)) {
+    AirSeaCourierRoleHandler().handleAction(
         context, request, controller, userController, userInitial);
     return;
   }

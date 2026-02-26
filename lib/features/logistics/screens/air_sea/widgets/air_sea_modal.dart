@@ -56,6 +56,8 @@ class AirSeaModal extends StatelessWidget {
               return 'Mark Received';
             case 'Endorsed to Guard':
               return 'Mark Received';
+            case 'For Dispatch':
+              return 'Dispatch';
             case 'Dispatch':
               return 'Mark Drop Off';
             case 'Drop Off':

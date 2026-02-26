@@ -24,10 +24,7 @@ class PullOutRequestRoleHandler extends PullOutActionHandler {
       String userInitial) {
 
     if (request.requestStatus == BTexts.statusNewRequest) {
-      BFullScreenLoader.showPullOutDialog(context, request, () async {
-        await controller.updateStatusWithInputs(
-            request, BTexts.statusInTransit);
-      }, true);
+      BFullScreenLoader.showPullOutDialog(context, request, () {}, false);
     } else {
       BFullScreenLoader.showPullOutDialog(context, request, () {}, false);
     }
@@ -43,14 +40,9 @@ class PullOutReleaseRoleHandler extends PullOutActionHandler {
       UserController userController,
       String userInitial) {
     if (request.requestStatus == BTexts.statusInTransit) {
-      BFullScreenLoader.showPullOutDialog(context, request, () async {
-        await controller.updateStatusWithInputs(request, BTexts.statusTakenOut);
-      }, true);
+      BFullScreenLoader.showPullOutDialog(context, request, () {}, false);
     } else if (request.requestStatus == BTexts.statusNewRequest) {
-      BFullScreenLoader.showPullOutDialog(context, request, () async {
-        await controller.updateStatusWithInputs(
-            request, BTexts.statusInTransit);
-      }, true);
+      BFullScreenLoader.showPullOutDialog(context, request, () {}, false);
     } else {
       BFullScreenLoader.showPullOutDialog(context, request, () {}, false);
     }

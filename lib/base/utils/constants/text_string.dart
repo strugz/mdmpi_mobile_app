@@ -136,6 +136,7 @@ class BTexts {
   static const String statusReceived = "Received";
   static const String statusItemPacked = "Item Packed";
   static const String statusEndorsedToGuard = "Endorsed to Guard";
+  static const String statusForDispatch = "For Dispatch";
   static const String statusDispatch = "Dispatch";
   static const String statusDropOff = "Drop Off";
 

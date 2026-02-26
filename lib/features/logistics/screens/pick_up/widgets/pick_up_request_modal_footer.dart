@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 
 class PickUpRequestModalFooter extends StatelessWidget {
@@ -28,12 +29,15 @@ class PickUpRequestModalFooter extends StatelessWidget {
 
     final cameraController = Get.find<CameraHandlerController>();
     final PickUpController requestController = Get.find();
+    final UserController userController = Get.find();
+    final role = userController.user.value.role;
+    final hasRestrictedRole = ['Request', 'Courier'].any((r) => role.contains(r));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// -- For Item Packed status (capture proof of packing) --
-        if (requestModel.status == BTexts.statusItemPacked) ...[
+        if (requestModel.status == BTexts.statusItemPacked && !hasRestrictedRole) ...[
           const BTextDivider(text: 'Proof of Picked Up'),
           Obx(
             () => Center(

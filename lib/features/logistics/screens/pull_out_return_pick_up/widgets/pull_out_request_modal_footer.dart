@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/wi
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../base/utils/constants/sizes.dart';
@@ -33,6 +34,7 @@ class PullOutRequestModalFooter extends StatelessWidget {
     final cameraController = Get.find<CameraHandlerController>();
 
     final PullOutController requestController = Get.find();
+    final UserController userController = Get.find();
 
     final hasDriver = requestModel.driver.isNotEmpty;
     final hasHelper = requestModel.helper.isNotEmpty;
@@ -41,11 +43,16 @@ class PullOutRequestModalFooter extends StatelessWidget {
 
     final hasReleasedBy = requestModel.releasedBy.isNotEmpty;
 
+    final role = userController.user.value.role;
+    final hasRestrictedRole =
+        ['Request', 'Release'].any((r) => role.contains(r));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// -- Proof of Pull out (for In Transit status) --
-        if (requestModel.requestStatus == BTexts.statusInTransit) ...[
+        if (requestModel.requestStatus == BTexts.statusInTransit &&
+            !hasRestrictedRole) ...[
           const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Proof of Pull out'),
           const SizedBox(height: BSizes.sm),
