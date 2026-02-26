@@ -388,7 +388,6 @@ class AirSeaDataManager {
     } finally {
       formState.reset();
       controller.isSaving.value = false;
-      BFullScreenLoader.stopLoading();
     }
   }
 

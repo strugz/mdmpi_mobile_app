@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/wi
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
 import '../../../common/widgets/texts/product_title_text.dart';
@@ -482,12 +483,11 @@ class BFullScreenLoader {
     );
   }
 
-  /// Show Air/Sea request modal dialog
+  /// Show Air/Sea request modal dialog driven by [AirSeaModalConfig].
   static void showAirSeaDialog(
     BuildContext context,
     AirSeaModel requestModel,
-    VoidCallback onPressed,
-    bool isActionVisible,
+    AirSeaModalConfig config,
   ) {
     final dark = BHelperFunctions.isDarkMode(context);
     showModalBottomSheet<void>(
@@ -502,8 +502,7 @@ class BFullScreenLoader {
           child: SafeArea(
             child: AirSeaModal(
               requestModel: requestModel,
-              onPressed: onPressed,
-              isActionVisible: isActionVisible,
+              config: config,
             ),
           ),
         );

@@ -10,11 +10,16 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_item_packed_section.dart';
 
 /// Footer widget for Air/Sea request modal.
-/// Displays remarks section.
+/// Uses [role] to gate editable sections so only the relevant role sees input forms.
 class AirSeaRequestModalFooter extends StatelessWidget {
-  const AirSeaRequestModalFooter({super.key, required this.requestModel});
+  const AirSeaRequestModalFooter({
+    super.key,
+    required this.requestModel,
+    required this.role,
+  });
 
   final AirSeaModel requestModel;
+  final String role;
 
   @override
   Widget build(BuildContext context) {
@@ -24,13 +29,15 @@ class AirSeaRequestModalFooter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// -- Item Packed Status Transition --
-        if (requestModel.status == BTexts.statusItemPacked) ...[
+        /// -- Item Packed Status Transition (Release role only) --
+        if (requestModel.status == BTexts.statusItemPacked &&
+            role == BTexts.roleRelease) ...[
           AirSeaItemPackedSection(requestModel: requestModel),
         ],
 
-        /// -- Drop Off Status Section (shown when Courier is actively delivering) --
-        if (requestModel.status == BTexts.statusDispatch) ...[
+        /// -- Drop Off Status Section (Courier role only) --
+        if (requestModel.status == BTexts.statusDispatch &&
+            role == BTexts.roleCourier) ...[
           AirSeaDropOffSection(requestModel: requestModel),
         ],
 
