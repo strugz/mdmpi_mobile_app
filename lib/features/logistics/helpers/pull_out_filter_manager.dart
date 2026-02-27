@@ -81,8 +81,13 @@ class PullOutFilterManager {
       bool userMatches = true;
       if (!currentUser.role.contains(',')) {
         if (currentUser.role.contains(BTexts.roleCourier)) {
-          userMatches = item.helper == currentUser.initial || item.driver == currentUser.initial;
-          logDebug('PullOutFilter: helper=${item.helper}, driver=${item.driver}');
+          // Couriers can view all items in New Request and Taken Out statuses
+          // For other statuses, only show items where they are assigned as driver or helper
+          final isOpenStatus = item.requestStatus == BTexts.statusNewRequest ||
+              item.requestStatus == BTexts.statusTakenOut;
+          userMatches = isOpenStatus ||
+              item.helper == currentUser.initial ||
+              item.driver == currentUser.initial;
         }
       }
 
