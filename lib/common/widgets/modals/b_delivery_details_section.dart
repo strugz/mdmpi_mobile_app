@@ -96,7 +96,11 @@ class BDeliveryDetailsSection extends StatelessWidget {
     final hasCompleted = completedAt != null && completedAt!.isNotEmpty;
 
     // Hide entire section if no data
-    if (!hasDriver && !hasHelper && !hasReceivedBy && !hasDeparted && !hasCompleted) {
+    if (!hasDriver &&
+        !hasHelper &&
+        !hasReceivedBy &&
+        !hasDeparted &&
+        !hasCompleted) {
       return const SizedBox.shrink();
     }
 
@@ -182,7 +186,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
                     if (hasDeparted) ...[
                       const SizedBox(height: BSizes.sm),
                       BProductTitleText(
-                        title: '$departedAtLabel: ${BFormatter.formatDateTimeCustomizable(
+                        title:
+                            '$departedAtLabel: ${BFormatter.formatDateTimeCustomizable(
                           departedAt!,
                           "yyyy-MM-ddTHH:mm:ss.SSSSSS",
                           "yyyy-MM-dd HH:mm",
@@ -195,7 +200,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
                     if (hasCompleted) ...[
                       const SizedBox(height: BSizes.sm),
                       BProductTitleText(
-                        title: '$completedAtLabel: ${BFormatter.formatDateTimeCustomizable(
+                        title:
+                            '$completedAtLabel: ${BFormatter.formatDateTimeCustomizable(
                           completedAt!,
                           "yyyy-MM-ddTHH:mm:ss.SSSSSS",
                           "yyyy-MM-dd HH:mm",
@@ -218,20 +224,21 @@ class BDeliveryDetailsSection extends StatelessWidget {
           ViewDeliveredItemButton(
             textColor: textColor,
             labelTitle: viewItemButtonLabel,
-            onPressed: onViewItemPressed ?? () {
-              showRequestImageDialog(
-                context,
-                requestId: requestId,
-                fetchIfMissing: true,
-                semanticsLabel: 'Delivered item image for request $requestId',
-                apiController: apiController,
-                title: dialogTitle,
-              );
-            },
+            onPressed: onViewItemPressed ??
+                () {
+                  showRequestImageDialog(
+                    context,
+                    requestId: requestId,
+                    fetchIfMissing: true,
+                    semanticsLabel:
+                        'Delivered item image for request $requestId',
+                    apiController: apiController,
+                    title: dialogTitle,
+                  );
+                },
           ),
         ],
       ],
     );
   }
 }
-

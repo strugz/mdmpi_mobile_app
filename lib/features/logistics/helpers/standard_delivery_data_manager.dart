@@ -400,10 +400,17 @@ class StandardDeliveryDataManager {
       // Update the request in the allPendingRequests list so it reflects the new status
       final index = controller.allPendingRequests
           .indexWhere((req) => req.id == updatedRequest.id);
+
       if (index != -1) {
         controller.allPendingRequests[index] = updatedRequest;
         // Trigger update notification for RxList
         controller.allPendingRequests.refresh();
+      }
+
+      // Reapply filter to update the filtered list that the UI observes
+      if (controller is StandardDeliveryController) {
+        controller.filterManager
+            .applyFilter(controller.allPendingRequests.toList());
       }
 
       formState.reset();
