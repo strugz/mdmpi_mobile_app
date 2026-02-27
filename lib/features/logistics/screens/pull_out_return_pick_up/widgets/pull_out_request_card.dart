@@ -60,11 +60,6 @@ class PullOutRequestCard extends StatelessWidget {
     );
   }
 
-  bool get _showDriver {
-    final d = item.driver.trim();
-    return d.isNotEmpty && d.toLowerCase() != 'none';
-  }
-
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
@@ -133,32 +128,6 @@ class PullOutRequestCard extends StatelessWidget {
               StatusChip(status: item.requestStatus),
             ],
           ),
-          if (_showDriver) ...[
-            Row(
-              children: [
-                _metaLine(
-                  label: 'Driver',
-                  value: item.driver,
-                  color: textColorPrimary,
-                ),
-                SizedBox(width: BSizes.xs),
-                BCircularIcon(
-                  backgroundColor: Colors.transparent,
-                  icon: Iconsax.add_circle1,
-                  color: dark ? BColors.white : BColors.black,
-                  size: 5,
-                  width: 20,
-                  height: 20,
-                ),
-                _metaLine(
-                  label: 'Helper',
-                  value: item.helper,
-                  color: textColorPrimary,
-                ),
-                BIconValue(icon: Iconsax.truck, value: item.mobileName),
-              ],
-            ),
-          ],
         ],
       ),
     );

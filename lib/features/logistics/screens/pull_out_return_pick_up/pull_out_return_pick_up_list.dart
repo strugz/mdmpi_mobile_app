@@ -3,12 +3,13 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/services/implementations/pull_out_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
@@ -133,7 +134,8 @@ class PullOutReturnPickUpList extends StatelessWidget {
 }
 
 /// Handles tap on PullOut request based on user role.
-/// Selects the highest-priority role handler to avoid multiple dialogs.
+/// Resolves a single [PullOutModalConfig] from the highest-priority role and
+/// opens the modal — no handler classes needed.
 void _handlePullOutTap(
   BuildContext context,
   PullOutModel request,
@@ -145,40 +147,37 @@ void _handlePullOutTap(
       .map((e) => e.trim())
       .where((e) => e.isNotEmpty)
       .toList();
-  final userInitial = userController.user.value.initial;
 
-  // Handle cancelled/picked-up status with default handler
-  if (request.requestStatus.toLowerCase() == 'cancelled' ||
-      request.requestStatus.toLowerCase() == 'picked-up') {
-    PullOutDefaultHandler().handleAction(
-        context, request, controller, userController, userInitial);
+  // Force Courier for New Request (New Request → In Transit)
+  // and In Transit (In Transit → Taken Out)
+  if ((request.requestStatus == BTexts.statusNewRequest ||
+          request.requestStatus == BTexts.statusInTransit) &&
+      roles.contains(BTexts.roleCourier)) {
+    final config = PullOutModalConfig.resolve(
+      request: request,
+      role: BTexts.roleCourier,
+      controller: controller,
+    );
+    BFullScreenLoader.showPullOutDialog(context, request, config);
     return;
   }
 
-  final handlers = <String, PullOutActionHandler>{
-    BTexts.roleRequest: PullOutRequestRoleHandler(),
-    BTexts.roleRelease: PullOutReleaseRoleHandler(),
-    BTexts.roleCourier: PullOutCourierRoleHandler(),
-    BTexts.roleViewer: PullOutViewerRoleHandler(),
-  };
-
   // Find the highest-priority role the user has
-  String? selectedRole;
+  String selectedRole = BTexts.roleViewer;
   int highestPriority = 999;
 
   for (final role in roles) {
-    if (handlers.containsKey(role)) {
-      final priority = _rolePriority[role] ?? 999;
-      if (priority < highestPriority) {
-        highestPriority = priority;
-        selectedRole = role;
-      }
+    final priority = _rolePriority[role] ?? 999;
+    if (priority < highestPriority) {
+      highestPriority = priority;
+      selectedRole = role;
     }
   }
 
-  // Invoke only the highest-priority handler
-  if (selectedRole != null && handlers.containsKey(selectedRole)) {
-    handlers[selectedRole]!.handleAction(
-        context, request, controller, userController, userInitial);
-  }
+  final config = PullOutModalConfig.resolve(
+    request: request,
+    role: selectedRole,
+    controller: controller,
+  );
+  BFullScreenLoader.showPullOutDialog(context, request, config);
 }
