@@ -30,6 +30,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
     this.showSignatureWatermark = true,
     this.onViewItemPressed,
     this.viewItemButtonLabel = 'View Proof',
+    this.dialogTitle,
     this.apiController = 'Request',
     this.showViewItemButton = true,
   });
@@ -72,6 +73,9 @@ class BDeliveryDetailsSection extends StatelessWidget {
 
   /// Text label for the view item button
   final String viewItemButtonLabel;
+
+  /// Title for the image dialog (e.g., 'Delivered Item', 'Pick Up Item')
+  final String? dialogTitle;
 
   /// API controller name for image dialog
   final String apiController;
@@ -209,7 +213,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
         ),
 
         // View Delivered Item Button
-        if (hasReceivedBy && showViewItemButton) ...[
+        if (showViewItemButton) ...[
           const SizedBox(height: BSizes.sm),
           ViewDeliveredItemButton(
             textColor: textColor,
@@ -221,6 +225,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
                 fetchIfMissing: true,
                 semanticsLabel: 'Delivered item image for request $requestId',
                 apiController: apiController,
+                title: dialogTitle,
               );
             },
           ),

@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
-import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
-import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import '../../../../../common/widgets/texts/product_title_text.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_header.dart';
 
 /// Modal widget that displays detailed information about a standard delivery request.
@@ -44,10 +39,6 @@ class BModal extends StatelessWidget {
   /// - Other statuses: Shows appropriate action buttons
   @override
   Widget build(BuildContext context) {
-    // Determine theme mode and colors
-    final bool dark = BHelperFunctions.isDarkMode(context);
-    final Color textColor = dark ? BColors.light : BColors.black;
-
     // Check request status flags
     final bool isDoneDelivery =
         requestModel.status == BTexts.statusDoneDelivery;
@@ -59,6 +50,10 @@ class BModal extends StatelessWidget {
           requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
       requestController.loadCancelRemarks(requestIdForRemarks);
     }
+
+    // Determine request ID for database lookups
+    final requestIdForDb =
+        requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
 
     return RequestModalScaffold(
       header: RequestModalHeader(
@@ -85,39 +80,25 @@ class BModal extends StatelessWidget {
         },
       ),
       children: [
-        // Section: Delivery Details (only for completed deliveries)
-        if (isDoneDelivery) ...[
-          BTextDivider(text: "Delivery details"),
-          Center(
-            child: BProductTitleText(
-                title: "Received By: ${requestModel.receiver}",
-                maxLines: 2,
-                smallSize: true,
-                fontColor: dark ? BColors.light : BColors.black),
+        // Section: Delivery Details (reusable component for completed deliveries)
+        if (isDoneDelivery)
+          BDeliveryDetailsSection(
+            sectionTitle: 'Delivery Details',
+            driver: requestModel.deliveredBy,
+            helper: requestModel.helper,
+            receivedBy: requestModel.receiver,
+            receivedByLabel: 'Received By',
+            departedAt: requestModel.locationStartedAt,
+            departedAtLabel: 'Departed At',
+            completedAt: requestModel.deliveredAt,
+            completedAtLabel: 'Delivered At',
+            requestId: requestIdForDb,
+            showSignatureWatermark: true,
+            viewItemButtonLabel: 'View Delivered Item',
+            dialogTitle: 'Delivered Item',
+            apiController: 'Request',
+            showViewItemButton: true,
           ),
-        ],
-
-        // Display captured signature for completed deliveries
-        if (isDoneDelivery) CapturedSignatureImage(requestId: requestModel.id),
-
-        // Button to view delivered item image
-        if (isDoneDelivery) ...[
-          ViewDeliveredItemButton(
-            textColor: textColor,
-            onPressed: () {
-              // Use appropriate request ID for database lookup
-              final requestIdForDb = requestModel.id.isNotEmpty
-                  ? requestModel.id
-                  : requestModel.requestID;
-              showRequestImageDialog(context,
-                  requestId: requestIdForDb,
-                  fetchIfMissing: true,
-                  semanticsLabel:
-                      'Delivered item image for request ${requestModel.id}',
-                  apiController: 'Request');
-            },
-          )
-        ],
 
         // Section: Cancel Remarks (only for cancelled requests)
         if (isCancelled) ...[
