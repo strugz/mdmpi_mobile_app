@@ -13,8 +13,6 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
-import '../../../../../data/repositories/common/item_category_repository.dart';
-import '../../../../../data/repositories/common/form_category_repository.dart';
 import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_controller.dart';
 
@@ -25,8 +23,6 @@ class StandardDelivery extends StatelessWidget {
   Widget build(BuildContext context) {
     final stdDeliveryController = Get.find<StandardDeliveryController>();
     final userCNTMSTController = Get.find<UserMdmpiController>();
-    final itemCategoryRepo = Get.find<ItemCategoryRepository>();
-    final formCategoryRepo = Get.find<FormCategoryRepository>();
     final requestController = Get.find<RequestController>();
 
     userCNTMSTController.filterUserFromLocal();
@@ -85,78 +81,60 @@ class StandardDelivery extends StatelessWidget {
                           const SizedBox(height: BSizes.sm),
 
                           /// Item Category dropdown
-                          FutureBuilder(
-                            future: itemCategoryRepo.getAll(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              }
-                              if (snapshot.hasError ||
-                                  !snapshot.hasData ||
-                                  snapshot.data!.isEmpty) {
-                                return BDropdown(
-                                  controller: stdDeliveryController
-                                      .formState.itemCategory,
-                                  label: 'Item Category',
-                                  dropdownList: const [],
-                                );
-                              }
-                              return BDropDownDynamicList(
+                          Obx(() {
+                            final categories = stdDeliveryController.formState.itemCategories;
+                            if (categories.isEmpty) {
+                              return BDropdown(
                                 controller: stdDeliveryController
                                     .formState.itemCategory,
-                                icon: Iconsax.box,
                                 label: 'Item Category',
-                                dropdownList: snapshot.data!
-                                    .map((cat) => cat.toJson())
-                                    .toList(),
-                                valueKey: 'ItemCategoryID',
-                                displayKey: 'ItemCategoryName',
-                                validator: (v) => (v == null || v.trim().isEmpty)
-                                    ? 'Please select an item category'
-                                    : null,
+                                dropdownList: const [],
                               );
-                            },
-                          ),
+                            }
+                            return BDropDownDynamicList(
+                              controller: stdDeliveryController
+                                  .formState.itemCategory,
+                              icon: Iconsax.box,
+                              label: 'Item Category',
+                              dropdownList: categories
+                                  .map((cat) => cat.toJson())
+                                  .toList(),
+                              valueKey: 'ItemCategoryID',
+                              displayKey: 'ItemCategoryName',
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Please select an item category'
+                                  : null,
+                            );
+                          }),
                           const SizedBox(height: BSizes.spaceBtwItems),
 
                           /// Form Category dropdown
-                          FutureBuilder(
-                            future: formCategoryRepo.getAll(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              }
-                              if (snapshot.hasError ||
-                                  !snapshot.hasData ||
-                                  snapshot.data!.isEmpty) {
-                                return BDropdown(
-                                  controller: stdDeliveryController
-                                      .formState.formCategory,
-                                  label: 'Form Category',
-                                  dropdownList: const [],
-                                );
-                              }
-                              return BDropDownDynamicList(
+                          Obx(() {
+                            final categories = stdDeliveryController.formState.formCategories;
+                            if (categories.isEmpty) {
+                              return BDropdown(
                                 controller: stdDeliveryController
                                     .formState.formCategory,
-                                icon: Iconsax.document,
                                 label: 'Form Category',
-                                dropdownList: snapshot.data!
-                                    .map((cat) => cat.toJson())
-                                    .toList(),
-                                valueKey: 'FormCategoryID',
-                                displayKey: 'FormCategoryName',
-                                readOnly: true,
-                                validator: (v) => (v == null || v.trim().isEmpty)
-                                    ? 'Please select a form category'
-                                    : null,
+                                dropdownList: const [],
                               );
-                            },
-                          ),
+                            }
+                            return BDropDownDynamicList(
+                              controller: stdDeliveryController
+                                  .formState.formCategory,
+                              icon: Iconsax.document,
+                              label: 'Form Category',
+                              dropdownList: categories
+                                  .map((cat) => cat.toJson())
+                                  .toList(),
+                              valueKey: 'FormCategoryID',
+                              displayKey: 'FormCategoryName',
+                              readOnly: true,
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Please select a form category'
+                                  : null,
+                            );
+                          }),
                           const SizedBox(height: BSizes.sm),
                         ],
                       ),
