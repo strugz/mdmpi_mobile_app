@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
@@ -121,15 +122,21 @@ class PickUpForm extends StatelessWidget {
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           /// Search Client
-                          BClientInformation(),
-                          Divider(),
-                          SizedBox(height: BSizes.sm),
+                          const BClientInformation(),
+
+                          /// Hidden validator for client selection
+                          BClientValidationField(
+                            clientInformation: stdController.formState.clientInformation,
+                          ),
+
+                          const Divider(),
+                          const SizedBox(height: BSizes.sm),
 
                           /// Document Reference
-                          BDocumentReference(),
-                          SizedBox(height: BSizes.sm),
+                          const BDocumentReference(),
+                          const SizedBox(height: BSizes.sm),
                         ],
                       ),
 

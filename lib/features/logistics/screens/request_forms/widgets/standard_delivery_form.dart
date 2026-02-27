@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
@@ -77,28 +78,8 @@ class StandardDelivery extends StatelessWidget {
                           const BClientInformation(),
 
                           /// Hidden validator for client selection
-                          FormField<String>(
-                            validator: (_) {
-                              final client = stdDeliveryController.formState.clientInformation.value;
-                              if (client == null || client.id.isEmpty) {
-                                return 'Please select a client';
-                              }
-                              return null;
-                            },
-                            builder: (formFieldState) {
-                              return formFieldState.hasError
-                                  ? Padding(
-                                      padding: const EdgeInsets.only(left: BSizes.sm, top: 4.0),
-                                      child: Text(
-                                        formFieldState.errorText ?? '',
-                                        style: TextStyle(
-                                          color: Theme.of(context).colorScheme.error,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    )
-                                  : const SizedBox.shrink();
-                            },
+                          BClientValidationField(
+                            clientInformation: stdDeliveryController.formState.clientInformation,
                           ),
 
                           const Divider(),
