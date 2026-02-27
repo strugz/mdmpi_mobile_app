@@ -43,14 +43,9 @@ class StandardDelivery extends StatelessWidget {
       logDebug('RequestController not found or error reading category: $e');
     }
 
-    // Get the bottom padding of the device
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
-
-    return SafeArea(
-      bottom: !isGestureNavigation,
-      child: Scaffold(
-        appBar: BAppBar(
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: BAppBar(
           title: Text(
             BTexts.getRequestFormTitle(
               requestController.currentSelectedCategory.value?.name,
@@ -254,8 +249,13 @@ class StandardDelivery extends StatelessWidget {
             ],
           ),
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(BSizes.sm),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: BSizes.sm,
+            right: BSizes.sm,
+            bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: ElevatedButton(
               onPressed: () {
                 // Validate form before submission
@@ -263,7 +263,7 @@ class StandardDelivery extends StatelessWidget {
                   stdDeliveryController.saveRequest();
                 }
               },
-              child: Text('Create Request')),
+              child: const Text('Create Request')),
         ),
       ),
     );

@@ -88,13 +88,9 @@ class PullOutForm extends StatelessWidget {
       }
     }
 
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
-
-    return SafeArea(
-      bottom: !isGestureNavigation,
-      child: Scaffold(
-        appBar: BAppBar(
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: BAppBar(
           title: Text(
             BTexts.getRequestFormTitle(
               requestController.currentSelectedCategory.value?.name,
@@ -268,24 +264,29 @@ class PullOutForm extends StatelessWidget {
             ],
           ),
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(BSizes.sm),
-          child: Obx(() {
-            final isSaving = controller.isSaving.value;
-            return BSubmitButton(
-              isLoading: isSaving,
-              label: 'Create Request',
-              onPressed: () async {
-                if (isSaving) return;
-                if (controller.formState.formKey.currentState?.validate() ??
-                    false) {
-                  await onSave();
-                }
-              },
-            );
-          }),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: BSizes.sm,
+              right: BSizes.sm,
+              bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Obx(() {
+              final isSaving = controller.isSaving.value;
+              return BSubmitButton(
+                isLoading: isSaving,
+                label: 'Create Request',
+                onPressed: () async {
+                  if (isSaving) return;
+                  if (controller.formState.formKey.currentState?.validate() ??
+                      false) {
+                    await onSave();
+                  }
+                },
+              );
+            }),
+          ),
         ),
-      ),
-    );
+      );
   }
 }
