@@ -248,4 +248,30 @@ Future<void> createAllTables(Database db) async {
       RequestedBy TEXT
     )
   ''');
+
+  // Table: a_tblLocationAlternative
+  // Stores alternative delivery locations when user corrects wrong address
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblLocationAlternative (
+      ID INTEGER PRIMARY KEY AUTOINCREMENT,
+      RequestID INTEGER NOT NULL,
+      Latitude REAL NOT NULL,
+      Longitude REAL NOT NULL,
+      Address TEXT NOT NULL,
+      CreatedAt TEXT NOT NULL,
+      Notes TEXT,
+      FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
+    )
+  ''');
+
+  // Table: a_tblClientContactPerson
+  // Stores client contact person names for autocomplete functionality
+  await db.execute('''
+    CREATE TABLE a_tblClientContactPerson (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      usageCount INTEGER DEFAULT 1,
+      lastUsedAt TEXT NOT NULL
+    )
+  ''');
 }

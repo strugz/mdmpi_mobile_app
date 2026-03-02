@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../base/utils/constants/sizes.dart';
@@ -30,18 +31,21 @@ class PullOutRequestModalFooter extends StatelessWidget {
     final cameraController = Get.find<CameraHandlerController>();
 
     final PullOutController requestController = Get.find();
+    final UserController userController = Get.find();
 
-    final hasDriver = requestModel.driver.isNotEmpty;
-    final hasHelper = requestModel.helper.isNotEmpty;
-    final hasDeparted = requestModel.pullOutDateStartAt.isNotEmpty;
-    final hasPullOut = requestModel.pullOutDateEndAt.isNotEmpty;
+    final role = userController.user.value.role;
+    final hasRestrictedRole =
+        ['Request', 'Release'].any((r) => role.contains(r));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// -- For Out Transit --
-        if (requestModel.requestStatus == BTexts.statusInTransit) ...[
+        /// -- Proof of Pull out (for In Transit status) --
+        if (requestModel.requestStatus == BTexts.statusInTransit &&
+            !hasRestrictedRole) ...[
+          const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Proof of Pull out'),
+          const SizedBox(height: BSizes.sm),
           Obx(
             () => Center(
               child: Column(
@@ -58,31 +62,32 @@ class PullOutRequestModalFooter extends StatelessWidget {
                     ),
                     icon: Icon(Iconsax.camera, size: 25, color: iconColor),
                   ),
-                  BProductTitleText(
-                    title: cameraController.imageProofPath.value,
-                    maxLines: 1,
-                    smallSize: true,
-                    fontColor: textColor,
-                  ),
+                  if (cameraController.imageProofPath.value.isNotEmpty)
+                    BProductTitleText(
+                      title: cameraController.imageProofPath.value,
+                      maxLines: 1,
+                      smallSize: true,
+                      fontColor: textColor,
+                    ),
                 ],
               ),
             ),
           ),
+          const SizedBox(height: BSizes.spaceBtwItems),
           BTextFormField(
             controller: requestController.formState.releasedByController,
             label: 'Released By',
             keyboardType: TextInputType.text,
           ),
+          const SizedBox(height: BSizes.sm),
           Center(
             child: TextButton.icon(
-              // Use Obx to rebuild if signature changes
               onPressed: () => BFullScreenLoader.showSignatureDialogForPullOut(
                   context, requestController),
               icon: Icon(
                 requestController.formState.receiverSignatureBytes.value == null
-                    ? Iconsax.edit // Or another icon for "add signature"
-                    : Iconsax
-                        .document_upload, // Or an icon for "view/change signature"
+                    ? Iconsax.edit
+                    : Iconsax.document_upload,
                 color: textColor,
               ),
               label: Text(
@@ -107,7 +112,7 @@ class PullOutRequestModalFooter extends StatelessWidget {
                     ),
                     const SizedBox(height: BSizes.xs),
                     Container(
-                      height: 200, // Adjust as needed
+                      height: 200,
                       decoration: BoxDecoration(
                         border: Border.all(color: BColors.grey),
                       ),
@@ -119,52 +124,20 @@ class PullOutRequestModalFooter extends StatelessWidget {
               ),
             ),
         ],
-        if (hasDriver || hasHelper) ...[
-          BTextDivider(text: 'Delivery details'),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (hasDriver)
-                BProductTitleText(
-                  title: 'Driver: ${requestModel.driver}',
-                  maxLines: 2,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.black,
-                ),
-              if (hasHelper)
-                BProductTitleText(
-                  title: 'Helper: ${requestModel.helper}',
-                  maxLines: 2,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.black,
-                ),
-            ],
-          ),
-          if (hasDeparted)
-            BProductTitleText(
-              title: 'Departed At: ${BFormatter.formatDateTimeCustomizable(
-                requestModel.pullOutDateStartAt,
-                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                "yyyy-MM-dd HH:mm",
-              )}',
-              maxLines: 1,
-              smallSize: true,
-              fontColor: dark ? BColors.light : BColors.black,
-            ),
-          const SizedBox(height: BSizes.xs),
-          if (hasPullOut)
-            BProductTitleText(
-              title: 'Pull Out At: ${BFormatter.formatDateTimeCustomizable(
-                requestModel.pullOutDateEndAt,
-                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                "yyyy-MM-dd HH:mm",
-              )}',
-              maxLines: 1,
-              smallSize: true,
-              fontColor: dark ? BColors.light : BColors.black,
-            ),
-          const SizedBox(height: BSizes.xs),
-        ],
+
+        /// -- Delivery Details --
+        BDeliveryDetailsSection(
+          driver: requestModel.driver,
+          helper: requestModel.helper,
+          receivedBy: requestModel.releasedBy,
+          receivedByLabel: 'Released By',
+          departedAt: requestModel.pullOutDateStartAt,
+          completedAt: requestModel.pullOutDateEndAt,
+          completedAtLabel: 'Pull Out At',
+          requestId: requestModel.id,
+          apiController: 'RequestPullOutReturnPickUp',
+          viewItemButtonLabel: 'View Proof of Pull Out',
+        ),
       ],
     );
   }

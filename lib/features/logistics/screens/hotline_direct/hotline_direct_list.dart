@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_card_horizontal.dart';
@@ -12,7 +13,7 @@ import '../../../../base/utils/helpers/helper_functions.dart';
 import '../../../../base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
-import '../../services/implementations/request_role_handler.dart';
+import '../../services/implementations/hotline_direct_role_handler.dart';
 
 /// Role priority map: Lower number = Higher priority (more capabilities)
 const _rolePriority = {
@@ -81,87 +82,117 @@ class HotlineDirectList extends StatelessWidget {
     final userController = Get.find<UserController>();
 
     return Obx(() {
-      if (requestController.filterManager.filteredRequests.isNotEmpty) {
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(BSizes.defaultSpace),
-            child: AbsorbPointer(
-              absorbing: requestController.isLoading.value,
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await requestController.loadRequests();
-                },
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  scrollDirection: Axis.vertical,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  separatorBuilder: (_, __) =>
-                      const SizedBox(height: BSizes.spaceBtwItems),
-                  itemCount:
-                      requestController.filterManager.filteredRequests.length,
-                  itemBuilder: (_, index) {
-                    final request =
-                        requestController.filterManager.filteredRequests[index];
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
-                      onTap: () => {
-                        requestController.currentSelectedRequest.value =
-                            request,
-                        _showAppropriateDialog(
-                            context, request, userController, requestController)
-                      },
-                      onLongPress: () => {
-                        if (request.status != BTexts.statusDoneDelivery &&
-                            request.status != BTexts.statusCancelled)
-                          {
-                            requestController.currentSelectedRequest.value =
-                                request,
-                            BDialog.showRemarksDialog(context, request),
-                          },
-                      },
-                      child: BRequestCardHorizontal(
-                        requestModel: request,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.all(BSizes.defaultSpace),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await requestController.loadRequests();
+            },
+            child: requestController.filterManager.filteredRequests.isNotEmpty
+                ? ListView.separated(
+                    shrinkWrap: true,
+                    scrollDirection: Axis.vertical,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: BSizes.spaceBtwItems),
+                    itemCount: requestController
+                        .filterManager.filteredRequests.length,
+                    itemBuilder: (_, index) {
+                      final request = requestController
+                          .filterManager.filteredRequests[index];
+                      return InkWell(
+                        borderRadius:
+                            BorderRadius.circular(BSizes.cardRadiusMd),
+                        onTap: requestController.isLoading.value
+                            ? null
+                            : () => {
+                                  requestController
+                                      .currentSelectedRequest.value = request,
+                                  _showAppropriateDialog(
+                                      context,
+                                      request,
+                                      userController,
+                                      requestController)
+                                },
+                        onLongPress: requestController.isLoading.value
+                            ? null
+                            : () => {
+                                  if (request.status !=
+                                          BTexts.statusDoneDelivery &&
+                                      request.status !=
+                                          BTexts.statusCancelled)
+                                    {
+                                      requestController
+                                          .currentSelectedRequest.value =
+                                          request,
+                                      BDialog.showRemarksDialog(
+                                          context, request),
+                                    },
+                                },
+                        child: BRequestCardHorizontal(
+                          requestModel: request,
+                        ),
+                      );
+                    },
+                  )
+                : SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: requestController.isLoading.value
+                        ? const SizedBox(
+                            height: 300,
+                            child: BShimmerEffect(
+                                width: double.infinity,
+                                height: 300,
+                                radius: 15),
+                          )
+                        : SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.6,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.inbox_outlined,
+                                    size: 80,
+                                    color: dark
+                                        ? BColors.light
+                                        : BColors.darkGrey,
+                                  ),
+                                  const SizedBox(
+                                      height: BSizes.spaceBtwItems),
+                                  Text(
+                                    'No Hotline Direct requests found',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          color: dark
+                                              ? BColors.light
+                                              : BColors.darkGrey,
+                                        ),
+                                  ),
+                                  const SizedBox(height: BSizes.sm),
+                                  Text(
+                                    'Try adjusting your filters',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: dark
+                                              ? BColors.light
+                                              : BColors.darkGrey,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                  ),
           ),
-        );
-      } else if (requestController.isLoading.value) {
-        return const BShimmerEffect(
-            width: double.infinity, height: 300, radius: 15);
-      } else {
-        return Expanded(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.inbox_outlined,
-                  size: 80,
-                  color: dark ? BColors.light : BColors.darkGrey,
-                ),
-                const SizedBox(height: BSizes.spaceBtwItems),
-                Text(
-                  'No Hotline Direct requests found',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: dark ? BColors.light : BColors.darkGrey,
-                      ),
-                ),
-                const SizedBox(height: BSizes.sm),
-                Text(
-                  'Try adjusting your filters',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: dark ? BColors.light : BColors.darkGrey,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
+        ),
+      );
     });
   }
 
@@ -170,41 +201,53 @@ class HotlineDirectList extends StatelessWidget {
     BuildContext context,
     StandardDeliveryModel request,
     UserController userController,
-    HotlineDirectController requestController,
+    IDeliveryRequestController requestController,
   ) {
-    final userRoles =
-        userController.user.value.role.split(',').map((r) => r.trim()).toList();
+    // Ensure user and user properties are not null
+    final user = userController.user.value;
+    if (user.role.isEmpty || user.initial.isEmpty) {
+      // Fallback to default handler if user data is incomplete
+      HotlineDirectDefaultHandler().handleAction(
+          context, request, requestController, userController, '');
+      return;
+    }
+
+    final userRoles = user.role.split(',').map((r) => r.trim()).toList();
     final activeRole = _selectActiveRole(userRoles, request.status);
-    final userInitial = userController.user.value.initial;
+    final userInitial = user.initial;
 
     // Handle done/cancelled status with default handler
     if (request.status == BTexts.statusDoneDelivery ||
         request.status == BTexts.statusCancelled) {
-      DefaultRequestHandler().handleAction(
-          context, request, requestController as dynamic, userController, userInitial);
+      HotlineDirectDefaultHandler().handleAction(
+          context, request, requestController, userController, userInitial);
       return;
     }
 
     if (activeRole == null) {
       // No valid role - show view-only dialog
-      DefaultRequestHandler().handleAction(
-          context, request, requestController as dynamic, userController, userInitial);
+      HotlineDirectDefaultHandler().handleAction(
+          context, request, requestController, userController, userInitial);
       return;
     }
 
-    // Use request role handlers
-    final handlers = <String, RequestActionHandler>{
-      BTexts.roleRequest: RequestRoleHandler(),
-      BTexts.roleRelease: ReleaseRoleHandler(),
-      BTexts.roleCourier: CourierRoleHandler(),
-      BTexts.roleViewer: ViewerRoleHandler(),
+    // Use hotline direct role handlers
+    final handlers = <String, HotlineDirectActionHandler>{
+      BTexts.roleRequest: HotlineDirectRequestRoleHandler(),
+      BTexts.roleRelease: HotlineDirectReleaseRoleHandler(),
+      BTexts.roleCourier: HotlineDirectCourierRoleHandler(),
+      BTexts.roleViewer: HotlineDirectViewerRoleHandler(),
     };
 
     // Invoke only the selected handler
-    if (handlers.containsKey(activeRole)) {
-      handlers[activeRole]!.handleAction(
-          context, request, requestController as dynamic, userController, userInitial);
+    final handler = handlers[activeRole];
+    if (handler != null) {
+      handler.handleAction(context, request, requestController,
+          userController, userInitial);
+    } else {
+      // Fallback to default handler if no specific handler is found
+      HotlineDirectDefaultHandler().handleAction(
+          context, request, requestController, userController, userInitial);
     }
   }
 }
-

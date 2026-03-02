@@ -295,16 +295,10 @@ class PullOutDataManager {
       List<PullOutModel> results;
 
       if (!useLocalStorage) {
-        // Force API fetch by passing forceRefresh: true
-        // This bypasses local DB check even if it has data
-        logDebug(
-            'PullOutDataManager: Fetching from API (useLocalStorage=false, forcing refresh)');
         results = await _repository.getAll(forceRefresh: true);
       } else {
-        logDebug('PullOutDataManager: Fetching from local DB first');
         results = await _repository.getLocalPullOuts();
         if (results.isEmpty) {
-          logDebug('PullOutDataManager: Local DB empty, fetching from API');
           results = await _repository.getAll();
         } else {
           logDebug(
@@ -316,13 +310,10 @@ class PullOutDataManager {
           results.where((r) => r.formCategoryId == '4').toList();
 
       controller.pullOuts.assignAll(pullOutsRequests);
-      logDebug(
-          'PullOutDataManager: Assigned ${results.length} pull-outs to controller');
 
       controller.filterManager.applyFilter(controller.pullOuts.toList());
     } catch (e) {
       controller.errorMessage.value = e.toString();
-      logDebug('PullOutDataManager.fetchPullOuts error: $e');
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;

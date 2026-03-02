@@ -79,6 +79,31 @@ class UserModel {
     };
   }
 
+  /// Build a payload map suitable for updates or API payloads.
+  /// Omits null values and empty strings to keep the payload small.
+  Map<String, dynamic> toMapper() {
+    final Map<String, dynamic> data = {};
+
+    void put(String key, dynamic value) {
+      if (value == null) return;
+      if (value is String && value.isEmpty) return;
+      data[key] = value;
+    }
+
+    put('FirstName', firstName);
+    put('LastName', lastName);
+    put('Username', username);
+    put('Email', email);
+    put('PhoneNumber', phoneNumber);
+    put('ProfilePicture', profilePicture);
+    put('Initial', initial);
+    put('Department', department);
+    put('Role', role);
+    put('Status', status);
+
+    return data;
+  }
+
   /// Factory method to create a UserModel from a Firebase document snapshot.
   factory UserModel.fromSnapshot(
       DocumentSnapshot<Map<String, dynamic>> document) {

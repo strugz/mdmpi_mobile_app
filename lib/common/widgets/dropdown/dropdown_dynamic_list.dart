@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 
 import '../../../base/utils/constants/colors.dart';
+import '../../../base/utils/helpers/helper_functions.dart';
 
 /// Dynamic Dropdown that accepts either a list of strings or a list of maps.
 /// When using a list of maps, provide [valueKey] and [displayKey] to extract
@@ -12,6 +13,7 @@ class BDropDownDynamicList extends StatefulWidget {
   final String? valueKey; // key in map to use as value
   final String? displayKey; // key in map to show as label
   final ValueChanged<String?>? onChanged;
+
   /// icon may be either an IconData or a Widget. If IconData is provided,
   /// it will be wrapped with Icon(...).
   final Object? icon;
@@ -143,8 +145,8 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = BHelperFunctions.isDarkMode(context);
     final textStyle = Theme.of(context).textTheme.labelSmall;
-
     // If search is enabled, use custom searchable dropdown
     if (widget.enableSearch) {
       final selectedLabel = _selectedValue != null
@@ -165,13 +167,17 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
                 onTap: widget.readOnly ? null : _showSearchableDropdown,
                 child: InputDecorator(
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     prefixIcon: widget.icon is IconData
-                        ? Icon(widget.icon as IconData, size: 20, color: BColors.grey)
+                        ? Icon(widget.icon as IconData,
+                            size: 20, color: BColors.grey)
                         : (widget.icon is Widget
                             ? widget.icon as Widget
-                            : const Icon(Iconsax.arrow_down_1, size: 20, color: BColors.grey)),
-                    suffixIcon: const Icon(Iconsax.search_normal, size: 20, color: BColors.grey),
+                            : const Icon(Iconsax.arrow_down_1,
+                                size: 20, color: BColors.grey)),
+                    suffixIcon: const Icon(Iconsax.search_normal,
+                        size: 20, color: BColors.grey),
                     labelText: widget.label,
                     hintText: widget.hint ?? 'Select',
                     errorText: fieldState.errorText,
@@ -200,30 +206,36 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
       );
     }).toList();
 
-    final containsSelected = _selectedValue != null &&
-        items.any((it) => it.value == _selectedValue);
+    final containsSelected =
+        _selectedValue != null && items.any((it) => it.value == _selectedValue);
 
     return DropdownButtonFormField<String>(
       initialValue: containsSelected ? _selectedValue : null,
       isExpanded: widget.isExpanded,
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         prefixIcon: widget.icon is IconData
             ? Icon(widget.icon as IconData, size: 20, color: BColors.grey)
-            : (widget.icon is Widget ? widget.icon as Widget : const Icon(Iconsax.arrow_down_1, size: 20, color: BColors.grey)),
+            : (widget.icon is Widget
+                ? widget.icon as Widget
+                : const Icon(Iconsax.arrow_down_1,
+                    size: 20, color: BColors.grey)),
         labelText: widget.label,
         hintText: widget.hint ?? 'Select',
       ),
       items: items,
-      onChanged: widget.readOnly ? null : (String? newValue) {
-        setState(() => _selectedValue = newValue);
-        if (widget.controller != null) {
-          widget.controller!.text = newValue ?? '';
-        }
-        if (widget.onChanged != null) widget.onChanged!(newValue);
-      },
+      onChanged: widget.readOnly
+          ? null
+          : (String? newValue) {
+              setState(() => _selectedValue = newValue);
+              if (widget.controller != null) {
+                widget.controller!.text = newValue ?? '';
+              }
+              if (widget.onChanged != null) widget.onChanged!(newValue);
+            },
       style: textStyle,
-      dropdownColor: Colors.white,
+      dropdownColor: dark ? BColors.dark : Colors.white,
       validator: widget.validator,
     );
   }
@@ -247,7 +259,8 @@ class _SearchableDropdownDialog extends StatefulWidget {
   });
 
   @override
-  State<_SearchableDropdownDialog> createState() => _SearchableDropdownDialogState();
+  State<_SearchableDropdownDialog> createState() =>
+      _SearchableDropdownDialogState();
 }
 
 class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
@@ -283,7 +296,10 @@ class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final dark = BHelperFunctions.isDarkMode(context);
+
     return Dialog(
+      backgroundColor: dark ? BColors.dark : Colors.white,
       child: Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.6,
@@ -309,7 +325,8 @@ class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
                           },
                         )
                       : null,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
             ),
@@ -322,7 +339,8 @@ class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
                         padding: const EdgeInsets.all(16.0),
                         child: Text(
                           'No results found',
-                          style: widget.textStyle?.copyWith(color: BColors.grey),
+                          style:
+                              widget.textStyle?.copyWith(color: BColors.grey),
                         ),
                       ),
                     )
@@ -338,9 +356,12 @@ class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
                         return ListTile(
                           title: Text(label, style: widget.textStyle),
                           selected: isSelected,
-                          selectedTileColor: BColors.primary.withValues(alpha: 0.1),
+                          selectedTileColor: dark
+                              ? BColors.primary.withValues(alpha: 0.2)
+                              : BColors.primary.withValues(alpha: 0.1),
                           trailing: isSelected
-                              ? const Icon(Icons.check, color: BColors.primary, size: 20)
+                              ? const Icon(Icons.check,
+                                  color: BColors.primary, size: 20)
                               : null,
                           onTap: () {
                             Navigator.of(context).pop(value);
@@ -355,5 +376,3 @@ class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
     );
   }
 }
-
-

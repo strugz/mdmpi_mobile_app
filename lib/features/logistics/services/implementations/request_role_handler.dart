@@ -2,60 +2,63 @@ import 'dart:ui';
 
 import 'package:flutter/cupertino.dart' show BuildContext;
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/request_transport.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
 import '../../../../base/utils/popups/full_screen_loader.dart';
 import '../../../personalization/controller/user_controller.dart';
-import '../../controllers/standard_delivery_controller.dart';
 import '../../models/standard_delivery_model.dart';
 
 abstract class RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial, // Pass userInitial directly
   );
 
   // Helper to show the dialog, can be part of the abstract class or a utility
   void _showDialog(BuildContext context, StandardDeliveryModel request,
-      VoidCallback? onConfirm, bool canEdit) {
+      VoidCallback? onConfirm, bool canEdit,
+      IDeliveryRequestController requestController) {
     BFullScreenLoader.showRequestForReleasingDialog(
-        context, request, onConfirm ?? () {}, canEdit);
+        context, request, onConfirm ?? () {}, canEdit, requestController);
   }
 }
+
 class RequestRoleHandler extends RequestActionHandler {
   @override
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
+    final controller = requestController as IDeliveryRequestController;
     if (request.status == BTexts.statusNewRequest &&
         userController.user.value.role.contains('Request')) {
-      _showDialog(context, request, null, false);
+      _showDialog(context, request, null, false, controller);
     } else if (request.status == BTexts.statusNewRequest &&
         !userController.user.value.role.contains('Release')) {
-      _showDialog(context, request, null, false);
+      _showDialog(context, request, null, false, controller);
     } else if (request.status == BTexts.statusGettingSuppliesReady &&
         !userController.user.value.role.contains('Release')) {
-      _showDialog(context, request, null, false);
+      _showDialog(context, request, null, false, controller);
     } else if (request.status == BTexts.statusItemPrepared &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     } else if (request.status == BTexts.statusForDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     } else if (request.status == BTexts.statusDoneDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     }
   }
 }
@@ -65,43 +68,45 @@ class ReleaseRoleHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
-
+    final controller = requestController as IDeliveryRequestController;
     if (request.status == BTexts.statusNewRequest) {
       _showDialog(
         context,
         request,
-        () => requestController.updateRequestStatus(
+        () => controller.updateRequestStatus(
             request, BTexts.statusGettingSuppliesReady, userInitial),
         true,
+        controller,
       );
     } else if (request.status == BTexts.statusGettingSuppliesReady &&
         request.itemPreparedBy == userInitial) {
       _showDialog(
         context,
         request,
-        () => requestController.updateRequestStatus(
+        () => controller.updateRequestStatus(
             request, BTexts.statusItemPrepared, userInitial),
         true,
+        controller,
       );
     } else if (request.status == BTexts.statusGettingSuppliesReady &&
         request.itemPreparedBy != userInitial) {
-      _showDialog(context, request, null, false);
+      _showDialog(context, request, null, false, controller);
     } else if (request.status == BTexts.statusItemPrepared &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     } else if (request.status == BTexts.statusForDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     } else if (request.status == BTexts.statusDoneDelivery &&
         !userController.user.value.role.contains('Courier')) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     }
   }
 }
@@ -111,16 +116,17 @@ class CourierRoleHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
+    final controller = requestController as IDeliveryRequestController;
     if (request.status == BTexts.statusNewRequest) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     } else if (request.status == BTexts.statusGettingSuppliesReady) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     } else if (request.status == BTexts.statusItemPrepared) {
       Get.to(() => RequestTransport(
           request: request, requestController: requestController));
@@ -128,7 +134,7 @@ class CourierRoleHandler extends RequestActionHandler {
         request.deliveredBy != userInitial &&
         request.helper != userInitial) {
       BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false);
+          context, request, () {}, false, controller);
     } else if (request.status == BTexts.statusForDelivery &&
         (request.deliveredBy == userInitial || request.helper == userInitial)) {
       Get.to(() => RequestTransport(
@@ -142,12 +148,13 @@ class ViewerRoleHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
+    final controller = requestController as IDeliveryRequestController;
     BFullScreenLoader.showRequestForReleasingDialog(
-        context, request, () {}, false);
+        context, request, () {}, false, controller);
   }
 }
 
@@ -157,12 +164,12 @@ class DefaultRequestHandler extends RequestActionHandler {
   void handleAction(
     BuildContext context,
     StandardDeliveryModel request,
-    StandardDeliveryController requestController,
+    dynamic requestController,
     UserController userController,
     String userInitial,
   ) {
-
+    final controller = requestController as IDeliveryRequestController;
     BFullScreenLoader.showRequestForReleasingDialog(
-        context, request, () {}, false);
+        context, request, () {}, false, controller);
   }
 }

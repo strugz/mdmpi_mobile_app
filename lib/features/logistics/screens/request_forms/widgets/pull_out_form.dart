@@ -5,6 +5,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_autocomplete_text_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -26,6 +28,7 @@ class PullOutForm extends StatelessWidget {
     final PullOutController controller = Get.find();
     final StandardDeliveryController stdController = Get.find();
     final UserMdmpiController userController = Get.find();
+    final RequestController requestController = Get.find();
 
     userController.filterUserFromLocal();
 
@@ -36,7 +39,6 @@ class PullOutForm extends StatelessWidget {
 
     // Pre-select form category from RequestController if available
     try {
-      final requestController = Get.find<RequestController>();
       final selectedCategory = requestController.currentSelectedCategory.value;
 
       if (selectedCategory != null) {
@@ -50,9 +52,18 @@ class PullOutForm extends StatelessWidget {
     }
 
     Future<void> onSave() async {
+      // Save contact person name for autocomplete before clearing
+      final contactPersonName =
+          controller.formState.clientContactPersonController.text.trim();
+
       await controller.submitFromForm();
 
       if ((controller.errorMessage.value ?? '').isEmpty) {
+        // Save contact person to database for future autocomplete
+        if (contactPersonName.isNotEmpty) {
+          await saveClientContactPerson(contactPersonName);
+        }
+
         controller.formState.clientContactPersonController.clear();
         controller.formState.irrfNumberController.clear();
         controller.formState.irrfDateController.clear();
@@ -77,15 +88,15 @@ class PullOutForm extends StatelessWidget {
       }
     }
 
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
-
-    return SafeArea(
-      bottom: !isGestureNavigation,
-      child: Scaffold(
-        appBar: BAppBar(
-          title: Text(BTexts.requestFormTitle,
-              style: Theme.of(context).textTheme.bodyLarge),
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: BAppBar(
+          title: Text(
+            BTexts.getRequestFormTitle(
+              requestController.currentSelectedCategory.value?.name,
+            ),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           showBackArrow: true,
           leadingOnPressed: () => Get.back(),
         ),
@@ -102,15 +113,21 @@ class PullOutForm extends StatelessWidget {
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           /// Search Client
-                          BClientInformation(),
-                          Divider(),
-                          SizedBox(height: BSizes.sm),
+                          const BClientInformation(),
+
+                          /// Hidden validator for client selection
+                          BClientValidationField(
+                            clientInformation: stdController.formState.clientInformation,
+                          ),
+
+                          const Divider(),
+                          const SizedBox(height: BSizes.sm),
 
                           /// Document Reference
-                          BDocumentReference(),
-                          SizedBox(height: BSizes.sm),
+                          const BDocumentReference(),
+                          const SizedBox(height: BSizes.sm),
                         ],
                       ),
 
@@ -151,10 +168,15 @@ class PullOutForm extends StatelessWidget {
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Client Contact Person
-                      BTextFormField(
+                      BAutocompleteTextField(
                         controller:
                             controller.formState.clientContactPersonController,
+                        autocompleteController: controller
+                            .formState.clientContactPersonAutocomplete,
                         label: 'Client Contact Person',
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter client contact person'
+                            : null,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
@@ -183,6 +205,15 @@ class PullOutForm extends StatelessWidget {
                         controller: controller.formState.reasonController,
                         label: 'Reason for Return',
                         maxLines: 3,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Reason for Return is required';
+                          }
+                          if (value.trim().length < 10) {
+                            return 'Reason must be at least 10 characters long';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
@@ -211,8 +242,10 @@ class PullOutForm extends StatelessWidget {
                                 dropdownList: userController.userList
                                     .map((user) => user.toJson())
                                     .toList(),
+                                onChanged: (String? newId) {},
                                 valueKey: 'CNTMNN',
                                 displayKey: 'CNTMCN',
+                                enableSearch: true,
                                 validator: (v) =>
                                     (v == null || v.trim().isEmpty)
                                         ? 'Please select requestor'
@@ -231,24 +264,29 @@ class PullOutForm extends StatelessWidget {
             ],
           ),
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(BSizes.sm),
-          child: Obx(() {
-            final isSaving = controller.isSaving.value;
-            return BSubmitButton(
-              isLoading: isSaving,
-              label: 'Create Request',
-              onPressed: () async {
-                if (isSaving) return;
-                if (controller.formState.formKey.currentState?.validate() ??
-                    false) {
-                  await onSave();
-                }
-              },
-            );
-          }),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: BSizes.sm,
+              right: BSizes.sm,
+              bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Obx(() {
+              final isSaving = controller.isSaving.value;
+              return BSubmitButton(
+                isLoading: isSaving,
+                label: 'Create Request',
+                onPressed: () async {
+                  if (isSaving) return;
+                  if (controller.formState.formKey.currentState?.validate() ??
+                      false) {
+                    await onSave();
+                  }
+                },
+              );
+            }),
+          ),
         ),
-      ),
-    );
+      );
   }
 }

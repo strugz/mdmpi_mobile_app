@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
@@ -20,6 +23,7 @@ class AirSeaForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final AirSeaController controller = Get.find();
     final StandardDeliveryController stdController = Get.find();
+    final RequestController requestController = Get.find();
 
     final stdFormRefs = stdController.formState.documentReferenceControllers;
     if (stdFormRefs.isEmpty) {
@@ -51,15 +55,15 @@ class AirSeaForm extends StatelessWidget {
       }
     }
 
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
-
-    return SafeArea(
-      bottom: !isGestureNavigation,
-      child: Scaffold(
-        appBar: BAppBar(
-          title: Text('Air/Sea Request Form',
-              style: Theme.of(context).textTheme.bodyLarge),
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: BAppBar(
+          title: Text(
+            BTexts.getRequestFormTitle(
+              requestController.currentSelectedCategory.value?.name,
+            ),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           showBackArrow: true,
           leadingOnPressed: () => Get.back(),
         ),
@@ -76,15 +80,21 @@ class AirSeaForm extends StatelessWidget {
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
+                        children: [
                           /// Search Client
-                          BClientInformation(),
-                          Divider(),
-                          SizedBox(height: BSizes.sm),
+                          const BClientInformation(),
+
+                          /// Hidden validator for client selection
+                          BClientValidationField(
+                            clientInformation: stdController.formState.clientInformation,
+                          ),
+
+                          const Divider(),
+                          const SizedBox(height: BSizes.sm),
 
                           /// Document Reference
-                          BDocumentReference(),
-                          SizedBox(height: BSizes.sm),
+                          const BDocumentReference(),
+                          const SizedBox(height: BSizes.sm),
                         ],
                       ),
 
@@ -124,24 +134,29 @@ class AirSeaForm extends StatelessWidget {
             ],
           ),
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(BSizes.sm),
-          child: Obx(() {
-            final isSaving = controller.isSaving.value;
-            return BSubmitButton(
-              isLoading: isSaving,
-              label: 'Create Request',
-              onPressed: () async {
-                if (isSaving) return;
-                if (controller.formState.formKey.currentState?.validate() ??
-                    false) {
-                  await onSave();
-                }
-              },
-            );
-          }),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: BSizes.sm,
+              right: BSizes.sm,
+              bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Obx(() {
+              final isSaving = controller.isSaving.value;
+              return BSubmitButton(
+                isLoading: isSaving,
+                label: 'Create Request',
+                onPressed: () async {
+                  if (isSaving) return;
+                  if (controller.formState.formKey.currentState?.validate() ??
+                      false) {
+                    await onSave();
+                  }
+                },
+              );
+            }),
+          ),
         ),
-      ),
-    );
+      );
   }
 }

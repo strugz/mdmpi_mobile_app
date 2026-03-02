@@ -24,10 +24,7 @@ class PickUpRequestRoleHandler extends PickUpActionHandler {
       UserController userController,
       String userInitial) {
     if (request.status == BTexts.statusNewRequest) {
-      BFullScreenLoader.showPickUpDialog(context, request, () async {
-        await controller.updateStatusWithInputs(
-            request, BTexts.statusGettingSuppliesReady);
-      }, true);
+      BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
     } else {
       BFullScreenLoader.showPickUpDialog(context, request, () {}, false);
     }

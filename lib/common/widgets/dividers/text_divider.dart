@@ -37,23 +37,37 @@ class BTextDivider extends StatelessWidget {
       );
     }
     final dark = BHelperFunctions.isDarkMode(context);
-    final color = lineColor ?? (dark ? BColors.light.withValues(alpha: 0.3) : BColors.black.withValues(alpha: 0.2));
-    final style = textStyle ?? Theme.of(context).textTheme.labelMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-          color: dark ? BColors.light.withValues(alpha: 0.7) : BColors.black.withValues(alpha: 0.6),
-        );
+    final color = lineColor ??
+        (dark
+            ? BColors.light.withValues(alpha: 0.3)
+            : BColors.black.withValues(alpha: 0.2));
+    final style = textStyle ??
+        Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: dark
+                  ? BColors.light.withValues(alpha: 0.7)
+                  : BColors.black.withValues(alpha: 0.6),
+            );
     return Padding(
       padding: EdgeInsets.symmetric(vertical: verticalPadding),
-      child: Row(
-        children: [
-          Expanded(child: Divider(thickness: thickness, color: color, height: thickness)),
-          SizedBox(width: gap),
-          Text(text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
-          SizedBox(width: gap),
-          Expanded(child: Divider(thickness: thickness, color: color, height: thickness)),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Row(
+            children: [
+              Expanded(
+                  child: Divider(
+                      thickness: thickness, color: color, height: thickness)),
+              SizedBox(width: gap),
+              Text(text,
+                  style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+              SizedBox(width: gap),
+              Expanded(
+                  child: Divider(
+                      thickness: thickness, color: color, height: thickness)),
+            ],
+          );
+        },
       ),
     );
   }
 }
-

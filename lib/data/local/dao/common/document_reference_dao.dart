@@ -6,7 +6,7 @@ class DocumentReferenceDao {
 
   /// requestId may be int or string; normalize to int when possible to match DB types
   Future<List<String>> getByRequestId(Object requestId) async {
-    final dynamic normalized = int.tryParse(requestId.toString() ?? '') ?? requestId;
+    final dynamic normalized = int.tryParse(requestId.toString()) ?? requestId;
     final List<Map<String, dynamic>> maps = await db.query(
       'a_tblRequestDocumentReference',
       columns: ['Reference'],

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 
-import '../../../../../../base/utils/constants/sizes.dart';
-import '../../../../../../common/widgets/texts/product_title_text.dart';
-
 class DocumentReferenceList extends StatelessWidget {
   final List<String> documentReferences;
   final Color textColor;
@@ -19,7 +16,7 @@ class DocumentReferenceList extends StatelessWidget {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      separatorBuilder: (_, __) => const SizedBox(height: BSizes.xs),
+      separatorBuilder: (_, __) => const SizedBox.shrink(),
       itemCount: documentReferences.length,
       itemBuilder: (_, index) {
         final String reference = documentReferences[index];
@@ -29,6 +26,7 @@ class DocumentReferenceList extends StatelessWidget {
           showLabel: false,
           maxLines: 1,
           copyable: true,
+          padding: EdgeInsets.zero,
         );
       },
     );

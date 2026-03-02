@@ -13,9 +13,11 @@ class NavigationMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(NavigationController());
+
     final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final bool isGestureNavigation = bottomPadding > 0.0;
     final dark = BHelperFunctions.isDarkMode(context);
+
     return SafeArea(
       top: false,
       bottom: !isGestureNavigation,

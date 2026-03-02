@@ -1,9 +1,24 @@
 import 'package:intl/intl.dart';
 
 class BFormatter {
+
   static String formatDate(DateTime? date) {
     date ??= DateTime.now();
     return DateFormat('MM-dd-yyyy').format(date);
+  }
+
+ static String formatDate2(String value) {
+    if (value.isEmpty) return '';
+    final norm = BFormatter.normalizeToIsoDatetime(value);
+    if (norm == null) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+    try {
+      final dt = DateTime.parse(norm);
+      return DateFormat('MMM d, yyyy HH:mm').format(dt);
+    } catch (_) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
   }
 
   static String formatCurrency(double amount) {

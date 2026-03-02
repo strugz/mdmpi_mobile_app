@@ -6,9 +6,9 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/pull_out_request_card.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/services/implementations/pull_out_role_handler.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/implementations/stock_receive_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
@@ -20,6 +20,30 @@ const _rolePriority = {
   BTexts.roleRequest: 3, // Can only advance "New Request"
   BTexts.roleViewer: 4, // View-only access
 };
+
+/// Selects the appropriate role based on status and available roles.
+/// Prioritizes roles by status context, then by priority map.
+String? _selectActiveRole(List<String> roles, String status) {
+  // Picked-up/Cancelled: handled with default handler (no role selection needed)
+  if (status.toLowerCase() == 'picked-up' ||
+      status.toLowerCase() == 'cancelled') {
+    return null;
+  }
+
+  // Default: find highest-priority role
+  String? highestRole;
+  int highestPriority = 999;
+
+  for (final role in roles) {
+    final priority = _rolePriority[role] ?? 999;
+    if (priority < highestPriority) {
+      highestPriority = priority;
+      highestRole = role;
+    }
+  }
+
+  return highestRole;
+}
 
 /// List widget for displaying Stock Receive requests.
 ///
@@ -155,38 +179,39 @@ void _handleStockReceiveTap(
       .toList();
   final userInitial = userController.user.value.initial;
 
+  // Normalize status comparison for consistency
+  final statusLower = request.requestStatus.toLowerCase();
+
   // Handle cancelled/picked-up status with default handler
-  if (request.requestStatus.toLowerCase() == 'cancelled' ||
-      request.requestStatus.toLowerCase() == 'picked-up') {
-    PullOutDefaultHandler().handleAction(
+  if (statusLower == 'cancelled' || statusLower == 'picked-up') {
+    StockReceiveDefaultHandler().handleAction(
         context, request, controller as dynamic, userController, userInitial);
     return;
   }
 
-  final handlers = <String, PullOutActionHandler>{
-    BTexts.roleRequest: PullOutRequestRoleHandler(),
-    BTexts.roleRelease: PullOutReleaseRoleHandler(),
-    BTexts.roleCourier: PullOutCourierRoleHandler(),
-    BTexts.roleViewer: PullOutViewerRoleHandler(),
-  };
+  final activeRole = _selectActiveRole(roles, request.requestStatus);
 
-  // Find the highest-priority role the user has
-  String? selectedRole;
-  int highestPriority = 999;
-
-  for (final role in roles) {
-    if (handlers.containsKey(role)) {
-      final priority = _rolePriority[role] ?? 999;
-      if (priority < highestPriority) {
-        highestPriority = priority;
-        selectedRole = role;
-      }
-    }
+  if (activeRole == null) {
+    // No valid role - show default handler
+    StockReceiveDefaultHandler().handleAction(
+        context, request, controller as dynamic, userController, userInitial);
+    return;
   }
 
+  final handlers = <String, StockReceiveActionHandler>{
+    BTexts.roleRequest: StockReceiveRequestRoleHandler(),
+    BTexts.roleRelease: StockReceiveReleaseRoleHandler(),
+    BTexts.roleCourier: StockReceiveCourierRoleHandler(),
+    BTexts.roleViewer: StockReceiveViewerRoleHandler(),
+  };
+
   // Invoke only the selected handler
-  if (selectedRole != null && handlers.containsKey(selectedRole)) {
-    handlers[selectedRole]!.handleAction(
+  if (handlers.containsKey(activeRole)) {
+    handlers[activeRole]!.handleAction(
+        context, request, controller as dynamic, userController, userInitial);
+  } else {
+    // Fallback if no handler is registered for the selected role
+    StockReceiveDefaultHandler().handleAction(
         context, request, controller as dynamic, userController, userInitial);
   }
 }

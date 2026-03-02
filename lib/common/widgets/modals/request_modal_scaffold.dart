@@ -35,6 +35,7 @@ class RequestModalScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool dark = BHelperFunctions.isDarkMode(context);
     final Color textColor = dark ? BColors.light : BColors.black;
+
     return BRoundedContainer(
       backgroundColor: dark ? BColors.black : BColors.light,
       radius: 0,
@@ -46,32 +47,20 @@ class RequestModalScaffold extends StatelessWidget {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: BSizes.sm),
+              padding: const EdgeInsets.symmetric(vertical: BSizes.xxs),
               child: header ??
                   _DefaultHeader(
                       title: title ?? '',
                       subtitle: subtitle ?? '',
                       textColor: textColor),
             ),
-            const SizedBox(height: BSizes.xs),
             // Document references
             if (documentReferences.isNotEmpty)
               BTextDivider(text: 'Document References'),
-            const SizedBox(height: BSizes.xs),
             DocumentReferenceList(
               documentReferences: documentReferences,
               textColor: textColor,
             ),
-            if (documentReferences.isNotEmpty)
-              docsBottomDivider
-                  ? Column(
-                      children: const [
-                        SizedBox(height: BSizes.xs),
-                        Divider(),
-                        SizedBox(height: BSizes.xs),
-                      ],
-                    )
-                  : const SizedBox(height: BSizes.xs),
             // Body
             ...children,
             const SizedBox(height: BSizes.xs),

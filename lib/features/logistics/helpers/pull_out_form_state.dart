@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../features/logistics/models/client_model.dart';
 import '../../../data/models/item_category_model.dart';
 import '../../../data/models/form_category_model.dart';
+import '../../../common/controllers/autocomplete_controller.dart';
 
 class PullOutFormState {
   final TextEditingController clientContactPersonController = TextEditingController();
@@ -34,10 +35,19 @@ class PullOutFormState {
   final RxList<ItemCategoryModel> itemCategories = <ItemCategoryModel>[].obs;
   final RxList<FormCategoryModel> formCategories = <FormCategoryModel>[].obs;
 
+  /// Autocomplete controller for Client Contact Person
+  late final AutocompleteController clientContactPersonAutocomplete;
+
+  PullOutFormState() {
+    // Initialize autocomplete controller
+    clientContactPersonAutocomplete = AutocompleteController();
+    clientContactPersonAutocomplete.initialize(clientContactPersonController);
+  }
+
   void initializeDefaultDate() {
     final defaultDate = DateTime.now();
     pullOutDateController.text = DateFormat('yyyy-MM-dd').format(defaultDate);
-    irrfDateController.text = DateFormat('yyyy-MM-dd').format(defaultDate);
+    // IRRF Date is optional - no default value
   }
 
   void reset() {

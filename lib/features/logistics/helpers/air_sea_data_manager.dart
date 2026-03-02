@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -275,19 +274,19 @@ class AirSeaDataManager {
             newStatus == BTexts.statusReceived && request.receivedAt.isEmpty
                 ? nowString
                 : request.receivedAt,
-        tripTicketNumber: newStatus == BTexts.statusDispatch &&
+        tripTicketNumber: newStatus == BTexts.statusForDispatch &&
                 formState.tripTicketController.text.isNotEmpty
             ? formState.tripTicketController.text
             : request.tripTicketNumber,
-        driver: newStatus == BTexts.statusDispatch &&
+        driver: newStatus == BTexts.statusForDispatch &&
                 formState.driverController.text.isNotEmpty
             ? formState.driverController.text
             : request.driver,
-        helper: newStatus == BTexts.statusDispatch &&
+        helper: newStatus == BTexts.statusForDispatch &&
                 formState.helperController.text.isNotEmpty
             ? formState.helperController.text
             : request.helper,
-        mobileId: newStatus == BTexts.statusDispatch &&
+        mobileId: newStatus == BTexts.statusForDispatch &&
                 formState.vehicleController.text.isNotEmpty
             ? int.tryParse(formState.vehicleController.text)
             : request.mobileId,
@@ -389,7 +388,6 @@ class AirSeaDataManager {
     } finally {
       formState.reset();
       controller.isSaving.value = false;
-      BFullScreenLoader.stopLoading();
     }
   }
 

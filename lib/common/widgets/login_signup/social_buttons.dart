@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/login/login_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/login_controller.dart';
 
 import '../../../base/utils/constants/colors.dart';
 import '../../../base/utils/constants/image_strings.dart';

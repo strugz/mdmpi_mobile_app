@@ -1,10 +1,15 @@
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_mdmpi_repository.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/loading_screen/loading_screen_controller.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/login/login_controller.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/signup/signup_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/loading_screen_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/login_controller.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/repositories/i_authentication_repository.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_email_password_usecase.dart';
+import 'package:mdmpi_mobile_app/features/authentication/domain/usecases/login_with_google_usecase.dart';
+import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/signup_controller.dart';
 
 import '../base/utils/helpers/network_manager.dart';
 import '../common/services/abstracts/i_camera_service.dart';
@@ -12,10 +17,18 @@ import '../common/services/abstracts/i_text_extractor.dart';
 import '../common/services/abstracts/i_text_recognition_service.dart';
 import '../common/services/abstracts/i_notification_service.dart';
 import '../common/services/abstracts/i_permission_service.dart';
+import '../common/services/abstracts/location_alternative_service.dart';
+import '../common/services/abstracts/i_maps_service.dart';
+import '../common/services/abstracts/i_places_service.dart';
+import '../common/services/abstracts/i_location_tracking_service.dart';
 import '../common/services/implementations/flutter_camera_service.dart';
 import '../common/services/implementations/google_ml_kit_text_recognizer.dart';
 import '../common/services/implementations/notification_service.dart';
 import '../common/services/implementations/permission_service.dart';
+import '../common/services/implementations/location_alternative_service.dart';
+import '../common/services/implementations/maps_service.dart';
+import '../common/services/implementations/places_service.dart';
+import '../common/services/implementations/location_tracking_service.dart';
 import '../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../data/controllers/client_controller.dart';
 import '../data/repositories/app_data/department_repository.dart';
@@ -29,13 +42,14 @@ import '../data/repositories/standard_delivery/standard_delivery_repository.dart
 import '../data/repositories/image/image_repository.dart';
 import '../data/repositories/user/user_repository.dart';
 import '../data/services/messaging_controller.dart';
-import '../features/authentication/controllers/forget_password/forget_password_controller.dart';
-import '../features/authentication/controllers/onboarding/onboarding_controller.dart';
-import '../features/authentication/controllers/signup/verify_email_controller.dart';
+import '../features/authentication/presentation/controllers/forget_password_controller.dart';
+import '../features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
+import '../features/authentication/presentation/controllers/verify_email_controller.dart';
 import '../common/controllers/camera_controller.dart';
 import '../features/logistics/controllers/chart_controller.dart';
 import '../features/logistics/controllers/delivery_location_controller.dart';
 import '../features/logistics/controllers/delivery_vehicle_controller.dart';
+import '../features/logistics/controllers/home_controller.dart';
 import '../features/logistics/controllers/standard_delivery_controller.dart';
 import '../features/logistics/controllers/request_transport_controller.dart';
 import '../features/logistics/controllers/web_socket_delivery_controller.dart';
@@ -54,16 +68,73 @@ import '../features/logistics/controllers/stock_receive_controller.dart';
 import '../features/logistics/controllers/request_controller.dart';
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
+import '../features/collection/presentation/controllers/collection_onboarding_controller.dart';
 
 class GeneralBindings extends Bindings {
   @override
   void dependencies() {
+    // ========================================================================
+    // Core Services
+    // ========================================================================
     Get.put(NetworkManager());
     Get.put(WebSocketNotificationController());
     Get.put(MessagingController());
     Get.put(UserController(), permanent: true);
+
+    // ========================================================================
+    // Authentication - Repository Interface & Use Cases (NEW - Phase 2)
+    // ========================================================================
+    // Register repository interface
+    Get.lazyPut<IAuthenticationRepository>(
+      () => AuthenticationRepository(),
+      fenix: true,
+    );
+
+    // Register login use cases
+    Get.lazyPut(
+      () => LoginWithEmailPasswordUseCase(
+        authRepository: Get.find<IAuthenticationRepository>(),
+        networkManager: Get.find<NetworkManager>(),
+        localStorage: GetStorage(),
+      ),
+      fenix: true,
+    );
+
+    Get.lazyPut(
+      () => LoginWithGoogleUseCase(
+        authRepository: Get.find<IAuthenticationRepository>(),
+        userRepository: Get.find<UserRepository>(),
+        networkManager: Get.find<NetworkManager>(),
+      ),
+      fenix: true,
+    );
+
+    // ========================================================================
+    // Repositories (must be registered before controllers that depend on them)
+    // ========================================================================
+    Get.lazyPut(() => RoleRepository(), fenix: true);
+    Get.lazyPut(() => DepartmentRepository(), fenix: true);
+    Get.lazyPut(() => UserRepository());
+    Get.lazyPut(() => UserInitialRepository(), fenix: true);
+    Get.lazyPut(() => ClientRepository(), fenix: true);
+    Get.lazyPut(() => MobileRepository(), fenix: true);
+    Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
+    Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+    Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
+    Get.lazyPut(() => ImageRepository(), fenix: true);
+    Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
+    Get.lazyPut(() => PullOutRepository(), fenix: true);
+    Get.lazyPut(() => PickUpRepository(), fenix: true);
+    Get.lazyPut(() => AirSeaRepository(), fenix: true);
+    Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
+    Get.lazyPut(() => FormCategoryRepository(), fenix: true);
+
+    // ========================================================================
+    // Controllers
+    // ========================================================================
     Get.lazyPut(() => UserInitialController(), fenix: true);
     Get.lazyPut(() => StandardDeliveryController(), fenix: true);
+    Get.lazyPut(() => HomeController(), fenix: true);
 
     Get.lazyPut(() => LoginController(), fenix: true);
     Get.lazyPut(() => LoadingScreenController(), fenix: true);
@@ -74,9 +145,13 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UserMdmpiController(), fenix: true);
     Get.lazyPut(() => WebSocketDeliveryController(), fenix: true);
     Get.lazyPut(() => DeliveryLocationController(), fenix: true);
-    Get.lazyPut(() => SignupController(), fenix: true);
+    // SignupController kept as singleton to retain form data when navigating back
+    // Dependencies: RoleRepository, DepartmentRepository (registered above)
+    Get.put(SignupController(), permanent: false);
     Get.lazyPut(() => VerifyEmailController(), fenix: true);
-    Get.lazyPut(() => OnBoardingController(), fenix: true);
+    Get.lazyPut(() => LogisticsOnboardingController(), fenix: true);
+    // Collection onboarding controller registration
+    Get.lazyPut(() => CollectionOnboardingController(), fenix: true);
     Get.lazyPut(() => ForgetPasswordController(), fenix: true);
     Get.lazyPut(() => UpdateNameController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);
@@ -99,23 +174,15 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
-    Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
-    Get.lazyPut(() => ImageRepository(), fenix: true);
-    Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
-    Get.lazyPut(() => UserRepository());
-    Get.lazyPut(() => UserInitialRepository(), fenix: true);
-    Get.lazyPut(() => ClientRepository(), fenix: true);
-    Get.lazyPut(() => MobileRepository(), fenix: true);
-    Get.lazyPut(() => RoleRepository(), fenix: true);
-    Get.lazyPut(() => DepartmentRepository(), fenix: true);
-    Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
-    Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+
+    // ========================================================================
+    // Platform Services
+    // ========================================================================
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
-    Get.lazyPut(() => PullOutRepository(), fenix: true);
-    Get.lazyPut(() => PickUpRepository(), fenix: true);
-    Get.lazyPut(() => AirSeaRepository(), fenix: true);
-    Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
-    Get.lazyPut(() => FormCategoryRepository(), fenix: true);
+    Get.lazyPut<ILocationAlternativeService>(() => LocationAlternativeService(), fenix: true);
+    Get.lazyPut<IMapsService>(() => MapsService(), fenix: true);
+    Get.lazyPut<IPlacesService>(() => PlacesService(), fenix: true);
+    Get.lazyPut<ILocationTrackingService>(() => LocationTrackingService(), fenix: true);
   }
 }

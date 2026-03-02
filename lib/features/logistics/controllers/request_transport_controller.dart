@@ -1,21 +1,27 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/map_helper.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_maps_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/location_alternative_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
-
-import '../models/rider_location_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+
+import '../../../base/utils/local_storage/text_storage_service.dart';
+import '../models/rider_location_model.dart';
 
 class RequestTransportController extends GetxController {
   static RequestTransportController get instance => Get.find();
@@ -30,7 +36,7 @@ class RequestTransportController extends GetxController {
   final lastCameraPosition = Rx<CameraPosition?>(null);
   final selectedDestinationMarkerId = Rx<MarkerId?>(null);
   final placeController = Rx<String?>("");
-  final String _apiKey = dotenv.env['API_KEY']!;
+  final imageProofPath = Rx<String?>("");
 
   final addressTextController = TextEditingController();
   final suggestions = RxList([]);
@@ -44,29 +50,47 @@ class RequestTransportController extends GetxController {
   /// Variables for Location Listening
   StreamSubscription<Position>? positionStream;
 
-  /// WebSocket Controller
-  final webSocketController = Get.find<WebSocketDispatcherController>();
+  /// WebSocket Controller - Lazy getter
+  WebSocketDispatcherController get webSocketController =>
+      Get.find<WebSocketDispatcherController>();
 
-// You'll need access to RequestController if it's separate
-  final StandardDeliveryController _requestController = Get.find<StandardDeliveryController>(); // Or inject it
-  // Add a new RxBool for loading state
-  final RxBool isLoadingAction = false.obs; // <--- New loading state
+  /// New loading state
+  final RxBool isLoadingAction = false.obs;
 
-  // --- New state variables ---
-  final RxBool isRouteLoaded = false.obs; // Flag to check if a route is loaded
+  /// Route state variables
+  final RxBool isRouteLoaded = false.obs;
+  final Rx<LatLng?> _currentRouteDestination = Rx<LatLng?>(null);
 
-  final Rx<LatLng?> _currentRouteDestination =
-      Rx<LatLng?>(null); // Store the destination for the current route
-
-  // Add a variable to store the FAB's bottom offset
+  /// FAB bottom offset
   final RxDouble fabBottomOffset = 16.0.obs;
 
   final FocusNode searchFocusNode = FocusNode();
 
+  /// Service dependencies
+  late final IMapsService _mapsService;
+  late final IPlacesService _placesService;
+  late final ILocationTrackingService _locationTrackingService;
+  late final ILocationAlternativeService _locationAlternativeService;
+
+  /// Reactive fields for location alternatives tracking
+  final RxBool hasLocationAlternative = false.obs;
+  final Rx<LocationAlternativeModel?> currentLocationAlternative =
+      Rx<LocationAlternativeModel?>(null);
+  final RxList<LocationAlternativeModel> savedAlternatives = RxList([]);
+  final TextStorageService _textStorageService = TextStorageService();
+
   @override
   void onInit() {
-    // TODO: implement onInit
     super.onInit();
+    // Initialize services from GetX DI
+    _mapsService = Get.find<IMapsService>();
+    _placesService = Get.find<IPlacesService>();
+    _locationTrackingService = Get.find<ILocationTrackingService>();
+    _locationAlternativeService = Get.find<ILocationAlternativeService>();
+
+    // Request controller is lazily initialized on first access via getter
+
+    reInitialize();
     getUserLocation();
     startLocationTracking();
   }
@@ -77,44 +101,66 @@ class RequestTransportController extends GetxController {
     super.dispose();
   }
 
+  /// Lazy getter for request controller - tries to find the appropriate controller
+  /// when accessed, not during onInit
+  IDeliveryRequestController get _requestController {
+    try {
+      // Try StandardDeliveryController first
+      return Get.find<StandardDeliveryController>();
+    } catch (e) {
+      try {
+        // Try HotlineDirectController second
+        return Get.find<HotlineDirectController>();
+      } catch (e) {
+        throw Exception(
+          'Request controller not found in DI. '
+          'Make sure StandardDeliveryController or HotlineDirectController is registered.',
+        );
+      }
+    }
+  }
+
+  Future<void> reInitialize() async {
+    if (imageProofPath.value?.isEmpty ?? true) {
+      imageProofPath.value =
+          _textStorageService.getText("proofImagePath") ?? "";
+    }
+  }
+
   Future<void> startLocationTracking() async {
-    positionStream = Geolocator.getPositionStream(
-      locationSettings: LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 20,
-      ),
-    ).listen((Position position) {
+    positionStream = _locationTrackingService
+        .startTracking(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 20,
+    )
+        .listen((Position position) {
       LatLng newPosition = LatLng(position.latitude, position.longitude);
 
       // Update the current location
-      currentLocation.value = newPosition; // Keep track of the current location
+      currentLocation.value = newPosition;
 
       mapController.value?.animateCamera(
         CameraUpdate.newLatLng(newPosition),
       );
 
-      if (_requestController.currentSelectedRequest.value!.status ==
-          BTexts.statusForDelivery) {
-        getCoordinatesFromPlace(addressTextController.text);
+      // Only send rider location updates when in delivery status
+      final currentRequest = _requestController.currentSelectedRequest.value;
+      if (currentRequest == null) return;
 
+      if (currentRequest.status == BTexts.statusForDelivery) {
         if (webSocketController.isConnected.value) {
           final riderLocation = RiderLocationModel(
             type: 'location_update',
-            requestId:
-                _requestController.currentSelectedRequest.value!.id,
+            requestId: currentRequest.id,
             latitude: position.latitude,
             longitude: position.longitude,
             timestamp: position.timestamp,
             status: 'en_route',
-            riderInitial:
-                _requestController.currentSelectedRequest.value!.deliveredBy,
-            // Ensure eta.value and distance.value are not null before sending
+            riderInitial: currentRequest.deliveredBy,
             eta: eta.value ?? "Calculating...",
             distance: distance.value ?? "Calculating...",
-            client:
-                _requestController.currentSelectedRequest.value!.client.name,
+            client: currentRequest.client.name,
           );
-          logDebug('1${jsonEncode(riderLocation)}');
           webSocketController.sendMessage(jsonEncode(riderLocation.toJson()));
         } else {
           webSocketController.reconnectWebSocket();
@@ -129,32 +175,11 @@ class RequestTransportController extends GetxController {
       suggestions.clear();
       return;
     }
-    final String apiUrl =
-        'https://google-place-autocomplete-and-place-info.p.rapidapi.com/maps/api/place/autocomplete/json?input=$input';
-    final Map<String, String> headers = {
-      'x-rapidapi-host':
-          'google-place-autocomplete-and-place-info.p.rapidapi.com',
-      'x-rapidapi-key':
-          '4f82d3507fmsh8737922d6f89c00p1e27f4jsn31c6824aadc7', // Replace with your actual RapidAPI key
-    };
 
     try {
-      final response = await http.get(Uri.parse(apiUrl), headers: headers);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['status'] == 'OK') {
-          suggestions.value = data['predictions'];
-        } else {
-          logDebug('Error fetching suggestions: ${data['status']}');
-          suggestions.clear();
-        }
-      } else {
-        logDebug('HTTP error: ${response.statusCode}');
-        suggestions.clear();
-      }
+      final result = await _placesService.getSuggestions(input);
+      suggestions.value = result;
     } catch (e) {
-      logDebug('Error during API call: $e');
       suggestions.clear();
     }
   }
@@ -162,52 +187,35 @@ class RequestTransportController extends GetxController {
   Future<void> getRoute(LatLng location, LatLng destination) async {
     if (location == LatLng(0, 0) || destination == LatLng(0, 0)) return;
 
-    final String url =
-        "https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destination.latitude},${destination.longitude}&key=$_apiKey";
     try {
-      final response = await http.get(Uri.parse(url));
-      final data = json.decode(response.body);
+      final routeData = await _mapsService.getRoute(location, destination);
 
-      if (data['status'] == "OK") {
-        String encodedPolyline =
-            data["routes"][0]["overview_polyline"]["points"];
-        List<LatLng> routePoints = _decodePolyline(encodedPolyline);
+      polyLines.value = {
+        Polyline(
+          polylineId: const PolylineId("route"),
+          points: routeData['polylinePoints'],
+          color: Colors.blue,
+          width: 5,
+        ),
+      };
 
-        String address = data["routes"][0]["legs"][0]["end_address"];
+      distance.value = routeData['distance'];
+      eta.value = routeData['eta'];
 
-        polyLines.value = {
-          Polyline(
-            polylineId: const PolylineId("route"),
-            points: routePoints,
-            color: Colors.blue,
-            width: 5,
-          ),
-        };
-
-        distance.value = data["routes"][0]["legs"][0]["distance"]["text"];
-        eta.value = data["routes"][0]["legs"][0]["duration"]["text"];
-
-        // Only animate camera if map controller is initialized
-        if (mapController.value != null) {
-          mapController.value!.animateCamera(CameraUpdate.newLatLngBounds(
-              getLatLngBounds(location, destination), 100));
-        }
-
-        addressTextController.text = address;
-
-        isRouteLoaded.value = true; // Mark route as loaded
-        _currentRouteDestination.value =
-            destination; // Store the destination for this route
-      } else {
-        isRouteLoaded.value = false;
-        _currentRouteDestination.value = null;
+      // Only animate camera if map controller is initialized
+      if (mapController.value != null) {
+        mapController.value!.animateCamera(CameraUpdate.newLatLngBounds(
+            MapHelper.getLatLngBounds(location, destination), 100));
       }
+
+      addressTextController.text = routeData['address'];
+
+      isRouteLoaded.value = true; // Mark route as loaded
+      _currentRouteDestination.value =
+          destination; // Store the destination for this route
     } catch (e) {
       isRouteLoaded.value = false;
       _currentRouteDestination.value = null;
-      // Handle exception
-    } finally {
-      // BFullScreenLoader.stopLoading(); // Stop loader
     }
   }
 
@@ -215,17 +223,15 @@ class RequestTransportController extends GetxController {
     // When a new place is searched, we assume a new route is needed.
     isRouteLoaded.value = false;
     _currentRouteDestination.value = null; // Clear previous route destination
-    final String url =
-        "https://maps.googleapis.com/maps/api/geocode/json?address=${Uri.encodeComponent(place)}&key=$_apiKey";
-    final response = await http.get(Uri.parse(url));
-    final data = json.decode(response.body);
-    if (data["status"] == "OK") {
-      double lat = data["results"][0]["geometry"]["location"]["lat"];
-      double lng = data["results"][0]["geometry"]["location"]["lng"];
 
-      destination.value = LatLng(lat, lng);
+    try {
+      final placeData = await _mapsService.getCoordinatesFromPlace(place);
 
-      getRoute(currentLocation.value, destination.value);
+      destination.value = LatLng(placeData['latitude'], placeData['longitude']);
+
+      await getRoute(currentLocation.value, destination.value);
+    } catch (e) {
+      logDebug('✗ Error getting coordinates from place: $e');
     }
   }
 
@@ -233,34 +239,23 @@ class RequestTransportController extends GetxController {
     // When a new location is tapped, we assume a new route is needed.
     isRouteLoaded.value = false;
     _currentRouteDestination.value = null; // Clear previous route destination
-    final String url =
-        "https://maps.googleapis.com/maps/api/geocode/json?latlng=${latLng.latitude},${latLng.longitude}&key=$_apiKey";
 
-    final response = await http.get(Uri.parse(url));
-    final data = json.decode(response.body);
+    try {
+      final addressData = await _mapsService.getAddressFromCoordinates(latLng);
 
-    if (data["status"] == "OK" &&
-        data["results"] != null &&
-        data["results"].isNotEmpty) {
-      String address =
-          data["results"][0]["formatted_address"] ?? "Address not found";
-
+      final address = addressData['address'] ?? "Address not found";
       placeController.value = address;
 
-      if (data["routes"] != null && data["routes"].isNotEmpty) {
-        eta.value = data["routes"][0]["legs"][0]["duration"]["text"] ??
-            "ETA not available";
-      } else {
-        eta.value = "ETA not available";
-      }
-
       destination.value = latLng;
-
-      getRoute(currentLocation.value, destination.value);
-
+      await getRoute(currentLocation.value, destination.value);
       addressTextController.text = address;
-    } else {
-      logDebug("Error: ${data["status"]}");
+    } catch (e) {
+      BLoaders.warningSnackBar(
+        title: 'Address Error',
+        message:
+            'Could not find address for this location. Location saved anyway.',
+      );
+      logDebug('✗ Error getting address from coordinates: $e');
     }
   }
 
@@ -269,103 +264,92 @@ class RequestTransportController extends GetxController {
   Future<void> initializeRoute() async {
     // Wait for current location to be available
     if (currentLocation.value == LatLng(0, 0)) {
-      // Location not ready yet, wait a bit
-      await Future.delayed(Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 500));
       if (currentLocation.value == LatLng(0, 0)) {
-        logDebug('RequestTransportController: Current location not available for route initialization');
         return;
       }
     }
 
-    // If address is set, calculate the route
-    if (addressTextController.text.isNotEmpty) {
-      logDebug('RequestTransportController: Initializing route for address: ${addressTextController.text}');
-      await getCoordinatesFromPlace(addressTextController.text);
+    // Load saved location alternatives from local database
+    await loadLocationAlternatives();
+
+    // Check if we have a saved alternative
+    if (hasLocationAlternative.value &&
+        currentLocationAlternative.value != null) {
+      final savedLocation = currentLocationAlternative.value;
+
+      // Use saved alternative coordinates directly (no need to geocode)
+      destination.value =
+          LatLng(savedLocation!.latitude, savedLocation.longitude);
+      addressTextController.text = savedLocation.address;
+
+      // Calculate route with saved coordinates directly
+      await getRoute(currentLocation.value, destination.value);
+    } else {
+      if (addressTextController.text.isNotEmpty) {
+        await getCoordinatesFromPlace(addressTextController.text);
+      } else {
+        logDebug('⚠️ No address set for route initialization');
+      }
+    }
+
+    logDebug('✓ initializeRoute() completed');
+  }
+
+  /// Load all saved location alternatives for current request
+  Future<void> loadLocationAlternatives() async {
+    try {
+      final currentRequest = _requestController.currentSelectedRequest.value;
+      if (currentRequest == null) {
+        hasLocationAlternative.value = false;
+        currentLocationAlternative.value = null;
+        savedAlternatives.clear();
+        return;
+      }
+
+      final requestId = currentRequest.id;
+
+      savedAlternatives.value = await _locationAlternativeService
+          .getLocationAlternativesByRequestId(requestId);
+
+      // Set current alternative to the latest one
+      if (savedAlternatives.isNotEmpty) {
+        currentLocationAlternative.value = savedAlternatives.first;
+        hasLocationAlternative.value = true;
+      } else {
+        currentLocationAlternative.value = null;
+        hasLocationAlternative.value = false;
+      }
+    } catch (e) {
+      hasLocationAlternative.value = false;
+      currentLocationAlternative.value = null;
     }
   }
 
   Future<void> getUserLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    try {
+      final position = await _locationTrackingService.getCurrentLocation(
+        accuracy: LocationAccuracy.high,
+      );
 
-    // Check if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      // Location services are not enabled don't continue
-      // accessing the position and request users of the
-      // App to enable the location services.
-      // You might want to show a dialog or a snack bar here.
-      BLoaders.warningSnackBar(
-          title: 'Location', message: "Location services are disabled.");
-      return;
+      currentLocation.value = LatLng(position.latitude, position.longitude);
+
+      mapController.value?.animateCamera(
+          CameraUpdate.newLatLngZoom(currentLocation.value, 14));
+
+      // Note: We no longer fetch the route here automatically.
+      // The screen should call initializeRoute() after setting the address.
+    } catch (e) {
+      logDebug('✗ Error getting user location: $e');
     }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        // Permissions are denied, next time you could try
-        // requesting permissions again (this is also where
-        // Android's shouldShowRequestPermissionRationale
-        // returned true. According to Android guidelines
-        // your App should show an explanatory UI now.
-        BLoaders.warningSnackBar(
-            title: 'Location', message: "Location permissions are denied.");
-        return;
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      // Permissions are denied forever, handle appropriately.
-      // You might want to guide the user to app settings.
-      BLoaders.warningSnackBar(
-          title: 'Location',
-          message:
-              "Location permissions are permanently denied, we cannot request permissions.");
-      return;
-    }
-
-    // When we reach here, permissions are granted and we can
-    // continue accessing the position of the device.
-    Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
-    currentLocation.value = LatLng(position.latitude, position.longitude);
-
-    mapController.value
-        ?.animateCamera(CameraUpdate.newLatLngZoom(currentLocation.value, 14));
-
-    // Note: We no longer fetch the route here automatically.
-    // The screen should call initializeRoute() after setting the address.
   }
 
   Set<Marker> buildMarkers() {
-    final markers = <Marker>{};
-    if (currentLocation.value != LatLng(0, 0)) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('myLocation'),
-          position: currentLocation.value,
-          infoWindow: const InfoWindow(title: 'My Location'),
-        ),
-      );
-    }
-
-    if (destination.value != LatLng(0, 0)) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('myTappedDestination'),
-          position: destination.value,
-          infoWindow: InfoWindow(
-            title: 'Destination',
-            snippet: "ETA: $eta", // Shortened "Distance" to "Dist"
-          ),
-          icon:
-              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
-        ),
-      );
-    }
-
-    return markers;
+    return MapHelper.buildMarkers(
+      currentLocation: currentLocation.value,
+      destination: destination.value,
+      eta: eta.value,
+    );
   }
 
   /// Handle search here button press
@@ -379,17 +363,81 @@ class RequestTransportController extends GetxController {
 
   /// -- Camera Position to view the location and destination
   LatLngBounds getLatLngBounds(LatLng loc, LatLng des) {
-    final southwest = LatLng(
-      min(loc.latitude, des.latitude),
-      min(loc.longitude, des.longitude),
-    );
+    return MapHelper.getLatLngBounds(loc, des);
+  }
 
-    final northeast = LatLng(
-      max(loc.latitude, des.latitude),
-      max(loc.longitude, des.longitude),
-    );
+  /// ========================================================================
+  /// Location Alternative Management (for corrected addresses)
+  /// ========================================================================
 
-    return LatLngBounds(southwest: southwest, northeast: northeast);
+  /// Save a corrected location when user taps the map to correct wrong address
+  Future<void> saveLocationAlternative(
+    LatLng coordinates,
+    String address,
+    String id, {
+    String? notes,
+  }) async {
+    try {
+      final now = DateTime.now().toIso8601String();
+      final model = LocationAlternativeModel.fromStringId(
+        stringRequestId: id,
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        address: address,
+        createdAt: now,
+        notes: notes,
+      );
+
+      // Save to database
+      await _locationAlternativeService.saveLocationAlternative(model);
+
+      // Update reactive state
+      currentLocationAlternative.value = model;
+      hasLocationAlternative.value = true;
+
+      // Reload alternatives list
+      await loadLocationAlternatives();
+    } catch (e) {
+      logDebug('Failed to save corrected location: $e');
+      BLoaders.errorSnackBar(
+        title: 'Error',
+        message: 'Failed to save location: $e',
+      );
+    }
+  }
+
+  /// Clear all location alternatives for current request (called on drop-off)
+  Future<void> clearLocationAlternativesOnDropOff() async {
+    try {
+      final currentRequest = _requestController.currentSelectedRequest.value;
+      if (currentRequest == null) {
+        logDebug('⚠️ No request selected');
+        return;
+      }
+
+      final requestId = currentRequest.id;
+      await _locationAlternativeService.deleteLocationAlternativesByRequestId(
+        requestId,
+      );
+
+      // Update reactive state
+      savedAlternatives.clear();
+      currentLocationAlternative.value = null;
+      hasLocationAlternative.value = false;
+    } catch (e) {
+      logDebug('✗ Error clearing location alternatives: $e');
+    }
+  }
+
+  /// Delete a specific location alternative
+  Future<void> deleteLocationAlternativeById(int id) async {
+    try {
+      await _locationAlternativeService.deleteLocationAlternativeById(id);
+      savedAlternatives.removeWhere((alt) => alt.requestId == id);
+      hasLocationAlternative.value = savedAlternatives.isNotEmpty;
+    } catch (e) {
+      logDebug('✗ Error deleting location alternative: $e');
+    }
   }
 
   List<LatLng> _decodePolyline(String encoded) {
@@ -425,11 +473,14 @@ class RequestTransportController extends GetxController {
   }
 
   Future<void> processRequestDispatchOrDropOff(
-      StandardDeliveryModel currentRequest, userInitial) async {
+    StandardDeliveryModel currentRequest,
+    String userInitial,
+    IDeliveryRequestController requestController,
+  ) async {
     if (isLoadingAction.value) return;
     isLoadingAction.value = true; // <--- Start loading
 
-    if (eta.value!.isEmpty &&
+    if ((eta.value?.isEmpty ?? true) &&
         currentRequest.status == BTexts.statusItemPrepared) {
       BLoaders.warningSnackBar(
           title: 'Error', message: 'Please check address, No Route found.');
@@ -443,15 +494,28 @@ class RequestTransportController extends GetxController {
         newStatus = BTexts.statusForDelivery;
         currentRequest.locationStartedAt =
             '${currentLocation.value.latitude} ${currentLocation.value.longitude}';
+
+        await saveLocationAlternative(
+          destination.value,
+          addressTextController.text,
+          currentRequest.id,
+          notes: 'User-corrected location from map tap',
+        );
       } else if (currentRequest.status == BTexts.statusForDelivery) {
         newStatus = BTexts.statusDoneDelivery;
         currentRequest.locationEndAt =
             '${currentLocation.value.latitude} ${currentLocation.value.longitude}';
+
+        // CLEAR location alternatives on successful drop-off
+        await clearLocationAlternativesOnDropOff();
+        _textStorageService.clearAll();
+
         webSocketController.onClose();
       } else {
         isLoadingAction.value = false; // <--- Stop loading on error
       }
-      await _requestController.updateRequestStatus(
+
+      await requestController.updateRequestStatus(
           currentRequest, newStatus, userInitial);
     } catch (e) {
       BLoaders.errorSnackBar(

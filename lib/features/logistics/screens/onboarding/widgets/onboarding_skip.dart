@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/onboarding/onboarding_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../base/utils/devices/device_utility.dart';
@@ -12,7 +12,7 @@ class OnBoardingSkip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<OnBoardingController>();
+    final controller = Get.find<LogisticsOnboardingController>();
     return Positioned(
       top: BDevicesUtils.getAppBarHeight(),
       right: BSizes.defaultSpace,

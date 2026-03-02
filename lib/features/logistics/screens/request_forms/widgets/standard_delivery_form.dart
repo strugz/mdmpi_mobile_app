@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
@@ -11,8 +13,6 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
-import '../../../../../data/repositories/common/item_category_repository.dart';
-import '../../../../../data/repositories/common/form_category_repository.dart';
 import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_controller.dart';
 
@@ -23,36 +23,31 @@ class StandardDelivery extends StatelessWidget {
   Widget build(BuildContext context) {
     final stdDeliveryController = Get.find<StandardDeliveryController>();
     final userCNTMSTController = Get.find<UserMdmpiController>();
-    final itemCategoryRepo = Get.find<ItemCategoryRepository>();
-    final formCategoryRepo = Get.find<FormCategoryRepository>();
+    final requestController = Get.find<RequestController>();
 
     userCNTMSTController.filterUserFromLocal();
 
     // Pre-select form category from RequestController if available
     try {
-      final requestController = Get.find<RequestController>();
       final selectedCategory = requestController.currentSelectedCategory.value;
 
       if (selectedCategory != null) {
         // Set form category based on selected tab
         stdDeliveryController.formState.formCategory.text = selectedCategory.id;
-        print(
-            'Pre-selected form category from RequestController: ${selectedCategory.name} (ID: ${selectedCategory.id})');
       }
     } catch (e) {
-      print('RequestController not found or error reading category: $e');
+      logDebug('RequestController not found or error reading category: $e');
     }
 
-    // Get the bottom padding of the device
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
-
-    return SafeArea(
-      bottom: !isGestureNavigation,
-      child: Scaffold(
-        appBar: BAppBar(
-          title: Text(BTexts.requestFormTitle,
-              style: Theme.of(context).textTheme.bodyLarge),
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      appBar: BAppBar(
+          title: Text(
+            BTexts.getRequestFormTitle(
+              requestController.currentSelectedCategory.value?.name,
+            ),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
           showBackArrow: true,
           leadingOnPressed: () => Get.back(),
         ),
@@ -72,6 +67,12 @@ class StandardDelivery extends StatelessWidget {
                         children: [
                           /// Search Client
                           const BClientInformation(),
+
+                          /// Hidden validator for client selection
+                          BClientValidationField(
+                            clientInformation: stdDeliveryController.formState.clientInformation,
+                          ),
+
                           const Divider(),
                           const SizedBox(height: BSizes.sm),
 
@@ -80,73 +81,60 @@ class StandardDelivery extends StatelessWidget {
                           const SizedBox(height: BSizes.sm),
 
                           /// Item Category dropdown
-                          FutureBuilder(
-                            future: itemCategoryRepo.getAll(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              }
-                              if (snapshot.hasError ||
-                                  !snapshot.hasData ||
-                                  snapshot.data!.isEmpty) {
-                                return BDropdown(
-                                  controller: stdDeliveryController
-                                      .formState.itemCategory,
-                                  label: 'Item Category',
-                                  dropdownList: const [],
-                                );
-                              }
-                              return BDropDownDynamicList(
+                          Obx(() {
+                            final categories = stdDeliveryController.formState.itemCategories;
+                            if (categories.isEmpty) {
+                              return BDropdown(
                                 controller: stdDeliveryController
                                     .formState.itemCategory,
-                                icon: Iconsax.box,
                                 label: 'Item Category',
-                                dropdownList: snapshot.data!
-                                    .map((cat) => cat.toJson())
-                                    .toList(),
-                                valueKey: 'ItemCategoryID',
-                                displayKey: 'ItemCategoryName',
-                                readOnly: true,
+                                dropdownList: const [],
                               );
-                            },
-                          ),
+                            }
+                            return BDropDownDynamicList(
+                              controller: stdDeliveryController
+                                  .formState.itemCategory,
+                              icon: Iconsax.box,
+                              label: 'Item Category',
+                              dropdownList: categories
+                                  .map((cat) => cat.toJson())
+                                  .toList(),
+                              valueKey: 'ItemCategoryID',
+                              displayKey: 'ItemCategoryName',
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Please select an item category'
+                                  : null,
+                            );
+                          }),
                           const SizedBox(height: BSizes.spaceBtwItems),
 
                           /// Form Category dropdown
-                          FutureBuilder(
-                            future: formCategoryRepo.getAll(),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              }
-                              if (snapshot.hasError ||
-                                  !snapshot.hasData ||
-                                  snapshot.data!.isEmpty) {
-                                return BDropdown(
-                                  controller: stdDeliveryController
-                                      .formState.formCategory,
-                                  label: 'Form Category',
-                                  dropdownList: const [],
-                                );
-                              }
-                              return BDropDownDynamicList(
+                          Obx(() {
+                            final categories = stdDeliveryController.formState.formCategories;
+                            if (categories.isEmpty) {
+                              return BDropdown(
                                 controller: stdDeliveryController
                                     .formState.formCategory,
-                                icon: Iconsax.document,
                                 label: 'Form Category',
-                                dropdownList: snapshot.data!
-                                    .map((cat) => cat.toJson())
-                                    .toList(),
-                                valueKey: 'FormCategoryID',
-                                displayKey: 'FormCategoryName',
-                                readOnly: true,
+                                dropdownList: const [],
                               );
-                            },
-                          ),
+                            }
+                            return BDropDownDynamicList(
+                              controller: stdDeliveryController
+                                  .formState.formCategory,
+                              icon: Iconsax.document,
+                              label: 'Form Category',
+                              dropdownList: categories
+                                  .map((cat) => cat.toJson())
+                                  .toList(),
+                              valueKey: 'FormCategoryID',
+                              displayKey: 'FormCategoryName',
+                              readOnly: true,
+                              validator: (v) => (v == null || v.trim().isEmpty)
+                                  ? 'Please select a form category'
+                                  : null,
+                            );
+                          }),
                           const SizedBox(height: BSizes.sm),
                         ],
                       ),
@@ -157,6 +145,9 @@ class StandardDelivery extends StatelessWidget {
                             stdDeliveryController.formState.shippingMethod,
                         label: 'Shipping Method',
                         dropdownList: ['Land', 'Air', 'Sea'],
+                        validator: (v) => (v == null || v.toString().trim().isEmpty)
+                            ? 'Please select a shipping method'
+                            : null,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
@@ -166,7 +157,11 @@ class StandardDelivery extends StatelessWidget {
                               stdDeliveryController.formState.deliveryTerms,
                           icon: Iconsax.truck,
                           label: 'Delivery Terms',
-                          dropdownList: ['Partial', 'Full']),
+                          dropdownList: ['Partial', 'Full'],
+                          validator: (v) => (v == null || v.toString().trim().isEmpty)
+                              ? 'Please select delivery terms'
+                              : null,
+                      ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Target date
@@ -175,6 +170,9 @@ class StandardDelivery extends StatelessWidget {
                         label: 'Delivery Date',
                         includeTime: false,
                         icon: Iconsax.calendar,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please select a delivery date'
+                            : null,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
                       Center(
@@ -186,7 +184,11 @@ class StandardDelivery extends StatelessWidget {
                                     stdDeliveryController.formState.preference,
                                 icon: Iconsax.status_up,
                                 label: 'Priority',
-                                dropdownList: ['High', 'Medium', 'Low']),
+                                dropdownList: ['High', 'Medium', 'Low'],
+                                validator: (v) => (v == null || v.toString().trim().isEmpty)
+                                    ? 'Please select a priority level'
+                                    : null,
+                            ),
                           ],
                         ),
                       ),
@@ -210,6 +212,9 @@ class StandardDelivery extends StatelessWidget {
                                 valueKey: 'CNTMNN',
                                 displayKey: 'CNTMCN',
                                 enableSearch: true,
+                                validator: (v) => (v == null || v.trim().isEmpty)
+                                    ? 'Please select who requested this'
+                                    : null,
                               ),
                             ],
                           ),
@@ -222,11 +227,21 @@ class StandardDelivery extends StatelessWidget {
             ],
           ),
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(BSizes.sm),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: BSizes.sm,
+            right: BSizes.sm,
+            bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: ElevatedButton(
-              onPressed: () => stdDeliveryController.saveRequest(),
-              child: Text('Create Request')),
+              onPressed: () {
+                // Validate form before submission
+                if (stdDeliveryController.formState.formKey.currentState?.validate() ?? false) {
+                  stdDeliveryController.saveRequest();
+                }
+              },
+              child: const Text('Create Request')),
         ),
       ),
     );

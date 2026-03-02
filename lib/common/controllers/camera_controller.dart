@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/local_storage/text_storage_service.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 
@@ -20,7 +21,9 @@ class CameraHandlerController extends GetxController
   final ICameraService _cameraService;
   final ITextRecognitionService _textRecognitionService;
   final ITextExtractor _textExtractor;
-  final StandardDeliveryController requestController = Get.find<StandardDeliveryController>();
+  final TextStorageService _textStorageService = TextStorageService();
+  final StandardDeliveryController requestController =
+      Get.find<StandardDeliveryController>();
   late AnimationController _flashAnimController;
   late Animation<double> flashOpacity;
 
@@ -42,7 +45,6 @@ class CameraHandlerController extends GetxController
   void onInit() {
     super.onInit();
     _initializeAndPreparePreview();
-
     _flashAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -198,6 +200,11 @@ class CameraHandlerController extends GetxController
 
       imageProofPath.value =
           await BImageHelperFunctions.saveImage(imageFile, pictureName);
+
+      if (imageProofPath.value.isNotEmpty) {
+        await _textStorageService.saveText(
+            'proofImagePath', imageProofPath.value);
+      }
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     }
@@ -207,6 +214,38 @@ class CameraHandlerController extends GetxController
     isFlashing.value = true;
     _flashAnimController.forward(from: 0.0);
     await takePicture(requestId);
+  }
+
+  /// --- Take Picture and Return Path (without saving) ---
+  /// Used for photo review screens where user can confirm/retake
+  Future<String?> takePictureForReview() async {
+    if (!_cameraService.isInitialized || isProcessing.value) {
+      return null;
+    }
+
+    try {
+      logDebug('📸 Taking picture for review...');
+      final XFile? imageFile = await _cameraService.takePicture();
+
+      if (imageFile == null) {
+        logDebug('❌ Failed to capture image');
+        return null;
+      }
+
+      logDebug('✅ Picture captured: ${imageFile.path}');
+      return imageFile.path;
+    } catch (e) {
+      logDebug('❌ Error taking picture: $e');
+      BLoaders.errorSnackBar(title: 'Capture Error', message: e.toString());
+      return null;
+    }
+  }
+
+  /// --- Take Picture with Flash Animation for Review ---
+  Future<String?> takePictureForReviewWithAnimation() async {
+    isFlashing.value = true;
+    _flashAnimController.forward(from: 0.0);
+    return await takePictureForReview();
   }
 
   /// --- Pause the camera preview to release resources ---

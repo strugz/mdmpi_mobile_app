@@ -3,22 +3,23 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/air_sea_request_card.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/services/implementations/air_sea_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
 
 /// Role priority map: Lower number = Higher priority (more capabilities)
 const _rolePriority = {
-  BTexts.roleRelease: 1, // Most powerful - can handle most statuses
-  BTexts.roleCourier: 2, // Handles dispatch/drop-off
-  BTexts.roleRequest: 3, // Can only advance "New Request"
-  BTexts.roleViewer: 4, // View-only access
+  BTexts.roleRelease: 1,
+  BTexts.roleCourier: 2,
+  BTexts.roleRequest: 3,
+  BTexts.roleViewer: 4,
 };
 
 /// Main list screen for Air/Sea requests.
@@ -62,7 +63,8 @@ class AirSeaList extends StatelessWidget {
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
-                        if (item.status != 'Received' &&
+                        if (item.status != BTexts.statusReceived &&
+                            item.status != BTexts.statusDropOff &&
                             item.status.toLowerCase() != 'cancelled') {
                           controller.currentSelectedAirSea.value = item;
                           await BDialog.showRemarksDialog(context, item);
@@ -135,7 +137,8 @@ class AirSeaList extends StatelessWidget {
 }
 
 /// Handles tap on Air/Sea request based on user role.
-/// Selects the highest-priority role handler to avoid multiple dialogs.
+/// Resolves a single [AirSeaModalConfig] from the highest-priority role and
+/// opens the modal — no handler classes needed.
 void _handleAirSeaTap(
   BuildContext context,
   AirSeaModel request,
@@ -147,41 +150,37 @@ void _handleAirSeaTap(
       .map((e) => e.trim())
       .where((e) => e.isNotEmpty)
       .toList();
-  final userInitial = userController.user.value.initial;
 
-  // Handle cancelled/received status with default handler
-  if (request.status.toLowerCase() == 'cancelled' ||
-      request.status == 'Received') {
-    AirSeaDefaultHandler().handleAction(
-        context, request, controller, userController, userInitial);
+  // Force Courier for dispatch-related statuses
+  if ((request.status == BTexts.statusForDispatch ||
+          request.status == BTexts.statusDispatch) &&
+      roles.contains(BTexts.roleCourier)) {
+    final config = AirSeaModalConfig.resolve(
+      request: request,
+      role: BTexts.roleCourier,
+      controller: controller,
+    );
+    BFullScreenLoader.showAirSeaDialog(context, request, config);
     return;
   }
 
-  final handlers = <String, AirSeaActionHandler>{
-    BTexts.roleRequest: AirSeaRequestRoleHandler(),
-    BTexts.roleRelease: AirSeaReleaseRoleHandler(),
-    BTexts.roleCourier: AirSeaCourierRoleHandler(),
-    BTexts.roleViewer: AirSeaViewerRoleHandler(),
-  };
-
   // Find the highest-priority role the user has
-  String? selectedRole;
+  String selectedRole = BTexts.roleViewer;
   int highestPriority = 999;
 
   for (final role in roles) {
-    if (handlers.containsKey(role)) {
-      final priority = _rolePriority[role] ?? 999;
-      if (priority < highestPriority) {
-        highestPriority = priority;
-        selectedRole = role;
-      }
+    final priority = _rolePriority[role] ?? 999;
+    if (priority < highestPriority) {
+      highestPriority = priority;
+      selectedRole = role;
     }
   }
 
-  // Invoke only the highest-priority handler
-  if (selectedRole != null && handlers.containsKey(selectedRole)) {
-    handlers[selectedRole]!.handleAction(
-        context, request, controller, userController, userInitial);
-  }
+  final config = AirSeaModalConfig.resolve(
+    request: request,
+    role: selectedRole,
+    controller: controller,
+  );
+  BFullScreenLoader.showAirSeaDialog(context, request, config);
 }
 

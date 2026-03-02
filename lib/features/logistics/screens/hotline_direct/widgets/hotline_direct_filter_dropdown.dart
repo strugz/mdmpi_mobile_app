@@ -26,7 +26,7 @@ class HotlineDirectFilterDropdown extends StatelessWidget {
       backgroundColor: dark ? BColors.darkerGrey : BColors.white,
       child: Obx(
         () => DropdownButtonFormField<RequestFilter>(
-          value: controller.filterManager.selectedFilter.value,
+          initialValue: controller.filterManager.selectedFilter.value,
           onChanged: (RequestFilter? newValue) {
             if (newValue != null) {
               controller.selectFilter(newValue);

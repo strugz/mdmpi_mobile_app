@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/authentication/controllers/onboarding/onboarding_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
 
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
@@ -17,7 +17,7 @@ class OnBoardingDotNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<OnBoardingController>();
+    final controller = Get.find<LogisticsOnboardingController>();
     final dark = BHelperFunctions.isDarkMode(context);
 
     return Positioned(

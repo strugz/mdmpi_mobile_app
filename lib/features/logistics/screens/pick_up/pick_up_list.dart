@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/pick_up_request_card.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/implementations/pick_up_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';

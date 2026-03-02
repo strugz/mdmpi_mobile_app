@@ -52,7 +52,7 @@ class AirSeaItemPackedSection extends StatelessWidget {
           dropdownList: const [
             'Endorsed to Guard',
             'Received',
-            'Dispatch',
+            'For Dispatch',
           ],
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
@@ -69,7 +69,7 @@ class AirSeaItemPackedSection extends StatelessWidget {
             } else if (selectedStatus == 'Received') {
               return _buildReceiverFields(
                   context, controller, cameraController, dark);
-            } else if (selectedStatus == 'Dispatch') {
+            } else if (selectedStatus == 'For Dispatch') {
               return _buildDispatchFields(context, controller, dark);
             }
 

@@ -5,7 +5,6 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
-import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
@@ -14,8 +13,8 @@ import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
-import '../../../../../base/utils/formatters/formatters.dart';
 
 class PickUpRequestModalFooter extends StatelessWidget {
   const PickUpRequestModalFooter({super.key, required this.requestModel});
@@ -30,12 +29,15 @@ class PickUpRequestModalFooter extends StatelessWidget {
 
     final cameraController = Get.find<CameraHandlerController>();
     final PickUpController requestController = Get.find();
+    final UserController userController = Get.find();
+    final role = userController.user.value.role;
+    final hasRestrictedRole = ['Request', 'Courier'].any((r) => role.contains(r));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// -- For Item Packed status (capture proof of packing) --
-        if (requestModel.status == BTexts.statusItemPacked) ...[
+        if (requestModel.status == BTexts.statusItemPacked && !hasRestrictedRole) ...[
           const BTextDivider(text: 'Proof of Picked Up'),
           Obx(
             () => Center(
