@@ -1,17 +1,24 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
-import '../../../models/request_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
-class BPreparedByAndDispatcherInformation
-    extends StatelessWidget {
-  const BPreparedByAndDispatcherInformation(
-      {super.key, required this.request, required this.userController});
+class BPreparedByAndDispatcherInformation extends StatelessWidget {
+  const BPreparedByAndDispatcherInformation({
+    super.key,
+    required this.requestController,
+    required this.userController,
+  });
 
-  final RequestModel request;
+  final IDeliveryRequestController requestController;
   final UserController userController;
 
   @override
@@ -19,13 +26,21 @@ class BPreparedByAndDispatcherInformation
     final dark = BHelperFunctions.isDarkMode(context);
     final textColor = dark ? BColors.light : BColors.black;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            if (request.deliveredBy.isNotEmpty)
+    return Obx(() {
+      final request = requestController.currentSelectedRequest.value;
+
+      if (request == null) {
+        return const SizedBox.shrink();
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          BTextDivider(text: 'Delivery Information'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+            if (request.deliveredBy.isNotEmpty) ...[
               Column(
                 crossAxisAlignment:
                     CrossAxisAlignment.end, // Align text to the end
@@ -42,6 +57,7 @@ class BPreparedByAndDispatcherInformation
                   ),
                 ],
               ),
+            ],
             if (request.helper.isNotEmpty)
               BProductTitleText(
                 title: "Helper: ${request.helper}",
@@ -51,13 +67,8 @@ class BPreparedByAndDispatcherInformation
               ),
           ],
         ),
-        BProductTitleText(
-          title: "Item Prepared By: ${request.itemPreparedBy}",
-          maxLines: 2,
-          smallSize: true,
-          fontColor: textColor,
-        ),
       ],
-    );
+      );
+    });
   }
 }

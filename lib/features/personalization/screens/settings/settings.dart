@@ -10,26 +10,26 @@ import 'package:mdmpi_mobile_app/common/widgets/list_tiles/user_profile_tile.dar
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/local_storage_data_viewer.dart';
 
 import '../../../../data/controllers/app_data/mobile_controller.dart';
 import '../../../../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../../../../data/controllers/client_controller.dart';
 import '../../../../data/repositories/authentication/authentication_repository.dart';
-import '../../../logistics/controllers/request_controller.dart';
+import '../../../logistics/controllers/standard_delivery_controller.dart';
 import '../../controller/user_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   Future<void> _fetchAndLoadToLocal() async {
-    final RequestController requestController = Get.find<RequestController>();
+    final StandardDeliveryController requestController = Get.find<StandardDeliveryController>();
 
     try {
       await DatabaseHelper.instance.deleteRequest();
 
-      await requestController.dataManager.fetchPendingRequestsAPI(
-          requestController.allPendingRequests,
-          requestController.filterManager);
+      await requestController.dataManager.fetchStandardDeliveryRequests(
+          requestController, false); // false = force API fetch
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
@@ -40,7 +40,7 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final requestController = Get.find<RequestController>();
+    final requestController = Get.find<StandardDeliveryController>();
     final clientController = Get.find<ClientController>();
     final userController = Get.find<UserController>();
     final mobileController = Get.find<MobileController>();
@@ -176,6 +176,19 @@ class SettingsScreen extends StatelessWidget {
                     subTitle: 'Retrieve Vehicle List from Server',
                     onTap: () {
                       mobileController.getAllMobileInServer(true);
+                    },
+                  ),
+
+                  const SizedBox(height: BSizes.spaceBtwItems),
+                  const BSectionHeading(
+                      title: 'Developer Tools', showActionButton: false),
+                  const SizedBox(height: BSizes.spaceBtwItems),
+                  BSettingsMenuTile(
+                    icon: Iconsax.data,
+                    title: 'Local Storage Viewer',
+                    subTitle: 'View and manage local database tables',
+                    onTap: () {
+                      Get.to(() => const LocalStorageDataViewer());
                     },
                   ),
 

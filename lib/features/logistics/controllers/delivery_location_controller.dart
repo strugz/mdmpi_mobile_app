@@ -1,6 +1,5 @@
 import 'dart:convert';
-import 'dart:math';
-import 'dart:math' as Math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -73,13 +72,13 @@ class DeliveryLocationController extends GetxController {
   /// -- Camera Position to view the location and destination
   LatLngBounds getLatLngBounds(LatLng loc, LatLng des) {
     final southwest = LatLng(
-      min(loc.latitude, des.latitude),
-      min(loc.longitude, des.longitude),
+      math.min(loc.latitude, des.latitude),
+      math.min(loc.longitude, des.longitude),
     );
 
     final northeast = LatLng(
-      max(loc.latitude, des.latitude),
-      max(loc.longitude, des.longitude),
+      math.max(loc.latitude, des.latitude),
+      math.max(loc.longitude, des.longitude),
     );
 
     return LatLngBounds(southwest: southwest, northeast: northeast);
@@ -142,8 +141,7 @@ class DeliveryLocationController extends GetxController {
     }
 
     Position position = await Geolocator.getCurrentPosition(
-        // ignore: deprecated_member_use
-        desiredAccuracy: LocationAccuracy.high);
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
     currentLocation.value = LatLng(position.latitude, position.longitude);
 
     mapController.value
@@ -157,20 +155,20 @@ class DeliveryLocationController extends GetxController {
     final double endLng = toRadians(endPoint.longitude);
 
     final double deltaLng = endLng - startLng;
-    final double y = Math.sin(deltaLng) * Math.cos(endLat);
-    final double x = Math.cos(startLat) * Math.sin(endLat) -
-        Math.sin(startLat) * Math.cos(endLat) * Math.cos(deltaLng);
+    final double y = math.sin(deltaLng) * math.cos(endLat);
+    final double x = math.cos(startLat) * math.sin(endLat) -
+        math.sin(startLat) * math.cos(endLat) * math.cos(deltaLng);
 
-    final double bearing = Math.atan2(y, x);
+    final double bearing = math.atan2(y, x);
     return (toDegrees(bearing) + 360) % 360;
   }
 
   double toRadians(double degrees) {
-    return degrees * (Math.pi / 180.0);
+    return degrees * (math.pi / 180.0);
   }
 
   double toDegrees(double radians) {
-    return radians * (180.0 / Math.pi);
+    return radians * (180.0 / math.pi);
   }
 
   Set<Marker> buildMarkers() {

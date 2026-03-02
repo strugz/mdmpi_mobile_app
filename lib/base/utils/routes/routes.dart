@@ -25,4 +25,9 @@ class BRoutes{
   static const request = '/request';
   static const location = '/location';
   static const requestTransport = '/request-transport';
+  // Pull-out routes
+  static const pullOutList = '/pull-out-return-pick-up';
+  static const pullOutForm = '/pull-out-form';
+  // Data test routes
+  static const localStorageViewer = '/local-storage-viewer';
 }

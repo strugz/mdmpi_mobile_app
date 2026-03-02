@@ -7,6 +7,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status; // For status codes
 
 import '../models/rider_location_model.dart'; // Assuming this path is correct
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class WebSocketDeliveryController extends GetxController {
   static WebSocketDeliveryController get instance => Get.find();
@@ -74,15 +75,12 @@ class WebSocketDeliveryController extends GetxController {
                 // Check if inner is an Error type
                 final innerError = error.inner as Error;
                 if (innerError.stackTrace != null) {
-                  print(
-                      'WebSocketDelivery: Inner StackTrace - ${innerError.stackTrace}');
+                  logDebug('WebSocketDelivery: Inner StackTrace - ${innerError.stackTrace}');
                 } else {
-                  print(
-                      'WebSocketDelivery: Inner error (type Error) does not have a separate stack trace object.');
+                  logDebug('WebSocketDelivery: Inner error (type Error) does not have a separate stack trace object.');
                 }
               } else {
-                print(
-                    'WebSocketDelivery: Inner error is not of type Error, printing its string representation.');
+                logDebug('WebSocketDelivery: Inner error is not of type Error, printing its string representation.');
               }
             }
           }
@@ -101,8 +99,7 @@ class WebSocketDeliveryController extends GetxController {
             reconnectWebSocket(); // Your existing reconnect logic
           } else if (channel.closeCode == null && isConnected.value) {
             // This might happen if the stream is cancelled before a close frame is received
-            print(
-                'WebSocketDelivery: Stream done, but no close code. Might be an abrupt closure or client-side cancellation. Ensuring isConnected is false.');
+            logDebug('WebSocketDelivery: Stream done, but no close code. Might be an abrupt closure or client-side cancellation. Ensuring isConnected is false.');
           }
           // No need to nullify channel here if reconnectWebSocket is called,
           // as connectWebSocket will reassign it.
@@ -122,8 +119,7 @@ class WebSocketDeliveryController extends GetxController {
       return;
     }
     channel.sink.close(status.goingAway).catchError((e) {
-      print(
-          "WebSocketDelivery: Error closing old channel sink during reconnect: $e");
+      logDebug("WebSocketDelivery: Error closing old channel sink during reconnect: $e");
     });
     await Future.delayed(const Duration(seconds: 5));
     connectWebSocket();
@@ -133,8 +129,7 @@ class WebSocketDeliveryController extends GetxController {
     if (isConnected.value) {
       channel.sink.add(msg);
     } else {
-      print(
-          'WebSocketDelivery: Cannot send message. Not connected or channel is null.');
+      logDebug('WebSocketDelivery: Cannot send message. Not connected or channel is null.');
     }
   }
 
@@ -142,8 +137,7 @@ class WebSocketDeliveryController extends GetxController {
   void onClose() {
     isConnected.value = false; // Set state before closing
     channel.sink.close(status.goingAway).catchError((e) {
-      print(
-          "WebSocketDelivery: Error closing channel sink on controller dispose: $e");
+      logDebug("WebSocketDelivery: Error closing channel sink on controller dispose: $e");
     }); // Use a status code like "going away"
     super.onClose();
   }

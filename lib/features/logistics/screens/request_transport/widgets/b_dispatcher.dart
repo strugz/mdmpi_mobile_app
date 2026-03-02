@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_action_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_prepared_by_and_dispatcher_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_details.dart';
@@ -8,16 +9,20 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/wi
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../personalization/controller/user_controller.dart';
-import '../../../controllers/request_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
+import '../../../models/standard_delivery_model.dart';
 
 class BDispatcher extends StatelessWidget {
-  const BDispatcher({super.key});
+  const BDispatcher({
+    super.key,
+    required this.requestController,
+  });
+
+  final IDeliveryRequestController requestController;
 
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final requestController = Get.find<RequestController>();
     final userController = Get.find<UserController>();
     final requestTransportController = Get.find<RequestTransportController>();
 
@@ -42,24 +47,23 @@ class BDispatcher extends StatelessWidget {
                 child: SingleChildScrollView(
                   controller: scrollController,
                   child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: BSizes.defaultSpace),
-                      child: BRequestDetails(
-                        requestController: requestController,
-                        userController: userController,
-                        requestTransportController: requestTransportController,
-                      )),
+                    padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
+                    child: BRequestDetails(
+                      requestController: requestController,
+                      userController: userController,
+                      requestTransportController: requestTransportController,
+                    ),
+                  ),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
                 child: BPreparedByAndDispatcherInformation(
-                    request: requestController.currentSelectedRequest.value!,
+                    requestController: requestController,
                     userController: userController),
               ),
               Padding(
-                padding: const EdgeInsets.all(
-                    BSizes.defaultSpace), // Adjust padding as needed
+                padding: const EdgeInsets.all(BSizes.sm),
                 child: BActionButton(
                   requestController: requestController,
                   requestTransportController: requestTransportController,

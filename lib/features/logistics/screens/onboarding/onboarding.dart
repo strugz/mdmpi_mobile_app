@@ -2,19 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/widgets/onboarding_dot_navigation.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/widgets/onboarding_next_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/widgets/onboarding_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/widgets/onboarding_skip.dart';
 
-import '../../../authentication/controllers/onboarding/onboarding_controller.dart';
-
-class OnboardingScreen extends StatelessWidget {
-  const OnboardingScreen({super.key});
+class OnBoardingScreen extends StatelessWidget {
+  const OnBoardingScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<OnBoardingController>();
+    final controller = Get.find<LogisticsOnboardingController>();
     return Scaffold(
       body: Stack(
         children: [

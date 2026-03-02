@@ -4,8 +4,10 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/local_storage/text_storage_service.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 
 import '../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../services/abstracts/i_camera_service.dart';
@@ -19,7 +21,9 @@ class CameraHandlerController extends GetxController
   final ICameraService _cameraService;
   final ITextRecognitionService _textRecognitionService;
   final ITextExtractor _textExtractor;
-  final RequestController requestController = Get.find<RequestController>();
+  final TextStorageService _textStorageService = TextStorageService();
+  final StandardDeliveryController requestController =
+      Get.find<StandardDeliveryController>();
   late AnimationController _flashAnimController;
   late Animation<double> flashOpacity;
 
@@ -41,7 +45,6 @@ class CameraHandlerController extends GetxController
   void onInit() {
     super.onInit();
     _initializeAndPreparePreview();
-
     _flashAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -69,9 +72,9 @@ class CameraHandlerController extends GetxController
     isCameraLoading.value = true;
     try {
       await _cameraService.initialize();
-      print('Camera initialized successfully (via service in controller)');
+      logDebug('Camera initialized successfully (via service in controller)');
     } catch (e) {
-      print('Error initializing camera (via service in controller): $e');
+      logDebug('Error initializing camera (via service in controller): $e');
     }
     isCameraLoading.value = false;
   }
@@ -79,7 +82,6 @@ class CameraHandlerController extends GetxController
   /// --- Scan text from the camera preview and update the recognizedText variable ---
   Future<void> scanText(TextEditingController controller) async {
     if (!_cameraService.isInitialized || isProcessing.value) {
-      // isProcessing could also come from cameraService
       return;
     }
     isProcessing.value = true;
@@ -108,8 +110,56 @@ class CameraHandlerController extends GetxController
       }
       Get.back(); // Consider if Get.back() should be conditional
     } catch (e) {
-      print('Error recognizing text: $e');
+      logDebug('Error recognizing text: $e');
       recognizedText.value = 'Error processing text.';
+    } finally {
+      isProcessing.value = false;
+    }
+  }
+
+  /// Scans text and populates a single field with the first matched pattern.
+  /// Used for single-field scenarios like waybill numbers, tracking codes, etc.
+  Future<void> scanSingleField(TextEditingController controller) async {
+    if (!_cameraService.isInitialized || isProcessing.value) {
+      return;
+    }
+    isProcessing.value = true;
+    recognizedText.value = 'Processing...';
+
+    try {
+      final XFile? imageFile = await _cameraService.takePicture();
+      if (imageFile == null) {
+        recognizedText.value = 'Failed to capture image.';
+        isProcessing.value = false;
+        return;
+      }
+
+      final inputImage = InputImage.fromFile(File(imageFile.path));
+      final String rawRecognizedText =
+          await _textRecognitionService.processImage(inputImage);
+
+      final List<String> extractedMatches =
+          _textExtractor.extractPatterns(rawRecognizedText);
+
+      if (extractedMatches.isNotEmpty) {
+        // Take the first matched pattern and populate the field
+        controller.text = extractedMatches.first;
+        recognizedText.value = 'Scanned: ${extractedMatches.first}';
+        Get.back(); // Return to previous screen
+      } else {
+        recognizedText.value = 'No relevant information found.';
+        BLoaders.warningSnackBar(
+          title: 'No Text Found',
+          message: 'Could not detect any text. Please try again.',
+        );
+      }
+    } catch (e) {
+      logDebug('Error recognizing text: $e');
+      recognizedText.value = 'Error processing text.';
+      BLoaders.errorSnackBar(
+        title: 'Scan Error',
+        message: 'Failed to process image. Please try again.',
+      );
     } finally {
       isProcessing.value = false;
     }
@@ -142,7 +192,6 @@ class CameraHandlerController extends GetxController
   /// --- Take Picture and Save to the device ---
   Future<void> takePicture(String pictureName) async {
     if (!_cameraService.isInitialized || isProcessing.value) {
-      // isProcessing could also come from cameraService
       return;
     }
 
@@ -151,6 +200,11 @@ class CameraHandlerController extends GetxController
 
       imageProofPath.value =
           await BImageHelperFunctions.saveImage(imageFile, pictureName);
+
+      if (imageProofPath.value.isNotEmpty) {
+        await _textStorageService.saveText(
+            'proofImagePath', imageProofPath.value);
+      }
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     }
@@ -159,7 +213,55 @@ class CameraHandlerController extends GetxController
   Future<void> takePictureWithAnimation(String requestId) async {
     isFlashing.value = true;
     _flashAnimController.forward(from: 0.0);
-    await takePicture(requestId); // Your existing takePicture logic
+    await takePicture(requestId);
+  }
+
+  /// --- Take Picture and Return Path (without saving) ---
+  /// Used for photo review screens where user can confirm/retake
+  Future<String?> takePictureForReview() async {
+    if (!_cameraService.isInitialized || isProcessing.value) {
+      return null;
+    }
+
+    try {
+      logDebug('📸 Taking picture for review...');
+      final XFile? imageFile = await _cameraService.takePicture();
+
+      if (imageFile == null) {
+        logDebug('❌ Failed to capture image');
+        return null;
+      }
+
+      logDebug('✅ Picture captured: ${imageFile.path}');
+      return imageFile.path;
+    } catch (e) {
+      logDebug('❌ Error taking picture: $e');
+      BLoaders.errorSnackBar(title: 'Capture Error', message: e.toString());
+      return null;
+    }
+  }
+
+  /// --- Take Picture with Flash Animation for Review ---
+  Future<String?> takePictureForReviewWithAnimation() async {
+    isFlashing.value = true;
+    _flashAnimController.forward(from: 0.0);
+    return await takePictureForReview();
+  }
+
+  /// --- Pause the camera preview to release resources ---
+  Future<void> pausePreview() async {
+    await _cameraService.pausePreview();
+  }
+
+  /// --- Resume the camera preview ---
+  Future<void> resumePreview() async {
+    await _cameraService.resumePreview();
+  }
+
+  /// --- Stop flash animation ---
+  void stopFlashAnimation() {
+    _flashAnimController.stop();
+    isFlashing.value = false;
   }
 
   Widget? getCameraPreviewWidget() {

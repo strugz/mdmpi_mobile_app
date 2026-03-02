@@ -7,17 +7,36 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request/widgets/b_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_modal_config.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
-import '../../../common/widgets/signature/signature_pad.dart';
 import '../../../common/widgets/texts/product_title_text.dart';
 import '../../../data/controllers/app_data/user_initial_controller.dart';
-import '../../../features/authentication/controllers/signup/signup_controller.dart';
-import '../../../features/logistics/controllers/request_controller.dart';
-import '../../../features/logistics/models/request_model.dart';
+import '../../../features/authentication/presentation/controllers/signup_controller.dart';
+import '../../../features/logistics/controllers/air_sea_controller.dart';
+import '../../../features/logistics/controllers/standard_delivery_controller.dart';
+import '../../../features/logistics/models/standard_delivery_model.dart';
+import '../../../features/logistics/models/pull_out_model.dart';
+import '../../../features/logistics/models/pick_up_model.dart';
+import '../../../features/logistics/models/air_sea_model.dart';
+import '../../../common/widgets/dividers/text_divider.dart';
+import '../../../common/widgets/modals/b_cancel_remarks.dart';
+import '../../../common/widgets/modals/request_modal_scaffold.dart';
+import '../../../common/widgets/buttons/status_action_button.dart';
+import '../../../features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal_header.dart';
+import '../../../features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_request_modal_footer.dart';
 
 /// A utility class for managing a full-screen loading dialog.
 class BFullScreenLoader {
@@ -51,8 +70,8 @@ class BFullScreenLoader {
   }
 
   /// Open a half screen dialog for Pick and Dispatch Items and Delivery of Items
-  static void showRequestForReleasingDialog1(
-      BuildContext context, RequestModel requestModel, VoidCallback onPressed) {
+  static void showRequestForReleasingDialog1(BuildContext context,
+      StandardDeliveryModel requestModel, VoidCallback onPressed) {
     showModalBottomSheet<void>(
         enableDrag: true,
         context: context,
@@ -106,7 +125,8 @@ class BFullScreenLoader {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           requestModel.status == BTexts.statusForDelivery ||
-                                  requestModel.status == BTexts.statusDoneDelivery
+                                  requestModel.status ==
+                                      BTexts.statusDoneDelivery
                               ? BProductTitleText(
                                   title: "Delivered By: MAR",
                                   maxLines: 2,
@@ -133,11 +153,12 @@ class BFullScreenLoader {
                             width: double.infinity,
                             child: ElevatedButton(
                               onPressed: onPressed,
-                              child: requestModel.status == BTexts.statusNewRequest
-                                  ? Text("Prepare Item")
-                                  : requestModel.status == "Dispatch Items"
-                                      ? Text("Dispatch")
-                                      : Text("Drop Off"),
+                              child:
+                                  requestModel.status == BTexts.statusNewRequest
+                                      ? Text("Prepare Item")
+                                      : requestModel.status == "Dispatch Items"
+                                          ? Text("Dispatch")
+                                          : Text("Drop Off"),
                             ),
                           ),
                   )
@@ -156,12 +177,21 @@ class BFullScreenLoader {
   }
 
   /// Open a half screen dialog with a text and list to search for a client to select
-  static void showSearchSheet(BuildContext context,
-      ClientController clientController, RequestController requestController) {
+  static void showSearchSheet(
+      BuildContext context,
+      ClientController clientController,
+      StandardDeliveryController requestController) {
+    final FocusNode searchFocusNode = FocusNode();
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true, // Important for height
       builder: (BuildContext context) {
+        // Request focus when modal is shown
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          searchFocusNode.requestFocus();
+        });
+
         return Padding(
           padding:
               EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -172,6 +202,7 @@ class BFullScreenLoader {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 TextFormField(
+                  focusNode: searchFocusNode,
                   controller: clientController.query,
                   decoration: InputDecoration(
                       labelText: 'Search by Client:',
@@ -356,46 +387,30 @@ class BFullScreenLoader {
   }
 
   static void showRequestTransportSignatureDialog(
-      BuildContext context, RequestController requestController) {
-    showDialog(
+      BuildContext context, IDeliveryRequestController requestController) {
+    BSignatureCaptureDialog.show(
       context: context,
-      builder: (BuildContext dialogContext) {
-        final dark = BHelperFunctions.isDarkMode(context);
-        return AlertDialog(
-          backgroundColor: dark ? BColors.black : BColors.light,
-          contentPadding: EdgeInsets.zero, // Remove default padding
-          titlePadding: EdgeInsets.zero,
-          content: SizedBox(
-            width: 400,
-            height: 345, // Give it a fixed size
-            child: SingleChildScrollView(
-              // To handle potential overflow if content is too tall
-              child: Column(
-                children: [
-                  SignaturePadWidget(
-                    onSave: (Uint8List? signatureBytes) {
-                      requestController.setSignature(signatureBytes);
-                      Navigator.of(dialogContext).pop(); // Close the dialog
-                      if (signatureBytes != null) {
-                        BHelperFunctions.showSnackBar("Signature saved!");
-                      } else {
-                        BHelperFunctions.showSnackBar(
-                            "Signature pad was empty.");
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
+      onSave: (Uint8List? signatureBytes) {
+        requestController.setSignature(signatureBytes);
+      },
+    );
+  }
+
+  static void showSignatureDialogForPullOut(
+      BuildContext context, PullOutController requestController) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (Uint8List? signatureBytes) {
+        requestController.setSignature(signatureBytes);
       },
     );
   }
 
   static void showRequestForReleasingDialog(BuildContext context,
-      RequestModel requestModel, VoidCallback onPressed, bool status) {
+      StandardDeliveryModel requestModel, VoidCallback onPressed, bool status,
+      IDeliveryRequestController requestController) {
     final dark = BHelperFunctions.isDarkMode(context);
+
     showModalBottomSheet<void>(
       backgroundColor: dark ? BColors.black : BColors.light,
       context: context,
@@ -405,10 +420,215 @@ class BFullScreenLoader {
           child: BModal(
             requestModel: requestModel,
             onPressed: onPressed,
+            requestController: requestController,
             status: status,
           ),
         );
       },
+    );
+  }
+
+  /// Show Pull Out request modal dialog driven by [PullOutModalConfig].
+  static void showPullOutDialog(
+    BuildContext context,
+    PullOutModel requestModel,
+    PullOutModalConfig config,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: PullOutModal(
+              requestModel: requestModel,
+              config: config,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static void showSignatureDialogForPickUp(
+      BuildContext context, PickUpController requestController) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (Uint8List? signatureBytes) {
+        requestController.formState.setSignature(signatureBytes);
+      },
+    );
+  }
+
+  static void showPickUpDialog(
+    BuildContext context,
+    PickUpModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: PickUpModal(
+            requestModel: requestModel,
+            onPressed: onPressed,
+            isActionVisible: isActionVisible,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show Air/Sea request modal dialog driven by [AirSeaModalConfig].
+  static void showAirSeaDialog(
+    BuildContext context,
+    AirSeaModel requestModel,
+    AirSeaModalConfig config,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: AirSeaModal(
+              requestModel: requestModel,
+              config: config,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Show signature capture dialog for Air/Sea
+  static void showSignatureDialogForAirSea(
+      BuildContext context, AirSeaController controller) {
+    BSignatureCaptureDialog.show(
+      context: context,
+      onSave: (bytes) {
+        controller.formState.setSignature(bytes);
+      },
+    );
+  }
+
+  /// Show Stock Receive modal dialog
+  static void showStockReceiveDialog(
+    BuildContext context,
+    PullOutModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        // Import StockReceiveModal dynamically to avoid circular dependencies
+        // Implement as a factory that creates the appropriate modal
+        return _buildStockReceiveModal(
+          context,
+          requestModel,
+          onPressed,
+          isActionVisible,
+        );
+      },
+    );
+  }
+
+  /// Helper to build stock receive modal (avoids circular dependency)
+  static Widget _buildStockReceiveModal(
+    BuildContext context,
+    PullOutModel requestModel,
+    VoidCallback onPressed,
+    bool isActionVisible,
+  ) {
+    // Dynamic import or inline the modal build
+    return SafeArea(
+      child: _StockReceiveModalContent(
+        requestModel: requestModel,
+        onPressed: onPressed,
+        isActionVisible: isActionVisible,
+      ),
+    );
+  }
+}
+
+/// Internal widget for rendering stock receive modal content
+/// This avoids circular dependency issues by being defined here
+class _StockReceiveModalContent extends StatelessWidget {
+  final PullOutModel requestModel;
+  final VoidCallback onPressed;
+  final bool isActionVisible;
+
+  const _StockReceiveModalContent({
+    required this.requestModel,
+    required this.onPressed,
+    this.isActionVisible = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isCancelled = requestModel.requestStatus == BTexts.statusCancelled;
+    final controller = Get.find<StockReceiveController>();
+
+    // Load cancel remarks if cancelled
+    if (isCancelled) {
+      controller.loadCancelRemarks(requestModel.id);
+    }
+
+    return RequestModalScaffold(
+      header: PullOutRequestModalHeader(requestModel: requestModel),
+      documentReferences: requestModel.documentReference,
+      bottomAction: StatusActionButton(
+        status: requestModel.requestStatus,
+        onPressed: onPressed,
+        isVisible: isActionVisible,
+        statusToTextMapper: (status) {
+          if (status == null) return 'Proceed';
+          switch (status) {
+            case 'New Request':
+              return 'Set In Transit';
+            case 'In Transit':
+              return 'Mark Taken Out';
+            case 'Taken Out':
+              return '';
+            default:
+              return 'Proceed';
+          }
+        },
+      ),
+      children: [
+        if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
+        Obx(() {
+          controller.loadCancelRemarks(requestModel.id);
+          final remarks = controller.cancelRemarks.value;
+          if (remarks == null || remarks.remarks.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return BCancelRemarks(
+            remarks: remarks.remarks,
+            date: remarks.date,
+            user: remarks.userUpdated,
+          );
+        }),
+        PullOutRequestModalFooter(requestModel: requestModel),
+      ],
     );
   }
 }

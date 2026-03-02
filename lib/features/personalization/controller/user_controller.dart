@@ -9,11 +9,12 @@ import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
-import 'package:mdmpi_mobile_app/features/authentication/screens/login/login.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/login.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/widgets/re_authenticate_user_login_form.dart';
 
 import '../../../data/local/database_helper.dart';
 import '../models/user_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class UserController extends GetxController {
   static UserController get instance => Get.find();
@@ -92,7 +93,7 @@ class UserController extends GetxController {
       /// Update Rx User
       profileLoading.value = false;
     } catch (e) {
-      print('Error ${e.toString()}');
+      logDebug('Error ${e.toString()}');
     } finally {
       profileLoading.value = false;
     }
@@ -171,10 +172,20 @@ class UserController extends GetxController {
       if (provider.isNotEmpty) {
         //  Re Verify Auth Email
         if (provider == 'google.com') {
-          await auth.signInWithGoogle();
-          await auth.deleteAccount();
-          BFullScreenLoader.stopLoading();
-          Get.offAll(() => const LoginScreen());
+          final result = await auth.loginWithGoogle();
+          if (result.isSuccess) {
+            final deleteResult = await auth.deleteAccount();
+            if (deleteResult.isSuccess) {
+              BFullScreenLoader.stopLoading();
+              Get.offAll(() => const LoginScreen());
+            } else {
+              BFullScreenLoader.stopLoading();
+              BLoaders.errorSnackBar(title: 'Error', message: deleteResult.error);
+            }
+          } else {
+            BFullScreenLoader.stopLoading();
+            BLoaders.errorSnackBar(title: 'Authentication Failed', message: result.error);
+          }
         } else if (provider == 'password') {
           BFullScreenLoader.stopLoading();
           Get.to(() => const ReAuthLoginForm());
@@ -203,10 +214,25 @@ class UserController extends GetxController {
         return;
       }
 
-      await AuthenticationRepository.instance
-          .reAuthenticateWithEmailAndPassword(
-              verifyEmail.text.trim(), verifyPassword.text.trim());
-      await AuthenticationRepository.instance.deleteAccount();
+      final reAuthResult = await AuthenticationRepository.instance.reAuthenticate(
+        email: verifyEmail.text.trim(),
+        password: verifyPassword.text.trim(),
+      );
+
+      if (reAuthResult.isFailure) {
+        BFullScreenLoader.stopLoading();
+        BLoaders.errorSnackBar(title: 'Authentication Failed', message: reAuthResult.error);
+        return;
+      }
+
+      final deleteResult = await AuthenticationRepository.instance.deleteAccount();
+
+      if (deleteResult.isFailure) {
+        BFullScreenLoader.stopLoading();
+        BLoaders.errorSnackBar(title: 'Delete Failed', message: deleteResult.error);
+        return;
+      }
+
       BFullScreenLoader.stopLoading();
       Get.offAll(() => const LoginScreen());
     } catch (e) {

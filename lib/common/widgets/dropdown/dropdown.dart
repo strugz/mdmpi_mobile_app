@@ -11,24 +11,40 @@ class BDropdown extends StatelessWidget {
       required this.label,
       required this.dropdownList,
       this.icon = Iconsax.airplane,
-      required this.controller});
+      required this.controller,
+      this.validator});
 
   final String label;
   final List<String> dropdownList;
   final IconData icon;
   final TextEditingController controller;
+  final String? Function(dynamic)? validator;
 
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
+    final List<String> options = [];
+    final seen = <String>{};
+    for (final option in dropdownList) {
+      if (!seen.contains(option)) {
+        seen.add(option);
+        options.add(option);
+      }
+    }
+    if (options.isEmpty) {
+      options.add('');
+    }
     return SingleChildScrollView(
       child: Column(
         children: [
           DropdownButtonFormField(
-              value: controller.text.isEmpty ? null : controller.text,
+              value: (controller.text.isEmpty || !options.contains(controller.text))
+                  ? null
+                  : controller.text,
               onChanged: (value) {
                 controller.text = value!;
               },
+              validator: validator,
               decoration: InputDecoration(
                 prefixIcon: Icon(icon,
                     color: dark
@@ -37,7 +53,7 @@ class BDropdown extends StatelessWidget {
                 labelText: label,
                 labelStyle: TextStyle(color: BColors.darkGrey),
               ),
-              items: dropdownList
+              items: options
                   .map(
                     (option) => DropdownMenuItem(
                       value: option,

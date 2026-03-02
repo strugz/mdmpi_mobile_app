@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 
@@ -38,16 +37,15 @@ class UserModel {
   String get formattedPhoneNo => BFormatter.formatPhoneNumber(phoneNumber);
 
   /// Static function to split full name into first and last name.
-  static List<String> nameParts(fullName) => fullName.split(" ");
+  static List<String> nameParts(String fullName) => fullName.split(" ");
 
   /// Static function to generate a username from the full name.
-  static String generateUsername(fullName) {
+  static String generateUsername(String fullName) {
     List<String> nameParts = fullName.split(" ");
-    String firstName = nameParts[0].toLowerCase();
-    String lastName = nameParts.length > 1 ? nameParts[1].toLowerCase() : "";
+    String firstName = nameParts.isNotEmpty ? nameParts[0].toLowerCase() : '';
+    String lastName = nameParts.length > 1 ? nameParts.sublist(1).join('').toLowerCase() : "";
 
-    String camelCaseUsername =
-        "$firstName$lastName"; // Combine first and last name
+    String camelCaseUsername = "$firstName$lastName"; // Combine first and last name
     String usernameWithPrefix = "cwt_$camelCaseUsername"; //  Add "cwt_" prefix
     return usernameWithPrefix;
   }
@@ -79,6 +77,31 @@ class UserModel {
       'Role': role,
       'Status': status
     };
+  }
+
+  /// Build a payload map suitable for updates or API payloads.
+  /// Omits null values and empty strings to keep the payload small.
+  Map<String, dynamic> toMapper() {
+    final Map<String, dynamic> data = {};
+
+    void put(String key, dynamic value) {
+      if (value == null) return;
+      if (value is String && value.isEmpty) return;
+      data[key] = value;
+    }
+
+    put('FirstName', firstName);
+    put('LastName', lastName);
+    put('Username', username);
+    put('Email', email);
+    put('PhoneNumber', phoneNumber);
+    put('ProfilePicture', profilePicture);
+    put('Initial', initial);
+    put('Department', department);
+    put('Role', role);
+    put('Status', status);
+
+    return data;
   }
 
   /// Factory method to create a UserModel from a Firebase document snapshot.

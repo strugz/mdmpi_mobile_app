@@ -46,12 +46,21 @@ class ClientModel {
 
 
   factory ClientModel.fromJson(Map<String, dynamic> json) {
+    // Helper to retrieve the first non-null value from a list of possible keys
+    String firstPresent(Map<String, dynamic> m, List<String> keys, {String fallback = ''}) {
+      for (final k in keys) {
+        if (m.containsKey(k) && m[k] != null) return m[k].toString();
+      }
+      return fallback;
+    }
+
     return ClientModel(
-        id: json['ACCMID'],
-        code: json['ACCMSC'],
-        name: json['ACCMNM'],
-        address: json['ACCMAD'],
-        contact: json['ACCMPH'],
-        emailAddress: json['ACCMEM']);
+      id: firstPresent(json, ['ACCMID', 'accmid', 'ClientID', 'clientID']),
+      code: firstPresent(json, ['ACCMSC', 'accmsc', 'Code', 'code']),
+      name: firstPresent(json, ['ACCMNM', 'accmnm', 'Name', 'name']),
+      address: firstPresent(json, ['ACCMAD', 'accmad', 'Address', 'address']),
+      contact: firstPresent(json, ['ACCMPH', 'accmph', 'Phone', 'phone', 'Contact', 'contact']),
+      emailAddress: firstPresent(json, ['ACCMEM', 'accmem', 'Email', 'email', 'EmailAddress', 'emailAddress']),
+    );
   }
 }
