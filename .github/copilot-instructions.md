@@ -148,7 +148,6 @@ presentation/
 * Interface files: `i_<name>.dart` (e.g., `i_permission_service.dart`). Interface classes: `I<Name>` (e.g., `IPermissionService`).
   * Known exception: `location_alternative_service.dart` in abstracts (missing `i_` file prefix).
 * `Result<T>`: `Result.success(value)` / `Result.failure(message)` — sealed class in `base/utils/result.dart`.
-
 ---
 
 ## Platform / services
