@@ -23,17 +23,17 @@ class CollectionOnBoardingScreen extends StatelessWidget {
             onPageChanged: controller.updatePageIndicator,
             children: [
               OnBoardingPage(
-                image: BImages.darkAppLogo,
+                image: BImages.onBoardingImage1,
                 title: BTexts.onBoardingTitle1,
                 subtitle: BTexts.onBoardingSubTitle1,
               ),
               OnBoardingPage(
-                image: BImages.onBoardingImage1,
+                image: BImages.onBoardingImage2,
                 title: BTexts.onBoardingTitle2,
                 subtitle: BTexts.onBoardingSubTitle2,
               ),
               OnBoardingPage(
-                image: BImages.onBoardingImage2,
+                image: BImages.onBoardingImage3,
                 title: BTexts.onBoardingTitle3,
                 subtitle: BTexts.onBoardingSubTitle3,
               ),

@@ -1,11 +1,12 @@
 class BImages {
   // App Logos
-  static const String darkAppLogo = "assets/logos/mdmpi.jpg";
-  static const String lightAppLogo = "assets/logos/mdmpi.jpg";
+  static const String darkAppLogo = "assets/logos/mdmpi-logo.png";
+  static const String lightAppLogo = "assets/logos/mdmpi-logo.png";
 
   // On boarding Images
-  static const String onBoardingImage1 = "assets/images/on_boarding_images/add-shipments.png";
-  static const String onBoardingImage2 = "assets/images/on_boarding_images/track-shipments.png";
+  static const String onBoardingImage1 = "assets/images/on_boarding_images/cash.gif";
+  static const String onBoardingImage2 = "assets/images/on_boarding_images/payment.gif";
+  static const String onBoardingImage3 = "assets/images/on_boarding_images/bank.gif";
 
   // Social Logos
   static const String google = "assets/logos/google-icon.png";
