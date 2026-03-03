@@ -19,7 +19,7 @@ class BHomeAppBar extends StatelessWidget {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(BTexts.homeAppbarSubTitle,
+          Text(BTexts.dashboardTitle,
               style: Theme.of(context)
                   .textTheme
                   .labelMedium!
