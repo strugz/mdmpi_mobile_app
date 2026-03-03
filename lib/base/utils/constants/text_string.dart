@@ -1,15 +1,12 @@
 class BTexts {
   // On boarding Texts
-  static const String onBoardingTitle1 = "Welcome to MDMPI APP!";
-  static const String onBoardingTitle2 = "Add Your Deliveries";
-  static const String onBoardingTitle3 = "Track Your Deliveries";
+  static const String onBoardingTitle1 = "Welcome to MDMPI APP  Collection!";
+  static const String onBoardingTitle2 = "Add Your Collections";
+  static const String onBoardingTitle3 = "Track Your Collections";
 
-  static const String onBoardingSubTitle1 =
-      "We’re thrilled to have you on board. With MDMPI APP - Logistics, managing and tracking your day to day deliveries is a breeze.";
-  static const String onBoardingSubTitle2 =
-      "Enter the details of the deliverable, including the requester, document reference and client information.";
-  static const String onBoardingSubTitle3 =
-      "Stay updated with real-time tracking and notifications for every step of the delivery process.";
+  static const String onBoardingSubTitle1 = "We’re thrilled to have you on board. With MDMPI APP Collection, managing and tracking your day to day collection is a breeze.";
+  static const String onBoardingSubTitle2 = "Enter the details of the bank, the cheque number, including the amount, date, and remarks.";
+  static const String onBoardingSubTitle3= "Stay updated with real-time tracking and notifications for every step of the collection process.";
 
   //Collection Home Texts
   static const String collectionHomeTitle1 = "Welcome to MDMPI APP!";
