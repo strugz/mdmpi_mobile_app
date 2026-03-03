@@ -22,7 +22,7 @@ class AuthHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+
       children: [
         if (showLogo)
           Image(
@@ -31,7 +31,7 @@ class AuthHeader extends StatelessWidget {
                 dark ? BImages.lightAppLogo : BImages.darkAppLogo),
           ),
         Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+        Text(subtitle, style: Theme.of(context).textTheme.bodyLarge),
       ],
     );
   }

@@ -64,7 +64,7 @@ class BTexts {
   static const String signUp = "Sign Up";
   static const String rememberMe = "Remember Me?";
   static const String forgetPassword = "Forget Password?";
-  static const String createAccount = "Create account.";
+  static const String createAccount = "Create Account";
   static const String orSignInWith = "or sign in with";
   static const String accountCreated = "Account Created Successfully!";
   static const String accountLoginToYour =
