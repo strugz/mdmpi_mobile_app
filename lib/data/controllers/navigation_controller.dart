@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/activity.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/home.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/home.dart';
@@ -52,8 +54,7 @@ class NavigationController extends GetxController {
       if (dept == 'collection') {
         return const [
           CollectionHomeScreen(),
-          RequestScreen(),
-          LocationPageGoogle(),
+          CollectionActivityScreen(),
           SettingsScreen()
         ];
       }
@@ -70,4 +71,28 @@ class NavigationController extends GetxController {
     ];
   }
 
+  List<Widget> get items {
+    try {
+      final userController = Get.find<UserController>();
+      final dept = userController.user.value.department.toLowerCase();
+
+      if (dept == 'collection') {
+        return [
+          Icon(Iconsax.home, size: 30),
+          ImageIcon(AssetImage('assets/icons/request/quote-request.png'),
+              size: 30),
+          Icon(Iconsax.settings, size: 30)
+        ];
+      }
+    } catch (_) {
+      ///
+    }
+
+    return const [
+      Icon(Iconsax.home, size: 30),
+      ImageIcon(AssetImage('assets/icons/request/quote-request.png'), size: 30),
+      Icon(Iconsax.activity, size: 30),
+      Icon(Iconsax.settings, size: 30)
+    ];
+  }
 }

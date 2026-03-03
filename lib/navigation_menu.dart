@@ -1,7 +1,6 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
@@ -22,18 +21,15 @@ class NavigationMenu extends StatelessWidget {
       top: false,
       bottom: !isGestureNavigation,
       child: Scaffold(
-        bottomNavigationBar: CurvedNavigationBar(
-          backgroundColor: Colors.transparent,
-          onTap: (index) => controller.changeScreen(index),
-          height: 70,
-          color: dark ? BColors.black : BColors.light,
-          items: [
-            Icon(Iconsax.home, size: 30),
-            ImageIcon(AssetImage('assets/icons/request/quote-request.png'),
-                size: 30),
-            Icon(Iconsax.activity, size: 30),
-            Icon(Iconsax.settings, size: 30)
-          ],
+        bottomNavigationBar: Obx(
+          () => CurvedNavigationBar(
+            backgroundColor: Colors.transparent,
+            onTap: (index) => controller.changeScreen(index),
+            index: controller.selectedIndex.value,
+            height: 70,
+            color: dark ? BColors.black : BColors.light,
+            items: controller.items,
+          ),
         ),
         body: Obx(() => controller.screens[controller.selectedIndex.value]),
       ),
