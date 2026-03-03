@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/wid
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
@@ -37,57 +38,27 @@ class CollectionHomeScreen extends StatelessWidget {
           // Summary cards
           Padding(
             padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: const [
-                  CollectionSummaryCard(
-                    title: 'Pending Collections',
-                    value: '12',
-                    icon: Icons.pending_actions,
-                    color: Colors.orange,
-                  ),
-                  SizedBox(width: BSizes.spaceBtwItems),
-                  CollectionSummaryCard(
-                    title: 'Completed',
-                    value: '128',
-                    icon: Icons.check_circle,
-                    color: Colors.green,
-                  ),
-                  SizedBox(width: BSizes.spaceBtwItems),
-                  CollectionSummaryCard(
-                    title: 'Overdue',
-                    value: '3',
-                    icon: Icons.error,
-                    color: Colors.red,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: BSizes.spaceBtwSections),
-
-          // Actions row
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                ActionButton(
-                  icon: Icons.add_box,
-                  label: 'New Collection',
-                  onTap: () {},
+            child: Column(
+              children: const [
+                CollectionSummaryCard(
+                  title: 'Pending Collections',
+                  value: '12',
+                  icon: Icons.pending_actions,
+                  color: Colors.orange,
                 ),
-                ActionButton(
-                  icon: Icons.search,
-                  label: 'Search',
-                  onTap: () {},
+                SizedBox(height: BSizes.spaceBtwItems),
+                CollectionSummaryCard(
+                  title: 'Completed',
+                  value: '128',
+                  icon: Icons.check_circle,
+                  color: Colors.green,
                 ),
-                ActionButton(
-                  icon: Icons.filter_list,
-                  label: 'Filters',
-                  onTap: () {},
+                SizedBox(height: BSizes.spaceBtwItems),
+                CollectionSummaryCard(
+                  title: 'Overdue',
+                  value: '3',
+                  icon: Icons.error,
+                  color: Colors.red,
                 ),
               ],
             ),
@@ -95,39 +66,14 @@ class CollectionHomeScreen extends StatelessWidget {
 
           const SizedBox(height: BSizes.spaceBtwSections),
 
-          // Recent items
+          // Collection bucket button
           Padding(
             padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-            child: BSectionHeading(
-              title: 'Recent Collections',
-              showActionButton: true,
-            ),
-          ),
-
-          const SizedBox(height: BSizes.spaceBtwItemsLight),
-
-          // Placeholder list - replace with Obx + controller-driven list when available
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-            child: Column(
-              children: List.generate(3, (index) {
-                return Column(
-                  children: [
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.blue.shade50,
-                        child: Icon(Icons.folder, color: Colors.blue),
-                      ),
-                      title: Text('Collection #${index + 1}'),
-                      subtitle: Text('Customer • Address details'),
-                      trailing: Icon(Icons.chevron_right),
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: BSizes.spaceBtwItemsLight),
-                  ],
-                );
-              }),
+            child: CollectionBucketButton(
+              itemCount: 5,
+              onTap: () {
+                // TODO: Navigate to collection bucket screen
+              },
             ),
           ),
 

@@ -21,7 +21,7 @@ class CollectionSummaryCard extends StatelessWidget {
     final backgroundColor = color.withAlpha((0.08 * 255).round());
 
     return Container(
-      width: 110,
+      width: double.infinity,
       padding: const EdgeInsets.all(BSizes.defaultSpace / 2),
       decoration: BoxDecoration(
         color: backgroundColor,
