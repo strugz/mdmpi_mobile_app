@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
@@ -93,9 +95,9 @@ class CollectionActivityScreen extends StatelessWidget {
                         '${item.bankName} • ${item.documentReferences.isNotEmpty ? item.documentReferences.first : '—'}',
                     time: item.assignedAt,
                     status: item.status,
-                    statusColor: _statusColor(item.status),
-                    icon: _statusIcon(item.status),
-                    amount: '₱${_formatAmount(item.amount)}',
+                    statusColor: CollectionStatusColors.colorFor(item.status),
+                    icon: CollectionStatusColors.iconFor(item.status),
+                    amount: BFormatter.formatPesoCurrency(item.amount),
                     onTap: () => _showItemDetails(context, item, controller),
                   );
                 },
@@ -107,40 +109,6 @@ class CollectionActivityScreen extends StatelessWidget {
     );
   }
 
-  /// Map status text to a colour.
-  Color _statusColor(String status) {
-    switch (status) {
-      case 'Completed':
-        return BColors.success;
-      case 'Overdue':
-        return BColors.error;
-      case 'Pending':
-      default:
-        return Colors.orange;
-    }
-  }
-
-  /// Map status text to an icon.
-  IconData _statusIcon(String status) {
-    switch (status) {
-      case 'Completed':
-        return Iconsax.tick_circle;
-      case 'Overdue':
-        return Iconsax.warning_2;
-      case 'Pending':
-      default:
-        return Iconsax.clock;
-    }
-  }
-
-  String _formatAmount(double amount) {
-    final parts = amount.toStringAsFixed(2).split('.');
-    final intPart = parts[0].replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'),
-      (m) => '${m[1]},',
-    );
-    return '$intPart.${parts[1]}';
-  }
 
   /// Bottom sheet showing full item details with a status-update action.
   void _showItemDetails(
@@ -173,24 +141,26 @@ class CollectionActivityScreen extends StatelessWidget {
             _detailRow(context, 'Documents',
                 item.documentReferences.join(', ')),
             _detailRow(context, 'Amount',
-                '₱${_formatAmount(item.amount)}'),
+                BFormatter.formatPesoCurrency(item.amount)),
             _detailRow(context, 'Document Date', item.documentDate),
             if (item.remarks.isNotEmpty)
               _detailRow(context, 'Remarks', item.remarks),
             _detailRow(context, 'Status', item.status),
             const SizedBox(height: BSizes.spaceBtwSections),
-            if (item.status == 'Pending')
+            if (item.status == CollectionStatusColors.statusPending)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    controller.updateActivityStatus(item.id, 'Completed');
+                    controller.updateActivityStatus(
+                        item.id, CollectionStatusColors.statusCompleted);
                     Navigator.of(context).pop();
                   },
                   icon: const Icon(Iconsax.tick_circle),
                   label: const Text('Mark as Completed'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: BColors.success,
+                    backgroundColor: CollectionStatusColors.colorFor(
+                        CollectionStatusColors.statusCompleted),
                     foregroundColor: BColors.white,
                   ),
                 ),

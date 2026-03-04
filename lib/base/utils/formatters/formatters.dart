@@ -25,6 +25,19 @@ class BFormatter {
     return NumberFormat.currency(locale: 'en_US', symbol: '\$').format(amount);
   }
 
+  /// Format [amount] as Philippine Peso with comma-separated thousands.
+  ///
+  /// Returns a string like `₱25,000.00`. Pass [includeSymbol] `false` to omit
+  /// the `₱` prefix (e.g. when the caller prepends its own symbol).
+  static String formatPesoCurrency(double amount,
+      {bool includeSymbol = true}) {
+    return NumberFormat.currency(
+      locale: 'en_PH',
+      symbol: includeSymbol ? '₱' : '',
+      decimalDigits: 2,
+    ).format(amount);
+  }
+
   static String formatPhoneNumber(String phoneNumber) {
     if (phoneNumber.length == 10) {
       return '(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)} ${phoneNumber.substring(6)}';

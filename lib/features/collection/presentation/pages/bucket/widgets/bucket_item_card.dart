@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/widgets/chips/icon_label_chip.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 
 /// A card representing a single collection bucket item.
@@ -117,14 +119,14 @@ class BucketItemCard extends StatelessWidget {
                   Row(
                     children: [
                       /// Bank
-                      _InfoChip(
+                      BIconLabelChip(
                         icon: Iconsax.bank,
                         label: item.bankName,
                       ),
                       const SizedBox(width: BSizes.sm),
 
                       /// Document references
-                      _InfoChip(
+                      BIconLabelChip(
                         icon: Iconsax.document_text,
                         label: item.documentReferences.isNotEmpty
                             ? item.documentReferences.first
@@ -164,7 +166,7 @@ class BucketItemCard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '₱${_formatAmount(item.amount)}',
+                        BFormatter.formatPesoCurrency(item.amount),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: BColors.primary,
@@ -201,39 +203,5 @@ class BucketItemCard extends StatelessWidget {
     );
   }
 
-  String _formatAmount(double amount) {
-    final parts = amount.toStringAsFixed(2).split('.');
-    final intPart = parts[0].replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'),
-      (m) => '${m[1]},',
-    );
-    return '$intPart.${parts[1]}';
-  }
-}
-
-/// Small chip used to display bank / document reference info.
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: BSizes.iconSm, color: BColors.darkGrey),
-        const SizedBox(width: BSizes.xxs),
-        Text(
-          label,
-          style: Theme.of(context)
-              .textTheme
-              .labelMedium
-              ?.copyWith(color: BColors.darkerGrey),
-        ),
-      ],
-    );
-  }
 }
 

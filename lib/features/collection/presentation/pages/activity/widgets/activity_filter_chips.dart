@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 
 /// Horizontal scrollable filter chips for the Activity screen.
 ///
@@ -18,7 +19,12 @@ class ActivityFilterChips extends StatefulWidget {
 class _ActivityFilterChipsState extends State<ActivityFilterChips> {
   int _selectedIndex = 0;
 
-  static const _filters = ['All', 'Pending', 'Completed', 'Overdue'];
+  static const _filters = [
+    'All',
+    CollectionStatusColors.statusPending,
+    CollectionStatusColors.statusCompleted,
+    CollectionStatusColors.statusOverdue,
+  ];
 
   @override
   Widget build(BuildContext context) {

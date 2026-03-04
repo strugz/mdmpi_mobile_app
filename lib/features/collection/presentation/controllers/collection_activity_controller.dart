@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
@@ -89,7 +90,7 @@ class CollectionActivityController extends GetxController {
       if (index == -1) continue;
 
       final item = bucketItems[index].copyWith(
-        status: 'Pending',
+        status: CollectionStatusColors.statusPending,
         assignedAt: now,
       );
       activityItems.add(item);

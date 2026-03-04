@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 /// A single collection item representing a client document for collection.
@@ -43,7 +44,7 @@ class CollectionItemModel {
     this.amount = 0,
     this.remarks = '',
     this.documentDate = '',
-    this.status = 'Unassigned',
+    this.status = CollectionStatusColors.statusUnassigned,
     this.assignedAt = '',
   });
 

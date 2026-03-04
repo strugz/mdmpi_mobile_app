@@ -132,9 +132,11 @@ screens/              # address/, profile/, settings/
 #### `features/collection/`
 
 ```
+helpers/              # CollectionStatusColors (status colour/icon mapping)
+models/               # CollectionItemModel
 presentation/
-  controllers/        # CollectionOnboardingController
-  pages/              # home/, onboarding/
+  controllers/        # CollectionOnboardingController, CollectionActivityController
+  pages/              # home/, onboarding/, activity/
 ```
 
 > **Folder-name inconsistency (known):** `personalization/controller/` (singular) vs `logistics/controllers/` (plural) vs `authentication/presentation/controllers/`. For new features, use **plural** `controllers/`. Do not rename existing folders unless explicitly asked.
@@ -213,12 +215,14 @@ presentation/
 * When asked for your name, respond with `GitHub Copilot`.
 * **Before generating any widget, first search the existing utilities and shared widgets in `lib/base/utils` and `lib/common/widgets`. Reuse or extend existing components when applicable.**
 * **If no suitable component is found, create a new widget and place it in either `lib/base/utils/popups` (framework-level) or `lib/common/widgets/<category>` (shared UI) depending on its scope and reusability.**
+* **Never create inline private utility/formatting methods (e.g. `_formatAmount`, `_formatDate`) inside widgets or screens.** Check `BFormatter` (`lib/base/utils/formatters/formatters.dart`) and other `base/utils/` classes first. If no suitable method exists, add a new `static` method to the appropriate `base/utils/` class (e.g. `BFormatter`, `BHelperFunctions`) so it is reusable project-wide.
 
 ### Folder / placement checks
 
 * Before adding business logic, creational code, or new services/controllers, inspect the target folder and nearby files to confirm the correct scope (feature vs common vs data).
 * Check these locations first:
     * `lib/features/<domain>/controllers/`
+    * `lib/features/<domain>/helpers/` (feature-scoped utilities)
     * `lib/common/controllers/` (cross-feature controllers)
     * `lib/common/services/{abstracts,implementations}/`
     * `lib/features/<domain>/services/{abstracts,implementations}/` (feature-specific)
@@ -229,6 +233,16 @@ presentation/
 * Keep cross-feature interfaces in `common/services/abstracts/`; implementations in `common/services/implementations/` or within the feature when feature-specific.
 * When adding controllers or services, register them in `GeneralBindings` (or a route-specific binding) using `Get.lazyPut(fenix: true)` rather than instantiating in widgets.
 * If placement is ambiguous, add a short README/TODO in the folder explaining the decision.
+
+### Helpers — feature-scoped utilities
+
+* **Feature-scoped utility classes** (status color/icon mappers, filter managers, form states, data managers, modal configs, etc.) belong in `features/<domain>/helpers/`, **not** inline in widgets or screens.
+* Established examples:
+    * `features/logistics/helpers/` — `LogisticsStatusColors`, `StandardDeliveryFilterManager`, `PullOutFilterManager`, etc.
+    * `features/collection/helpers/` — `CollectionStatusColors` (status colour, icon, and display-text mapping).
+* When adding a new utility that is specific to a single domain, create it in `features/<domain>/helpers/<snake_case_name>.dart`.
+* If the utility is needed by **multiple** domains, promote it to `lib/base/utils/helpers/` or `lib/common/` instead.
+* Never put colour/icon/status mapping logic directly inside widget `build` methods or as private helpers in screen files — extract it into the domain's `helpers/` folder so other screens in the same domain can reuse it.
 
 ---
 
