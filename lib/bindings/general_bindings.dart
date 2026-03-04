@@ -69,6 +69,7 @@ import '../features/logistics/controllers/request_controller.dart';
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
 import '../features/collection/presentation/controllers/collection_onboarding_controller.dart';
+import '../features/collection/presentation/controllers/collection_activity_controller.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -152,6 +153,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => LogisticsOnboardingController(), fenix: true);
     // Collection onboarding controller registration
     Get.lazyPut(() => CollectionOnboardingController(), fenix: true);
+    // Collection activity controller — manages bucket → activity flow
+    Get.lazyPut(() => CollectionActivityController(), fenix: true);
     Get.lazyPut(() => ForgetPasswordController(), fenix: true);
     Get.lazyPut(() => UpdateNameController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);

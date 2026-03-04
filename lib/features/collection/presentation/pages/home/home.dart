@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
@@ -68,12 +71,13 @@ class CollectionHomeScreen extends StatelessWidget {
             // Collection bucket button
             Padding(
               padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              child: CollectionBucketButton(
-                itemCount: 5,
-                onTap: () {
-                  // TODO: Navigate to collection bucket screen
-                },
-              ),
+              child: Obx(() {
+                final controller = Get.find<CollectionActivityController>();
+                return CollectionBucketButton(
+                  itemCount: controller.bucketItems.length,
+                  onTap: () => Get.to(() => const CollectionBucketScreen()),
+                );
+              }),
             ),
 
             const SizedBox(height: BSizes.spaceBtwSections),
