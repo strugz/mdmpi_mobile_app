@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_card_horizontal.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -12,8 +14,6 @@ import '../../../../base/utils/helpers/helper_functions.dart';
 import '../../../../base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
-import '../../services/implementations/request_role_handler.dart';
-
 /// Role priority map: Lower number = Higher priority (more capabilities)
 const _rolePriority = {
   BTexts.roleAdmin: 0, // Full access
@@ -21,56 +21,6 @@ const _rolePriority = {
   BTexts.roleCourier: 2, // Most powerful for delivery stages
   BTexts.roleRequest: 3, // Limited to viewing
   BTexts.roleViewer: 4, // View-only access
-};
-
-/// Selects the appropriate role based on status and available roles.
-/// Prioritizes Courier for delivery-stage statuses, Release for preparation statuses.
-String? _selectActiveRole(List<String> roles, String status) {
-  // Courier-priority statuses (delivery stage)
-  if (status == BTexts.statusItemPrepared ||
-      status == BTexts.statusForDelivery) {
-    if (roles.contains(BTexts.roleCourier)) {
-      return BTexts.roleCourier;
-    }
-    // Release can view/handle if no Courier
-    if (roles.contains(BTexts.roleRelease)) {
-      return BTexts.roleRelease;
-    }
-  }
-
-  // Release-priority statuses (preparation stage)
-  if (status == BTexts.statusNewRequest ||
-      status == BTexts.statusGettingSuppliesReady) {
-    if (roles.contains(BTexts.roleRelease)) {
-      return BTexts.roleRelease;
-    }
-    if (roles.contains(BTexts.roleRequest)) {
-      return BTexts.roleRequest;
-    }
-  }
-
-  // Default: find highest-priority role
-  String? highestRole;
-  int highestPriority = 999;
-
-  for (final role in roles) {
-    final priority = _rolePriority[role] ?? 999;
-    if (priority < highestPriority) {
-      highestPriority = priority;
-      highestRole = role;
-    }
-  }
-
-  return highestRole;
-}
-
-/// Pre-built handler map — avoids re-instantiation on every tap.
-final _handlers = <String, RequestActionHandler>{
-  BTexts.roleAdmin: ViewerRoleHandler(),
-  BTexts.roleRequest: RequestRoleHandler(),
-  BTexts.roleRelease: ReleaseRoleHandler(),
-  BTexts.roleCourier: CourierRoleHandler(),
-  BTexts.roleViewer: ViewerRoleHandler(),
 };
 
 class BList extends StatelessWidget {
@@ -107,20 +57,19 @@ class BList extends StatelessWidget {
                         requestController.filterManager.filteredRequests[index];
                     return InkWell(
                       borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
-                      onTap: () => {
+                      onTap: () {
                         requestController.currentSelectedRequest.value =
-                            request,
+                            request;
                         _handleRequestTap(
-                            context, request, requestController, userController)
+                            context, request, requestController, userController);
                       },
-                      onLongPress: () => {
+                      onLongPress: () {
                         if (request.status != BTexts.statusDoneDelivery &&
-                            request.status != BTexts.statusCancelled)
-                          {
-                            requestController.currentSelectedRequest.value =
-                                request,
-                            BDialog.showRemarksDialog(context, request),
-                          },
+                            request.status != BTexts.statusCancelled) {
+                          requestController.currentSelectedRequest.value =
+                              request;
+                          BDialog.showRemarksDialog(context, request);
+                        }
                       },
                       child: BRequestCardHorizontal(requestModel: request),
                     );
@@ -185,40 +134,80 @@ class BList extends StatelessWidget {
       }
     });
   }
+}
 
-  /// Handles tap on Standard Delivery request based on user role.
-  /// Selects the highest-priority role handler to avoid multiple dialogs.
-  /// Uses status-aware role selection to prioritize Courier for delivery stages.
-  void _handleRequestTap(
-    BuildContext context,
-    StandardDeliveryModel request,
-    StandardDeliveryController requestController,
-    UserController userController,
-  ) {
-    final roles = userController.user.value.role
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-    final userInitial = userController.user.value.initial;
+/// Handles tap on Standard Delivery request based on user role.
+/// Resolves a single [StandardDeliveryModalConfig] from the highest-priority role and
+/// opens the modal — no handler classes needed.
+void _handleRequestTap(
+  BuildContext context,
+  StandardDeliveryModel request,
+  StandardDeliveryController controller,
+  UserController userController,
+) {
+  final roles = userController.user.value.role
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .toList();
 
-    // Handle done/cancelled status with default handler
-    if (request.status == BTexts.statusDoneDelivery ||
-        request.status == BTexts.statusCancelled) {
-      DefaultRequestHandler().handleAction(
-          context, request, requestController, userController, userInitial);
-      return;
+  // Force Release for New Request / Getting Supplies Ready
+  if ((request.status == BTexts.statusNewRequest ||
+          request.status == BTexts.statusGettingSuppliesReady) &&
+      roles.contains(BTexts.roleRelease)) {
+    final config = StandardDeliveryModalConfig.resolve(
+      request: request,
+      role: BTexts.roleRelease,
+      controller: controller,
+    );
+    _openConfigResult(context, request, config);
+    return;
+  }
+
+  // Force Courier for Item Prepared / For Delivery
+  if ((request.status == BTexts.statusItemPrepared ||
+          request.status == BTexts.statusForDelivery) &&
+      roles.contains(BTexts.roleCourier)) {
+    final config = StandardDeliveryModalConfig.resolve(
+      request: request,
+      role: BTexts.roleCourier,
+      controller: controller,
+    );
+    _openConfigResult(context, request, config);
+    return;
+  }
+
+  // Find the highest-priority role the user has
+  String selectedRole = BTexts.roleViewer;
+  int highestPriority = 999;
+
+  for (final role in roles) {
+    final priority = _rolePriority[role] ?? 999;
+    if (priority < highestPriority) {
+      highestPriority = priority;
+      selectedRole = role;
     }
+  }
 
-    final handlers = _handlers;
+  final config = StandardDeliveryModalConfig.resolve(
+    request: request,
+    role: selectedRole,
+    controller: controller,
+  );
+  _openConfigResult(context, request, config);
+}
 
-    // Select the appropriate role for this status
-    final selectedRole = _selectActiveRole(roles, request.status);
-
-    // Invoke only the selected handler
-    if (selectedRole != null && handlers.containsKey(selectedRole)) {
-      handlers[selectedRole]!.handleAction(
-          context, request, requestController, userController, userInitial);
-    }
+/// Opens the appropriate screen based on [config].
+/// If [config.navigateTo] is set, navigates to the transport screen;
+/// otherwise opens the standard modal dialog.
+void _openConfigResult(
+  BuildContext context,
+  StandardDeliveryModel request,
+  StandardDeliveryModalConfig config,
+) {
+  if (config.navigateTo != null) {
+    config.navigateTo!(context);
+  } else {
+    BFullScreenLoader.showStandardDeliveryDialog(context, request, config);
   }
 }

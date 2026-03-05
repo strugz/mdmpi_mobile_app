@@ -20,6 +20,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_modal_config.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
 import '../../../common/widgets/texts/product_title_text.dart';
@@ -406,22 +407,74 @@ class BFullScreenLoader {
     );
   }
 
+  /// @deprecated Use [showStandardDeliveryDialog] with [StandardDeliveryModalConfig] instead.
+  /// Kept for backward compatibility with hotline direct role handlers.
   static void showRequestForReleasingDialog(BuildContext context,
       StandardDeliveryModel requestModel, VoidCallback onPressed, bool status,
       IDeliveryRequestController requestController) {
     final dark = BHelperFunctions.isDarkMode(context);
+
+    // Bridge old parameters to config-driven modal
+    final config = StandardDeliveryModalConfig(
+      role: '',
+      isActionVisible: status,
+      buttonLabel: _legacyButtonLabel(requestModel.status),
+      onAction: onPressed,
+    );
 
     showModalBottomSheet<void>(
       backgroundColor: dark ? BColors.black : BColors.light,
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return SafeArea(
-          child: BModal(
-            requestModel: requestModel,
-            onPressed: onPressed,
-            requestController: requestController,
-            status: status,
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: BModal(
+              requestModel: requestModel,
+              config: config,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Maps status to legacy button label for backward-compatible dialog.
+  static String _legacyButtonLabel(String status) {
+    switch (status) {
+      case BTexts.statusNewRequest:
+        return BTexts.requestModalPrepareItemButtonText;
+      case BTexts.statusGettingSuppliesReady:
+        return BTexts.requestModalPackedAndReadyButtonText;
+      default:
+        return '';
+    }
+  }
+
+  /// Show Standard Delivery request modal dialog driven by [StandardDeliveryModalConfig].
+  static void showStandardDeliveryDialog(
+    BuildContext context,
+    StandardDeliveryModel requestModel,
+    StandardDeliveryModalConfig config,
+  ) {
+    final dark = BHelperFunctions.isDarkMode(context);
+    showModalBottomSheet<void>(
+      backgroundColor: dark ? BColors.black : BColors.light,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: BModal(
+              requestModel: requestModel,
+              config: config,
+            ),
           ),
         );
       },

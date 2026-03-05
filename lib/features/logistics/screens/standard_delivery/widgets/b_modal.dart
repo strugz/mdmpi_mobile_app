@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
@@ -13,65 +14,64 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/wi
 
 /// Modal widget that displays detailed information about a standard delivery request.
 ///
+/// Driven by [StandardDeliveryModalConfig] to determine visibility and action behavior.
 /// Composed of three separate widgets following the Pull Out modal pattern:
 /// - [RequestModalHeader]: Client name, address, status chip
 /// - [RequestModalBody]: Request info labels + form inputs per status
 /// - [RequestModalFooter]: Proof capture + delivery details section
-///
-/// This modal adapts its content based on the request status:
-/// - Shows delivery details and signature for completed deliveries
-/// - Displays cancel remarks for cancelled requests
-/// - Provides status-specific action buttons for pending requests
 class BModal extends StatelessWidget {
   final StandardDeliveryModel requestModel;
-  final VoidCallback onPressed;
-  final bool status;
-  final IDeliveryRequestController requestController;
+  final StandardDeliveryModalConfig config;
 
   const BModal({
     super.key,
     required this.requestModel,
-    required this.onPressed,
-    required this.requestController,
-    this.status = true,
+    required this.config,
   });
 
   @override
   Widget build(BuildContext context) {
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
+    final controller = Get.find<StandardDeliveryController>();
 
     // Preload cancel remarks for cancelled requests
     if (isCancelled) {
-      final requestIdForRemarks =
-          requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
-      requestController.loadCancelRemarks(requestIdForRemarks);
+      controller.loadCancelRemarks(
+        requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID,
+      );
     }
 
     return RequestModalScaffold(
       header: RequestModalHeader(requestModel: requestModel),
       documentReferences: requestModel.documentReference,
-      // Status-specific action button (Prepare Item, Packed and Ready, etc.)
+      // Status-specific action button driven by config
       bottomAction: StatusActionButton(
         status: requestModel.status,
-        onPressed: onPressed,
-        isVisible: status,
-        // Map status to appropriate button text
-        statusToTextMapper: (status) {
-          switch (status) {
-            case BTexts.statusNewRequest:
-              return BTexts.requestModalPrepareItemButtonText;
-            case BTexts.statusGettingSuppliesReady:
-              return BTexts.requestModalPackedAndReadyButtonText;
-            default:
-              return '';
+        onPressed: () async {
+          // Legacy onAction callback takes precedence
+          if (config.onAction != null) {
+            config.onAction!();
+            return;
+          }
+          if (config.nextStatus != null) {
+            // Run optional validator first
+            if (config.validate != null) {
+              final valid = await config.validate!();
+              if (!valid) return;
+            }
+            final userInitial = controller.userController.user.value.initial;
+            await controller.updateRequestStatus(
+                requestModel, config.nextStatus!, userInitial);
           }
         },
+        isVisible: config.isActionVisible,
+        statusToTextMapper: (status) => config.buttonLabel,
       ),
       children: [
         // Cancel Remarks Section
         if (isCancelled)
           Obx(() {
-            final remarks = requestController.cancelRemarks.value;
+            final remarks = controller.cancelRemarks.value;
             if (remarks == null || remarks.remarks.isEmpty) {
               return const SizedBox.shrink();
             }
@@ -90,12 +90,12 @@ class BModal extends StatelessWidget {
         // Body with all sections (Request Info, Preparation Info, Delivery Info)
         RequestModalBody(
           requestModel: requestModel,
-          requestController: requestController,
+          requestController: controller,
         ),
         // Footer with proof capture and delivery details
         RequestModalFooter(
           requestModel: requestModel,
-          requestController: requestController,
+          requestController: controller,
         ),
       ],
     );
