@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
@@ -12,7 +14,6 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
 
 // ============================================================================
 // STATUS-DRIVEN ROLE SELECTION
@@ -39,14 +40,6 @@ const _statusToPreferredRole = {
   // Taken Out, Cancelled, Picked-up: All roles are view-only (no preferred role)
 };
 
-/// Role priority for fallback when no preferred role exists for a status.
-/// Lower number = Higher priority.
-const _rolePriority = {
-  BTexts.roleRelease: 1,
-  BTexts.roleCourier: 2,
-  BTexts.roleRequest: 3,
-  BTexts.roleViewer: 4,
-};
 
 class PullOutReturnPickUpList extends StatelessWidget {
   const PullOutReturnPickUpList({super.key});
@@ -168,14 +161,14 @@ void _handlePullOutTap(
   PullOutController controller,
   UserController userController,
 ) {
-  final roles = userController.user.value.role
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  final roles = RoleResolver.parseRoles(userController.user.value.role);
 
-  // Resolve the best role for this status
-  final selectedRole = _resolveRoleForStatus(request.requestStatus, roles);
+  // Resolve the best role for this status using RoleResolver
+  final selectedRole = RoleResolver.resolveRoleForStatus(
+    status: request.requestStatus,
+    userRoles: roles,
+    statusToPreferredRole: _statusToPreferredRole,
+  );
 
   final config = PullOutModalConfig.resolve(
     request: request,
@@ -185,32 +178,3 @@ void _handlePullOutTap(
   BFullScreenLoader.showPullOutDialog(context, request, config);
 }
 
-/// Resolves the best role for a given status from the user's available roles.
-///
-/// Strategy:
-/// 1. Check if there's a preferred role (with action capability) for this status
-/// 2. If user has that role, use it
-/// 3. Otherwise, fall back to highest-priority role for view-only access
-String _resolveRoleForStatus(String status, List<String> userRoles) {
-  if (userRoles.isEmpty) return BTexts.roleViewer;
-
-  // 1. Check for status-specific preferred role
-  final preferredRole = _statusToPreferredRole[status];
-  if (preferredRole != null && userRoles.contains(preferredRole)) {
-    return preferredRole;
-  }
-
-  // 2. Fallback to highest-priority role (for view-only statuses)
-  String selectedRole = BTexts.roleViewer;
-  int highestPriority = 999;
-
-  for (final role in userRoles) {
-    final priority = _rolePriority[role] ?? 999;
-    if (priority < highestPriority) {
-      highestPriority = priority;
-      selectedRole = role;
-    }
-  }
-
-  return selectedRole;
-}

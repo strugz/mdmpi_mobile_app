@@ -133,13 +133,6 @@ class PullOutModalConfig {
       );
       return false;
     }
-    if (formState.helperController.text.trim().isEmpty) {
-      BLoaders.errorSnackBar(
-        title: 'Validation Error',
-        message: 'Please select Helper',
-      );
-      return false;
-    }
     if (formState.mobile.text.trim().isEmpty) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',

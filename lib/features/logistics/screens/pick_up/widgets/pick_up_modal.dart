@@ -69,50 +69,6 @@ class PickUpModal extends StatelessWidget {
         },
       ),
       children: [
-        if (requestModel.status == BTexts.statusReceived) ...[
-          const SizedBox(height: BSizes.xs),
-          const BTextDivider(text: 'Release Details'),
-          if (hasReceivedBy) ...[
-            const SizedBox(height: BSizes.sm),
-            BLabelValueText(
-              label: 'Received By',
-              value: requestModel.receivedBy,
-              showLabel: false,
-              icon: Iconsax.user_octagon,
-              padding: EdgeInsets.zero,
-              mainAlignment: MainAxisAlignment.center,
-            ),
-            BLabelValueText(
-              label: 'Received at',
-              value:
-                  BFormatter.formatDate2(BFormatter.formatDateTimeCustomizable(
-                requestModel.updatedAt,
-                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                "yyyy-MM-dd HH:mm",
-              )),
-              showLabel: false,
-              icon: Iconsax.calendar_1,
-              padding: EdgeInsets.zero,
-              mainAlignment: MainAxisAlignment.center,
-            ),
-            const SizedBox(height: BSizes.sm),
-            CapturedSignatureImage(requestId: requestModel.id),
-            ViewDeliveredItemButton(
-              textColor: textColor,
-              labelTitle: BTexts.requestModalViewItemReceivedText,
-              onPressed: () {
-                final requestIdForDb = requestModel.id;
-                showRequestImageDialog(context,
-                    requestId: requestIdForDb,
-                    fetchIfMissing: true,
-                    semanticsLabel:
-                        'Delivered item image for request ${requestModel.id}',
-                    apiController: 'RequestPickUp',
-                    title: 'Pick Up Item');
-              },
-            )
-          ],
-        ],
         if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
         Obx(
           () {
