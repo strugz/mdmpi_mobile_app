@@ -95,6 +95,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
     final hasDeparted = departedAt != null && departedAt!.isNotEmpty;
     final hasCompleted = completedAt != null && completedAt!.isNotEmpty;
 
+
     // Hide entire section if no data
     if (!hasDriver &&
         !hasHelper &&
@@ -187,11 +188,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
                       const SizedBox(height: BSizes.sm),
                       BProductTitleText(
                         title:
-                            '$departedAtLabel: ${BFormatter.formatDateTimeCustomizable(
-                          departedAt!,
-                          "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                          "yyyy-MM-dd HH:mm",
-                        )}',
+                            '$departedAtLabel: ${BFormatter.formatDate2(departedAt!)}',
                         maxLines: 2,
                         smallSize: true,
                         fontColor: textColor,
@@ -201,11 +198,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
                       const SizedBox(height: BSizes.sm),
                       BProductTitleText(
                         title:
-                            '$completedAtLabel: ${BFormatter.formatDateTimeCustomizable(
-                          completedAt!,
-                          "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                          "yyyy-MM-dd HH:mm",
-                        )}',
+                            '$completedAtLabel: ${BFormatter.formatDate2(completedAt!)}',
                         maxLines: 2,
                         smallSize: true,
                         fontColor: textColor,

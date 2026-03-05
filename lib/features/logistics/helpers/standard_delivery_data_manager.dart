@@ -19,6 +19,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -210,6 +211,15 @@ class StandardDeliveryDataManager {
     String userInitial,
     IDeliveryRequestController controller,
   ) async {
+    // Validate delivery info fields before entering the try block
+    // so the finally block (which pops the navigator) is not reached on failure.
+    if (newStatus == BTexts.statusItemPrepared &&
+        request.deliveredBy.isEmpty) {
+      if (!_validateDeliveryInfo(controller.formState)) {
+        return;
+      }
+    }
+
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -668,5 +678,40 @@ class StandardDeliveryDataManager {
           title: 'Upload Failed',
           message: "Could not upload requests: ${e.toString()}");
     }
+  }
+
+  // ========================================================================
+  // VALIDATION HELPERS
+  // ========================================================================
+
+  /// Validates trip ticket, driver, helper, and vehicle fields
+  /// before transitioning to Item Prepared.
+  ///
+  /// Mirrors [PullOutModalConfig._validateDeliveryInfo] adapted for
+  /// Standard Delivery field names.
+  static bool _validateDeliveryInfo(StandardDeliveryFormState formState) {
+    if (formState.tripTicketNumber.text.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Trip Ticket Number',
+      );
+      return false;
+    }
+    if (formState.selectedDriver.text.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Driver',
+      );
+      return false;
+    }
+    // Helper is optional for Standard Delivery — no validation required.
+    if (formState.mobile.text.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    return true;
   }
 }

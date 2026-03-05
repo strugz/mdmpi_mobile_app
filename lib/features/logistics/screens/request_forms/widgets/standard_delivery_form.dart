@@ -184,7 +184,7 @@ class StandardDelivery extends StatelessWidget {
                                     stdDeliveryController.formState.preference,
                                 icon: Iconsax.status_up,
                                 label: 'Priority',
-                                dropdownList: ['High', 'Medium', 'Low'],
+                                dropdownList: ['Rush','High', 'Medium', 'Low'],
                                 validator: (v) => (v == null || v.toString().trim().isEmpty)
                                     ? 'Please select a priority level'
                                     : null,

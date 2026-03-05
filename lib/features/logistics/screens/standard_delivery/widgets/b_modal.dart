@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -88,9 +90,9 @@ class BModal extends StatelessWidget {
             helper: requestModel.helper,
             receivedBy: requestModel.receiver,
             receivedByLabel: 'Received By',
-            departedAt: requestModel.locationStartedAt,
+            departedAt: requestModel.deliveredAt,
             departedAtLabel: 'Departed At',
-            completedAt: requestModel.deliveredAt,
+            completedAt: requestModel.deliveredEndAt,
             completedAtLabel: 'Delivered At',
             requestId: requestIdForDb,
             showSignatureWatermark: true,

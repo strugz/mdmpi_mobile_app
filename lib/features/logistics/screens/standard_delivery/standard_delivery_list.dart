@@ -16,6 +16,7 @@ import '../../services/implementations/request_role_handler.dart';
 
 /// Role priority map: Lower number = Higher priority (more capabilities)
 const _rolePriority = {
+  BTexts.roleAdmin: 0, // Full access
   BTexts.roleRelease: 1, // Most powerful for initial stages
   BTexts.roleCourier: 2, // Most powerful for delivery stages
   BTexts.roleRequest: 3, // Limited to viewing
@@ -62,6 +63,15 @@ String? _selectActiveRole(List<String> roles, String status) {
 
   return highestRole;
 }
+
+/// Pre-built handler map — avoids re-instantiation on every tap.
+final _handlers = <String, RequestActionHandler>{
+  BTexts.roleAdmin: ViewerRoleHandler(),
+  BTexts.roleRequest: RequestRoleHandler(),
+  BTexts.roleRelease: ReleaseRoleHandler(),
+  BTexts.roleCourier: CourierRoleHandler(),
+  BTexts.roleViewer: ViewerRoleHandler(),
+};
 
 class BList extends StatelessWidget {
   const BList({super.key});
@@ -200,12 +210,7 @@ class BList extends StatelessWidget {
       return;
     }
 
-    final handlers = <String, RequestActionHandler>{
-      BTexts.roleRequest: RequestRoleHandler(),
-      BTexts.roleRelease: ReleaseRoleHandler(),
-      BTexts.roleCourier: CourierRoleHandler(),
-      BTexts.roleViewer: ViewerRoleHandler(),
-    };
+    final handlers = _handlers;
 
     // Select the appropriate role for this status
     final selectedRole = _selectActiveRole(roles, request.status);
