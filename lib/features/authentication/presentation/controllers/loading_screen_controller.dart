@@ -1,6 +1,5 @@
 // data_loading_controller.dart
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -18,9 +17,6 @@ class LoadingScreenController extends GetxController {
   final clientController = Get.find<ClientController>();
   final userController = Get.find<UserController>();
   final userMDMPIController = Get.find<UserMdmpiController>();
-
-  /// Box to store data
-  final box = GetStorage();
 
   Future<void> loadInitialData() async {
     try {
@@ -40,6 +36,7 @@ class LoadingScreenController extends GetxController {
       await userController.fetchUsersRecord(false);
 
       await userController.fetchUserRecord();
+
 
       await userMDMPIController.fetchUserMdmpiFromDb();
 

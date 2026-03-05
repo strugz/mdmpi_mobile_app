@@ -1,12 +1,21 @@
 class BTexts {
-  // On boarding Texts
-  static const String onBoardingTitle1 = "Welcome to MDMPI APP  Collection!";
-  static const String onBoardingTitle2 = "Add Your Collections";
-  static const String onBoardingTitle3 = "Track Your Collections";
+  // On boarding Texts Logistics
+  static const String onBoardingTitle1Logistics = "Welcome to MDMPI APP!";
+  static const String onBoardingTitle2Logistics = "Add Your Deliveries";
+  static const String onBoardingTitle3Logistics = "Track Your Deliveries";
 
-  static const String onBoardingSubTitle1 = "We’re thrilled to have you on board. With MDMPI APP Collection, managing and tracking your day to day collection is a breeze.";
-  static const String onBoardingSubTitle2 = "Enter the details of the bank, the cheque number, including the amount, date, and remarks.";
-  static const String onBoardingSubTitle3= "Stay updated with real-time tracking and notifications for every step of the collection process.";
+  static const String onBoardingSubTitle1Logistics = "We’re thrilled to have you on board. With MDMPI APP - Logistics, managing and tracking your day to day deliveries is a breeze.";
+  static const String onBoardingSubTitle2Logistics = "Enter the details of the deliverable, including the requester, document reference and client information.";
+  static const String onBoardingSubTitle3Logistics = "Stay updated with real-time tracking and notifications for every step of the delivery process.";
+
+  //  On boarding Texts Collection
+  static const String onBoardingTitle1Collection = "Welcome to MDMPI APP!";
+  static const String onBoardingTitle2Collection = "Add Your Collections";
+  static const String onBoardingTitle3Collection = "Track Your Collections";
+
+  static const String onBoardingSubTitle1Collection = "We’re thrilled to have you on board. With MDMPI APP Collection, managing and tracking your day to day collection is a breeze.";
+  static const String onBoardingSubTitle2Collection = "Enter the details of the bank, the cheque number, including the amount, date, and remarks.";
+  static const String onBoardingSubTitle3Collection= "Stay updated with real-time tracking and notifications for every step of the collection process.";
 
   //Collection Home Texts
   static const String collectionHomeTitle1 = "Welcome to MDMPI APP!";

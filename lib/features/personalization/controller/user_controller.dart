@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
@@ -28,13 +29,41 @@ class UserController extends GetxController {
   final verifyPassword = TextEditingController();
   final userRepository = Get.put(UserRepository());
   final dbHelper = DatabaseHelper.instance;
+  final _storage = GetStorage();
 
   GlobalKey<FormState> reAuthFormKey = GlobalKey<FormState>();
 
   @override
   Future<void> onInit() async {
+    // Load cached user synchronously so AppRouter has the department
+    // immediately on cold start, before the async Firebase fetch completes.
+    _loadCachedUser();
     await fetchUserRecord();
     super.onInit();
+  }
+
+  /// Load cached current user from GetStorage (synchronous).
+  void _loadCachedUser() {
+    try {
+      final cachedJson = _storage.read('CurrentUser');
+      if (cachedJson != null && cachedJson is Map<String, dynamic>) {
+        user(UserModel.fromJson(cachedJson));
+        logDebug('Loaded cached user: ${user.value.department}');
+      }
+    } catch (e) {
+      logDebug('Error loading cached user: $e');
+    }
+  }
+
+  /// Persist current user to GetStorage for cold-start routing.
+  void _cacheCurrentUser() {
+    try {
+      if (user.value.id.isNotEmpty) {
+        _storage.write('CurrentUser', user.value.toLocalJson());
+      }
+    } catch (e) {
+      logDebug('Error caching user: $e');
+    }
   }
 
   @override
@@ -55,6 +84,9 @@ class UserController extends GetxController {
 
       /// Update Rx User
       user(users);
+
+      /// Cache to GetStorage for cold-start routing
+      _cacheCurrentUser();
 
       /// Update Rx User
       profileLoading.value = false;
