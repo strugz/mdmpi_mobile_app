@@ -6,17 +6,18 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 /// A reusable draggable bottom sheet with a drag handle, scrollable body,
 /// an optional fixed info strip, and an optional fixed action widget at the bottom.
 ///
-/// All content (body, bottomInfo, bottomAction) is placed inside the
-/// scrollable area so the sheet can collapse cleanly to just the drag handle.
+/// The [body] and [bottomInfo] scroll with the content.
+/// The [bottomAction] stays pinned at the bottom of the sheet.
 ///
 /// Layout (top → bottom):
 /// ```
 /// ┌──────────────────────┐
-/// │     drag handle      │  ← always visible (GestureDetector for drag)
+/// │     drag handle      │  ← drags the sheet
 /// │ ──────────────────── │
 /// │  scrollable [body]   │  ← scrolls with content
 /// │   [bottomInfo]       │  ← scrolls with content
-/// │   [bottomAction]     │  ← scrolls with content
+/// │ ──────────────────── │
+/// │   [bottomAction]     │  ← FIXED at bottom
 /// └──────────────────────┘
 /// ```
 ///
@@ -46,7 +47,7 @@ class BDraggableBottomSheet extends StatelessWidget {
   /// Optional info widget rendered below the body inside the scroll area.
   final Widget? bottomInfo;
 
-  /// Optional action widget rendered at the bottom inside the scroll area.
+  /// Optional action widget pinned at the bottom of the sheet (does not scroll).
   final Widget? bottomAction;
 
   /// Initial height fraction of the screen.
@@ -85,29 +86,47 @@ class BDraggableBottomSheet extends StatelessWidget {
               ),
             ],
           ),
-          child: CustomScrollView(
-            controller: scrollController,
-            slivers: [
-              // Drag handle — always at top
-              SliverToBoxAdapter(child: _buildDragHandle(dark)),
-              // Body content
-              SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                sliver: SliverToBoxAdapter(child: body),
-              ),
-              // Bottom info
-              if (bottomInfo != null)
-                SliverPadding(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                  sliver: SliverToBoxAdapter(child: bottomInfo!),
-                ),
-              // Bottom action
-              if (bottomAction != null)
-                SliverPadding(
-                  padding: const EdgeInsets.all(BSizes.sm),
-                  sliver: SliverToBoxAdapter(child: bottomAction!),
-                ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Hide bottomAction when the sheet is too collapsed
+              // (drag handle = 30px, need at least ~90px for handle + button)
+              final showAction =
+                  bottomAction != null && constraints.maxHeight > 100;
+
+              return Column(
+                children: [
+                  // Drag handle — always visible, drives sheet dragging
+                  _buildDragHandle(dark),
+                  // Scrollable content area
+                  Expanded(
+                    child: CustomScrollView(
+                      controller: scrollController,
+                      slivers: [
+                        // Body content
+                        SliverPadding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: horizontalPadding),
+                          sliver: SliverToBoxAdapter(child: body),
+                        ),
+                        // Bottom info (scrolls with content)
+                        if (bottomInfo != null)
+                          SliverPadding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: horizontalPadding),
+                            sliver: SliverToBoxAdapter(child: bottomInfo!),
+                          ),
+                      ],
+                    ),
+                  ),
+                  // Action button — pinned at the bottom, hidden when collapsed
+                  if (showAction)
+                    Padding(
+                      padding: const EdgeInsets.all(BSizes.sm),
+                      child: bottomAction!,
+                    ),
+                ],
+              );
+            },
           ),
         );
       },

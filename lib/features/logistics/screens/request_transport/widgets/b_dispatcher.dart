@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/layouts/draggable_bottom_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_action_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_prepared_by_and_dispatcher_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_details.dart';
 
 import '../../../../personalization/controller/user_controller.dart';
@@ -12,8 +11,7 @@ import '../../../controllers/request_transport_controller.dart';
 /// Bottom sheet dispatcher for the Request Transport screen.
 ///
 /// Uses [BDraggableBottomSheet] for the drag-handle + scroll + fixed-action
-/// layout, composing transport-specific widgets for the body, info strip,
-/// and action button.
+/// layout, composing transport-specific widgets for the body and action button.
 class BDispatcher extends StatelessWidget {
   const BDispatcher({
     super.key,
@@ -32,10 +30,6 @@ class BDispatcher extends StatelessWidget {
         requestController: requestController,
         userController: userController,
         requestTransportController: requestTransportController,
-      ),
-      bottomInfo: BPreparedByAndDispatcherInformation(
-        requestController: requestController,
-        userController: userController,
       ),
       bottomAction: BActionButton(
         requestController: requestController,
