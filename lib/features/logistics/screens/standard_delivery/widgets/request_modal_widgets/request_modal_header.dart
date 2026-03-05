@@ -22,7 +22,6 @@ class RequestModalHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     final hasAddress = requestModel.client.address.isNotEmpty;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -45,17 +44,22 @@ class RequestModalHeader extends StatelessWidget {
             fontColor: dark ? BColors.light : BColors.black,
           ),
         ],
-        // Status Chip - responsive
-        if (requestModel.status.isNotEmpty) ...[
-          const SizedBox(height: BSizes.xs),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: StatusChip(
+        // Status Chip + Priority Chip
+        const SizedBox(height: BSizes.xs),
+        Wrap(
+          spacing: BSizes.sm,
+          runSpacing: BSizes.xs,
+          children: [
+            StatusChip(
               status: requestModel.status,
               compact: false,
             ),
-          ),
-        ],
+            StatusChip(
+              status: requestModel.preference,
+              compact: false,
+            ),
+          ],
+        ),
       ],
     );
   }

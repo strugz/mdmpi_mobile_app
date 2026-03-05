@@ -3,7 +3,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
+import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 
@@ -95,26 +95,9 @@ class BRequestCardHorizontal extends StatelessWidget {
             ),
             Row(
               children: [
-                BRoundedContainer(
-                  radius: 100,
-                  width: 90,
-                  backgroundColor: requestModel.preference == "Low"
-                      ? Colors.green
-                      : requestModel.preference == "Medium"
-                          ? Colors.orange
-                          : Colors.red,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: BSizes.md, vertical: BSizes.xxs),
-                      child: BProductTitleText(
-                        title: requestModel.preference,
-                        maxLines: 1,
-                        smallSize: true,
-                        fontColor: BColors.white,
-                      ),
-                    ),
-                  ),
+                StatusChip(
+                  status: requestModel.preference,
+                  compact: true,
                 ),
                 BCircularIcon(
                   backgroundColor: Colors.transparent,
@@ -124,11 +107,9 @@ class BRequestCardHorizontal extends StatelessWidget {
                   width: 20,
                   height: 20,
                 ),
-                BProductTitleText(
-                  title: requestModel.status,
-                  maxLines: 1,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.darkerGrey,
+                StatusChip(
+                  status: requestModel.status,
+                  compact: true,
                 ),
               ],
             ),

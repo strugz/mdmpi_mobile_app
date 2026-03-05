@@ -37,6 +37,16 @@ class LogisticsStatusColors {
       case BTexts.statusReceived:
         bg = BColors.success; fg = BColors.white; break;
 
+      // Preference / Priority values
+      case 'Low':
+        bg = BColors.priorityLow; fg = BColors.white; break;
+      case 'Medium':
+        bg = BColors.priorityMedium; fg = BColors.white; break;
+      case 'High':
+        bg = BColors.priorityHigh; fg = BColors.white; break;
+      case 'Rush':
+        bg = BColors.priorityRush; fg = BColors.white; break;
+
       default:
         bg = darkMode ? BColors.darkerGrey : BColors.light; fg = darkMode ? BColors.light : BColors.darkGrey;
     }
