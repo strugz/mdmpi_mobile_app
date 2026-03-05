@@ -16,9 +16,11 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/wi
 ///
 /// Driven by [StandardDeliveryModalConfig] to determine visibility and action behavior.
 /// Composed of three separate widgets following the Pull Out modal pattern:
-/// - [RequestModalHeader]: Client name, address, status chip
-/// - [RequestModalBody]: Request info labels + form inputs per status
-/// - [RequestModalFooter]: Proof capture + delivery details section
+/// - [RequestModalHeader]: Client, address, status/preference chips, item category,
+///   shipping method, delivery terms, delivery date, requested by
+/// - [RequestModalBody]: Preparation info + trip ticket input
+/// - [RequestModalFooter]: Delivery info form (driver/helper/mobile),
+///   proof capture + delivery details section
 class BModal extends StatelessWidget {
   final StandardDeliveryModel requestModel;
   final StandardDeliveryModalConfig config;
