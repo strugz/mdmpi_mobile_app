@@ -298,6 +298,8 @@ class AuthenticationRepository extends GetxController implements IAuthentication
     try {
       await GoogleSignIn().signOut();
       await FirebaseAuth.instance.signOut();
+      deviceStorage.remove('CurrentUser');
+      deviceStorage.remove('UserDepartment'); // Legacy cleanup
       Get.offAll(() => const LoginScreen());
       return Result.success(null);
     } on FirebaseAuthException catch (e) {

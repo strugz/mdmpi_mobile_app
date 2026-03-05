@@ -63,7 +63,7 @@ class UserModel {
       department: '',
       role: '');
 
-  /// Convert model to JSON structure for staring data in Firebase.
+  /// Convert model to JSON structure for storing data in Firebase.
   Map<String, dynamic> toJson() {
     return {
       'FirstName': firstName,
@@ -76,6 +76,14 @@ class UserModel {
       'Department': department,
       'Role': role,
       'Status': status
+    };
+  }
+
+  /// Convert model to JSON including [id] for local caching (e.g. GetStorage).
+  Map<String, dynamic> toLocalJson() {
+    return {
+      'id': id,
+      ...toJson(),
     };
   }
 
