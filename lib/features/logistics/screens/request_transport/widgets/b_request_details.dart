@@ -58,7 +58,6 @@ class BRequestDetails extends StatelessWidget {
 
         final hasClientName = updatedRequest.client.name.isNotEmpty;
         final hasClientAddress = updatedRequest.client.address.isNotEmpty;
-        final hasStatus = updatedRequest.status.isNotEmpty;
         final hasPreparedBy = updatedRequest.itemPreparedBy.isNotEmpty;
         final hasPreparedAt = updatedRequest.itemPreparedAt.isNotEmpty;
         final hasPreparedEndAt = updatedRequest.itemPreparedEndAt.isNotEmpty;
@@ -69,8 +68,9 @@ class BRequestDetails extends StatelessWidget {
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // ========== HEADER: Client Info + Status ==========
+            // ========== HEADER: Client Info + Status + Preference (always shown) ==========
             if (hasClientName)
               BProductTitleText(
                 title: updatedRequest.client.name,
@@ -87,16 +87,25 @@ class BRequestDetails extends StatelessWidget {
                 fontColor: textColor,
               ),
             ],
-            if (hasStatus) ...[
-              const SizedBox(height: BSizes.xs),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: StatusChip(
-                  status: updatedRequest.status,
-                  compact: false,
-                ),
+            // Always show status and preference as chips because these fields are mandatory
+            const SizedBox(height: BSizes.xs),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Wrap(
+                spacing: BSizes.sm,
+                runSpacing: BSizes.xs,
+                children: [
+                  StatusChip(
+                    status: updatedRequest.status,
+                    compact: false,
+                  ),
+                  StatusChip(
+                    status: updatedRequest.preference,
+                    compact: false,
+                  ),
+                ],
               ),
-            ],
+            ),
 
             // ETA
             if (requestTransportController.eta.value?.isNotEmpty ?? false) ...[
@@ -179,7 +188,7 @@ class BRequestDetails extends StatelessWidget {
                       child: BLabelValueText(
                         label: 'Driver',
                         value: updatedRequest.deliveredBy,
-                        showLabel: false,
+                        showLabel: true,
                         icon: Iconsax.user,
                         padding: EdgeInsets.zero,
                       ),
@@ -191,7 +200,7 @@ class BRequestDetails extends StatelessWidget {
                       child: BLabelValueText(
                         label: 'Helper',
                         value: updatedRequest.helper,
-                        showLabel: false,
+                        showLabel: true,
                         icon: Iconsax.user,
                         padding: EdgeInsets.zero,
                       ),

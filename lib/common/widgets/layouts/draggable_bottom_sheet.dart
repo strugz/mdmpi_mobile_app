@@ -8,27 +8,6 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 ///
 /// The [body] and [bottomInfo] scroll with the content.
 /// The [bottomAction] stays pinned at the bottom of the sheet.
-///
-/// Layout (top → bottom):
-/// ```
-/// ┌──────────────────────┐
-/// │     drag handle      │  ← drags the sheet
-/// │ ──────────────────── │
-/// │  scrollable [body]   │  ← scrolls with content
-/// │   [bottomInfo]       │  ← scrolls with content
-/// │ ──────────────────── │
-/// │   [bottomAction]     │  ← FIXED at bottom
-/// └──────────────────────┘
-/// ```
-///
-/// Usage:
-/// ```dart
-/// BDraggableBottomSheet(
-///   body: MyDetailsWidget(),
-///   bottomInfo: MyInfoStrip(),
-///   bottomAction: MyActionButton(),
-/// )
-/// ```
 class BDraggableBottomSheet extends StatelessWidget {
   const BDraggableBottomSheet({
     super.key,
@@ -149,4 +128,3 @@ class BDraggableBottomSheet extends StatelessWidget {
     );
   }
 }
-

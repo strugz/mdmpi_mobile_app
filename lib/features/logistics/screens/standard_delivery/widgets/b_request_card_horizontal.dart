@@ -96,7 +96,7 @@ class BRequestCardHorizontal extends StatelessWidget {
             Row(
               children: [
                 StatusChip(
-                  status: requestModel.preference,
+                  status: requestModel.status,
                   compact: true,
                 ),
                 BCircularIcon(
@@ -108,7 +108,7 @@ class BRequestCardHorizontal extends StatelessWidget {
                   height: 20,
                 ),
                 StatusChip(
-                  status: requestModel.status,
+                  status: requestModel.preference,
                   compact: true,
                 ),
               ],

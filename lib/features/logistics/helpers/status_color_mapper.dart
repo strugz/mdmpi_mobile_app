@@ -21,7 +21,9 @@ class LogisticsStatusColors {
       case BTexts.statusGettingSuppliesReady:
         bg = _adjustAlpha(BColors.warning, darkMode, baseAlpha: 0.2); fg = BColors.warning; break;
       case BTexts.statusItemPrepared:
-        bg = _adjustAlpha(BColors.info, darkMode, baseAlpha: 0.15); fg = BColors.info; break;
+        // Use a stronger translucent blue background with white text for readability
+        bg = _adjustAlpha(BColors.info, darkMode, baseAlpha: 0.35);
+        fg = BColors.white; break;
       case BTexts.statusForDelivery:
         bg = darkMode ? BColors.primary.withValues(alpha: 0.25) : BColors.primaryBackground; fg = BColors.primary; break;
       case BTexts.statusInTransit:

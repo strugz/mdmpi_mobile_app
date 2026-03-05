@@ -34,15 +34,16 @@ class PullOutRequestModalFooter extends StatelessWidget {
     final UserController userController = Get.find();
 
     final role = userController.user.value.role;
-    final hasRestrictedRole =
-        ['Request', 'Release'].any((r) => role.contains(r));
+    // Show Proof of Pull out if user has Courier role
+    // Even if user has Request/Release roles, Courier capability takes precedence
+    final hasCourierRole = role.contains(BTexts.roleCourier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// -- Proof of Pull out (for In Transit status) --
+        /// -- Proof of Pull out (for Taken Out status, Courier only) --
         if (requestModel.requestStatus == BTexts.statusInTransit &&
-            !hasRestrictedRole) ...[
+            hasCourierRole) ...[
           const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Proof of Pull out'),
           const SizedBox(height: BSizes.sm),
@@ -137,6 +138,10 @@ class PullOutRequestModalFooter extends StatelessWidget {
           requestId: requestModel.id,
           apiController: 'RequestPullOutReturnPickUp',
           viewItemButtonLabel: 'View Proof of Pull Out',
+          showViewItemButton:
+              requestModel.requestStatus == BTexts.statusInTransit
+                  ? false
+                  : true,
         ),
       ],
     );
