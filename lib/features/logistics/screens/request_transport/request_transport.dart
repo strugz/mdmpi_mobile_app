@@ -13,13 +13,14 @@ import '../../../../common/services/abstracts/i_delivery_request_controller.dart
 import '../../models/standard_delivery_model.dart';
 
 class RequestTransport extends StatelessWidget {
-  RequestTransport(
-      {super.key, required this.request, required this.requestController});
+  const RequestTransport({
+    super.key,
+    required this.request,
+    required this.requestController,
+  });
 
   final StandardDeliveryModel request;
   final IDeliveryRequestController requestController;
-
-  final GlobalKey _bottomSheetKey = GlobalKey();
 
   @override
   Widget build(BuildContext context) {
@@ -42,140 +43,102 @@ class RequestTransport extends StatelessWidget {
     }
 
     // Initialize route after setting the address
-    // The initializeRoute() method will check for saved location alternatives
-    // in the local database and use them if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       reqTranController.initializeRoute();
     });
 
-    // Get the bottom padding of the device
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
-
-    // Calculate FAB position after the layout
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_bottomSheetKey.currentContext != null) {
-        final RenderBox renderBox =
-            _bottomSheetKey.currentContext!.findRenderObject() as RenderBox;
-        final bottomSheetHeight = renderBox.size.height;
-        // Add some padding if you want the FAB slightly above the bottomSheet
-        const fabPadding = 16.0;
-        reqTranController.fabBottomOffset.value =
-            bottomSheetHeight + fabPadding;
-      }
-    });
-
     return SafeArea(
       top: false,
-      bottom: !isGestureNavigation,
       child: Scaffold(
-        body: Obx(
-          () {
-            // Get the reactive request for status checks in the map
-            final currentRequest =
-                requestController.currentSelectedRequest.value ?? request;
-
-            return Stack(
-              children: [
-                Column(
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.6,
-                      child: GoogleMap(
-                        initialCameraPosition: reqTranController
-                                    .currentLocation.value ==
-                                LatLng(0, 0)
-                            ? const CameraPosition(
-                                target: LatLng(12.8797, 121.7740),
-                                zoom: 14,
-                              )
-                            : CameraPosition(
-                                target: reqTranController.currentLocation.value,
-                                zoom: 14,
-                              ),
-                        scrollGesturesEnabled: true,
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
-                        trafficEnabled: true,
-                        tiltGesturesEnabled: false,
-                        zoomControlsEnabled: false,
-                        onMapCreated: (controller) {
-                          reqTranController.mapController.value = controller;
-                          if (reqTranController.lastCameraPosition.value !=
-                              null) {
-                            reqTranController.mapController.value!
-                                .animateCamera(CameraUpdate.newCameraPosition(
-                                    reqTranController
-                                        .lastCameraPosition.value!));
-                          }
-                        },
-                        onCameraMove: (position) {
-                          reqTranController.lastCameraPosition.value = position;
-                        },
-                        markers: reqTranController.buildMarkers(),
-                        polylines: reqTranController.polyLines.value,
-                        onTap: (LatLng tappedPoint) {
-                          // Use reactive currentRequest instead of static request
-                          if (currentRequest.status !=
-                              BTexts.statusForDelivery) {
-                            reqTranController
-                                .selectedDestinationMarkerId.value = null;
-                            reqTranController.destination.value = tappedPoint;
-                            reqTranController.polyLines.value.clear();
-                            reqTranController
-                                .getAddressFromCoordinates(tappedPoint);
-                          }
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-
-                /// Text and Text Search for mapping
-                Positioned(
-                  top: 30.0, //changed from 10 to 0
-                  left: 10.0, //changed from 10 to 0
-                  right: 10.0,
-                  child: BClientSearch(),
-                ),
-
-                /// Floating user location button
-                Positioned(
-                  bottom: reqTranController.fabBottomOffset.value,
-                  right: 5,
-                  child: FloatingActionButton(
-                    backgroundColor: BColors.white,
-                    onPressed: () {
-                      reqTranController.selectedDestinationMarkerId.value =
-                          null;
-                      reqTranController.destination.value = LatLng(0, 0);
-                      reqTranController.polyLines.value.clear();
-                      reqTranController.getUserLocation();
-                    },
-                    child: const Icon(Icons.my_location, color: BColors.dark),
-                  ),
-                ),
-
-                /// Route loading overlay - shown while route is being calculated
-                if (!reqTranController.isRouteLoaded.value)
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 200,
-                    child: Center(
-                      child: const RouteLoadingOverlay(),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
         resizeToAvoidBottomInset: true,
-        bottomSheet: BDispatcher(
-          key: _bottomSheetKey,
-          requestController: requestController,
-        ),
+        body: Obx(() {
+          final currentRequest =
+              requestController.currentSelectedRequest.value ?? request;
+
+          return Stack(
+            children: [
+              // Map fills full screen behind the draggable sheet
+              GoogleMap(
+                initialCameraPosition:
+                    reqTranController.currentLocation.value == LatLng(0, 0)
+                        ? const CameraPosition(
+                            target: LatLng(12.8797, 121.7740),
+                            zoom: 14,
+                          )
+                        : CameraPosition(
+                            target: reqTranController.currentLocation.value,
+                            zoom: 14,
+                          ),
+                scrollGesturesEnabled: true,
+                myLocationEnabled: true,
+                myLocationButtonEnabled: false,
+                trafficEnabled: true,
+                tiltGesturesEnabled: false,
+                zoomControlsEnabled: false,
+                onMapCreated: (controller) {
+                  reqTranController.mapController.value = controller;
+                  if (reqTranController.lastCameraPosition.value != null) {
+                    reqTranController.mapController.value!.animateCamera(
+                      CameraUpdate.newCameraPosition(
+                        reqTranController.lastCameraPosition.value!,
+                      ),
+                    );
+                  }
+                },
+                onCameraMove: (position) {
+                  reqTranController.lastCameraPosition.value = position;
+                },
+                markers: reqTranController.buildMarkers(),
+                polylines: reqTranController.polyLines.value,
+                onTap: (LatLng tappedPoint) {
+                  if (currentRequest.status != BTexts.statusForDelivery) {
+                    reqTranController.selectedDestinationMarkerId.value = null;
+                    reqTranController.destination.value = tappedPoint;
+                    reqTranController.polyLines.value.clear();
+                    reqTranController.getAddressFromCoordinates(tappedPoint);
+                  }
+                },
+              ),
+
+              /// Text and Text Search for mapping
+              Positioned(
+                top: 30.0,
+                left: 10.0,
+                right: 10.0,
+                child: BClientSearch(),
+              ),
+
+              /// Floating user location button — positioned above initial sheet
+              Positioned(
+                bottom: MediaQuery.of(context).size.height * 0.45 + 16,
+                right: 5,
+                child: FloatingActionButton(
+                  backgroundColor: BColors.white,
+                  onPressed: () {
+                    reqTranController.selectedDestinationMarkerId.value = null;
+                    reqTranController.destination.value = LatLng(0, 0);
+                    reqTranController.polyLines.value.clear();
+                    reqTranController.getUserLocation();
+                  },
+                  child: const Icon(Icons.my_location, color: BColors.dark),
+                ),
+              ),
+
+              /// Route loading overlay
+              if (!reqTranController.isRouteLoaded.value)
+                const Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 200,
+                  child: Center(child: RouteLoadingOverlay()),
+                ),
+
+              /// Draggable bottom sheet dispatcher
+              BDispatcher(requestController: requestController),
+            ],
+          );
+        }),
       ),
     );
   }

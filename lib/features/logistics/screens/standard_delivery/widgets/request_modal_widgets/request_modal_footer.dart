@@ -154,6 +154,8 @@ class RequestModalFooter extends StatelessWidget {
           apiController: 'Request',
           viewItemButtonLabel: 'View Delivered Item',
           dialogTitle: 'Delivered Item',
+          showViewItemButton:
+              requestModel.status == BTexts.statusDoneDelivery,
         ),
       ],
     );
