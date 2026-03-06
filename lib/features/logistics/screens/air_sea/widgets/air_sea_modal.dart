@@ -54,8 +54,8 @@ class AirSeaModal extends StatelessWidget {
           }
 
           // For Item Packed → dynamic next status from dropdown
-          final effectiveNextStatus = config.nextStatus ??
-              _resolveItemPackedNextStatus(controller);
+          final effectiveNextStatus =
+              config.nextStatus ?? _resolveItemPackedNextStatus(controller);
 
           if (effectiveNextStatus != null) {
             await controller.updateStatusWithInputs(

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
@@ -52,9 +54,39 @@ class AirSeaRequestModalFooter extends StatelessWidget {
             fontColor: textColor,
           ),
         ],
+
+        /// -- Receipt Details (use reusable delivery details section) --
+        if (requestModel.status == BTexts.statusReceived) ...[
+          BDeliveryDetailsSection(
+            sectionTitle: 'Receipt Details',
+            driver: requestModel.driver,
+            helper: requestModel.helper,
+            receivedBy: requestModel.receivedBy,
+            receivedByLabel: 'Received By',
+            departedAt: requestModel.dispatchedAt,
+            completedAt: requestModel.updatedAt,
+            completedAtLabel: 'Received At',
+            requestId: requestModel.id,
+            apiController: 'RequestAirSea',
+            viewItemButtonLabel: BTexts.requestModalViewItemReceivedText,
+            dialogTitle: 'Air/Sea Item',
+            showViewItemButton: true,
+            // Use AM/PM formatter
+            completedAtFormatter: (s) => BFormatter.formatDateTimeCustomizable(
+              s,
+              "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+              "MMM d, yyyy hh:mm a",
+            ),
+            // Render the signature below the Received By value and allow larger size
+            signatureBelowReceivedBy: true,
+            signatureHeight: 50,
+            // Place signature on the left column by default for Air/Sea
+            signatureLeft: true,
+          ),
+        ],
+
         const SizedBox(height: BSizes.sm),
       ],
     );
   }
 }
-

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
@@ -25,22 +25,6 @@ class AirSeaRequestModalHeader extends StatelessWidget {
 
   final AirSeaModel requestModel;
 
-  /// Formats date string to readable format (MMM d, yyyy HH:mm)
-  /// Handles various date formats and returns fallback if parsing fails
-  String _formatDate(String value) {
-    if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy HH:mm').format(dt);
-    } catch (_) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
@@ -53,6 +37,7 @@ class AirSeaRequestModalHeader extends StatelessWidget {
 
     return SingleChildScrollView(
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           BProductTitleText(
             title: requestModel.client.name,
@@ -65,12 +50,14 @@ class AirSeaRequestModalHeader extends StatelessWidget {
             BLabelValueText(
               label: 'Address',
               value: requestModel.client.address,
-              icon: Iconsax.location,
               showLabel: false,
               maxLines: 3,
               copyable: true,
+              smallSize: true,
             )
           ],
+          const SizedBox(height: BSizes.xs),
+          StatusChip(status: requestModel.status),
           // Preparation details section (who prepared and when)
           if (hasPreparedBy) ...[
             const SizedBox(height: BSizes.xs),
@@ -84,13 +71,8 @@ class AirSeaRequestModalHeader extends StatelessWidget {
             ),
             BLabelValueText(
               label: 'Item prepared at',
-              value: _formatDate(
-                BFormatter.formatDateTimeCustomizable(
-                  requestModel.itemPreparedAt,
-                  "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                  "yyyy-MM-dd HH:mm",
-                ),
-              ),
+              // Use BFormatter's customizable formatter directly with the desired display format (12-hour with AM/PM)
+              value: BFormatter.formatDateWithAmPm(requestModel.itemPreparedAt),
               showLabel: false,
               icon: Iconsax.calendar,
               padding: EdgeInsets.zero,
@@ -98,13 +80,8 @@ class AirSeaRequestModalHeader extends StatelessWidget {
             if (hasItemPreparedEndAt)
               BLabelValueText(
                 label: 'Item prepared end at',
-                value: _formatDate(
-                  BFormatter.formatDateTimeCustomizable(
-                    requestModel.itemPreparedEndAt,
-                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                    "yyyy-MM-dd HH:mm",
-                  ),
-                ),
+                value: BFormatter.formatDateWithAmPm(
+                    requestModel.itemPreparedEndAt),
                 showLabel: false,
                 icon: Iconsax.calendar_1,
                 padding: EdgeInsets.zero,
@@ -127,12 +104,10 @@ class AirSeaRequestModalHeader extends StatelessWidget {
               ),
               BLabelValueText(
                 label: 'Endorsed at',
-                value: _formatDate(
-                  BFormatter.formatDateTimeCustomizable(
-                    requestModel.updatedAt,
-                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                    "yyyy-MM-dd HH:mm",
-                  ),
+                value: BFormatter.formatDateTimeCustomizable(
+                  requestModel.updatedAt,
+                  "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                  "MMM d, yyyy hh:mm a",
                 ),
                 showLabel: false,
                 icon: Iconsax.calendar_1,
@@ -163,53 +138,6 @@ class AirSeaRequestModalHeader extends StatelessWidget {
             )
           ],
 
-          // Receipt details section (only shown when status is 'Received')
-          if (requestModel.status == BTexts.statusReceived) ...[
-            const SizedBox(height: BSizes.xs),
-            const BTextDivider(text: 'Receipt Details'),
-            if (hasReceivedBy) ...[
-              const SizedBox(height: BSizes.sm),
-              BLabelValueText(
-                label: 'Received By',
-                value: requestModel.receivedBy,
-                showLabel: false,
-                icon: Iconsax.user_octagon,
-                padding: EdgeInsets.zero,
-                mainAlignment: MainAxisAlignment.center,
-              ),
-              BLabelValueText(
-                label: 'Received at',
-                value: _formatDate(
-                  BFormatter.formatDateTimeCustomizable(
-                    requestModel.updatedAt,
-                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                    "yyyy-MM-dd HH:mm",
-                  ),
-                ),
-                showLabel: false,
-                icon: Iconsax.calendar_1,
-                padding: EdgeInsets.zero,
-                mainAlignment: MainAxisAlignment.center,
-              ),
-              const SizedBox(height: BSizes.sm),
-              CapturedSignatureImage(requestId: requestModel.id),
-              ViewDeliveredItemButton(
-                textColor: textColor,
-                labelTitle: BTexts.requestModalViewItemReceivedText,
-                onPressed: () {
-                  final requestIdForDb = requestModel.id;
-                  showRequestImageDialog(context,
-                      requestId: requestIdForDb,
-                      fetchIfMissing: true,
-                      semanticsLabel:
-                          'Delivered item image for request ${requestModel.id}',
-                      apiController: 'RequestAirSea',
-                      title: 'Air/Sea Item');
-                },
-              )
-            ],
-          ],
-
           // Drop Off details section (only shown when status is 'Drop Off')
           if (requestModel.status == 'Drop Off') ...[
             const SizedBox(height: BSizes.xs),
@@ -227,12 +155,10 @@ class AirSeaRequestModalHeader extends StatelessWidget {
               if (requestModel.dropOffAt.isNotEmpty)
                 BLabelValueText(
                   label: 'Dropped Off at',
-                  value: _formatDate(
-                    BFormatter.formatDateTimeCustomizable(
-                      requestModel.dropOffAt,
-                      "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                      "yyyy-MM-dd HH:mm",
-                    ),
+                  value: BFormatter.formatDateTimeCustomizable(
+                    requestModel.dropOffAt,
+                    "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                    "MMM d, yyyy hh:mm a",
                   ),
                   showLabel: false,
                   icon: Iconsax.calendar_1,
