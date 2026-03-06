@@ -7,14 +7,14 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 /// read-only fields. Optionally shows a signature widget below the value.
 class BLabelValue extends StatelessWidget {
   const BLabelValue({
-    Key? key,
+    super.key,
     required this.label,
     required this.value,
     this.signature,
     this.signatureWidth = 100,
     this.signatureHeight = 50,
     this.valueTextStyle,
-  }) : super(key: key);
+  });
 
   final String label;
   final String value;

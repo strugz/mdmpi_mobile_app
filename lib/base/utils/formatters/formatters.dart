@@ -144,4 +144,19 @@ class BFormatter {
     // Fallback: return original trimmed string
     return trimmed;
   }
+
+  /// Formats picked-up / received datetime strings to 'MMM d, yyyy hh:mm a'.
+  /// Example output: "Mar 5, 2026 04:31 PM".
+  /// Returns original value if parsing fails.
+  static String formatPickedUpAt(String value) {
+    if (value.isEmpty) return '';
+    final norm = BFormatter.normalizeToIsoDatetime(value);
+    if (norm == null) return value;
+    try {
+      final dt = DateTime.parse(norm);
+      return DateFormat('MMM d, yyyy hh:mm a').format(dt);
+    } catch (_) {
+      return value;
+    }
+  }
 }

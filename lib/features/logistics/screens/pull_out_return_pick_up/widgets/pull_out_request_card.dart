@@ -4,7 +4,6 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
-import 'package:mdmpi_mobile_app/common/widgets/icons/icon_value.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';

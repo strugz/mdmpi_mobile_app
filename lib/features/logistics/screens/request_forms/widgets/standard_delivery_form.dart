@@ -81,60 +81,42 @@ class StandardDelivery extends StatelessWidget {
                           const SizedBox(height: BSizes.sm),
 
                           /// Item Category dropdown
-                          Obx(() {
-                            final categories = stdDeliveryController.formState.itemCategories;
-                            if (categories.isEmpty) {
-                              return BDropdown(
+                          Obx(() => BDropDownDynamicList(
                                 controller: stdDeliveryController
                                     .formState.itemCategory,
+                                icon: Iconsax.box,
                                 label: 'Item Category',
-                                dropdownList: const [],
-                              );
-                            }
-                            return BDropDownDynamicList(
-                              controller: stdDeliveryController
-                                  .formState.itemCategory,
-                              icon: Iconsax.box,
-                              label: 'Item Category',
-                              dropdownList: categories
-                                  .map((cat) => cat.toJson())
-                                  .toList(),
-                              valueKey: 'ItemCategoryID',
-                              displayKey: 'ItemCategoryName',
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? 'Please select an item category'
-                                  : null,
-                            );
-                          }),
+                                dropdownList: stdDeliveryController
+                                    .formState.itemCategories
+                                    .map((cat) => cat.toJson())
+                                    .toList(),
+                                valueKey: 'ItemCategoryID',
+                                displayKey: 'ItemCategoryName',
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Please select an item category'
+                                        : null,
+                              )),
                           const SizedBox(height: BSizes.spaceBtwItems),
 
                           /// Form Category dropdown
-                          Obx(() {
-                            final categories = stdDeliveryController.formState.formCategories;
-                            if (categories.isEmpty) {
-                              return BDropdown(
+                          Obx(() => BDropDownDynamicList(
                                 controller: stdDeliveryController
                                     .formState.formCategory,
+                                icon: Iconsax.document,
                                 label: 'Form Category',
-                                dropdownList: const [],
-                              );
-                            }
-                            return BDropDownDynamicList(
-                              controller: stdDeliveryController
-                                  .formState.formCategory,
-                              icon: Iconsax.document,
-                              label: 'Form Category',
-                              dropdownList: categories
-                                  .map((cat) => cat.toJson())
-                                  .toList(),
-                              valueKey: 'FormCategoryID',
-                              displayKey: 'FormCategoryName',
-                              readOnly: true,
-                              validator: (v) => (v == null || v.trim().isEmpty)
-                                  ? 'Please select a form category'
-                                  : null,
-                            );
-                          }),
+                                dropdownList: stdDeliveryController
+                                    .formState.formCategories
+                                    .map((cat) => cat.toJson())
+                                    .toList(),
+                                valueKey: 'FormCategoryID',
+                                displayKey: 'FormCategoryName',
+                                readOnly: true,
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'Please select a form category'
+                                        : null,
+                              )),
                           const SizedBox(height: BSizes.sm),
                         ],
                       ),

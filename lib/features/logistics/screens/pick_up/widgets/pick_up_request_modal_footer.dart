@@ -113,7 +113,8 @@ class PickUpRequestModalFooter extends StatelessWidget {
                     BLabelValue(
                       label: 'Received By',
                       value: requestModel.receivedBy,
-                      signature: CapturedSignatureImage(requestId: requestModel.id),
+                      signature:
+                          CapturedSignatureImage(requestId: requestModel.id),
                       signatureWidth: 120,
                       signatureHeight: 60,
                     ),
@@ -127,12 +128,17 @@ class PickUpRequestModalFooter extends StatelessWidget {
                     children: [
                       BLabelValue(
                         label: 'Picked Up At',
-                        value: BFormatter.formatDateWithAmPm(requestModel.itemPreparedEndAt),
-                        valueTextStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 12.0,
-                        ),
+                        value: BFormatter.formatDateWithAmPm(
+                            requestModel.itemPreparedEndAt),
+                        valueTextStyle: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                              color:
+                                  Theme.of(context).textTheme.bodySmall?.color,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12.0,
+                            ),
                       ),
                     ],
                   ),
@@ -149,7 +155,8 @@ class PickUpRequestModalFooter extends StatelessWidget {
                 context,
                 requestId: requestModel.id,
                 fetchIfMissing: true,
-                semanticsLabel: 'Pick Up item image for request ${requestModel.id}',
+                semanticsLabel:
+                    'Pick Up item image for request ${requestModel.id}',
                 apiController: 'RequestPickUp',
                 title: 'Proof of Pick Up',
               );

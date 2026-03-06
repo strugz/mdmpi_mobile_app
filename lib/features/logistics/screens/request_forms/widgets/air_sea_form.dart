@@ -40,12 +40,10 @@ class AirSeaForm extends StatelessWidget {
         controller.formState.datePickUpController.clear();
         controller.formState.remarksController.clear();
 
-        // Reload categories to re-apply defaults (Item Category)
         await controller.loadCategories();
 
-        // Reset shared Standard Delivery form state used by common widgets
         stdController.formState.reset();
-        stdController.addDocumentReferenceField(); // ensure a fresh field
+        stdController.addDocumentReferenceField();
 
         BLoaders.successSnackBar(title: 'Success', message: 'Request created');
       } else {

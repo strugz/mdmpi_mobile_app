@@ -467,7 +467,7 @@ class PickUpRepository extends GetxController {
         logDebug('First record ID: ${pickUps.first.id}');
         final statusMap = <String, int>{};
         for (final p in pickUps) {
-          final status = p.status ?? 'Unknown';
+          final status = p.status;
           statusMap[status] = (statusMap[status] ?? 0) + 1;
         }
         logDebug('Status breakdown: $statusMap');

@@ -17,7 +17,7 @@ class DocumentReferenceDao {
   }
 
   Future<void> insert(Object requestId, String reference, String createdAt) async {
-    final dynamic normalized = int.tryParse(requestId.toString() ?? '') ?? requestId;
+    final dynamic normalized = int.tryParse(requestId.toString()) ?? requestId;
     await db.insert('a_tblRequestDocumentReference', {
       'RequestID': normalized,
       'Reference': reference,

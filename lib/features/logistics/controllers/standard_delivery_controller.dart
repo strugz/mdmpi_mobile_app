@@ -121,7 +121,7 @@ class StandardDeliveryController extends GetxController
     formState.initializeDefaultDate();
 
     // Load initial data
-    dataManager.loadCategories(this);
+    await dataManager.loadCategories(this);
     await loadRequests();
 
     // Set up user context

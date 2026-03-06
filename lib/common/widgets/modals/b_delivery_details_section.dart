@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 
@@ -33,6 +34,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
     this.dialogTitle,
     this.apiController = 'Request',
     this.showViewItemButton = true,
+    this.completedAtFormatter,
+    this.signatureBelowReceivedBy = false,
   });
 
   /// Section header text displayed at the top
@@ -83,6 +86,12 @@ class BDeliveryDetailsSection extends StatelessWidget {
   /// Whether to show the view item button
   final bool showViewItemButton;
 
+  /// Optional custom formatter for completedAt (returns formatted string)
+  final String Function(String)? completedAtFormatter;
+
+  /// If true, display signature below the Received By value instead of a watermark
+  final bool signatureBelowReceivedBy;
+
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
@@ -94,7 +103,6 @@ class BDeliveryDetailsSection extends StatelessWidget {
     final hasReceivedBy = receivedBy.isNotEmpty;
     final hasDeparted = departedAt != null && departedAt!.isNotEmpty;
     final hasCompleted = completedAt != null && completedAt!.isNotEmpty;
-
 
     // Hide entire section if no data
     if (!hasDriver &&
@@ -122,8 +130,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
 
             return Stack(
               children: [
-                // Signature watermark - right aligned and faded
-                if (hasReceivedBy && showSignatureWatermark)
+                // Signature watermark - right aligned and faded (only when not using below-received placement)
+                if (hasReceivedBy && showSignatureWatermark && !signatureBelowReceivedBy)
                   Positioned(
                     top: 20,
                     right: 30,
@@ -171,14 +179,33 @@ class BDeliveryDetailsSection extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: BSizes.sm),
-                        // Right column: Receiver (signature overlays here)
+                        // Right column: Receiver (signature overlays here or placed below)
                         if (hasReceivedBy)
                           Expanded(
-                            child: BProductTitleText(
-                              title: '$receivedByLabel: $receivedBy',
-                              maxLines: 3,
-                              smallSize: true,
-                              fontColor: textColor,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                BLabelValueText(
+                                  label: receivedByLabel,
+                                  value: receivedBy,
+                                  showLabel: true,
+                                  maxLines: 3,
+                                  smallSize: true,
+                                  textColor: textColor,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                // If signature should be placed below the receivedBy, render it here
+                                if (hasReceivedBy && signatureBelowReceivedBy) ...[
+                                  const SizedBox(height: BSizes.sm),
+                                  SizedBox(
+                                    width: signatureWidth,
+                                    height: signatureHeight,
+                                    child: CapturedSignatureImage(
+                                      requestId: requestId,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                       ],
@@ -186,22 +213,36 @@ class BDeliveryDetailsSection extends StatelessWidget {
                     // Timestamps
                     if (hasDeparted) ...[
                       const SizedBox(height: BSizes.sm),
-                      BProductTitleText(
-                        title:
-                            '$departedAtLabel: ${BFormatter.formatDate2(departedAt!)}',
+                      BLabelValueText(
+                        label: departedAtLabel,
+                        value: BFormatter.formatDateTimeCustomizable(
+                          departedAt!,
+                          "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                          "yyyy-MM-dd HH:mm",
+                        ),
+                        showLabel: true,
                         maxLines: 2,
                         smallSize: true,
-                        fontColor: textColor,
+                        textColor: textColor,
+                        padding: EdgeInsets.zero,
                       ),
                     ],
                     if (hasCompleted) ...[
                       const SizedBox(height: BSizes.sm),
-                      BProductTitleText(
-                        title:
-                            '$completedAtLabel: ${BFormatter.formatDate2(completedAt!)}',
+                      BLabelValueText(
+                        label: completedAtLabel,
+                        value: completedAtFormatter != null
+                            ? completedAtFormatter!(completedAt!)
+                            : BFormatter.formatDateTimeCustomizable(
+                                completedAt!,
+                                "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+                                "yyyy-MM-dd HH:mm",
+                              ),
+                        showLabel: true,
                         maxLines: 2,
                         smallSize: true,
-                        fontColor: textColor,
+                        textColor: textColor,
+                        padding: EdgeInsets.zero,
                       ),
                     ],
                   ],

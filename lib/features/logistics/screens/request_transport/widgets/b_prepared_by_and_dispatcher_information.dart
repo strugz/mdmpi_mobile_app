@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -9,7 +8,6 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 class BPreparedByAndDispatcherInformation extends StatelessWidget {
   const BPreparedByAndDispatcherInformation({

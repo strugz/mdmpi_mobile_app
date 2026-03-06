@@ -58,8 +58,7 @@ class BClientSearch extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             requestTransportController.currentLocationAlternative.value?.address ??
-                            requestTransportController.addressTextController.text ??
-                            'Unknown Location',
+                            requestTransportController.addressTextController.text,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: BColors.light,
                               overflow: TextOverflow.ellipsis,
