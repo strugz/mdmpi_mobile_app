@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-
 import '../../../features/logistics/models/client_model.dart';
 import '../../../data/models/item_category_model.dart';
 import '../../../data/models/form_category_model.dart';
+import '../../../data/models/inventory_item_model.dart';
 
 /// Encapsulates all form-related state for Standard Delivery requests.
 ///
@@ -37,6 +37,12 @@ class StandardDeliveryFormState {
 
   // Document references (dynamic list)
   final RxList<TextEditingController> documentReferenceControllers = <TextEditingController>[].obs;
+
+  // Scanned inventory items populated by OCR/file analysis.
+  // Kept in the form state so that form serialization and UI bindings
+  // (e.g., BInventoryScanner) can read/write this list via the controller's
+  // formState reference. Use reactive list to allow Obx bindings.
+  final RxList<InventoryItemModel> scannedInventoryItems = <InventoryItemModel>[].obs;
 
   // Reactive state
   final Rx<DateTime?> deliveryDate = Rx<DateTime?>(null);
@@ -78,6 +84,11 @@ class StandardDeliveryFormState {
     tripTicketNumber.clear();
     remarks.clear();
 
+    // Clear dynamic lists
+    documentReferenceControllers.forEach((c) => c.clear());
+    // Also clear scanned inventory items when resetting the form
+    scannedInventoryItems.clear();
+
     // Restore category defaults if already loaded
     if (formCategories.isNotEmpty) {
       final defaultForm = formCategories.firstWhere(
@@ -107,13 +118,17 @@ class StandardDeliveryFormState {
     selectedHelper.dispose();
     receiver.dispose();
     mobile.dispose();
-    itemCategory.dispose();
-    formCategory.dispose();
     tripTicketNumber.dispose();
     remarks.dispose();
-    for (var controller in documentReferenceControllers) {
-      controller.dispose();
+
+    // Dispose document reference controllers
+    for (final c in documentReferenceControllers) {
+      try {
+        c.dispose();
+      } catch (_) {}
     }
+
+    // Clear scanned inventory items (no dispose needed for model objects)
+    scannedInventoryItems.clear();
   }
 }
-

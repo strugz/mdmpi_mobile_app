@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_re
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
+import '../../../../../common/widgets/scanner/b_inventory_scanner.dart';
 import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_controller.dart';
 
@@ -78,6 +79,10 @@ class StandardDelivery extends StatelessWidget {
 
                           /// Document Reference
                           const BDocumentReference(),
+                          const SizedBox(height: BSizes.sm),
+
+                          /// Inventory Scanner (capture / attach file → OCR)
+                          const BInventoryScanner(),
                           const SizedBox(height: BSizes.sm),
 
                           /// Item Category dropdown

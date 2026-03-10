@@ -1,11 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/inventory/inventory_item_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -85,6 +88,16 @@ class StandardDeliveryController extends GetxController
   /// Automatically populated from logged-in user's initials.
   @override
   String createdBy = '';
+
+  // ========================================================================
+  // INVENTORY OCR STATE
+  // ========================================================================
+
+  /// Whether an analyze-file request is currently in flight.
+  final RxBool isAnalyzingFile = false.obs;
+
+  /// Last error from an analyze-file attempt. Null when no error.
+  final RxnString analyzeError = RxnString();
 
   // ========================================================================
   // MANAGERS & DEPENDENCIES
@@ -378,5 +391,56 @@ class StandardDeliveryController extends GetxController
   void toggleStoragePreference(bool value) {
     useLocalStorage.value = value;
     loadRequests();
+  }
+
+  // ========================================================================
+  // INVENTORY OCR OPERATIONS
+  // ========================================================================
+
+  /// Sends [file] (picture or PDF) to the Gemini analyze-file endpoint via
+  /// [InventoryItemRepository] and populates [scannedInventoryItems] with the
+  /// parsed results.
+  ///
+  /// Sets [isAnalyzingFile] while the request is in flight and updates
+  /// [analyzeError] on failure.
+  Future<void> analyzeFileForInventory(File file) async {
+    try {
+      isAnalyzingFile.value = true;
+      analyzeError.value = null;
+
+      final repo = Get.find<InventoryItemRepository>();
+      final result = await repo.analyzeFile(file);
+
+      if (result.isSuccess) {
+        // store scanned items in the form state so UI/widgets bound to the form
+        // will react accordingly
+        formState.scannedInventoryItems.addAll(result.value);
+        logDebug(
+            'StandardDeliveryController: Parsed ${result.value.length} inventory items');
+      } else {
+        analyzeError.value = result.error;
+        logDebug(
+            'StandardDeliveryController: analyzeFile failed – ${result.error}');
+      }
+    } catch (e) {
+      analyzeError.value = e.toString();
+      logDebug('StandardDeliveryController: analyzeFileForInventory error – $e');
+    } finally {
+      isAnalyzingFile.value = false;
+    }
+  }
+
+  /// Removes a single scanned inventory item at [index].
+  void removeScannedItem(int index) {
+    final items = formState.scannedInventoryItems;
+    if (index >= 0 && index < items.length) {
+      items.removeAt(index);
+    }
+  }
+
+  /// Clears all scanned inventory items.
+  void clearScannedItems() {
+    formState.scannedInventoryItems.clear();
+    analyzeError.value = null;
   }
 }

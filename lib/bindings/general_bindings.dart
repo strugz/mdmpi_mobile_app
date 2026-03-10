@@ -69,6 +69,7 @@ import '../features/logistics/controllers/request_controller.dart';
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
 import '../features/collection/presentation/controllers/collection_onboarding_controller.dart';
+import '../data/repositories/inventory/inventory_item_repository.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -128,6 +129,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => AirSeaRepository(), fenix: true);
     Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
     Get.lazyPut(() => FormCategoryRepository(), fenix: true);
+    Get.lazyPut(() => InventoryItemRepository(), fenix: true);
 
     // ========================================================================
     // Controllers
