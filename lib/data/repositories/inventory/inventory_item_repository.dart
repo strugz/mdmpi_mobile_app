@@ -140,5 +140,164 @@ class InventoryItemRepository extends GetxController {
       return Result.failure(e.toString());
     }
   }
-}
 
+  /// Calls Google Generative Language (Gemini) directly with the provided [file]
+  /// and optional [prompt]. The request body follows the shape:
+  /// { contents: [ { parts: [ { inlineData: { mimeType, data } }, { text } ] } ] }
+  /// On success returns Result.success(List<InventoryItemModel>), otherwise Result.failure.
+  Future<Result<List<InventoryItemModel>>> analyzeFileWithGemini(File file, {String? prompt}) async {
+    try {
+      if (!await file.exists()) {
+        return Result.failure('File does not exist: ${file.path}');
+      }
+
+      final model = dotenv.env['AI_TOOLKIT_MODEL'] ?? dotenv.env['AI_MODEL'] ?? '';
+      final apiKey = dotenv.env['AI_TOOLKIT_API_KEY'] ?? dotenv.env['API_KEY'] ?? '';
+
+      if (model.isEmpty || apiKey.isEmpty) {
+        return Result.failure('AI configuration missing (AI_TOOLKIT_MODEL / AI_TOOLKIT_API_KEY)');
+      }
+
+      final googleUrl = 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey';
+
+      final bytes = await file.readAsBytes();
+      final b64 = base64Encode(bytes);
+
+      String mimeTypeFromPath(String path) {
+        final ext = path.split('.').last.toLowerCase();
+        switch (ext) {
+          case 'png':
+            return 'image/png';
+          case 'jpg':
+          case 'jpeg':
+            return 'image/jpeg';
+          case 'pdf':
+            return 'application/pdf';
+          default:
+            return 'application/octet-stream';
+        }
+      }
+
+      final mimeType = mimeTypeFromPath(file.path);
+      final promptText = prompt ?? dotenv.env['AI_PROMPT'] ?? 'Analyze this image and return the results as structured JSON.';
+
+      final requestBody = {
+        'contents': [
+          {
+            'parts': [
+              {
+                'inlineData': {
+                  'mimeType': mimeType,
+                  'data': b64,
+                }
+              },
+              {
+                'text': promptText,
+              }
+            ]
+          }
+        ]
+      };
+
+      final resp = await http
+          .post(Uri.parse(googleUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode(requestBody))
+          .timeout(const Duration(seconds: 120));
+
+      if (resp.statusCode == 400) {
+        try {
+          final err = jsonDecode(resp.body);
+          final details = err['error']?['details'];
+          if (details is List) {
+            for (final d in details) {
+              if (d is Map<String, dynamic>) {
+                final reason = d['reason'] as String? ?? '';
+                if (reason.toLowerCase().contains('api_key_invalid')) {
+                  return Result.failure('AI API key invalid: verify AI_TOOLKIT_API_KEY and Generative Language API enablement.');
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (resp.statusCode != 200) {
+        return Result.failure('AI service error: ${resp.statusCode}');
+      }
+
+      final decoded = jsonDecode(resp.body);
+      String? textContent;
+
+      try {
+        if (decoded is Map<String, dynamic>) {
+          final candidates = decoded['candidates'];
+          if (candidates is List && candidates.isNotEmpty) {
+            final first = candidates[0];
+            if (first is Map<String, dynamic>) {
+              final content = first['content'];
+              if (content is Map<String, dynamic>) {
+                final parts = content['parts'];
+                if (parts is List && parts.isNotEmpty) {
+                  final p0 = parts[0];
+                  if (p0 is Map<String, dynamic> && p0['text'] is String) {
+                    textContent = p0['text'] as String;
+                  }
+                }
+              } else if (content is List && content.isNotEmpty) {
+                final c0 = content[0];
+                if (c0 is Map<String, dynamic> && c0['parts'] is List) {
+                  final parts = c0['parts'] as List;
+                  if (parts.isNotEmpty) {
+                    final p0 = parts[0];
+                    if (p0 is Map<String, dynamic> && p0['text'] is String) {
+                      textContent = p0['text'] as String;
+                    }
+                  }
+                }
+              }
+
+              if (textContent == null) {
+                if (first['output'] is String) textContent = first['output'] as String;
+                else if (first['text'] is String) textContent = first['text'] as String;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      final generatedText = (textContent != null && textContent.isNotEmpty) ? textContent : resp.body;
+
+      List<dynamic>? items;
+      try {
+        final asJson = jsonDecode(generatedText);
+        if (asJson is List) items = asJson;
+      } catch (_) {}
+
+      if (items == null) {
+        final firstBracket = generatedText.indexOf('[');
+        final lastBracket = generatedText.lastIndexOf(']');
+        if (firstBracket >= 0 && lastBracket > firstBracket) {
+          final arrStr = generatedText.substring(firstBracket, lastBracket + 1);
+          try {
+            final parsed = jsonDecode(arrStr);
+            if (parsed is List) items = parsed;
+          } catch (_) {}
+        }
+      }
+
+      if (items == null) {
+        return Result.failure('Failed to parse AI response');
+      }
+
+      final parsed = items
+          .whereType<dynamic>()
+          .map((e) => e is Map<String, dynamic>
+              ? InventoryItemModel.fromJson(e)
+              : InventoryItemModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      return Result.success(parsed);
+    } catch (e) {
+      return Result.failure('Failed to analyze image with AI: $e');
+    }
+  }
+}

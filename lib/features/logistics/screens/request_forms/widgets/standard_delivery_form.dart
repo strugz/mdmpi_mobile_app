@@ -7,13 +7,13 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/scanner/b_item_scanner.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../common/widgets/dropdown/dropdown_dynamic_list.dart';
-import '../../../../../common/widgets/scanner/b_inventory_scanner.dart';
 import '../../../controllers/standard_delivery_controller.dart';
 import '../../../controllers/request_controller.dart';
 
@@ -82,7 +82,8 @@ class StandardDelivery extends StatelessWidget {
                           const SizedBox(height: BSizes.sm),
 
                           /// Inventory Scanner (capture / attach file → OCR)
-                          const BInventoryScanner(),
+                          /*const BInventoryScanner(),*/
+                          const BItemScanner(),
                           const SizedBox(height: BSizes.sm),
 
                           /// Item Category dropdown

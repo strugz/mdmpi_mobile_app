@@ -16,6 +16,9 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_fi
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_data_manager.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:iconsax/iconsax.dart';
 
 /// Controller for managing Standard Delivery requests lifecycle, state, and business operations.
 ///
@@ -424,9 +427,123 @@ class StandardDeliveryController extends GetxController
       }
     } catch (e) {
       analyzeError.value = e.toString();
-      logDebug('StandardDeliveryController: analyzeFileForInventory error – $e');
+      logDebug(
+          'StandardDeliveryController: analyzeFileForInventory error – $e');
     } finally {
       isAnalyzingFile.value = false;
+    }
+  }
+
+  /// Opens the device camera (or camera UI) and forwards the captured image
+  /// file to [analyzeFileForInventory]. This method centralizes permission and
+  /// platform handling so the UI widget stays pure.
+  Future<void> pickAndAnalyzeFromCamera() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? picked =
+          await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (picked == null) return;
+      final file = File(picked.path);
+      await analyzeFileWithAiToolkit(file);
+      return;
+    } catch (e, st) {
+      analyzeError.value = 'Camera error: ${e.toString()}';
+      try {
+        logDebug('pickAndAnalyzeFromCamera error: $e\n$st');
+      } catch (_) {}
+    }
+  }
+
+  /// Presents a gallery/file chooser and forwards the selected file to
+  /// [analyzeFileForInventory]. Handles bytes-only platforms by writing a
+  /// temporary file when necessary.
+  Future<void> pickAndAnalyzeFromFile() async {
+    try {
+      final context =
+          Get.context ?? Get.rootDelegate.navigatorKey.currentContext;
+      if (context == null) {
+        analyzeError.value = 'Unable to access context for file picker.';
+        return;
+      }
+
+      final choice = await showModalBottomSheet<String?>(
+        context: context,
+        builder: (ctx) {
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Iconsax.image),
+                  title: const Text('Pick image from gallery'),
+                  onTap: () => Navigator.of(ctx).pop('gallery'),
+                ),
+                ListTile(
+                  leading: const Icon(Iconsax.folder_2),
+                  title: const Text('Pick any file'),
+                  onTap: () => Navigator.of(ctx).pop('file'),
+                ),
+                ListTile(
+                  leading: const Icon(Iconsax.close_circle),
+                  title: const Text('Cancel'),
+                  onTap: () => Navigator.of(ctx).pop(null),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (choice == null) return;
+
+      if (choice == 'gallery') {
+        final picker = ImagePicker();
+        final XFile? picked = await picker.pickImage(
+            source: ImageSource.gallery, imageQuality: 85);
+        if (picked == null) return;
+        final file = File(picked.path);
+        await analyzeFileWithAiToolkit(file);
+        return;
+      }
+
+      if (choice == 'file') {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowMultiple: false,
+          allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+          withData: true,
+        );
+
+        if (result == null || result.files.isEmpty) return;
+        final picked = result.files.single;
+
+        String? path = picked.path;
+        if (path == null && picked.bytes != null) {
+          final tempDir = Directory.systemTemp;
+          final tempFile = File('${tempDir.path}/${picked.name}');
+          await tempFile.writeAsBytes(picked.bytes!);
+          path = tempFile.path;
+        }
+
+        if (path == null) {
+          analyzeError.value = 'Unable to resolve selected file path.';
+          return;
+        }
+
+        final file = File(path);
+        if (!await file.exists()) {
+          analyzeError.value = 'Selected file does not exist.';
+          return;
+        }
+
+        await analyzeFileWithAiToolkit(file);
+        return;
+      }
+    } catch (e, st) {
+      analyzeError.value = 'File picker error: ${e.toString()}';
+      try {
+        logDebug('pickAndAnalyzeFromFile error: $e\n$st');
+      } catch (_) {}
     }
   }
 
@@ -443,4 +560,31 @@ class StandardDeliveryController extends GetxController
     formState.scannedInventoryItems.clear();
     analyzeError.value = null;
   }
+
+  /// Analyze [file] using Google Generative Language (gemini) by sending the
+  /// file bytes and prompt in the `contents` -> `parts` -> `inlineData` + `text`
+  /// request body and extracting the first candidate content text from the
+  /// response. This is a minimal, direct implementation (no retries/fallbacks).
+  Future<void> analyzeFileWithAiToolkit(File file, {String? prompt}) async {
+    isAnalyzingFile.value = true;
+    analyzeError.value = null;
+    try {
+      final repo = Get.find<InventoryItemRepository>();
+      final result = await repo.analyzeFileWithGemini(file, prompt: prompt);
+
+      if (result.isSuccess) {
+        formState.scannedInventoryItems.addAll(result.value);
+        logDebug('analyzeFileWithAiToolkit: Parsed ${result.value.length} inventory items via repository');
+      } else {
+        analyzeError.value = result.error;
+        logDebug('analyzeFileWithAiToolkit: repository error – ${result.error}');
+      }
+    } catch (e, st) {
+      analyzeError.value = e.toString();
+      logDebug('analyzeFileWithAiToolkit error – $e\n$st');
+    } finally {
+      isAnalyzingFile.value = false;
+    }
+  }
+
 }
