@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
@@ -13,6 +14,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'app.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 import 'data/local/database_helper.dart';
 import 'firebase_options.dart';
@@ -30,8 +32,16 @@ class MyHttpOverrides extends HttpOverrides {
 final navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> requestBatteryOptimizationPermission() async {
-  if (await Permission.ignoreBatteryOptimizations.isDenied) {
-    await Permission.ignoreBatteryOptimizations.request();
+  // This permission is Android-only. Keep the implementation defensive so an
+  // accidental call on other platforms won't crash the app.
+  try {
+    if (!kIsWeb && Platform.isAndroid) {
+      if (await Permission.ignoreBatteryOptimizations.isDenied) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    }
+  } catch (e) {
+    logDebug('Battery optimization permission check skipped: $e');
   }
 }
 
@@ -55,27 +65,59 @@ Future<void> main() async {
     logDebug('Error initializing database: $e');
   }
 
-  /// Request multiple permissions using service
+  /// Request multiple permissions using service. Build a platform-aware list
+  /// because some permission types (e.g., SMS, ignoreBatteryOptimizations)
+  /// are Android-only and will fail on desktop platforms.
   final permissionService = Get.put<IPermissionService>(PermissionService());
-  final statuses = await permissionService.ensureAll([
-    PermissionType.storage,
-    PermissionType.location,
-    PermissionType.camera,
-    PermissionType.sms,
-  ]);
+  final List<PermissionType> requiredPermissions = [];
+  if (!kIsWeb && Platform.isAndroid) {
+    requiredPermissions.addAll([
+      PermissionType.storage,
+      PermissionType.location,
+      PermissionType.camera,
+      PermissionType.sms,
+    ]);
+  } else {
+    // On desktop/web, request a minimal set of permissions that are
+    // commonly supported. Adjust per platform if more are available.
+    requiredPermissions.addAll([
+      PermissionType.location,
+      PermissionType.camera,
+    ]);
+  }
 
-  await requestBatteryOptimizationPermission();
+  final statuses = await permissionService.ensureAll(requiredPermissions);
+
+  // Request battery optimisation permission only on Android where API exists.
+  if (!kIsWeb && Platform.isAndroid) {
+    await requestBatteryOptimizationPermission();
+  }
 
   /// Check if all required permissions are granted
-  if (statuses[PermissionType.storage] == true &&
-      statuses[PermissionType.location] == true &&
-      statuses[PermissionType.camera] == true &&
-      statuses[PermissionType.sms] == true) {
-    /// -- Create storage folder
-    final mdmpiAppDir = Directory('/storage/emulated/0/MDMPIAPP');
+  if ((statuses.containsKey(PermissionType.storage)
+          ? statuses[PermissionType.storage] == true
+          : true) &&
+      (statuses.containsKey(PermissionType.location)
+          ? statuses[PermissionType.location] == true
+          : true) &&
+      (statuses.containsKey(PermissionType.camera)
+          ? statuses[PermissionType.camera] == true
+          : true) &&
+      (statuses.containsKey(PermissionType.sms)
+          ? statuses[PermissionType.sms] == true
+          : true)) {
+    /// -- Create storage folder. Use Android external storage on Android;
+    /// otherwise use application documents directory (Windows/macOS/Linux).
+    Directory mdmpiAppDir;
+    if (!kIsWeb && Platform.isAndroid) {
+      mdmpiAppDir = Directory('/storage/emulated/0/MDMPIAPP');
+    } else {
+      final appDoc = await getApplicationDocumentsDirectory();
+      mdmpiAppDir = Directory('${appDoc.path}${Platform.pathSeparator}MDMPIAPP');
+    }
 
     if (!mdmpiAppDir.existsSync()) {
-      mdmpiAppDir.createSync(recursive: true);
+      await mdmpiAppDir.create(recursive: true);
     }
   } else {
     if (statuses[PermissionType.sms] == false) {
