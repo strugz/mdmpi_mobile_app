@@ -9,7 +9,8 @@ class BTexts {
   static const String onBoardingSubTitle3= "Stay updated with real-time tracking and notifications for every step of the collection process.";
 
   //Collection Home Texts
-  static const String collectionHomeTitle1 = "Welcome to MDMPI APP!";
+  static const String collectionHomeTitle1 = "MDMPI Collection";
+  static const String collectionHomeSubTitle1 = "Recent Activities:";
 
   // Home Texts
   static const String homeTitle1 = "Dispatch an Item";

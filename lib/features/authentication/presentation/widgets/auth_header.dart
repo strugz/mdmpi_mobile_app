@@ -10,19 +10,19 @@ class AuthHeader extends StatelessWidget {
   const AuthHeader({
     super.key,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     this.showLogo = true,
   });
 
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final bool showLogo;
 
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     return Column(
-
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (showLogo)
           Image(
@@ -31,7 +31,8 @@ class AuthHeader extends StatelessWidget {
                 dark ? BImages.lightAppLogo : BImages.darkAppLogo),
           ),
         Text(title, style: Theme.of(context).textTheme.headlineMedium),
-        Text(subtitle, style: Theme.of(context).textTheme.bodyLarge),
+        if (subtitle != null && subtitle!.isNotEmpty)
+          Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
       ],
     );
   }

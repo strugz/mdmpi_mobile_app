@@ -1,29 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/common/widgets/animations/tap_to_animate_navigate.dart' as tap_anim;
 
-/// A prominent button representing the collection bucket.
+/// A prominent card representing the collection bucket.
 ///
-/// Displays a bucket icon with the current item count badge and a label.
-/// Tap to navigate to the collection bucket screen.
-class CollectionBucketButton extends StatelessWidget {
+/// Shows a large centered image (which plays an animation when tapped), with
+/// the label and a subtitle placed below the image. The whole card is
+/// tappable but the animation is handled by the image widget so it plays and
+/// then navigation is triggered after the animation completes.
+class CollectionBucketButton extends StatefulWidget {
   final int itemCount;
   final VoidCallback onTap;
   final String label;
+  final String imageAsset;
+  final String animationAsset;
+  final bool isLottie;
+  final Duration gifDuration;
+  /// Fade duration used by the internal animation transition when the image
+  /// switches to the animation. Forwarded to [TapToAnimateNavigate].
+  final Duration fadeDuration;
+  /// Scale applied to the animation relative to the static image size.
+  /// Values > 1.0 make the animation larger than the static image.
+  final double animationScale;
 
   const CollectionBucketButton({
     super.key,
     required this.itemCount,
     required this.onTap,
-    this.label = 'Collection Bucket',
+    this.label = 'START COLLECTION',
+    this.imageAsset = 'assets/images/bucket-list.png',
+    this.animationAsset = 'assets/images/animations/bucket-list.gif',
+    this.isLottie = false,
+    this.gifDuration = const Duration(seconds: 2),
+    this.fadeDuration = const Duration(milliseconds: 1000),
+    this.animationScale = 1,
   });
+
+  @override
+  State<CollectionBucketButton> createState() => _CollectionBucketButtonState();
+}
+
+class _CollectionBucketButtonState extends State<CollectionBucketButton> {
+  final ValueNotifier<int> _trigger = ValueNotifier<int>(0);
+
+  @override
+  void dispose() {
+    _trigger.dispose();
+    super.dispose();
+  }
+
+  void _onCardTap() {
+    // trigger the animation; TapToAnimateNavigate listens for changes
+    _trigger.value = _trigger.value + 1;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.primaryColor;
 
+    // Make the image larger to be the main attraction; match animationScale
+    final double imageSize = BSizes.productImageSize * widget.animationScale;
+
     return GestureDetector(
-      onTap: onTap,
+      onTap: _onCardTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(
@@ -39,84 +79,56 @@ class CollectionBucketButton extends StatelessWidget {
           ),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Bucket icon with badge
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(BSizes.sm + 4),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withAlpha((0.15 * 255).round()),
-                    borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                  ),
-                  child: Icon(
-                    Icons.shopping_basket_rounded,
-                    color: primaryColor,
-                    size: BSizes.iconLg,
-                  ),
-                ),
-                if (itemCount > 0)
-                  Positioned(
-                    top: -6,
-                    right: -6,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      constraints: const BoxConstraints(
-                        minWidth: 22,
-                        minHeight: 22,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Center(
-                        child: Text(
-                          itemCount > 99 ? '99+' : '$itemCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+            SizedBox(
+              width: imageSize,
+              height: imageSize,
+              child: tap_anim.TapToAnimateNavigate(
+                imageAsset: widget.imageAsset,
+                animationAsset: widget.animationAsset,
+                isLottie: widget.isLottie,
+                gifDuration: widget.gifDuration,
+                fadeDuration: widget.fadeDuration,
+                animationScale: widget.animationScale,
+                onNavigate: widget.onTap,
+                fit: BoxFit.contain,
+                externalTrigger: _trigger,
+                width: imageSize,
+                height: imageSize,
+              ),
             ),
+
             const SizedBox(width: BSizes.spaceBtwItems),
 
-            // Label and subtitle
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(
-                    label,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                    widget.label,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontSize: BSizes.fontSizeLg * 1.2,
+                      fontWeight: FontWeight.w900,
                       color: primaryColor,
                     ),
                   ),
                   const SizedBox(height: BSizes.xxs),
                   Text(
-                    itemCount == 0
+                    widget.itemCount == 0
                         ? 'No items in bucket'
-                        : '$itemCount item${itemCount == 1 ? '' : 's'} to collect',
-                    style: theme.textTheme.bodySmall?.copyWith(
+                        : '${widget.itemCount} item${widget.itemCount == 1 ? '' : 's'} to collect',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontSize: BSizes.fontSizeMd * 1.05,
                       color: Colors.grey.shade600,
                     ),
                   ),
                 ],
               ),
-            ),
-
-            // Trailing arrow
-            Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: primaryColor,
-              size: BSizes.iconSm,
             ),
           ],
         ),
