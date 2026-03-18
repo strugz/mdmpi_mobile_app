@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_ap
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_list_tile.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
   const CollectionHomeScreen({super.key});
@@ -105,6 +106,35 @@ class CollectionHomeScreen extends StatelessWidget {
               ),
             ),
 
+            const SizedBox(height: BSizes.spaceBtwItems),
+
+            // Recent Activities (visual samples)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  ActivityListTile(
+                    title: 'Collected from BDO',
+                    subtitle: 'BDO • CHQ #001234',
+                    time: 'Today 10:30',
+                    status: 'Pending',
+                    statusColor: Colors.orange,
+                    icon: Icons.account_balance,
+                    amount: '₱25,000.00',
+                  ),
+                  ActivityListTile(
+                    title: 'Payment received',
+                    subtitle: 'GCash • Ref #98765',
+                    time: 'Yesterday 16:12',
+                    status: 'Completed',
+                    statusColor: Colors.green,
+                    icon: Icons.mobile_friendly,
+                    amount: '₱1,250.00',
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
