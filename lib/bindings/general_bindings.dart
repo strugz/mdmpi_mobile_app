@@ -31,6 +31,7 @@ import '../common/services/implementations/places_service.dart';
 import '../common/services/implementations/location_tracking_service.dart';
 import '../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../data/controllers/client_controller.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import '../data/repositories/app_data/department_repository.dart';
 import '../data/repositories/app_data/mobile_repository.dart';
 import '../data/repositories/app_data/role_repository.dart';
@@ -80,7 +81,7 @@ class GeneralBindings extends Bindings {
     Get.put(NetworkManager());
     Get.put(WebSocketNotificationController());
     Get.put(MessagingController());
-    Get.put(UserController(), permanent: true);
+    // UserController must be registered after repositories are available.
 
     // ========================================================================
     // Authentication - Repository Interface & Use Cases (NEW - Phase 2)
@@ -113,23 +114,42 @@ class GeneralBindings extends Bindings {
     // ========================================================================
     // Repositories (must be registered before controllers that depend on them)
     // ========================================================================
-    Get.lazyPut(() => RoleRepository(), fenix: true);
-    Get.lazyPut(() => DepartmentRepository(), fenix: true);
-    Get.lazyPut(() => UserRepository());
-    Get.lazyPut(() => UserInitialRepository(), fenix: true);
-    Get.lazyPut(() => ClientRepository(), fenix: true);
-    Get.lazyPut(() => MobileRepository(), fenix: true);
-    Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
-    Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
-    Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
-    Get.lazyPut(() => ImageRepository(), fenix: true);
-    Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
-    Get.lazyPut(() => PullOutRepository(), fenix: true);
-    Get.lazyPut(() => PickUpRepository(), fenix: true);
-    Get.lazyPut(() => AirSeaRepository(), fenix: true);
-    Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
-    Get.lazyPut(() => FormCategoryRepository(), fenix: true);
-    Get.lazyPut(() => InventoryItemRepository(), fenix: true);
+    // Only register Firestore-backed repositories when Firebase has been
+    // initialized. On desktop (Windows/macOS/Linux) we intentionally skip
+    // Firebase initialization unless configured via FlutterFire CLI — in
+    // that case we should avoid creating Firestore instances here.
+    if (Firebase.apps.isNotEmpty) {
+      Get.lazyPut(() => RoleRepository(), fenix: true);
+      Get.lazyPut(() => DepartmentRepository(), fenix: true);
+      Get.lazyPut(() => UserRepository());
+      Get.lazyPut(() => UserInitialRepository(), fenix: true);
+      Get.lazyPut(() => ClientRepository(), fenix: true);
+      Get.lazyPut(() => MobileRepository(), fenix: true);
+      Get.lazyPut(() => CancelRemarksRepository(), fenix: true);
+      Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
+      Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
+      Get.lazyPut(() => ImageRepository(), fenix: true);
+      Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
+      Get.lazyPut(() => PullOutRepository(), fenix: true);
+      Get.lazyPut(() => PickUpRepository(), fenix: true);
+      Get.lazyPut(() => AirSeaRepository(), fenix: true);
+      Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
+      Get.lazyPut(() => FormCategoryRepository(), fenix: true);
+      Get.lazyPut(() => InventoryItemRepository(), fenix: true);
+
+      // Register UserController after repositories are registered so it can
+      // resolve UserRepository via Get.find() in its fields/constructor.
+      Get.put(UserController(), permanent: true);
+    } else {
+      // Firebase not initialized — skip Firestore-backed repo registration
+      // to avoid runtime errors on unsupported platforms (desktop without
+      // FlutterFire configuration). Some controllers handle missing
+      // repositories gracefully by checking Get.isRegistered before use.
+      Get.put(UserController(), permanent: true);
+      // Note: consider registering local-only repositories here if needed.
+      // For now we prefer to skip Firestore dependencies on non-Firebase
+      // platforms to keep the UI operational.
+    }
 
     // ========================================================================
     // Controllers
@@ -147,9 +167,12 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UserMdmpiController(), fenix: true);
     Get.lazyPut(() => WebSocketDeliveryController(), fenix: true);
     Get.lazyPut(() => DeliveryLocationController(), fenix: true);
-    // SignupController kept as singleton to retain form data when navigating back
+    // SignupController is kept as a lazily registered singleton so it is
+    // instantiated only when the signup UI is requested. This prevents
+    // creating Firebase-backed repositories during app startup on platforms
+    // where Firebase is not initialized.
     // Dependencies: RoleRepository, DepartmentRepository (registered above)
-    Get.put(SignupController(), permanent: false);
+    Get.lazyPut(() => SignupController(), fenix: true);
     Get.lazyPut(() => VerifyEmailController(), fenix: true);
     Get.lazyPut(() => LogisticsOnboardingController(), fenix: true);
     // Collection onboarding controller registration

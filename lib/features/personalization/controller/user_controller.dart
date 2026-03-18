@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/login.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/widgets/re_authenticate_user_login_form.dart';
 
@@ -27,7 +28,10 @@ class UserController extends GetxController {
   final imageUploading = false.obs;
   final verifyEmail = TextEditingController();
   final verifyPassword = TextEditingController();
-  final userRepository = Get.put(UserRepository());
+  // UserRepository is Firebase-backed. Resolve it lazily in onInit only if
+  // Firebase has been initialized and the repository is registered. This
+  // prevents accessing Firebase services on unsupported platforms.
+  UserRepository? userRepository;
   final dbHelper = DatabaseHelper.instance;
   final _storage = GetStorage();
 
@@ -38,6 +42,16 @@ class UserController extends GetxController {
     // Load cached user synchronously so AppRouter has the department
     // immediately on cold start, before the async Firebase fetch completes.
     _loadCachedUser();
+    // Resolve repository only when Firebase is initialized and repository
+    // registration exists. This avoids triggering Firestore access on
+    // platforms where Firebase was intentionally not initialized.
+    try {
+      if (Firebase.apps.isNotEmpty && Get.isRegistered<UserRepository>()) {
+        userRepository = Get.find<UserRepository>();
+      }
+    } catch (e) {
+      // Ignore; repository will remain null and methods should handle it.
+    }
     await fetchUserRecord();
     super.onInit();
   }
@@ -79,8 +93,15 @@ class UserController extends GetxController {
     try {
       profileLoading.value = true;
 
+      // If repository is not available (Firebase not initialized), skip
+      // remote fetch and keep cached/local user only.
+      if (userRepository == null) {
+        profileLoading.value = false;
+        return;
+      }
+
       /// Get user data
-      final users = await userRepository.fetchUserDetails();
+      final users = await userRepository!.fetchUserDetails();
 
       /// Update Rx User
       user(users);
@@ -109,8 +130,14 @@ class UserController extends GetxController {
     try {
       profileLoading.value = true;
 
+      // If no Firebase repo is available, skip remote fetch.
+      if (userRepository == null) {
+        profileLoading.value = false;
+        return;
+      }
+
       /// Get user data
-      final users = await userRepository.fetchAllUsers();
+      final users = await userRepository!.fetchAllUsers();
 
       final usersFromLocal = await dbHelper.getUsers();
 
@@ -158,8 +185,10 @@ class UserController extends GetxController {
             profilePicture: userCredentials.user!.photoURL ?? '',
           );
 
-          //   Save user data
-          await userRepository.saveUserRecord(user);
+          //   Save user data (skip if no repository available)
+          if (userRepository != null) {
+            await userRepository!.saveUserRecord(user);
+          }
         }
       }
     } catch (e) {
@@ -284,13 +313,19 @@ class UserController extends GetxController {
       if (image != null) {
         imageUploading.value = true;
 
+        //  Upload Image (requires Firebase-backed repo)
+        if (userRepository == null) {
+          BLoaders.errorSnackBar(title: 'Error', message: 'Upload not available on this platform');
+          return;
+        }
+
         //  Upload Image
         final imageUrl =
-            await userRepository.uploadImage('Users/Images/Profile/', image);
+            await userRepository!.uploadImage('Users/Images/Profile/', image);
 
         //  Update User Image Record
         Map<String, dynamic> json = {'ProfilePicture': imageUrl};
-        await userRepository.updateSingleField(json);
+        await userRepository!.updateSingleField(json);
 
         user.value.profilePicture = imageUrl;
         user.refresh();
@@ -310,7 +345,12 @@ class UserController extends GetxController {
   Future<String?> fetchUserPhoneNumber(String initial) async {
     try {
       profileLoading.value = true;
-      final user = await userRepository.fetchUserPhoneNumber(initial);
+      if (userRepository == null) {
+        profileLoading.value = false;
+        return null;
+      }
+
+      final user = await userRepository!.fetchUserPhoneNumber(initial);
       profileLoading.value = false;
       return user.phoneNumber;
     } catch (e) {

@@ -4,21 +4,18 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_notification_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
-import 'package:mdmpi_mobile_app/common/services/implementations/notification_service.dart';
 import 'package:mdmpi_mobile_app/common/services/implementations/permission_service.dart';
 import 'package:mdmpi_mobile_app/data/controllers/navigation_controller.dart';
-import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'app.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 
 import 'data/local/database_helper.dart';
-import 'firebase_options.dart';
+// ...existing code...
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/platform_init.dart';
 
 class MyHttpOverrides extends HttpOverrides {
   @override
@@ -51,6 +48,37 @@ Future<void> main() async {
   final WidgetsBinding widgetsBinding =
       WidgetsFlutterBinding.ensureInitialized();
 
+  // Preserve the native splash screen while we perform platform
+  // initialization. It will be removed either by the Authentication
+  // repository when Firebase is initialized, or by the code below when
+  // running on a platform without Firebase configured.
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
+  // Centralized platform initialization (sqflite, Firebase when configured,
+  // and notification service). Provide a notification tap handler so taps
+  // can navigate the app when notifications are received.
+  final firebaseApp = await initPlatform(
+    initFirebase: true,
+    onSelectNotification: (payload) {
+      try {
+        final selectedPayload = Get.put(NavigationController());
+        selectedPayload.selectedIndex.value = 1;
+      } catch (_) {}
+    },
+  );
+
+  logDebug('initPlatform completed; firebase initialized: ${firebaseApp != null}');
+
+  // If Firebase wasn't initialized (e.g., running on Windows/macOS/Linux
+  // without FlutterFire configuration), remove the native splash so the
+  // UI can appear. When AuthenticationRepository is initialized it will
+  // remove the splash itself in its onReady().
+  if (firebaseApp == null) {
+    try {
+      FlutterNativeSplash.remove();
+    } catch (_) {}
+  }
+
   ///  Load .env file
   await dotenv.load(fileName: ".env");
   await GetStorage.init();
@@ -61,6 +89,7 @@ Future<void> main() async {
   try {
     /// Initialize the database
     await dHelper.database;
+    logDebug('Database initialized successfully');
   } catch (e) {
     logDebug('Error initializing database: $e');
   }
@@ -127,21 +156,14 @@ Future<void> main() async {
 
   //  Todo: Init Payment Methods
   /// --  Await Splash until other items Load
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-
-  /// --  Initialize Firebase & Authentication Repository
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)
-      .then((FirebaseApp value) => Get.put(AuthenticationRepository()));
+  // (already preserved earlier)
 
   HttpOverrides.global = MyHttpOverrides();
 
-  // Initialize notifications via service and set tap handler
-  final notificationService = Get.put<INotificationService>(NotificationService());
-  await notificationService.init(onSelectNotification: (payload) {
-    final selectedPayload = Get.put(NavigationController());
-    selectedPayload.selectedIndex.value = 1;
-  });
+  // Notification tap handler was registered during initPlatform via
+  // onSelectNotification.
 
   //  Load all the Material Design / Themes / Localizations / Bindings
+  logDebug('Calling runApp()');
   runApp(const App());
 }

@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+// ...existing code...
+import 'package:mdmpi_mobile_app/base/utils/platform_init.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 
 /// Debug entrypoint: prints counts and some metadata for the signature/image tables.
@@ -8,6 +10,9 @@ import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Ensure sqflite FFI is initialized on desktop before accessing the DB
+  ensureSqfliteFfiInitialized();
   try {
     final helper = DatabaseHelper.instance;
 

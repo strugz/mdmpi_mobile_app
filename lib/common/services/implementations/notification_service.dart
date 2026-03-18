@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../services/abstracts/i_notification_service.dart';
 
@@ -12,7 +14,25 @@ class NotificationService implements INotificationService {
     if (_initialized) return;
 
     const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
-    const initSettings = InitializationSettings(android: androidInit);
+
+    // Provide platform-specific initialization for desktop (Windows) to avoid
+    // runtime errors when targeting Windows platform where Windows settings
+    // are required by the plugin.
+    InitializationSettings initSettings;
+    if (!kIsWeb && Platform.isWindows) {
+      // WindowsInitializationSettings requires several named parameters.
+      final windowsInit = WindowsInitializationSettings(
+        appName: 'MDMPI',
+        appUserModelId: 'com.mdmpi.app',
+        // GUID must be a valid GUID string. Using a constant developer GUID
+        // is acceptable for local/dev/testing. Replace with your app's GUID
+        // for production if required by your installer/shortcut.
+        guid: '11111111-1111-1111-1111-111111111111',
+      );
+      initSettings = InitializationSettings(windows: windowsInit);
+    } else {
+      initSettings = InitializationSettings(android: androidInit);
+    }
 
     await _plugin.initialize(initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
@@ -32,13 +52,20 @@ class NotificationService implements INotificationService {
     if (!_initialized) {
       await init();
     }
-    const android = AndroidNotificationDetails(
-      'default_channel',
-      'Default Notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-    );
-    const details = NotificationDetails(android: android);
+    NotificationDetails details;
+    if (!kIsWeb && Platform.isWindows) {
+      final windowsDetails = WindowsNotificationDetails();
+      details = NotificationDetails(windows: windowsDetails);
+    } else {
+      const android = AndroidNotificationDetails(
+        'default_channel',
+        'Default Notifications',
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+      details = const NotificationDetails(android: android);
+    }
+
     await _plugin.show(id, title, body, details, payload: payload);
   }
 
@@ -47,4 +74,3 @@ class NotificationService implements INotificationService {
     await _plugin.cancelAll();
   }
 }
-
