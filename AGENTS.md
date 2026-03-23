@@ -1,5 +1,8 @@
+
 AGENTS for mdmpi_mobile_app
 ==========================
+
+**Platform Note:** Always assume that all code, scripts, and guidance must cater to both Windows and Android app targets. All workflows, integrations, and platform-specific logic should be compatible with both environments unless explicitly stated otherwise.
 
 Purpose
 -------
@@ -11,7 +14,8 @@ Quick start (commands)
 - Static analysis: `flutter analyze`
 - Run tests: `flutter test`
 - Generate module QA: `dart run bin/generate_module_qa.dart --name "My Module" --area Logistics --routes "/route"`
-- Inspect DB images: `dart run bin/inspect_db_images.dart`
+ - Inspect DB images: `dart run bin/inspect_db_images.dart`
+ - In-app DB inspection: Use the Local Storage Data Viewer (see below for details)
 
 Important architectural notes
 ----------------------------
@@ -20,6 +24,8 @@ Important architectural notes
   - Controllers resolve deps with `Get.find()` — do not instantiate repos inside controllers.
 - Early/ eager registration: some platform services are registered in `lib/main.dart` using `Get.put(...)` before bindings run (notably `PermissionService`, `NotificationService`, and `AuthenticationRepository` after Firebase init). See `lib/main.dart`.
 - Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`.
+
+- **Local Storage Data Viewer:** A developer-only tool for inspecting and managing SQLite database tables is available under `lib/features/logistics/screens/data_test/`. It is accessible from the Settings screen ("Developer Tools" section) and via the `/local-storage-viewer` route. This tool is for debugging and should not be exposed in production builds. See the feature's `README.md` for details.
 
 - Note: several core services/controllers are registered eagerly via `Get.put` in `lib/bindings/general_bindings.dart` (not only in `main.dart`). Examples: `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering used by the app.
 
@@ -32,6 +38,8 @@ Conventions & patterns to follow (concrete)
 - UI: Keep business/data logic out of widget `build`. Use controllers for logic and `Obx` to observe minimal subtrees.
 
 - Prefer domain-specific helpers and global formatters instead of private utility methods inside widgets. For example, the collection feature now centralizes status handling in `features/collection/helpers/CollectionStatusColors` and uses a shared `BFormatter.formatPesoCurrency` (see `lib/base/utils/formatters/`) and a reusable `BIconLabelChip` widget in `lib/common/widgets/` for compact metadata chips.
+
+- **Developer/debug tools:** For in-app developer tools (such as the Local Storage Data Viewer), it is acceptable to instantiate controllers directly in the widget using `Get.put(...)` rather than registering in `GeneralBindings`. See `local_storage_data_viewer.dart` for an example. These tools must remain hidden from production users.
 
 DI / registration gotchas
 ------------------------
@@ -56,6 +64,8 @@ Where to look for examples (key files)
 - Feature QA tooling: `bin/generate_module_qa.dart` and `lib/features/logistics/screens/data_test/IMPLEMENTATION_SUMMARY.md`
 - DB helper & schema: `lib/data/local/database_helper.dart` and `lib/data/local/db_schema.dart`
 
+- Local Storage Data Viewer: `lib/features/logistics/screens/data_test/local_storage_data_viewer.dart`, `local_storage_data_controller.dart`, and documentation in the same folder (`README.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`).
+
 Developer workflows & scripts
 -----------------------------
 - Standard local dev: `flutter pub get` ; `flutter run` (use PowerShell on Windows; chain with `;` if needed).
@@ -63,6 +73,8 @@ Developer workflows & scripts
 - Repo-specific generators:
   - `dart run bin/generate_module_qa.dart --name "Name" --area Logistics --routes "/route"` (creates docs/modules/<slug>/README.md and test CSVs)
   - `dart run bin/inspect_db_images.dart` (inspects DB images/signatures)
+
+- In-app DB inspection: Open the app, go to Settings > Developer Tools > Local Storage Viewer to inspect and manage local database tables. For direct navigation in development, use `Get.to(() => const LocalStorageDataViewer())`.
 
 Integration & external deps to be aware of
 ----------------------------------------
@@ -79,6 +91,8 @@ What NOT to change / common pitfalls
 - Do not move or rename `GeneralBindings` or migrate DI to a different pattern — bindings ordering is relied upon.
 - Avoid registering repositories inline in controllers with `Get.put(...)`. Use `Get.find()` and register in `GeneralBindings` instead.
 - Avoid `print` statements and in-widget business logic.
+
+- Do not expose the Local Storage Data Viewer to production users; it is for development/debugging only.
 
 How to contribute code changes as an agent
 ----------------------------------------
