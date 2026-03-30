@@ -193,8 +193,7 @@ class BRequestDetails extends StatelessWidget {
                         padding: EdgeInsets.zero,
                       ),
                     ),
-                  if (hasDriver && hasHelper)
-                    const SizedBox(width: BSizes.xs),
+                  if (hasDriver && hasHelper) const SizedBox(width: BSizes.xs),
                   if (hasHelper)
                     Expanded(
                       child: BLabelValueText(
@@ -221,60 +220,63 @@ class BRequestDetails extends StatelessWidget {
               const BTextDivider(text: 'Proof of Delivery'),
               const SizedBox(height: BSizes.sm),
               Obx(
-                () => Center(
-                  child: Column(
-                    children: [
-                      IconButton(
-                        onPressed: () => Get.to(
-                          () => BDropOffCapture(
-                            title: 'Proof Picture',
-                            onCapture: (camera) async =>
-                                camera.takePictureWithAnimation(
-                              updatedRequest.id,
+                () {
+                  // Read both sources so GetX registers the reactive dependency
+                  final String? storedPath = textStorage.getText('proofImagePath');
+                  final String cameraPath = cameraController.imageProofPath.value;
+                  final String displayPath = storedPath ?? cameraPath;
+
+                  return Center(
+                    child: Column(
+                      children: [
+                        IconButton(
+                          onPressed: () => Get.to(
+                            () => BDropOffCapture(
+                              title: 'Proof Picture',
+                              onCapture: (camera) async =>
+                                  camera.takePictureWithAnimation(
+                                updatedRequest.id,
+                              ),
                             ),
                           ),
+                          icon: Icon(Iconsax.camera, size: 25, color: iconColor),
                         ),
-                        icon: Icon(Iconsax.camera, size: 25, color: iconColor),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: BProductTitleText(
-                              title:
-                                  textStorage.getText('proofImagePath') ??
-                                      cameraController.imageProofPath.value,
-                              maxLines: 1,
-                              smallSize: true,
-                              fontColor: textColor,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: BProductTitleText(
+                                title: displayPath,
+                                maxLines: 1,
+                                smallSize: true,
+                                fontColor: textColor,
+                              ),
                             ),
-                          ),
-                          if ((textStorage.getText('proofImagePath') ??
-                                  cameraController.imageProofPath.value)
-                              .isNotEmpty)
-                            Listener(
-                              onPointerDown: (_) {
-                                final imagePath = textStorage
-                                        .getText('proofImagePath') ??
-                                    cameraController.imageProofPath.value;
-                                if (imagePath.isNotEmpty) {
-                                  _showImagePreview(context, imagePath);
-                                }
-                              },
-                              onPointerUp: (_) {
-                                if (Navigator.canPop(context)) {
-                                  Navigator.pop(context);
-                                }
-                              },
-                              child: Icon(Iconsax.eye,
-                                  color: iconColor, size: 24),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                            if (displayPath.isNotEmpty)
+                              Listener(
+                                onPointerDown: (_) {
+                                  if (displayPath.isNotEmpty) {
+                                    _showImagePreview(context, displayPath);
+                                  }
+                                },
+                                onPointerUp: (_) {
+                                  if (Navigator.canPop(context)) {
+                                    Navigator.pop(context);
+                                  }
+                                },
+                                child: Icon(Iconsax.eye,
+                                    color: iconColor, size: 24),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
+              const SizedBox(height: BSizes.xs),
+              const Divider(),
+              const SizedBox(height: BSizes.xs),
               const SizedBox(height: BSizes.xs),
               const Divider(),
               const SizedBox(height: BSizes.xs),
