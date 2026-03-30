@@ -25,6 +25,11 @@ Important architectural notes
 - Early/ eager registration: some platform services are registered in `lib/main.dart` using `Get.put(...)` before bindings run (notably `PermissionService`, `NotificationService`, and `AuthenticationRepository` after Firebase init). See `lib/main.dart`.
 - Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`.
 
+ - Text extraction service: The repository now registers an `ITextExtractor` implementation (`DocumentReferenceExtractor`) in `GeneralBindings` and composes it into camera-related controllers. Camera/text composition example:
+   - `lib/bindings/general_bindings.dart` registers `Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(), fenix: true);`
+   - `CameraHandlerController` / `CameraController` instances obtain `ICameraService`, `ITextRecognitionService`, and `ITextExtractor` via `Get.find()` (see `CameraHandlerController` registration in `GeneralBindings`).
+   - Use `Get.find<ITextExtractor>()` in controllers/widgets when you need the extractor. Implement new extractors under `lib/common/services/abstracts/` and register them in `GeneralBindings` following the existing pattern.
+
 - **Local Storage Data Viewer:** A developer-only tool for inspecting and managing SQLite database tables is available under `lib/features/logistics/screens/data_test/`. It is accessible from the Settings screen ("Developer Tools" section) and via the `/local-storage-viewer` route. This tool is for debugging and should not be exposed in production builds. See the feature's `README.md` for details.
 
 - Note: several core services/controllers are registered eagerly via `Get.put` in `lib/bindings/general_bindings.dart` (not only in `main.dart`). Examples: `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering used by the app.
@@ -63,6 +68,11 @@ Where to look for examples (key files)
 - Routes constants and GetPage list: `lib/base/utils/routes/` (BRoutes/AppRoutes)
 - Feature QA tooling: `bin/generate_module_qa.dart` and `lib/features/logistics/screens/data_test/IMPLEMENTATION_SUMMARY.md`
 - DB helper & schema: `lib/data/local/database_helper.dart` and `lib/data/local/db_schema.dart`
+
+ - Text extraction & camera examples:
+   - `lib/common/services/abstracts/i_text_extractor.dart` (interface + `DocumentReferenceExtractor` implementation)
+   - `lib/common/controllers/camera_controller.dart` (camera controller usage)
+   - `lib/common/widgets/scanner/simple_text_scanner.dart` (example widget that resolves `ITextExtractor`)
 
 - Local Storage Data Viewer: `lib/features/logistics/screens/data_test/local_storage_data_viewer.dart`, `local_storage_data_controller.dart`, and documentation in the same folder (`README.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`).
 
@@ -108,10 +118,16 @@ The project normally keeps docs in `docs/`. This `AGENTS.md` was created at the 
 
 Contact points in repo (where agents should look first)
 -----------------------------------------------------
-- `.github/copilot-instructions.md` — project-specific AI guidelines (read first)
+- `.github/copilot-instructions.md` — project-specific AI guidelines (read first). NOTE: this file is referenced in docs but may not be checked into the repository; if it's missing, consult `docs/README.md` and the project `README.md` for equivalent conventions and the top-level `AGENTS.md` itself.
 - `lib/bindings/general_bindings.dart` — DI and registration order
 - `lib/main.dart` — early initializers and platform registration
 - `lib/base/utils/result.dart` and `lib/base/utils/logger.dart` — error & logging APIs
+
+Agent integration (use the platform-provided subagents)
+-----------------------------------------------------
+- The environment exposes a small set of specialized subagents. When a task matches a subagent's role (for example: research, plan, or outline), prefer delegating using the `run_subagent` tool.
+- Available example: `Plan` — use `run_subagent(agentName: "Plan", task: "<detailed task...>")` to produce step-by-step research or implementation plans before making changes. This helps with multi-step refactors, large edits, or complex design decisions.
+- Example usage pattern: for multi-step work, first call the `Plan` agent to produce an ordered checklist, then proceed to make edits and tests following that checklist.
 
 End of guidance
 

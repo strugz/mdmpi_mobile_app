@@ -18,7 +18,8 @@ import '../../models/inventory_item_model.dart';
 class InventoryItemRepository extends GetxController {
   static InventoryItemRepository get instance => Get.find();
 
-  String get _baseUrl => dotenv.env['API_URL'] ?? 'https://inventory.mdmpi.com.ph';
+  String get _baseUrl =>
+      dotenv.env['API_URL'] ?? 'https://inventory.mdmpi.com.ph';
   Uri _uri(String path) => Uri.parse('$_baseUrl$path');
 
   /// Uploads [file] using multipart/form-data with form key `imageFile`.
@@ -57,14 +58,16 @@ class InventoryItemRepository extends GetxController {
       multipart.files.add(fileStream);
 
       // Send with a generous timeout
-      final streamed = await multipart.send().timeout(const Duration(seconds: 90));
+      final streamed =
+          await multipart.send().timeout(const Duration(seconds: 90));
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode != 200) {
         final body = response.body;
         BLoaders.errorSnackBar(
             title: 'OCR Failed',
-            message: 'Server returned ${response.statusCode}: ${body.isNotEmpty ? body : 'no body'}');
+            message:
+                'Server returned ${response.statusCode}: ${body.isNotEmpty ? body : 'no body'}');
         return Result.failure('Server error: ${response.statusCode}');
       }
 
@@ -136,7 +139,8 @@ class InventoryItemRepository extends GetxController {
     } on PlatformException catch (e) {
       return Result.failure(TPlatformException(e.code).message);
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'OCR Error', message: 'An error occurred: $e');
+      BLoaders.errorSnackBar(
+          title: 'OCR Error', message: 'An error occurred: $e');
       return Result.failure(e.toString());
     }
   }
@@ -145,20 +149,25 @@ class InventoryItemRepository extends GetxController {
   /// and optional [prompt]. The request body follows the shape:
   /// { contents: [ { parts: [ { inlineData: { mimeType, data } }, { text } ] } ] }
   /// On success returns Result.success(List<InventoryItemModel>), otherwise Result.failure.
-  Future<Result<List<InventoryItemModel>>> analyzeFileWithGemini(File file, {String? prompt}) async {
+  Future<Result<List<InventoryItemModel>>> analyzeFileWithGemini(File file,
+      {String? prompt}) async {
     try {
       if (!await file.exists()) {
         return Result.failure('File does not exist: ${file.path}');
       }
 
-      final model = dotenv.env['AI_TOOLKIT_MODEL'] ?? dotenv.env['AI_MODEL'] ?? '';
-      final apiKey = dotenv.env['AI_TOOLKIT_API_KEY'] ?? dotenv.env['API_KEY'] ?? '';
+      final model =
+          dotenv.env['AI_TOOLKIT_MODEL'] ?? dotenv.env['AI_MODEL'] ?? '';
+      final apiKey =
+          dotenv.env['AI_TOOLKIT_API_KEY'] ?? dotenv.env['API_KEY'] ?? '';
 
       if (model.isEmpty || apiKey.isEmpty) {
-        return Result.failure('AI configuration missing (AI_TOOLKIT_MODEL / AI_TOOLKIT_API_KEY)');
+        return Result.failure(
+            'AI configuration missing (AI_TOOLKIT_MODEL / AI_TOOLKIT_API_KEY)');
       }
 
-      final googleUrl = 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey';
+      final googleUrl =
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$apiKey';
 
       final bytes = await file.readAsBytes();
       final b64 = base64Encode(bytes);
@@ -179,7 +188,9 @@ class InventoryItemRepository extends GetxController {
       }
 
       final mimeType = mimeTypeFromPath(file.path);
-      final promptText = prompt ?? dotenv.env['AI_PROMPT'] ?? 'Analyze this image and return the results as structured JSON.';
+      final promptText = prompt ??
+          dotenv.env['AI_PROMPT'] ??
+          'Analyze this image and return the results as structured JSON.';
 
       final requestBody = {
         'contents': [
@@ -200,7 +211,9 @@ class InventoryItemRepository extends GetxController {
       };
 
       final resp = await http
-          .post(Uri.parse(googleUrl), headers: {'Content-Type': 'application/json'}, body: jsonEncode(requestBody))
+          .post(Uri.parse(googleUrl),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(requestBody))
           .timeout(const Duration(seconds: 120));
 
       if (resp.statusCode == 400) {
@@ -212,7 +225,8 @@ class InventoryItemRepository extends GetxController {
               if (d is Map<String, dynamic>) {
                 final reason = d['reason'] as String? ?? '';
                 if (reason.toLowerCase().contains('api_key_invalid')) {
-                  return Result.failure('AI API key invalid: verify AI_TOOLKIT_API_KEY and Generative Language API enablement.');
+                  return Result.failure(
+                      'AI API key invalid: verify AI_TOOLKIT_API_KEY and Generative Language API enablement.');
                 }
               }
             }
@@ -225,6 +239,9 @@ class InventoryItemRepository extends GetxController {
       }
 
       final decoded = jsonDecode(resp.body);
+
+      print("HeHim: $decoded");
+
       String? textContent;
 
       try {
@@ -256,15 +273,19 @@ class InventoryItemRepository extends GetxController {
               }
 
               if (textContent == null) {
-                if (first['output'] is String) textContent = first['output'] as String;
-                else if (first['text'] is String) textContent = first['text'] as String;
+                if (first['output'] is String) {
+                  textContent = first['output'] as String;
+                } else if (first['text'] is String)
+                  textContent = first['text'] as String;
               }
             }
           }
         }
       } catch (_) {}
 
-      final generatedText = (textContent != null && textContent.isNotEmpty) ? textContent : resp.body;
+      final generatedText = (textContent != null && textContent.isNotEmpty)
+          ? textContent
+          : resp.body;
 
       List<dynamic>? items;
       try {
@@ -298,6 +319,80 @@ class InventoryItemRepository extends GetxController {
       return Result.success(parsed);
     } catch (e) {
       return Result.failure('Failed to analyze image with AI: $e');
+    }
+  }
+
+  /// Fetches inventory items from the server.
+  ///
+  /// - [path] is the endpoint path appended to the base API URL (default: '/api/inventory/items').
+  /// - [queryParameters] optional map of query parameters.
+  ///
+  /// Returns a [Result] containing the parsed list of [InventoryItemModel] on success,
+  /// or a failure message on error.
+  Future<Result<List<InventoryItemModel>>> fetchItems(String requestId) async {
+    try {
+      String path = '/api4/Item/request/$requestId';
+      var uri = _uri(path);
+
+      final resp = await http.get(uri).timeout(const Duration(seconds: 30));
+
+      if (resp.statusCode != 200) {
+        final body = resp.body;
+        BLoaders.errorSnackBar(
+            title: 'Fetch Failed',
+            message:
+                'Server returned ${resp.statusCode}: ${body.isNotEmpty ? body : 'no body'}');
+        return Result.failure('Server error: ${resp.statusCode}');
+      }
+
+      final decoded = jsonDecode(resp.body);
+
+
+
+      List<dynamic>? items;
+      if (decoded is List) {
+        items = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        // Common keys that might contain the list
+        if (decoded['items'] is List) {
+          items = decoded['items'] as List<dynamic>;
+        } else if (decoded['inventoryItems'] is List) {
+          items = decoded['inventoryItems'] as List<dynamic>;
+        } else if (decoded['data'] is List) {
+          items = decoded['data'] as List<dynamic>;
+        }
+      }
+
+      if (items == null) {
+        // Last resort: try to parse body as a list
+        try {
+          final alt = jsonDecode(resp.body);
+          if (alt is List) items = alt;
+        } catch (_) {}
+      }
+
+      if (items == null) {
+        BLoaders.errorSnackBar(
+            title: 'Fetch Parse Error', message: 'Could not parse response');
+        return Result.failure('Failed to parse response');
+      }
+
+      final parsed = items
+          .whereType<dynamic>()
+          .map((e) => e is Map<String, dynamic>
+              ? InventoryItemModel.fromJson(e)
+              : InventoryItemModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+
+      return Result.success(parsed);
+    } on TFormatException catch (_) {
+      return Result.failure('Invalid response format');
+    } on PlatformException catch (e) {
+      return Result.failure(TPlatformException(e.code).message);
+    } catch (e) {
+      BLoaders.errorSnackBar(
+          title: 'Fetch Error', message: 'An error occurred: $e');
+      return Result.failure(e.toString());
     }
   }
 }

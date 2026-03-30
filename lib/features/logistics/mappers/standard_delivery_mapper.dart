@@ -4,12 +4,14 @@ import 'package:mdmpi_mobile_app/features/logistics/dtos/client_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/remarks_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/image_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/signature_dto.dart';
+import 'dart:convert';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_insert_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_update_dto.dart';
 
 // Import the concrete models used by helpers
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 
 class StandardDeliveryMapper {
   static StandardDeliveryModel fromDto(StandardDeliveryDto dto) {
@@ -109,7 +111,8 @@ class StandardDeliveryMapper {
   }
 
   /// Build API payload for inserting a request. Returns a typed DTO.
-  static StandardDeliveryInsertDto toInsertDto(StandardDeliveryModel m) {
+  static StandardDeliveryInsertDto toInsertDto(StandardDeliveryModel m, [List<InventoryItemModel>? items]) {
+
     return StandardDeliveryInsertDto(
       requestClientID: m.clientId.isNotEmpty ? m.clientId : null,
       requestShippingMethod: m.shippingMethod.isNotEmpty ? m.shippingMethod : null,
@@ -120,6 +123,7 @@ class StandardDeliveryMapper {
       requestBy: m.requestBy.isNotEmpty ? m.requestBy : null,
       requestCreatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
       documentReference: m.documentReference.isNotEmpty ? m.documentReference : null,
+      items: items,
       itemCategoryID: m.itemCategoryID.isNotEmpty ? int.tryParse(m.itemCategoryID) : null,
       formCategoryID: m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
     );

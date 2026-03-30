@@ -70,8 +70,7 @@ class StandardDeliveryDataManager {
   /// - Sends WebSocket notification
   /// - Sends SMS to managers
   /// - Resets form state
-  Future<void> saveRequestFromForm(
-      IDeliveryRequestController controller) async {
+  Future<void> saveRequestFromForm(IDeliveryRequestController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -87,7 +86,9 @@ class StandardDeliveryDataManager {
       // Note: Input validation is now handled by UI form validators
       // Only business logic and data transformation remain here
 
-      final client = formState.clientInformation.value!; // Safe due to UI validation
+      final client =
+          formState.clientInformation.value!; // Safe due to UI validation
+
 
       final docRefs = formState.documentReferenceControllers
           .map((c) => c.text.trim())
@@ -157,8 +158,8 @@ class StandardDeliveryDataManager {
       await _messageController.sendSmsMessage(
           managersPhoneNumber, BTexts.statusNewRequest, newRequest);
 
-      // Save to repository
-      await _repository.insertDelivery(newRequest);
+      // Save to repository - include scanned items from form state
+      await _repository.insertDelivery(newRequest, formState.scannedInventoryItems.toList());
 
       // Reload requests based on form category
       // If it's Hotline Direct (form category ID '8'), refresh HotlineDirectController
@@ -211,8 +212,7 @@ class StandardDeliveryDataManager {
   ) async {
     // Validate delivery info fields before entering the try block
     // so the finally block (which pops the navigator) is not reached on failure.
-    if (newStatus == BTexts.statusItemPrepared &&
-        request.deliveredBy.isEmpty) {
+    if (newStatus == BTexts.statusItemPrepared && request.deliveredBy.isEmpty) {
       if (!_validateDeliveryInfo(controller.formState)) {
         return;
       }
@@ -346,7 +346,6 @@ class StandardDeliveryDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-
           await _repository.updateDelivery(updatedRequest);
 
           await _dbHelper.updateRequest(requestModel: updatedRequest);

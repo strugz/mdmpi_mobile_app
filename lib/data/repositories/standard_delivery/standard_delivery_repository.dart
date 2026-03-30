@@ -3,7 +3,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/standard_delivery_mapper.dart';
 import 'dart:convert';
@@ -14,10 +16,17 @@ import '../../../features/logistics/models/cancel_remarks_model.dart';
 class StandardDeliveryRepository extends GetxController {
   static StandardDeliveryRepository get instance => Get.find();
 
-  Future<void> insertDelivery(StandardDeliveryModel requestData) async {
+  Future<void> insertDelivery(StandardDeliveryModel requestData,
+      [List<InventoryItemModel>? items]) async {
     try {
-      final dto = StandardDeliveryMapper.toInsertDto(requestData);
+      // Map request + scanned items into DTO
+      // Prefer explicitly provided items parameter; otherwise, try to read
+      // `items` from the requestData (some callers may attach items there).
+      final dto = StandardDeliveryMapper.toInsertDto(requestData, items);
       final payload = dto.toJson();
+
+      logDebug('⚠️ Could not refresh Hotline Direct list: ${jsonEncode(payload)}');
+
 
       final response = await http.post(
         Uri.parse("${dotenv.env['API_URL']!}/api4/request"),
@@ -31,8 +40,9 @@ class StandardDeliveryRepository extends GetxController {
         BLoaders.errorSnackBar(
             title: 'Error',
             message:
-                'Failed to insert request. Status code: ${response.statusCode}');
-      }
+            'Failed to insert request. Status code: ${response.statusCode}');
+      }      print(jsonEncode(payload));
+
     } on TFormatException catch (_) {
       throw TFormatException();
     } on PlatformException catch (e) {
@@ -75,7 +85,8 @@ class StandardDeliveryRepository extends GetxController {
           message = rawBody.toString();
         }
 
-        if (message == 'Request updated successfully.' || message.contains('updated successfully')) {
+        if (message == 'Request updated successfully.' ||
+            message.contains('updated successfully')) {
           BLoaders.successSnackBar(title: 'Information', message: message);
           return;
         } else {
@@ -96,11 +107,13 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  Future<void> cancelDelivery(String requestID, String remarks, String user) async {
+  Future<void> cancelDelivery(
+      String requestID, String remarks, String user) async {
     try {
       final response = await http
           .patch(
-            Uri.parse("${dotenv.env['API_URL']!}/api4/request/cancel/$requestID/$user"),
+            Uri.parse(
+                "${dotenv.env['API_URL']!}/api4/request/cancel/$requestID/$user"),
             headers: <String, String>{
               'Content-Type': 'application/json; charset=UTF-8',
             },
@@ -162,13 +175,14 @@ class StandardDeliveryRepository extends GetxController {
           } else if (decoded.containsKey('items') && decoded['items'] is List) {
             jsonResponse = decoded['items'];
           } else {
-            final List<dynamic>? found = decoded.values.firstWhere(
-                (v) => v is List,
-                orElse: () => null) as List<dynamic>?;
+            final List<dynamic>? found =
+                decoded.values.firstWhere((v) => v is List, orElse: () => null)
+                    as List<dynamic>?;
             if (found != null) {
               jsonResponse = found;
             } else {
-              throw Exception('Unexpected API response format: ${response.body}');
+              throw Exception(
+                  'Unexpected API response format: ${response.body}');
             }
           }
         } else {
@@ -178,7 +192,9 @@ class StandardDeliveryRepository extends GetxController {
         final List<StandardDeliveryModel> parsed = [];
         for (var item in jsonResponse) {
           try {
-            final map = item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item);
+            final map = item is Map<String, dynamic>
+                ? item
+                : Map<String, dynamic>.from(item);
             parsed.add(StandardDeliveryModel.fromJson(map));
           } catch (e) {
             print('Failed to parse request item: $e');

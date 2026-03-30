@@ -171,8 +171,8 @@ class HotlineDirectDataManager {
       await _messageController.sendSmsMessage(
           managersPhoneNumber, BTexts.statusNewRequest, newRequest);
 
-      // Save to repository
-      await _repository.insertDelivery(newRequest);
+      // Save to repository - include scanned items from form state
+      await _repository.insertDelivery(newRequest, formState.scannedInventoryItems.toList());
 
       // Reload requests
       await fetchHotlineDirectRequests(

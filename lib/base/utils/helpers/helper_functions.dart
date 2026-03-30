@@ -158,4 +158,30 @@ class BHelperFunctions {
     }
   }
 
+  /// Returns the length of a list-like object in a null-safe way.
+  ///
+  /// Supports:
+  /// - RxList (GetX)
+  /// - List / Iterable
+  /// - Any object exposing a `length` property (attempted dynamically)
+  ///
+  /// Returns 0 for null or when the length cannot be determined.
+  static int listCount(dynamic items) {
+    if (items == null) return 0;
+
+    try {
+      if (items is RxList) return items.length;
+      if (items is List) return items.length;
+      if (items is Iterable) return items.length;
+
+      // Fallback: try to read a dynamic `length` property
+      final dynamic len = (items as dynamic).length;
+      if (len is int) return len;
+    } catch (_) {
+      // ignore and return 0
+    }
+
+    return 0;
+  }
+
 }

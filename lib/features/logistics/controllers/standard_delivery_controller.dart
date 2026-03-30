@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/inventory/inventory_item_repository.dart';
@@ -415,11 +416,12 @@ class StandardDeliveryController extends GetxController
       final result = await repo.analyzeFile(file);
 
       if (result.isSuccess) {
-        // store scanned items in the form state so UI/widgets bound to the form
-        // will react accordingly
-        formState.scannedInventoryItems.addAll(result.value);
+        // Merge / deduplicate incoming items with existing scanned items to
+        // prevent duplicates when the same file is processed more than once
+        // or when multiple UI controls trigger analysis.
+        _mergeScannedItems(result.value);
         logDebug(
-            'StandardDeliveryController: Parsed ${result.value.length} inventory items');
+            'StandardDeliveryController: Parsed ${result.value.length} inventory items (merged)');
       } else {
         analyzeError.value = result.error;
         logDebug(
@@ -561,6 +563,73 @@ class StandardDeliveryController extends GetxController
     analyzeError.value = null;
   }
 
+  /// Update a scanned inventory item by a stable key and notify observers.
+  ///
+  /// [keyValue] — the identification value to find the item. By default this
+  /// matches `itemCode`. If your model has a stable `id`, set `byId: true` and
+  /// pass the id string instead.
+  ///
+  /// The method is defensive:
+  /// - finds the current index using the key (safer than trusting a captured index)
+  /// - updates the list element in-place and refreshes the RxList to notify observers
+  /// Returns true if an existing item was found and updated, false otherwise.
+  bool updateScannedItemByKey(String keyValue, InventoryItemModel updated,
+      {bool byId = false}) {
+    try {
+      final items = formState.scannedInventoryItems;
+      final int idx = byId
+          ? items.indexWhere((it) {
+              try {
+                final val = (it as dynamic).id;
+                return val != null && val.toString() == keyValue;
+              } catch (_) {
+                return false;
+              }
+            })
+          : items.indexWhere((it) => it.itemCode == keyValue);
+
+      if (idx != -1) {
+        items[idx] = updated;
+        // If it's an RxList this will notify Obx listeners.
+        try {
+          (items as dynamic).refresh();
+        } catch (_) {
+          // ignore if not RxList; caller can handle UI refresh if needed
+        }
+        return true;
+      }
+      return false;
+    } catch (e, st) {
+      // non-fatal: log for debugging
+      try {
+        logDebug('updateScannedItemByKey error: $e\n$st');
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  /// Update a scanned inventory item by object identity (exact instance match).
+  /// Returns true if found and updated, false otherwise.
+  bool updateScannedItemByIdentity(
+      InventoryItemModel original, InventoryItemModel updated) {
+    try {
+      final items = formState.scannedInventoryItems;
+      final idx = items.indexWhere((it) => identical(it, original));
+      if (idx != -1) {
+        items[idx] = updated;
+        try {
+          (items as dynamic).refresh();
+        } catch (_) {}
+        return true;
+      }
+    } catch (e, st) {
+      try {
+        logDebug('updateScannedItemByIdentity error: $e\n$st');
+      } catch (_) {}
+    }
+    return false;
+  }
+
   /// Analyze [file] using Google Generative Language (gemini) by sending the
   /// file bytes and prompt in the `contents` -> `parts` -> `inlineData` + `text`
   /// request body and extracting the first candidate content text from the
@@ -572,12 +641,17 @@ class StandardDeliveryController extends GetxController
       final repo = Get.find<InventoryItemRepository>();
       final result = await repo.analyzeFileWithGemini(file, prompt: prompt);
 
+
+      print(jsonEncode(result.value));
+
       if (result.isSuccess) {
-        formState.scannedInventoryItems.addAll(result.value);
-        logDebug('analyzeFileWithAiToolkit: Parsed ${result.value.length} inventory items via repository');
+        _mergeScannedItems(result.value);
+        logDebug(
+            'analyzeFileWithAiToolkit: Parsed ${result.value.length} inventory items via repository (merged)');
       } else {
         analyzeError.value = result.error;
-        logDebug('analyzeFileWithAiToolkit: repository error – ${result.error}');
+        logDebug(
+            'analyzeFileWithAiToolkit: repository error – ${result.error}');
       }
     } catch (e, st) {
       analyzeError.value = e.toString();
@@ -587,4 +661,52 @@ class StandardDeliveryController extends GetxController
     }
   }
 
+  /// Merge incoming scanned items into [formState.scannedInventoryItems].
+  ///
+  /// Merge strategy:
+  /// - If an incoming item has the same `itemCode` as an existing item, sum
+  ///   the quantities and merge batches. This prevents duplicate rows when
+  ///   the same file is processed twice or when different UI controls invoke
+  ///   analysis for the same file.
+  void _mergeScannedItems(List<InventoryItemModel> incoming) {
+    try {
+      final items = formState.scannedInventoryItems;
+
+      for (final inc in incoming) {
+        final idx = items.indexWhere((it) => it.itemCode == inc.itemCode);
+        if (idx != -1) {
+          final existing = items[idx];
+          final mergedQty = existing.qty + inc.qty;
+          // Merge batches by appending and de-duplicating by batchSerial
+          final Map<String, InventoryBatchModel> batchMap = {
+            for (final b in existing.batches) b.batchSerial: b
+          };
+          for (final b in inc.batches) {
+            batchMap[b.batchSerial] = b;
+          }
+
+          final merged = InventoryItemModel(
+            itemCode: existing.itemCode,
+            description: existing.description.isNotEmpty ? existing.description : inc.description,
+            qty: mergedQty,
+            unit: existing.unit.isNotEmpty ? existing.unit : inc.unit,
+            batches: batchMap.values.toList(),
+          );
+
+          items[idx] = merged;
+        } else {
+          items.add(inc);
+        }
+      }
+
+      // If RxList, refresh to notify listeners
+      try {
+        (items as dynamic).refresh();
+      } catch (_) {}
+    } catch (e, st) {
+      try {
+        logDebug('mergeScannedItems error: $e\n$st');
+      } catch (_) {}
+    }
+  }
 }

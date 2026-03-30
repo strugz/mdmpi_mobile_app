@@ -52,6 +52,7 @@ import '../features/logistics/controllers/delivery_location_controller.dart';
 import '../features/logistics/controllers/delivery_vehicle_controller.dart';
 import '../features/logistics/controllers/home_controller.dart';
 import '../features/logistics/controllers/standard_delivery_controller.dart';
+import '../features/logistics/controllers/inventory_item_controller.dart';
 import '../features/logistics/controllers/request_transport_controller.dart';
 import '../features/logistics/controllers/web_socket_delivery_controller.dart';
 import '../features/logistics/controllers/web_socket_dispatcher_controller.dart';
@@ -187,6 +188,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => HotlineDirectController(), fenix: true);
     Get.lazyPut(() => StockReceiveController(), fenix: true);
     Get.lazyPut(() => RequestController(), fenix: true);
+    Get.lazyPut(() => InventoryItemController(), fenix: true);
     Get.lazyPut(
         () => CameraHandlerController(
               cameraService: Get.find<ICameraService>(),

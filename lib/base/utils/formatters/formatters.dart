@@ -41,6 +41,12 @@ class BFormatter {
     return NumberFormat.currency(locale: 'en_US', symbol: '\$').format(amount);
   }
 
+  /// Formats a numeric value as an integer string (no decimals, no currency symbol).
+  /// Uses locale-aware grouping (commas) and rounds the value to nearest integer.
+  static String formatIntegerNoDecimal(double value) {
+    return NumberFormat('#,##0', 'en_US').format(value.round());
+  }
+
   static String formatPhoneNumber(String phoneNumber) {
     if (phoneNumber.length == 10) {
       return '(${phoneNumber.substring(0, 3)}) ${phoneNumber.substring(3, 6)} ${phoneNumber.substring(6)}';
