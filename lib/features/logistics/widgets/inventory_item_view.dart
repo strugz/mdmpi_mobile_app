@@ -48,7 +48,8 @@ class InventoryItemView extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: () => ctrl.toggleExpanded(itemKey),
+                // Only allow tapping to expand/collapse when there are batches.
+                onTap: item.batches.isNotEmpty ? () => ctrl.toggleExpanded(itemKey) : null,
                 child: Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -118,22 +119,24 @@ class InventoryItemView extends StatelessWidget {
                       ],
 
                       // Centered toggle below the description/top-row — keeps UI consistent
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
-                        child: Center(
-                          child: IconButton(
-                            visualDensity: VisualDensity.compact,
-                            tooltip: expanded ? 'Collapse' : 'Expand',
-                            onPressed: () => ctrl.toggleExpanded(itemKey),
-                            icon: AnimatedRotation(
-                              turns: expanded ? 0.5 : 0.0,
-                              duration: const Duration(milliseconds: 200),
-                              child: Icon(Icons.expand_more,
-                                  color: BColors.darkerGrey),
+                      // Only show the toggle when the item has batches to display.
+                      if (item.batches.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, bottom: 4.0),
+                          child: Center(
+                            child: IconButton(
+                              visualDensity: VisualDensity.compact,
+                              tooltip: expanded ? 'Collapse' : 'Expand',
+                              onPressed: () => ctrl.toggleExpanded(itemKey),
+                              icon: AnimatedRotation(
+                                turns: expanded ? 0.5 : 0.0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Icon(Icons.expand_more,
+                                    color: BColors.darkerGrey),
+                              ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -153,7 +156,8 @@ class InventoryItemView extends StatelessWidget {
                 ),
                 child: InventoryBatchDetails(batches: item.batches),
               ),
-              crossFadeState: expanded
+              // Only show the details area when expanded AND the item actually has batches.
+              crossFadeState: (expanded && item.batches.isNotEmpty)
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
               duration: const Duration(milliseconds: 200),

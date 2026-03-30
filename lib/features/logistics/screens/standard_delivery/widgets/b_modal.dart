@@ -75,6 +75,26 @@ class BModal extends StatelessWidget {
         statusToTextMapper: (status) => config.buttonLabel,
       ),
       children: [
+        // Inventory items: show a compact 'View Items' button that opens
+        // the full items page. Place this immediately after Document References
+        // so it is always shown under that section.
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Align(
+            alignment: Alignment.center,
+            child: TextButton.icon(
+              icon: const Icon(Icons.visibility),
+              label: const Text('View Items'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                foregroundColor: Theme.of(context).colorScheme.primary,
+              ),
+              onPressed: () {
+                Get.to(() => InventoryItemsPage(requestId: requestId));
+              },
+            ),
+          ),
+        ),
         // Cancel Remarks Section
         if (isCancelled)
           Obx(() {
@@ -98,26 +118,6 @@ class BModal extends StatelessWidget {
         RequestModalBody(
           requestModel: requestModel,
           requestController: controller,
-        ),
-        // Inventory items: show a compact 'View Items' button that opens
-        // the full items page. The actual items are loaded by the
-        // InventoryItemsPage to keep the modal lightweight.
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Align(
-            alignment: Alignment.center,
-            child: TextButton.icon(
-              icon: const Icon(Icons.visibility),
-              label: const Text('View Items'),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                foregroundColor: Theme.of(context).colorScheme.primary,
-              ),
-              onPressed: () {
-                Get.to(() => InventoryItemsPage(requestId: requestId));
-              },
-            ),
-          ),
         ),
         // Footer with proof capture and delivery details
         RequestModalFooter(
