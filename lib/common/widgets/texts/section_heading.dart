@@ -18,7 +18,7 @@ class BSectionHeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.start,
       children: [
         Text(title,
             style: Theme.of(context).textTheme.headlineMedium!.apply(color: textColor),

@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
-import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_bucket_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_list_tile.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
   const CollectionHomeScreen({super.key});
@@ -19,124 +20,176 @@ class CollectionHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            BPrimaryHeaderContainer(
-              child: Column(
-                children: [
-                  const BHomeAppBar(),
-                  const SizedBox(height: BSizes.spaceBtwSections),
-                ],
-              ),
+      body: Column(
+        children: [
+          // Non-scrollable header section
+          BPrimaryHeaderContainer(
+            child: Column(
+              children: [
+                const BHomeAppBar(),
+                const SizedBox(height: BSizes.spaceBtwSections),
+              ],
             ),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              child: BSectionHeading(
-                title: BTexts.collectionHomeTitle1,
-                showActionButton: false,
-              ),
+          ),
+          
+          // Total Collected Card
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+            child: CollectionSummaryCard(
+              title: 'Total Collected this Month',
+              value: '40,000,000',
+              icon: Icons.account_balance,
+              color: Colors.green,
+              expand: false,
+              onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Total Collected', color: Colors.green)),
             ),
-            const SizedBox(height: BSizes.spaceBtwSections),
+          ),
+          const SizedBox(height: BSizes.spaceBtwItems),
 
-            // Summary cards - Pending and Overdue on the same row, Completed below
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              child: Column(
-                children: const [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: CollectionSummaryCard(
-                          title: 'Pending',
-                          value: '12',
-                          icon: Icons.pending_actions,
-                          color: Colors.orange,
-                          expand: false,
-                        ),
+          // Collection bucket button
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+            child: Obx(() {
+              final controller = Get.find<CollectionActivityController>();
+              return CollectionBucketButton(
+                itemCount: controller.bucketItems.length,
+                onTap: () => Get.to(
+                      () => const CollectionBucketScreen(),
+                  transition: Transition.fade,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                ),
+              );
+            }),
+          ),
+
+          const SizedBox(height: BSizes.spaceBtwSections),
+
+          // Summary cards grid
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: CollectionSummaryCard(
+                        title: 'Core Status',
+                        value: '12',
+                        icon: Icons.pending_actions,
+                        color: Colors.blue,
+                        expand: false,
+                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Core Status', color: Colors.blue)),
                       ),
-                      SizedBox(width: BSizes.spaceBtwItems),
-                      Expanded(
-                        child: CollectionSummaryCard(
-                          title: 'Overdue',
-                          value: '3',
-                          icon: Icons.error,
-                          color: Colors.red,
-                          expand: false,
-                        ),
+                    ),
+                    const SizedBox(width: BSizes.spaceBtwItems),
+                    Expanded(
+                      child: CollectionSummaryCard(
+                        title: 'Delays',
+                        value: '3',
+                        icon: Icons.error,
+                        color: Colors.red,
+                        expand: false,
+                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Delays', color: Colors.red)),
                       ),
-                    ],
-                  ),
-                  SizedBox(height: BSizes.spaceBtwItems),
-                  CollectionSummaryCard(
-                    title: 'Completed',
-                    value: '128',
-                    icon: Icons.check_circle,
-                    color: Colors.green,
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: BSizes.spaceBtwItems),
+                Row(
+                  children: [
+                    Expanded(
+                      child: CollectionSummaryCard(
+                        title: 'Completed',
+                        value: '128',
+                        icon: Icons.check_circle,
+                        color: Colors.green,
+                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Completed', color: Colors.green)),
+                      ),
+                    ),
+                    const SizedBox(width: BSizes.spaceBtwItems),
+                    Expanded(
+                      child: CollectionSummaryCard(
+                        title: 'Administrative',
+                        value: '3',
+                        icon: Icons.verified_user,
+                        color: Colors.orange,
+                        expand: false,
+                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Administrative', color: Colors.orange)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: BSizes.spaceBtwItems),
+          const SizedBox(height: BSizes.spaceBtwSections),
 
-            // Collection bucket button
-            Padding(
+          // Recent Activities Header with Show All button
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                BSectionSubHeading(
+                  title: BTexts.collectionHomeSubTitle1,
+                  showActionButton: false,
+                ),
+                TextButton(
+                  onPressed: () => Get.to(() => const RecentActivitiesScreen()),
+                  child: const Text('Show All'),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: BSizes.spaceBtwItems),
+
+          // Scrollable Recent Activities section
+          Expanded(
+            child: ListView(
               padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              child: Obx(() {
-                final controller = Get.find<CollectionActivityController>();
-                return CollectionBucketButton(
-                  itemCount: controller.bucketItems.length,
-                  onTap: () => Get.to(
-                    () => const CollectionBucketScreen(),
-                    transition: Transition.fade,
-                    duration: const Duration(milliseconds: 1000),
-                    curve: Curves.easeInOut,
-                  ),
-                );
-              }),
+              children: const [
+                ActivityListTile(
+                  title: 'Collected from BDO',
+                  subtitle: 'BDO • CHQ #001234',
+                  time: 'Today 10:30',
+                  status: 'Pending',
+                  statusColor: Colors.orange,
+                  icon: Icons.account_balance,
+                  amount: '₱25,000.00',
+                ),
+                ActivityListTile(
+                  title: 'Payment received',
+                  subtitle: 'GCash • Ref #98765',
+                  time: 'Yesterday 16:12',
+                  status: 'Completed',
+                  statusColor: Colors.green,
+                  icon: Icons.mobile_friendly,
+                  amount: '₱1,250.00',
+                ),
+                ActivityListTile(
+                  title: 'Follow up call',
+                  subtitle: 'Client: ACME Corp',
+                  time: 'Mar 16 09:00',
+                  status: 'Overdue',
+                  statusColor: Colors.red,
+                  icon: Icons.call,
+                ),
+                // Additional placeholder activities for testing scroll
+                ActivityListTile(
+                  title: 'Activity 4',
+                  subtitle: 'Details...',
+                  time: 'Mar 15 14:00',
+                  status: 'Completed',
+                  statusColor: Colors.green,
+                  icon: Icons.check,
+                ),
+              ],
             ),
-
-            const SizedBox(height: BSizes.spaceBtwSections),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              child: BSectionSubHeading(
-                title: BTexts.collectionHomeSubTitle1,
-                showActionButton: false,
-              ),
-            ),
-
-            const SizedBox(height: BSizes.spaceBtwItems),
-
-            // Recent Activities (visual samples)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  ActivityListTile(
-                    title: 'Collected from BDO',
-                    subtitle: 'BDO • CHQ #001234',
-                    time: 'Today 10:30',
-                    status: 'Pending',
-                    statusColor: Colors.orange,
-                    icon: Icons.account_balance,
-                    amount: '₱25,000.00',
-                  ),
-                  ActivityListTile(
-                    title: 'Payment received',
-                    subtitle: 'GCash • Ref #98765',
-                    time: 'Yesterday 16:12',
-                    status: 'Completed',
-                    statusColor: Colors.green,
-                    icon: Icons.mobile_friendly,
-                    amount: '₱1,250.00',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -6,7 +6,6 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/icon_label_chip.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 
 /// A card representing a single collection bucket item.
 ///
@@ -54,19 +53,34 @@ class BucketItemCard extends StatelessWidget {
                   ),
                 ],
         ),
-        child: Stack(
-          clipBehavior: Clip.none,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Removed selection indicator — bucket items are tapped to view details
+            /// Selection indicator
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? BColors.primary : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? BColors.primary : BColors.darkGrey,
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, size: 16, color: BColors.white)
+                  : null,
+            ),
 
-                /// Content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+            const SizedBox(width: BSizes.spaceBtwItemsLight),
+
+            /// Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   /// Client name
                   Text(
                     item.client.name,
@@ -181,51 +195,6 @@ class BucketItemCard extends StatelessWidget {
                     ),
                   ],
                 ],
-              ),
-                ),
-              ],
-            ),
-
-            // Status chip at top-right
-            Positioned(
-              top: -4,
-              right: -4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: BSizes.xs + 4,
-                  vertical: BSizes.xxs,
-                ),
-                decoration: BoxDecoration(
-                  color: CollectionStatusColors.colorFor(item.status),
-                  borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-                  boxShadow: [
-                    BoxShadow(
-                      color: BColors.darkGrey.withValues(alpha: 0.12),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      CollectionStatusColors.iconFor(item.status),
-                      size: 12,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: BSizes.xs),
-                    Text(
-                      CollectionStatusColors.display(item.status),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
               ),
             ),
           ],

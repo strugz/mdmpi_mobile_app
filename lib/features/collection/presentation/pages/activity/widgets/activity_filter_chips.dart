@@ -5,7 +5,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 
 /// Horizontal scrollable filter chips for the Activity screen.
 ///
-/// Allows filtering activities by status (All, Pending, Completed, Overdue).
+/// Allows filtering activities by sub-roles from the Core Flow category.
 class ActivityFilterChips extends StatefulWidget {
   const ActivityFilterChips({super.key, this.onFilterChanged});
 
@@ -21,9 +21,9 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
 
   static const _filters = [
     'All',
-    CollectionStatusColors.statusPending,
-    CollectionStatusColors.statusCompleted,
-    CollectionStatusColors.statusOverdue,
+    CollectionStatusColors.statusUnassigned,
+    CollectionStatusColors.statusAssigned,
+    CollectionStatusColors.statusOngoing,
   ];
 
   @override
@@ -61,5 +61,3 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
     );
   }
 }
-
-

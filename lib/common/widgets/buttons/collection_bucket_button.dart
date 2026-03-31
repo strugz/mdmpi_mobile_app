@@ -27,12 +27,12 @@ class CollectionBucketButton extends StatefulWidget {
     super.key,
     required this.itemCount,
     required this.onTap,
-    this.label = 'START COLLECTION',
+    this.label = 'BUCKET COLLECTION',
     this.imageAsset = 'assets/images/bucket-list.png',
     this.animationAsset = 'assets/images/animations/bucket-list.gif',
     this.isLottie = false,
-    this.gifDuration = const Duration(seconds: 2),
-    this.fadeDuration = const Duration(milliseconds: 1000),
+    this.gifDuration = const Duration(seconds: 1),
+    this.fadeDuration = const Duration(milliseconds: 300),
     this.animationScale = 1,
   });
 
@@ -75,7 +75,7 @@ class _CollectionBucketButtonState extends State<CollectionBucketButton> {
           borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
           border: Border.all(
             color: primaryColor.withAlpha((0.25 * 255).round()),
-            width: 1.5,
+            width: 5,
           ),
         ),
         child: Row(

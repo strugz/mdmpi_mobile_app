@@ -39,7 +39,7 @@ class TapToAnimateNavigate extends StatefulWidget {
 	this.height,
 	this.fit = BoxFit.cover,
 	this.externalTrigger,
-	this.fadeDuration = const Duration(milliseconds: 1000),
+	this.fadeDuration = const Duration(milliseconds: 300),
 	this.animationScale = 1.0,
   }) : super(key: key);
 
@@ -125,7 +125,7 @@ class _TapToAnimateNavigateState extends State<TapToAnimateNavigate>
 	return GestureDetector(
 	  onTap: _play,
 	  child: LayoutBuilder(builder: (context, constraints) {
-		final double defaultSize = BSizes.productImageSize;
+		final double defaultSize = BSizes.productImageSize * 1.6;
 		final double w = widget.width ??
 			(constraints.hasBoundedWidth ? constraints.maxWidth : defaultSize);
 		final double h = widget.height ??

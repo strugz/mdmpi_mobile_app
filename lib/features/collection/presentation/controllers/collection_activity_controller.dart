@@ -90,7 +90,7 @@ class CollectionActivityController extends GetxController {
       if (index == -1) continue;
 
       final item = bucketItems[index].copyWith(
-        status: CollectionStatusColors.statusPending,
+        status: CollectionStatusColors.statusOngoing,
         assignedAt: now,
       );
       activityItems.add(item);
@@ -202,6 +202,80 @@ class CollectionActivityController extends GetxController {
         bankName: 'RCBC',
         amount: 33200,
         documentDate: '2026-03-01',
+      ),
+      CollectionItemModel(
+        id: 'COL-006',
+        client: ClientModel(
+          id: 'C006',
+          name: 'NovaTech Solutions',
+          address: '12 Ortigas Ave, Pasig',
+          contact: '09171234567',
+          emailAddress: 'contact@novatech.com',
+        ),
+        documentReferences: ['INV-102345'],
+        bankName: 'BDO',
+        amount: 45800,
+        documentDate: '2026-03-03',
+      ),
+
+      CollectionItemModel(
+        id: 'COL-007',
+        client: ClientModel(
+          id: 'C007',
+          name: 'Greenfield Traders',
+          address: '89 Pioneer St, Mandaluyong',
+          contact: '09223334444',
+          emailAddress: 'info@greenfield.ph',
+        ),
+        documentReferences: ['OR-556677'],
+        bankName: 'Metrobank',
+        amount: 27500,
+        documentDate: '2026-03-05',
+      ),
+
+      CollectionItemModel(
+        id: 'COL-008',
+        client: ClientModel(
+          id: 'C008',
+          name: 'BrightCore Enterprises',
+          address: '45 Emerald Ave, Ortigas',
+          contact: '09335556666',
+          emailAddress: 'sales@brightcore.com',
+        ),
+        documentReferences: ['CHQ-009123'],
+        bankName: 'UnionBank',
+        amount: 61200,
+        documentDate: '2026-03-07',
+      ),
+
+      CollectionItemModel(
+        id: 'COL-009',
+        client: ClientModel(
+          id: 'C009',
+          name: 'Silverline Distribution',
+          address: '210 Marcos Hwy, Antipolo',
+          contact: '09446667777',
+          emailAddress: 'support@silverline.ph',
+        ),
+        documentReferences: ['INV-778899'],
+        bankName: 'Security Bank',
+        amount: 38950,
+        documentDate: '2026-03-09',
+      ),
+
+      CollectionItemModel(
+        id: 'COL-010',
+        client: ClientModel(
+          id: 'C010',
+          name: 'Axis Global Corp',
+          address: '78 C5 Rd, Taguig',
+          contact: '09558889999',
+          emailAddress: 'admin@axisglobal.com',
+        ),
+        documentReferences: ['OR-334455'],
+        bankName: 'PNB',
+        amount: 72000,
+        documentDate: '2026-03-11',
       ),
     ]);
   }

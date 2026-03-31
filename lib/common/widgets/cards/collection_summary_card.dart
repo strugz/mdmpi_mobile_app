@@ -7,9 +7,10 @@ class CollectionSummaryCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  /// When true the card will expand to the available width (previous/default behaviour).
-  /// Set to false when placing cards horizontally in a Row so they size to content.
+  /// When true the card will expand to occupy available width. Set to false
+  /// when placing cards horizontally inside a Row.
   final bool expand;
+  final VoidCallback? onTap;
 
   const CollectionSummaryCard({
     super.key,
@@ -18,49 +19,52 @@ class CollectionSummaryCard extends StatelessWidget {
     required this.icon,
     this.color = Colors.blue,
     this.expand = true,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final backgroundColor = color.withAlpha((0.08 * 255).round());
 
-    return Container(
-      // Preserve previous behaviour (full width) when `expand` is true.
-      width: expand ? double.infinity : null,
-      padding: const EdgeInsets.all(BSizes.defaultSpace / 2),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        // Respect `expand` when used inside a Row. If not expanding, let the
+        // width be null so the parent (e.g., Expanded) controls sizing.
+        width: expand ? double.infinity : null,
+        padding: const EdgeInsets.all(BSizes.defaultSpace / 2),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 25),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                  // Make the value more prominent
-                  fontSize: BSizes.fontSizeLg * 1.6,
-                ),
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: BSizes.fontSizeLg * 1.5,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
