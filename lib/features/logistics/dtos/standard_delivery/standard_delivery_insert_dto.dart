@@ -9,6 +9,7 @@ class StandardDeliveryInsertDto {
   final String? requestStatus;
   final String? requestBy;
   final String? requestCreatedBy;
+  final String? updatedBy;
   final List<String>? documentReference;
   final List<InventoryItemModel>? items;
   final int? itemCategoryID;  // Changed to int
@@ -23,6 +24,7 @@ class StandardDeliveryInsertDto {
     this.requestStatus,
     this.requestBy,
     this.requestCreatedBy,
+    this.updatedBy,
     this.documentReference,
     this.items,
     this.itemCategoryID,
@@ -44,6 +46,7 @@ class StandardDeliveryInsertDto {
     put('requestStatus', requestStatus);
     put('requestBy', requestBy);
     put('requestCreatedBy', requestCreatedBy);
+    put('updatedBy', updatedBy);
     put('documentReference', documentReference);
     if (items != null) {
       put('items', items!.map((e) => e.toJson()).toList());

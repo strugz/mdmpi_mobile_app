@@ -45,7 +45,9 @@ class StandardDeliveryMapper {
       signature: dto.signature?.path ?? '',
       image: dto.image?.path ?? '',
       tripTicketNumber: dto.tripTicketNumber ?? '',
-      cancelRemarks: dto.cancelRemarks != null ? _remarksDtoToModel(dto.cancelRemarks!) : CancelRemarksModel.empty,
+      cancelRemarks: dto.cancelRemarks != null
+          ? _remarksDtoToModel(dto.cancelRemarks!)
+          : CancelRemarksModel.empty,
       itemCategoryID: dto.itemCategoryID?.toString() ?? '',
       formCategoryID: dto.formCategoryID?.toString() ?? '',
     );
@@ -80,9 +82,12 @@ class StandardDeliveryMapper {
       documentReference: m.documentReference,
       cancelRemarks: _cancelRemarksModelToDto(m.cancelRemarks),
       image: m.image.isNotEmpty ? ImageDto(path: m.image) : null,
-      signature: m.signature.isNotEmpty ? SignatureDto(path: m.signature) : null,
-      itemCategoryID: m.itemCategoryID.isNotEmpty ? int.tryParse(m.itemCategoryID) : null,
-      formCategoryID: m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
+      signature:
+          m.signature.isNotEmpty ? SignatureDto(path: m.signature) : null,
+      itemCategoryID:
+          m.itemCategoryID.isNotEmpty ? int.tryParse(m.itemCategoryID) : null,
+      formCategoryID:
+          m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
     );
   }
 
@@ -103,7 +108,8 @@ class StandardDeliveryMapper {
   }
 
   static CancelRemarksModel _remarksDtoToModel(RemarksDto dto) {
-    return CancelRemarksModel(requestId: '', remarks: dto.remarks ?? '', date: '', userUpdated: '');
+    return CancelRemarksModel(
+        requestId: '', remarks: dto.remarks ?? '', date: '', userUpdated: '');
   }
 
   static RemarksDto _cancelRemarksModelToDto(CancelRemarksModel m) {
@@ -111,27 +117,33 @@ class StandardDeliveryMapper {
   }
 
   /// Build API payload for inserting a request. Returns a typed DTO.
-  static StandardDeliveryInsertDto toInsertDto(StandardDeliveryModel m, [List<InventoryItemModel>? items]) {
-
+  static StandardDeliveryInsertDto toInsertDto(StandardDeliveryModel m,
+      [List<InventoryItemModel>? items]) {
     return StandardDeliveryInsertDto(
       requestClientID: m.clientId.isNotEmpty ? m.clientId : null,
-      requestShippingMethod: m.shippingMethod.isNotEmpty ? m.shippingMethod : null,
+      requestShippingMethod:
+          m.shippingMethod.isNotEmpty ? m.shippingMethod : null,
       requestDeliveryTerms: m.deliveryTerms.isNotEmpty ? m.deliveryTerms : null,
       requestDeliveryDate: m.deliveryDate.isNotEmpty ? m.deliveryDate : null,
       requestPreference: m.preference.isNotEmpty ? m.preference : null,
       requestStatus: m.status.isNotEmpty ? m.status : null,
       requestBy: m.requestBy.isNotEmpty ? m.requestBy : null,
       requestCreatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
-      documentReference: m.documentReference.isNotEmpty ? m.documentReference : null,
+      documentReference:
+          m.documentReference.isNotEmpty ? m.documentReference : null,
       items: items,
-      itemCategoryID: m.itemCategoryID.isNotEmpty ? int.tryParse(m.itemCategoryID) : null,
-      formCategoryID: m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
+      itemCategoryID:
+          m.itemCategoryID.isNotEmpty ? int.tryParse(m.itemCategoryID) : null,
+      formCategoryID:
+          m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
+      updatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
     );
   }
 
   /// Build a typed Update DTO for PATCH operations. Only include fields that
   /// are non-null/non-empty per API contract (the DTO's toJson() will omit nulls).
-  static StandardDeliveryUpdateDto toUpdateDto(StandardDeliveryModel m) {
+  static StandardDeliveryUpdateDto toUpdateDto(
+      StandardDeliveryModel m, String updatedBy) {
     // Normalize request ID to numeric when possible for nested objects
     final dynamic nestedRequestId = int.tryParse(m.id) ?? m.id;
 
@@ -143,34 +155,48 @@ class StandardDeliveryMapper {
 
     Map<String, dynamic>? signature;
     if (m.signature.isNotEmpty) {
-      signature = {'requestID': nestedRequestId, 'requestReceiverSignature': m.signature};
+      signature = {
+        'requestID': nestedRequestId,
+        'requestReceiverSignature': m.signature
+      };
     }
 
     Map<String, dynamic>? remarks;
     if (m.cancelRemarks.remarks.isNotEmpty) {
-      remarks = {'requestID': nestedRequestId, 'remarks': m.cancelRemarks.remarks, 'date': m.cancelRemarks.date};
+      remarks = {
+        'requestID': nestedRequestId,
+        'remarks': m.cancelRemarks.remarks,
+        'date': m.cancelRemarks.date
+      };
     }
 
     return StandardDeliveryUpdateDto(
       requestID: m.id.isNotEmpty ? m.id : null,
       requestStatus: m.status.isNotEmpty ? m.status : null,
-      requestItemPreparedBy: m.itemPreparedBy.isNotEmpty ? m.itemPreparedBy : null,
+      requestItemPreparedBy:
+          m.itemPreparedBy.isNotEmpty ? m.itemPreparedBy : null,
       requestDeliveredBy: m.deliveredBy.isNotEmpty ? m.deliveredBy : null,
       requestDriverHelper: m.helper.isNotEmpty ? m.helper : null,
       mobileID: m.mobileID,
       receiver: m.receiver.isNotEmpty ? m.receiver : null,
-      requestTripTicketNumber: m.tripTicketNumber.isNotEmpty ? m.tripTicketNumber : null,
-      requestItemPreparedAt: m.itemPreparedAt.isNotEmpty ? m.itemPreparedAt : null,
-      requestItemPreparedEndAt: m.itemPreparedEndAt.isNotEmpty ? m.itemPreparedEndAt : null,
+      requestTripTicketNumber:
+          m.tripTicketNumber.isNotEmpty ? m.tripTicketNumber : null,
+      requestItemPreparedAt:
+          m.itemPreparedAt.isNotEmpty ? m.itemPreparedAt : null,
+      requestItemPreparedEndAt:
+          m.itemPreparedEndAt.isNotEmpty ? m.itemPreparedEndAt : null,
       requestDeliveredAt: m.deliveredAt.isNotEmpty ? m.deliveredAt : null,
-      requestDeliveredEndAt: m.deliveredEndAt.isNotEmpty ? m.deliveredEndAt : null,
-      locationStartedAt: m.locationStartedAt.isNotEmpty ? m.locationStartedAt : null,
+      requestDeliveredEndAt:
+          m.deliveredEndAt.isNotEmpty ? m.deliveredEndAt : null,
+      locationStartedAt:
+          m.locationStartedAt.isNotEmpty ? m.locationStartedAt : null,
       locationEndAt: m.locationEndAt.isNotEmpty ? m.locationEndAt : null,
       image: image,
       signature: signature,
       remarks: remarks,
       itemCategoryID: m.itemCategoryID.isNotEmpty ? m.itemCategoryID : null,
       formCategoryID: m.formCategoryID.isNotEmpty ? m.formCategoryID : null,
+      updatedBy: updatedBy.isNotEmpty ? updatedBy : null,
     );
   }
 }

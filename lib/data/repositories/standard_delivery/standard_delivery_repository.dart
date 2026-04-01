@@ -23,10 +23,8 @@ class StandardDeliveryRepository extends GetxController {
       // Prefer explicitly provided items parameter; otherwise, try to read
       // `items` from the requestData (some callers may attach items there).
       final dto = StandardDeliveryMapper.toInsertDto(requestData, items);
+
       final payload = dto.toJson();
-
-      logDebug('⚠️ Could not refresh Hotline Direct list: ${jsonEncode(payload)}');
-
 
       final response = await http.post(
         Uri.parse("${dotenv.env['API_URL']!}/api4/request"),
@@ -40,9 +38,8 @@ class StandardDeliveryRepository extends GetxController {
         BLoaders.errorSnackBar(
             title: 'Error',
             message:
-            'Failed to insert request. Status code: ${response.statusCode}');
-      }      print(jsonEncode(payload));
-
+                'Failed to insert request. Status code: ${response.statusCode}');
+      }
     } on TFormatException catch (_) {
       throw TFormatException();
     } on PlatformException catch (e) {
@@ -52,9 +49,11 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  Future<void> updateDelivery(StandardDeliveryModel requestData) async {
+  Future<void> updateDelivery(
+      StandardDeliveryModel requestData, String actionBy) async {
     try {
-      final updateDto = StandardDeliveryMapper.toUpdateDto(requestData);
+      final updateDto =
+          StandardDeliveryMapper.toUpdateDto(requestData, actionBy);
       final payload = updateDto.toJson();
 
       final url = "${dotenv.env['API_URL']!}/api4/request";

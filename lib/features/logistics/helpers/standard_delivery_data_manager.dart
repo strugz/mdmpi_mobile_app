@@ -346,7 +346,7 @@ class StandardDeliveryDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _repository.updateDelivery(updatedRequest);
+          await _repository.updateDelivery(updatedRequest, userInitial);
 
           await _dbHelper.updateRequest(requestModel: updatedRequest);
         } else {
@@ -663,9 +663,10 @@ class StandardDeliveryDataManager {
   Future<void> uploadModifiedRequest() async {
     try {
       final requests = await _dbHelper.getRequests();
+      final userCtrl = Get.find<UserController>();
       for (var request in requests) {
         if (request.status != BTexts.statusNewRequest) {
-          await _repository.updateDelivery(request);
+          await _repository.updateDelivery(request,userCtrl.user.value.initial);
         }
       }
       BLoaders.successSnackBar(

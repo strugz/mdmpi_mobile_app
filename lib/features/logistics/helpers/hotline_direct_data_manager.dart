@@ -341,7 +341,7 @@ class HotlineDirectDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _repository.updateDelivery(updatedRequest);
+          await _repository.updateDelivery(updatedRequest, userInitial);
           await _dbHelper.updateRequest(requestModel: updatedRequest);
         } else {
           await _dbHelper.updateRequest(requestModel: updatedRequest);
@@ -664,6 +664,7 @@ class HotlineDirectDataManager {
   /// Use case: Manual sync when connectivity is restored after offline changes.
   Future<void> uploadModifiedRequest() async {
     try {
+      final userCtrl = Get.find<UserController>();
       final requests = await _dbHelper.getRequests();
       // Filter for Hotline Direct category (formCategoryID = '8')
       final hotlineDirectRequests =
@@ -671,7 +672,7 @@ class HotlineDirectDataManager {
 
       for (var request in hotlineDirectRequests) {
         if (request.status != BTexts.statusNewRequest) {
-          await _repository.updateDelivery(request);
+          await _repository.updateDelivery(request,userCtrl.user.value.initial);
         }
       }
       BLoaders.successSnackBar(
