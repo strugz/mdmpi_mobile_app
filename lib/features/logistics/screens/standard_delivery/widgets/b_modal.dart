@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_deliver
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/inventory_items_page.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_header.dart';
@@ -78,23 +79,8 @@ class BModal extends StatelessWidget {
         // Inventory items: show a compact 'View Items' button that opens
         // the full items page. Place this immediately after Document References
         // so it is always shown under that section.
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Align(
-            alignment: Alignment.center,
-            child: TextButton.icon(
-              icon: const Icon(Icons.visibility),
-              label: const Text('View Items'),
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                foregroundColor: Theme.of(context).colorScheme.primary,
-              ),
-              onPressed: () {
-                Get.to(() => InventoryItemsPage(requestId: requestId));
-              },
-            ),
-          ),
-        ),
+        // Reusable view-items button
+        BViewItemsButton(requestId: requestId),
         // Cancel Remarks Section
         if (isCancelled)
           Obx(() {
