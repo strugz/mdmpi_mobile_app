@@ -129,7 +129,7 @@ class RequestModalHeader extends StatelessWidget {
                 Expanded(
                   child: BLabelValueText(
                     label: 'Delivery Date',
-                    value: BFormatter.formatDate2(requestModel.deliveryDate),
+                    value: BFormatter.formatDate3(requestModel.deliveryDate),
                     showLabel: false,
                     icon: Iconsax.calendar_1,
                     padding: EdgeInsets.zero,

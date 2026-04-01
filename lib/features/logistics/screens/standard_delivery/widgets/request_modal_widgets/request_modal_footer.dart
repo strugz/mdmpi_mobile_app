@@ -209,7 +209,7 @@ class RequestModalFooter extends StatelessWidget {
           completedAtLabel: 'Delivered At',
           requestId: requestIdForDb,
           apiController: 'Request',
-          viewItemButtonLabel: 'View Delivered Item',
+          viewItemButtonLabel: 'Item Photo',
           dialogTitle: 'Delivered Item',
           showViewItemButton: requestModel.status == BTexts.statusDoneDelivery,
         ),

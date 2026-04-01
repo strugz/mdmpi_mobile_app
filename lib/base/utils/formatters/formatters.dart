@@ -21,6 +21,20 @@ class BFormatter {
     }
   }
 
+  static String formatDate3(String value) {
+    if (value.isEmpty) return '';
+    final norm = BFormatter.normalizeToIsoDatetime(value);
+    if (norm == null) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+    try {
+      final dt = DateTime.parse(norm);
+      return DateFormat('MMM d, yyyy').format(dt);
+    } catch (_) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+  }
+
   /// Formats datetime strings to a readable form with AM/PM.
   /// Example output: "Mar 5, 2026 04:31 PM"
   /// Accepts ISO-like strings, epoch (seconds/millis) or already-ISO; falls back

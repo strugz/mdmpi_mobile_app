@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_document_reference.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
@@ -212,6 +213,7 @@ class BRequestDetails extends StatelessWidget {
             if (hasDocRefs) ...[
               const SizedBox(height: BSizes.xs),
               BDocumentReference(request: updatedRequest),
+              BViewItemsButton(requestId: updatedRequest.id),
             ],
 
             // ========== Proof of Delivery (For Delivery status only) ==========
