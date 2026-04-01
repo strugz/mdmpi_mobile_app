@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
+import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/standard_delivery/standard_delivery_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
@@ -60,8 +60,8 @@ class BList extends StatelessWidget {
                       onTap: () {
                         requestController.currentSelectedRequest.value =
                             request;
-                        _handleRequestTap(
-                            context, request, requestController, userController);
+                        _handleRequestTap(context, request, requestController,
+                            userController);
                       },
                       onLongPress: () {
                         if (request.status != BTexts.statusDoneDelivery &&
@@ -98,7 +98,7 @@ class BList extends StatelessWidget {
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: ConstrainedBox(
                     constraints:
-                    BoxConstraints(minHeight: constraints.maxHeight),
+                        BoxConstraints(minHeight: constraints.maxHeight),
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -111,16 +111,24 @@ class BList extends StatelessWidget {
                           const SizedBox(height: BSizes.spaceBtwItems),
                           Text(
                             'No Delivery requests found',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: dark ? BColors.light : BColors.darkGrey,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(
+                                  color:
+                                      dark ? BColors.light : BColors.darkGrey,
+                                ),
                           ),
                           const SizedBox(height: BSizes.sm),
                           Text(
                             'Try adjusting your filters',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: dark ? BColors.light : BColors.darkGrey,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color:
+                                      dark ? BColors.light : BColors.darkGrey,
+                                ),
                           ),
                         ],
                       ),
@@ -208,6 +216,13 @@ void _openConfigResult(
   if (config.navigateTo != null) {
     config.navigateTo!(context);
   } else {
-    BFullScreenLoader.showStandardDeliveryDialog(context, request, config);
+    // Navigate to the full-screen StandardDeliveryPage instead of showing a modal bottom sheet
+    Get.to(
+      () => StandardDeliveryPage(
+        requestModel: request,
+        config: config,
+      ),
+      fullscreenDialog: true,
+    );
   }
 }

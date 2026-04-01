@@ -20,15 +20,12 @@ class RequestModalScaffold extends StatelessWidget {
   });
 
   final Widget? header;
-
   final String? title;
-
   final String? subtitle;
-
   final List<String> documentReferences;
   final List<Widget> children;
+  /// Optional action widget rendered at the end of the scrollable content.
   final Widget? bottomAction;
-
   final bool docsBottomDivider;
 
   @override
@@ -42,7 +39,6 @@ class RequestModalScaffold extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
       child: SingleChildScrollView(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
@@ -65,11 +61,9 @@ class RequestModalScaffold extends StatelessWidget {
             ...children,
             const SizedBox(height: BSizes.xs),
             if (bottomAction != null)
-              SafeArea(
-                top: false,
-                child: bottomAction!,
-              ),
-            const SizedBox(height: BSizes.xs),
+              SafeArea(top: false, child: bottomAction!),
+            if (bottomAction != null)
+              const SizedBox(height: BSizes.xs),
           ],
         ),
       ),

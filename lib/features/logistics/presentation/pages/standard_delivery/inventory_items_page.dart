@@ -51,3 +51,4 @@ class InventoryItemsPage extends StatelessWidget {
     );
   }
 }
+

@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/standard_delivery/standard_delivery_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';
@@ -460,24 +461,14 @@ class BFullScreenLoader {
     StandardDeliveryModel requestModel,
     StandardDeliveryModalConfig config,
   ) {
-    final dark = BHelperFunctions.isDarkMode(context);
-    showModalBottomSheet<void>(
-      backgroundColor: dark ? BColors.black : BColors.light,
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: SafeArea(
-            child: BModal(
-              requestModel: requestModel,
-              config: config,
-            ),
-          ),
-        );
-      },
+    // Navigate to a full-screen page implementation instead of showing a bottom sheet.
+    // This preserves the public API while changing the presentation to a whole page.
+    Get.to(
+      () => StandardDeliveryPage(
+        requestModel: requestModel,
+        config: config,
+      ),
+      fullscreenDialog: true,
     );
   }
 

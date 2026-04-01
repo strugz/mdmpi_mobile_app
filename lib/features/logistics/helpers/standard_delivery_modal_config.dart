@@ -107,8 +107,7 @@ class StandardDeliveryModalConfig {
             nextStatus: BTexts.statusItemPrepared,
             isActionVisible: true,
             buttonLabel: BTexts.requestModalPackedAndReadyButtonText,
-            validate: () async =>
-                _validateDeliveryInfo(controller.formState),
+            validate: () async => _validateDeliveryInfo(controller.formState),
           );
         }
         // Getting supplies ready but different preparer — view only
@@ -116,7 +115,9 @@ class StandardDeliveryModalConfig {
 
       // ── Courier role ──────────────────────────────────────────────────
       case BTexts.roleCourier:
-        if (status == BTexts.statusItemPrepared) {
+        if (status == BTexts.statusItemPrepared &&
+            (request.deliveredBy == userInitial ||
+                request.helper == userInitial)) {
           return StandardDeliveryModalConfig(
             role: role,
             isActionVisible: false,
@@ -182,5 +183,3 @@ class StandardDeliveryModalConfig {
     return true;
   }
 }
-
-

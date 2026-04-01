@@ -87,6 +87,7 @@ Developer workflows & scripts
 - Repo-specific generators:
   - `dart run bin/generate_module_qa.dart --name "Name" --area Logistics --routes "/route"` (creates docs/modules/<slug>/README.md and test CSVs)
   - `dart run bin/inspect_db_images.dart` (inspects DB images/signatures)
+  - `dart run bin/check_mapper.dart` (small utility stub present in `bin/` — currently empty; available for future mapper checks)
 
 - In-app DB inspection: Open the app, go to Settings > Developer Tools > Local Storage Viewer to inspect and manage local database tables. For direct navigation in development, use `Get.to(() => const LocalStorageDataViewer())`.
 
@@ -132,6 +133,8 @@ Agent integration (use the platform-provided subagents)
 - The environment exposes a small set of specialized subagents. When a task matches a subagent's role (for example: research, plan, or outline), prefer delegating using the `run_subagent` tool.
 - Available example: `Plan` — use `run_subagent(agentName: "Plan", task: "<detailed task...>")` to produce step-by-step research or implementation plans before making changes. This helps with multi-step refactors, large edits, or complex design decisions.
 - Example usage pattern: for multi-step work, first call the `Plan` agent to produce an ordered checklist, then proceed to make edits and tests following that checklist.
+
+Note: In this workspace the only provided subagent is named exactly `Plan`. When calling `run_subagent` you must use the exact `agentName` string `"Plan"`.
 
 End of guidance
 

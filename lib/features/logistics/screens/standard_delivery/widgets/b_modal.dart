@@ -8,7 +8,6 @@ import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.da
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/inventory_items_page.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
