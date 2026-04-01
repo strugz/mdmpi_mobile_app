@@ -55,7 +55,6 @@ class StandardDeliveryInsertDto {
     }
     put('itemCategoryID', itemCategoryID);
     put('formCategoryID', formCategoryID);
-
     return data;
   }
 }

@@ -23,7 +23,6 @@ class StandardDeliveryRepository extends GetxController {
       // Prefer explicitly provided items parameter; otherwise, try to read
       // `items` from the requestData (some callers may attach items there).
       final dto = StandardDeliveryMapper.toInsertDto(requestData, items);
-
       final payload = dto.toJson();
 
       final response = await http.post(

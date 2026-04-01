@@ -1,4 +1,3 @@
-
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -70,7 +69,8 @@ class StandardDeliveryDataManager {
   /// - Sends WebSocket notification
   /// - Sends SMS to managers
   /// - Resets form state
-  Future<void> saveRequestFromForm(IDeliveryRequestController controller) async {
+  Future<void> saveRequestFromForm(
+      IDeliveryRequestController controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -88,7 +88,6 @@ class StandardDeliveryDataManager {
 
       final client =
           formState.clientInformation.value!; // Safe due to UI validation
-
 
       final docRefs = formState.documentReferenceControllers
           .map((c) => c.text.trim())
@@ -159,7 +158,8 @@ class StandardDeliveryDataManager {
           managersPhoneNumber, BTexts.statusNewRequest, newRequest);
 
       // Save to repository - include scanned items from form state
-      await _repository.insertDelivery(newRequest, formState.scannedInventoryItems.toList());
+      await _repository.insertDelivery(
+          newRequest, formState.scannedInventoryItems.toList());
 
       // Reload requests based on form category
       // If it's Hotline Direct (form category ID '8'), refresh HotlineDirectController
@@ -666,7 +666,8 @@ class StandardDeliveryDataManager {
       final userCtrl = Get.find<UserController>();
       for (var request in requests) {
         if (request.status != BTexts.statusNewRequest) {
-          await _repository.updateDelivery(request,userCtrl.user.value.initial);
+          await _repository.updateDelivery(
+              request, userCtrl.user.value.initial);
         }
       }
       BLoaders.successSnackBar(
