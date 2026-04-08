@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
@@ -31,6 +32,9 @@ class CollectionActivityController extends GetxController {
 
   /// Active filter on the activity screen.
   final RxString activityFilter = 'All'.obs;
+
+  /// Active category filter (e.g. 'Core Status', 'Delays').
+  final RxString categoryFilter = 'All'.obs;
 
   // ========================================================================
   // Lifecycle
@@ -79,7 +83,7 @@ class CollectionActivityController extends GetxController {
   // ========================================================================
 
   /// Claim the selected bucket items – moves them from [bucketItems] into
-  /// [activityItems] with status `'Pending'` and records the assignment time.
+  /// [activityItems] with updated statuses and records the assignment time.
   void claimSelectedItems() {
     if (selectedBucketIds.isEmpty) return;
 
@@ -90,7 +94,10 @@ class CollectionActivityController extends GetxController {
       if (index == -1) continue;
 
       final item = bucketItems[index].copyWith(
-        status: CollectionStatusColors.statusOngoing,
+        coreStatus: CollectionStatusColors.statusOngoing,
+        delayStatus: CollectionStatusColors.statusOnSchedule,
+        outcomeStatus: CollectionStatusColors.statusNone,
+        administrativeStatus: CollectionStatusColors.statusForVerification,
         assignedAt: now,
       );
       activityItems.add(item);
@@ -106,22 +113,80 @@ class CollectionActivityController extends GetxController {
   // Activity helpers
   // ========================================================================
 
-  /// Update the status of an activity item.
-  void updateActivityStatus(String id, String newStatus) {
+  /// Update a specific status category of an activity item.
+  void updateActivityStatus(String id, String category, String newStatus) {
     final index = activityItems.indexWhere((e) => e.id == id);
     if (index == -1) return;
-    activityItems[index] = activityItems[index].copyWith(status: newStatus);
+
+    final item = activityItems[index];
+    CollectionItemModel updatedItem;
+
+    switch (category) {
+      case CollectionStatusColors.categoryCoreFlow:
+        updatedItem = item.copyWith(coreStatus: newStatus);
+        break;
+      case CollectionStatusColors.categoryDelays:
+        updatedItem = item.copyWith(delayStatus: newStatus);
+        break;
+      case CollectionStatusColors.categoryOutcomes:
+        updatedItem = item.copyWith(outcomeStatus: newStatus);
+        break;
+      case CollectionStatusColors.categoryAdministrative:
+        updatedItem = item.copyWith(administrativeStatus: newStatus);
+        break;
+      default:
+        updatedItem = item;
+    }
+
+    activityItems[index] = updatedItem;
   }
 
   /// Set the current filter on the activity screen.
   void setActivityFilter(String filter) => activityFilter.value = filter;
 
-  /// Filtered view of activity items based on [activityFilter].
+  /// Set the current category filter.
+  void setCategoryFilter(String category) {
+    categoryFilter.value = category;
+    activityFilter.value = 'All'; // Reset sub-filter when category changes
+  }
+
+  /// Filtered view of activity items based on [activityFilter] and [categoryFilter].
   List<CollectionItemModel> get filteredActivityItems {
-    if (activityFilter.value == 'All') return activityItems;
-    return activityItems
-        .where((e) => e.status == activityFilter.value)
-        .toList();
+    Iterable<CollectionItemModel> items = activityItems;
+
+    // First, filter by category context if specified (for the detail screens)
+    if (categoryFilter.value != 'All') {
+      items = items.where((e) {
+        switch (categoryFilter.value) {
+          case 'Core Status':
+            // Show all items since everything in activity has a Core Status
+            return true; 
+          case 'Delays':
+            // Only show if it has an active delay (not "On Schedule")
+            return e.delayStatus != CollectionStatusColors.statusOnSchedule;
+          case 'Completed':
+            // Only show if it has an outcome (not "None")
+            return e.outcomeStatus != CollectionStatusColors.statusNone;
+          case 'Administrative':
+            // For Administrative, we show all since they all have an admin status 
+            // (default "For Verification")
+            return true;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Then, filter by specific sub-status if not "All"
+    if (activityFilter.value == 'All') return items.toList();
+
+    return items.where((e) {
+      // Check if the current activityFilter matches ANY of the four statuses
+      return e.coreStatus == activityFilter.value ||
+          e.delayStatus == activityFilter.value ||
+          e.outcomeStatus == activityFilter.value ||
+          e.administrativeStatus == activityFilter.value;
+    }).toList();
   }
 
   // ========================================================================
@@ -144,6 +209,19 @@ class CollectionActivityController extends GetxController {
         amount: 25000,
         documentDate: '2026-03-01',
         remarks: 'Post-dated cheque',
+        coreStatus: CollectionStatusColors.statusUnassigned,
+        delayStatus: CollectionStatusColors.statusOnSchedule,
+        outcomeStatus: CollectionStatusColors.statusNone,
+        administrativeStatus: CollectionStatusColors.statusForVerification,
+        collectorName: 'John Doe',
+        history: [
+          CollectionHistoryModel(
+            date: '2026-03-01 09:00',
+            collectorName: 'System',
+            coreStatus: CollectionStatusColors.statusUnassigned,
+            remarks: 'Item created in bucket',
+          ),
+        ],
       ),
       CollectionItemModel(
         id: 'COL-002',
@@ -159,6 +237,20 @@ class CollectionActivityController extends GetxController {
         amount: 18500,
         documentDate: '2026-02-28',
         remarks: 'Overdue 5 days',
+        coreStatus: CollectionStatusColors.statusUnassigned,
+        delayStatus: CollectionStatusColors.statusBehindSchedule,
+        outcomeStatus: CollectionStatusColors.statusNone,
+        administrativeStatus: CollectionStatusColors.statusForVerification,
+        collectorName: 'Jane Smith',
+        history: [
+          CollectionHistoryModel(
+            date: '2026-02-28 10:00',
+            collectorName: 'Admin',
+            coreStatus: CollectionStatusColors.statusUnassigned,
+            delayStatus: CollectionStatusColors.statusBehindSchedule,
+            remarks: 'Marked as behind schedule by supervisor',
+          ),
+        ],
       ),
       CollectionItemModel(
         id: 'COL-003',
@@ -173,6 +265,27 @@ class CollectionActivityController extends GetxController {
         bankName: 'BPI',
         amount: 42000,
         documentDate: '2026-03-02',
+        coreStatus: CollectionStatusColors.statusOngoing,
+        delayStatus: CollectionStatusColors.statusOnSchedule,
+        outcomeStatus: CollectionStatusColors.statusFullyCollected,
+        administrativeStatus: CollectionStatusColors.statusForVerification,
+        collectorName: 'John Doe',
+        assignedAt: '2026-03-02 08:30',
+        history: [
+          CollectionHistoryModel(
+            date: '2026-03-02 08:30',
+            collectorName: 'John Doe',
+            coreStatus: CollectionStatusColors.statusOngoing,
+            remarks: 'Claimed from bucket',
+          ),
+          CollectionHistoryModel(
+            date: '2026-03-02 14:00',
+            collectorName: 'John Doe',
+            coreStatus: CollectionStatusColors.statusOngoing,
+            outcomeStatus: CollectionStatusColors.statusFullyCollected,
+            remarks: 'Successfully collected the cheque',
+          ),
+        ],
       ),
       CollectionItemModel(
         id: 'COL-004',
@@ -188,6 +301,10 @@ class CollectionActivityController extends GetxController {
         amount: 15750,
         documentDate: '2026-03-03',
         remarks: 'Cash on delivery alternative',
+        coreStatus: CollectionStatusColors.statusOngoing,
+        delayStatus: CollectionStatusColors.statusRescheduled,
+        outcomeStatus: CollectionStatusColors.statusNone,
+        administrativeStatus: CollectionStatusColors.statusOnHold,
       ),
       CollectionItemModel(
         id: 'COL-005',
@@ -202,80 +319,10 @@ class CollectionActivityController extends GetxController {
         bankName: 'RCBC',
         amount: 33200,
         documentDate: '2026-03-01',
-      ),
-      CollectionItemModel(
-        id: 'COL-006',
-        client: ClientModel(
-          id: 'C006',
-          name: 'NovaTech Solutions',
-          address: '12 Ortigas Ave, Pasig',
-          contact: '09171234567',
-          emailAddress: 'contact@novatech.com',
-        ),
-        documentReferences: ['INV-102345'],
-        bankName: 'BDO',
-        amount: 45800,
-        documentDate: '2026-03-03',
-      ),
-
-      CollectionItemModel(
-        id: 'COL-007',
-        client: ClientModel(
-          id: 'C007',
-          name: 'Greenfield Traders',
-          address: '89 Pioneer St, Mandaluyong',
-          contact: '09223334444',
-          emailAddress: 'info@greenfield.ph',
-        ),
-        documentReferences: ['OR-556677'],
-        bankName: 'Metrobank',
-        amount: 27500,
-        documentDate: '2026-03-05',
-      ),
-
-      CollectionItemModel(
-        id: 'COL-008',
-        client: ClientModel(
-          id: 'C008',
-          name: 'BrightCore Enterprises',
-          address: '45 Emerald Ave, Ortigas',
-          contact: '09335556666',
-          emailAddress: 'sales@brightcore.com',
-        ),
-        documentReferences: ['CHQ-009123'],
-        bankName: 'UnionBank',
-        amount: 61200,
-        documentDate: '2026-03-07',
-      ),
-
-      CollectionItemModel(
-        id: 'COL-009',
-        client: ClientModel(
-          id: 'C009',
-          name: 'Silverline Distribution',
-          address: '210 Marcos Hwy, Antipolo',
-          contact: '09446667777',
-          emailAddress: 'support@silverline.ph',
-        ),
-        documentReferences: ['INV-778899'],
-        bankName: 'Security Bank',
-        amount: 38950,
-        documentDate: '2026-03-09',
-      ),
-
-      CollectionItemModel(
-        id: 'COL-010',
-        client: ClientModel(
-          id: 'C010',
-          name: 'Axis Global Corp',
-          address: '78 C5 Rd, Taguig',
-          contact: '09558889999',
-          emailAddress: 'admin@axisglobal.com',
-        ),
-        documentReferences: ['OR-334455'],
-        bankName: 'PNB',
-        amount: 72000,
-        documentDate: '2026-03-11',
+        coreStatus: CollectionStatusColors.statusOngoing,
+        delayStatus: CollectionStatusColors.statusOnSchedule,
+        outcomeStatus: CollectionStatusColors.statusNone,
+        administrativeStatus: CollectionStatusColors.statusCancelled,
       ),
     ]);
   }

@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 /// A single collection item representing a client document for collection.
@@ -28,13 +29,20 @@ class CollectionItemModel {
   /// Date the document was created / issued.
   final String documentDate;
 
-  /// Current status of the item.
-  /// Bucket items default to `'Unassigned'`.
-  /// After selection they become `'Pending'`, then `'Completed'` / `'Overdue'`.
-  final String status;
+  /// Current statuses of the item across 4 categories.
+  final String coreStatus;
+  final String delayStatus;
+  final String outcomeStatus;
+  final String administrativeStatus;
 
   /// Timestamp when the item was picked from the bucket (empty while in bucket).
   final String assignedAt;
+
+  /// Collector name (Assigned to).
+  final String collectorName;
+
+  /// History of actions on this account.
+  final List<CollectionHistoryModel> history;
 
   const CollectionItemModel({
     required this.id,
@@ -44,8 +52,13 @@ class CollectionItemModel {
     this.amount = 0,
     this.remarks = '',
     this.documentDate = '',
-    this.status = CollectionStatusColors.statusUnassigned,
+    this.coreStatus = CollectionStatusColors.statusUnassigned,
+    this.delayStatus = CollectionStatusColors.statusOnSchedule,
+    this.outcomeStatus = CollectionStatusColors.statusNone,
+    this.administrativeStatus = CollectionStatusColors.statusForVerification,
     this.assignedAt = '',
+    this.collectorName = 'Unassigned',
+    this.history = const [],
   });
 
   /// Empty / placeholder model.
@@ -63,8 +76,13 @@ class CollectionItemModel {
     double? amount,
     String? remarks,
     String? documentDate,
-    String? status,
+    String? coreStatus,
+    String? delayStatus,
+    String? outcomeStatus,
+    String? administrativeStatus,
     String? assignedAt,
+    String? collectorName,
+    List<CollectionHistoryModel>? history,
   }) {
     return CollectionItemModel(
       id: id ?? this.id,
@@ -74,8 +92,13 @@ class CollectionItemModel {
       amount: amount ?? this.amount,
       remarks: remarks ?? this.remarks,
       documentDate: documentDate ?? this.documentDate,
-      status: status ?? this.status,
+      coreStatus: coreStatus ?? this.coreStatus,
+      delayStatus: delayStatus ?? this.delayStatus,
+      outcomeStatus: outcomeStatus ?? this.outcomeStatus,
+      administrativeStatus: administrativeStatus ?? this.administrativeStatus,
       assignedAt: assignedAt ?? this.assignedAt,
+      collectorName: collectorName ?? this.collectorName,
+      history: history ?? this.history,
     );
   }
 
@@ -97,8 +120,16 @@ class CollectionItemModel {
           : double.tryParse(json['Amount']?.toString() ?? '') ?? 0,
       remarks: (json['Remarks'] ?? '').toString(),
       documentDate: (json['DocumentDate'] ?? '').toString(),
-      status: (json['Status'] ?? 'Unassigned').toString(),
+      coreStatus: (json['CoreStatus'] ?? json['Status'] ?? CollectionStatusColors.statusUnassigned).toString(),
+      delayStatus: (json['DelayStatus'] ?? CollectionStatusColors.statusOnSchedule).toString(),
+      outcomeStatus: (json['OutcomeStatus'] ?? CollectionStatusColors.statusNone).toString(),
+      administrativeStatus: (json['AdministrativeStatus'] ?? CollectionStatusColors.statusForVerification).toString(),
       assignedAt: (json['AssignedAt'] ?? '').toString(),
+      collectorName: (json['CollectorName'] ?? 'Unassigned').toString(),
+      history: json['History'] != null && json['History'] is List
+          ? List<CollectionHistoryModel>.from(
+              (json['History'] as List).map((e) => CollectionHistoryModel.fromJson(e)))
+          : [],
     );
   }
 
@@ -112,8 +143,13 @@ class CollectionItemModel {
       'Amount': amount,
       'Remarks': remarks,
       'DocumentDate': documentDate,
-      'Status': status,
+      'CoreStatus': coreStatus,
+      'DelayStatus': delayStatus,
+      'OutcomeStatus': outcomeStatus,
+      'AdministrativeStatus': administrativeStatus,
       'AssignedAt': assignedAt,
+      'CollectorName': collectorName,
+      'History': history.map((e) => e.toJson()).toList(),
     };
   }
 }

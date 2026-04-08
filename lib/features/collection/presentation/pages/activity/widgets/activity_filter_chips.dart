@@ -7,10 +7,17 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 ///
 /// Allows filtering activities by sub-roles from the Core Flow category.
 class ActivityFilterChips extends StatefulWidget {
-  const ActivityFilterChips({super.key, this.onFilterChanged});
+  const ActivityFilterChips({
+    super.key,
+    this.onFilterChanged,
+    this.filters,
+  });
 
   /// Called when the user selects a different filter.
   final ValueChanged<String>? onFilterChanged;
+
+  /// Optional list of filters to display. Defaults to Core Flow sub-roles if null.
+  final List<String>? filters;
 
   @override
   State<ActivityFilterChips> createState() => _ActivityFilterChipsState();
@@ -19,7 +26,7 @@ class ActivityFilterChips extends StatefulWidget {
 class _ActivityFilterChipsState extends State<ActivityFilterChips> {
   int _selectedIndex = 0;
 
-  static const _filters = [
+  List<String> get _currentFilters => widget.filters ?? [
     'All',
     CollectionStatusColors.statusUnassigned,
     CollectionStatusColors.statusAssigned,
@@ -28,21 +35,22 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
 
   @override
   Widget build(BuildContext context) {
+    final filters = _currentFilters;
     return SizedBox(
       height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-        itemCount: _filters.length,
+        itemCount: filters.length,
         separatorBuilder: (_, __) => const SizedBox(width: BSizes.sm),
         itemBuilder: (context, index) {
           final isSelected = _selectedIndex == index;
           return ChoiceChip(
-            label: Text(_filters[index]),
+            label: Text(filters[index]),
             selected: isSelected,
             onSelected: (_) {
               setState(() => _selectedIndex = index);
-              widget.onFilterChanged?.call(_filters[index]);
+              widget.onFilterChanged?.call(filters[index]);
             },
             selectedColor: BColors.primary,
             labelStyle: TextStyle(

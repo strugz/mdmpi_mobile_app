@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/activity.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar/calendar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/home.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/home.dart';
@@ -55,6 +56,7 @@ class NavigationController extends GetxController {
         return const [
           CollectionHomeScreen(),
           CollectionActivityScreen(),
+          CollectionCalendarScreen(),
           SettingsScreen()
         ];
       }
@@ -77,11 +79,11 @@ class NavigationController extends GetxController {
       final dept = userController.user.value.department.toLowerCase();
 
       if (dept == 'collection') {
-        return [
+        return const [
           Icon(Iconsax.home, size: 30),
-          ImageIcon(AssetImage('assets/icons/request/quote-request.png'),
-              size: 30),
-          Icon(Iconsax.settings, size: 30)
+          Icon(Iconsax.activity, size: 30),
+          Icon(Iconsax.calendar, size: 30),
+          Icon(Iconsax.user, size: 30)
         ];
       }
     } catch (_) {

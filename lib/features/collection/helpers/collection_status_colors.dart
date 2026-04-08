@@ -26,10 +26,12 @@ class CollectionStatusColors {
   static const String statusOngoing = 'On-going';
 
   // ─── Sub-roles: Delays ─────────────────────────────────────────────
+  static const String statusOnSchedule = 'On Schedule';
   static const String statusBehindSchedule = 'Behind Schedule';
   static const String statusRescheduled = 'Rescheduled';
 
   // ─── Sub-roles: Outcomes ───────────────────────────────────────────
+  static const String statusNone = 'None';
   static const String statusFullyCollected = 'Fully Collected';
   static const String statusPartiallyCollected = 'Partially Collected';
   static const String statusFailedCollection = 'Failed Collection';
@@ -45,9 +47,9 @@ class CollectionStatusColors {
   static List<String> subRolesFor(String category) {
     switch (category) {
       case categoryCoreFlow:
-        return [statusUnassigned, statusAssigned, statusOngoing];
+        return [statusUnassigned, statusOngoing];
       case categoryDelays:
-        return [statusBehindSchedule, statusRescheduled];
+        return [statusRescheduled, statusBehindSchedule];
       case categoryOutcomes:
         return [
           statusFullyCollected,
@@ -84,6 +86,10 @@ class CollectionStatusColors {
         break;
 
     // Delays
+      case statusOnSchedule:
+        bg = BColors.success.withOpacity(0.1);
+        fg = BColors.success;
+        break;
       case statusBehindSchedule:
         bg = BColors.error;
         break;
@@ -92,6 +98,10 @@ class CollectionStatusColors {
         break;
 
     // Outcomes
+      case statusNone:
+        bg = BColors.darkerGrey.withOpacity(0.1);
+        fg = BColors.darkerGrey;
+        break;
       case statusFullyCollected:
         bg = BColors.success;
         break;
@@ -141,11 +151,14 @@ class CollectionStatusColors {
       case statusFullyCollected:
       case statusOngoing:
         return Iconsax.tick_circle;
+      case statusOnSchedule:
+        return Iconsax.timer_1;
       case statusBehindSchedule:
       case statusFailedCollection:
         return Iconsax.warning_2;
       case statusUnassigned:
       case statusOnHold:
+      case statusNone:
         return Iconsax.clock;
       case statusAssigned:
         return Iconsax.user_tick;

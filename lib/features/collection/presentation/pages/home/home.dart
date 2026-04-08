@@ -79,7 +79,10 @@ class CollectionHomeScreen extends StatelessWidget {
                         icon: Icons.pending_actions,
                         color: Colors.blue,
                         expand: false,
-                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Core Status', color: Colors.blue)),
+                        onTap: () {
+                          CollectionActivityController.instance.setCategoryFilter('Core Status');
+                          Get.to(() => const CategoryDetailScreen(title: 'Core Status', color: Colors.blue));
+                        },
                       ),
                     ),
                     const SizedBox(width: BSizes.spaceBtwItems),
@@ -90,7 +93,10 @@ class CollectionHomeScreen extends StatelessWidget {
                         icon: Icons.error,
                         color: Colors.red,
                         expand: false,
-                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Delays', color: Colors.red)),
+                        onTap: () {
+                          CollectionActivityController.instance.setCategoryFilter('Delays');
+                          Get.to(() => const CategoryDetailScreen(title: 'Delays', color: Colors.red));
+                        },
                       ),
                     ),
                   ],
@@ -104,7 +110,10 @@ class CollectionHomeScreen extends StatelessWidget {
                         value: '128',
                         icon: Icons.check_circle,
                         color: Colors.green,
-                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Completed', color: Colors.green)),
+                        onTap: () {
+                          CollectionActivityController.instance.setCategoryFilter('Completed');
+                          Get.to(() => const CategoryDetailScreen(title: 'Completed', color: Colors.green));
+                        },
                       ),
                     ),
                     const SizedBox(width: BSizes.spaceBtwItems),
@@ -115,7 +124,10 @@ class CollectionHomeScreen extends StatelessWidget {
                         icon: Icons.verified_user,
                         color: Colors.orange,
                         expand: false,
-                        onTap: () => Get.to(() => const CategoryDetailScreen(title: 'Administrative', color: Colors.orange)),
+                        onTap: () {
+                          CollectionActivityController.instance.setCategoryFilter('Administrative');
+                          Get.to(() => const CategoryDetailScreen(title: 'Administrative', color: Colors.orange));
+                        },
                       ),
                     ),
                   ],
@@ -148,46 +160,23 @@ class CollectionHomeScreen extends StatelessWidget {
 
           // Scrollable Recent Activities section
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              children: const [
-                ActivityListTile(
-                  title: 'Collected from BDO',
-                  subtitle: 'BDO • CHQ #001234',
-                  time: 'Today 10:30',
-                  status: 'Pending',
-                  statusColor: Colors.orange,
-                  icon: Icons.account_balance,
-                  amount: '₱25,000.00',
-                ),
-                ActivityListTile(
-                  title: 'Payment received',
-                  subtitle: 'GCash • Ref #98765',
-                  time: 'Yesterday 16:12',
-                  status: 'Completed',
-                  statusColor: Colors.green,
-                  icon: Icons.mobile_friendly,
-                  amount: '₱1,250.00',
-                ),
-                ActivityListTile(
-                  title: 'Follow up call',
-                  subtitle: 'Client: ACME Corp',
-                  time: 'Mar 16 09:00',
-                  status: 'Overdue',
-                  statusColor: Colors.red,
-                  icon: Icons.call,
-                ),
-                // Additional placeholder activities for testing scroll
-                ActivityListTile(
-                  title: 'Activity 4',
-                  subtitle: 'Details...',
-                  time: 'Mar 15 14:00',
-                  status: 'Completed',
-                  statusColor: Colors.green,
-                  icon: Icons.check,
-                ),
-              ],
-            ),
+            child: Obx(() {
+              final controller = CollectionActivityController.instance;
+              final items = controller.activityItems.take(5).toList();
+
+              if (items.isEmpty) {
+                return const Center(child: Text('No recent activities'));
+              }
+
+              return ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: BSizes.sm),
+                itemBuilder: (context, index) {
+                  return ActivityListTile(item: items[index]);
+                },
+              );
+            }),
           ),
         ],
       ),

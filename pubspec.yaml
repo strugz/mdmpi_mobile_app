@@ -108,6 +108,7 @@ dependencies:
 
   #workmanager
   workmanager: ^0.6.0
+  table_calendar: ^3.2.0
 
 dev_dependencies:
   build_runner:
