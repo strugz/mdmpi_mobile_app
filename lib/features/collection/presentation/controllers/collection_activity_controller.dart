@@ -141,6 +141,53 @@ class CollectionActivityController extends GetxController {
     activityItems[index] = updatedItem;
   }
 
+  /// Save the activity updates and move the item back to the bucket list.
+  void saveActivity({
+    required String id,
+    required String delayStatus,
+    required String outcomeStatus,
+    required String administrativeStatus,
+    required String remarks,
+  }) {
+    final index = activityItems.indexWhere((e) => e.id == id);
+    if (index == -1) return;
+
+    final oldItem = activityItems[index];
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+
+    // Create history entry
+    final historyEntry = CollectionHistoryModel(
+      date: now,
+      collectorName: oldItem.collectorName,
+      coreStatus: oldItem.coreStatus,
+      delayStatus: delayStatus,
+      outcomeStatus: outcomeStatus,
+      administrativeStatus: administrativeStatus,
+      remarks: remarks,
+    );
+
+    // Update item and reset assignment info if moving back to bucket
+    final updatedItem = oldItem.copyWith(
+      delayStatus: delayStatus,
+      outcomeStatus: outcomeStatus,
+      administrativeStatus: administrativeStatus,
+      remarks: remarks,
+      history: [...oldItem.history, historyEntry],
+      // If we are moving it back to bucket, we might want to clear assignment?
+      // User said: "go back to bucket collection list with the updated status"
+      // Usually "bucket" means unassigned.
+      assignedAt: '',
+      collectorName: 'Unassigned',
+      coreStatus: CollectionStatusColors.statusUnassigned,
+    );
+
+    // Move to bucket
+    bucketItems.add(updatedItem);
+    activityItems.removeAt(index);
+
+    logDebug('[CollectionActivityController] Activity $id saved and moved to bucket');
+  }
+
   /// Set the current filter on the activity screen.
   void setActivityFilter(String filter) => activityFilter.value = filter;
 
