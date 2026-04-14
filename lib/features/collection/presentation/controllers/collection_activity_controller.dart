@@ -36,6 +36,9 @@ class CollectionActivityController extends GetxController {
   /// Active category filter (e.g. 'Core Status', 'Delays').
   final RxString categoryFilter = 'All'.obs;
 
+  /// Search query for the bucket screen.
+  final RxString bucketSearchQuery = ''.obs;
+
   // ========================================================================
   // Lifecycle
   // ========================================================================
@@ -77,6 +80,19 @@ class CollectionActivityController extends GetxController {
   bool get allSelected =>
       bucketItems.isNotEmpty &&
       selectedBucketIds.length == bucketItems.length;
+
+  /// Filtered view of bucket items based on [bucketSearchQuery].
+  List<CollectionItemModel> get filteredBucketItems {
+    if (bucketSearchQuery.value.isEmpty) return bucketItems;
+
+    final query = bucketSearchQuery.value.toLowerCase();
+    return bucketItems.where((item) {
+      return item.client.name.toLowerCase().contains(query) ||
+          item.id.toLowerCase().contains(query) ||
+          item.bankName.toLowerCase().contains(query) ||
+          item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
+    }).toList();
+  }
 
   // ========================================================================
   // Move selected bucket items → activity

@@ -8,6 +8,7 @@ import 'widgets/activity_history_list.dart';
 import 'widgets/activity_info_card.dart';
 import 'widgets/activity_section_header.dart';
 import 'widgets/activity_update_status_card.dart';
+import 'widgets/receipt_photo_card.dart';
 
 class ActivityDetailScreen extends StatefulWidget {
   const ActivityDetailScreen({super.key, required this.item});
@@ -81,7 +82,14 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            /// Section 2: Update Status
+            /// Section 2: Photos & Documentation
+            const ActivitySectionHeader(title: 'Documentation'),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            const ReceiptPhotoCard(),
+
+            const SizedBox(height: BSizes.spaceBtwSections),
+
+            /// Section 3: Update Status
             const ActivitySectionHeader(title: 'Update Status'),
             const SizedBox(height: BSizes.spaceBtwItems),
             ActivityUpdateStatusCard(

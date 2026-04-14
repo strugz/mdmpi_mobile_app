@@ -83,47 +83,83 @@ class CollectionBucketScreen extends StatelessWidget {
       }),
 
       body: Obx(() {
-        final items = controller.bucketItems;
+        final items = controller.filteredBucketItems;
 
-        if (items.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.shopping_basket_rounded,
-                    size: 64, color: BColors.darkGrey),
-                const SizedBox(height: BSizes.spaceBtwItems),
-                Text(
-                  'Bucket is empty',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: BColors.darkGrey,
-                      ),
+        return Column(
+          children: [
+            /// Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: BSizes.defaultSpace,
+                vertical: BSizes.md,
+              ),
+              child: TextFormField(
+                onChanged: (value) => controller.bucketSearchQuery.value = value,
+                decoration: const InputDecoration(
+                  hintText: 'Search by client, ID, bank...',
+                  prefixIcon: Icon(Iconsax.search_normal),
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(vertical: 0),
                 ),
-                const SizedBox(height: BSizes.xs),
-                Text(
-                  'No unassigned collection items available.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: BColors.darkGrey,
-                      ),
-                ),
-              ],
+              ),
             ),
-          );
-        }
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(BSizes.defaultSpace),
-          itemCount: items.length,
-          separatorBuilder: (_, __) =>
-              const SizedBox(height: BSizes.spaceBtwItems),
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return Obx(() => BucketItemCard(
-                  item: item,
-                  isSelected: controller.isSelected(item.id),
-                  onTap: () => controller.toggleBucketSelection(item.id),
-                ));
-          },
+            Expanded(
+              child: items.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            controller.bucketSearchQuery.value.isEmpty
+                                ? Icons.shopping_basket_rounded
+                                : Iconsax.search_status,
+                            size: 64,
+                            color: BColors.darkGrey,
+                          ),
+                          const SizedBox(height: BSizes.spaceBtwItems),
+                          Text(
+                            controller.bucketSearchQuery.value.isEmpty
+                                ? 'Bucket is empty'
+                                : 'No results found',
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  color: BColors.darkGrey,
+                                ),
+                          ),
+                          const SizedBox(height: BSizes.xs),
+                          Text(
+                            controller.bucketSearchQuery.value.isEmpty
+                                ? 'No unassigned collection items available.'
+                                : 'Try searching for something else.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: BColors.darkGrey,
+                                ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        BSizes.defaultSpace,
+                        0,
+                        BSizes.defaultSpace,
+                        BSizes.defaultSpace,
+                      ),
+                      itemCount: items.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: BSizes.spaceBtwItems),
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return Obx(() => BucketItemCard(
+                              item: item,
+                              isSelected: controller.isSelected(item.id),
+                              onTap: () =>
+                                  controller.toggleBucketSelection(item.id),
+                            ));
+                      },
+                    ),
+            ),
+          ],
         );
       }),
     );
