@@ -161,16 +161,27 @@ class BucketItemCard extends StatelessWidget {
 
                   const SizedBox(height: BSizes.sm),
 
-                  /// Amount + date
+                  /// To be Collected + date
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        BFormatter.formatPesoCurrency(item.amount),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: BColors.primary,
-                            ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'To be Collected',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: BColors.darkGrey,
+                                ),
+                          ),
+                          Text(
+                            BFormatter.formatPesoCurrency(item.toBeCollected),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: BColors.primary,
+                                ),
+                          ),
+                        ],
                       ),
                       Text(
                         item.documentDate,

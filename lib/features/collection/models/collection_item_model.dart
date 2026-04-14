@@ -20,8 +20,11 @@ class CollectionItemModel {
   /// Bank name associated with the collection.
   final String bankName;
 
-  /// Amount to collect.
-  final double amount;
+  /// Amount to be collected.
+  final double toBeCollected;
+
+  /// Total amount already collected.
+  final double totalCollected;
 
   /// Optional remarks / notes.
   final String remarks;
@@ -48,10 +51,11 @@ class CollectionItemModel {
     required this.id,
     required this.client,
     this.documentReferences = const [],
-    this.bankName = '',
-    this.amount = 0,
-    this.remarks = '',
-    this.documentDate = '',
+    this.bankName = 'N/A',
+    this.toBeCollected = 0,
+    this.totalCollected = 0,
+    this.remarks = 'No remarks',
+    this.documentDate = 'N/A',
     this.coreStatus = CollectionStatusColors.statusUnassigned,
     this.delayStatus = CollectionStatusColors.statusOnSchedule,
     this.outcomeStatus = CollectionStatusColors.statusNone,
@@ -73,7 +77,8 @@ class CollectionItemModel {
     ClientModel? client,
     List<String>? documentReferences,
     String? bankName,
-    double? amount,
+    double? toBeCollected,
+    double? totalCollected,
     String? remarks,
     String? documentDate,
     String? coreStatus,
@@ -89,7 +94,8 @@ class CollectionItemModel {
       client: client ?? this.client,
       documentReferences: documentReferences ?? this.documentReferences,
       bankName: bankName ?? this.bankName,
-      amount: amount ?? this.amount,
+      toBeCollected: toBeCollected ?? this.toBeCollected,
+      totalCollected: totalCollected ?? this.totalCollected,
       remarks: remarks ?? this.remarks,
       documentDate: documentDate ?? this.documentDate,
       coreStatus: coreStatus ?? this.coreStatus,
@@ -114,17 +120,22 @@ class CollectionItemModel {
           ? List<String>.from(
               (json['DocumentReferences'] as List).map((e) => e.toString()))
           : <String>[],
-      bankName: (json['BankName'] ?? '').toString(),
-      amount: (json['Amount'] is num)
-          ? (json['Amount'] as num).toDouble()
-          : double.tryParse(json['Amount']?.toString() ?? '') ?? 0,
-      remarks: (json['Remarks'] ?? '').toString(),
-      documentDate: (json['DocumentDate'] ?? '').toString(),
+      bankName: (json['BankName'] ?? 'N/A').toString(),
+      toBeCollected: (json['ToBeCollected'] is num)
+          ? (json['ToBeCollected'] as num).toDouble()
+          : (json['Amount'] is num)
+              ? (json['Amount'] as num).toDouble()
+              : double.tryParse((json['ToBeCollected'] ?? json['Amount'])?.toString() ?? '') ?? 0,
+      totalCollected: (json['TotalCollected'] is num)
+          ? (json['TotalCollected'] as num).toDouble()
+          : double.tryParse(json['TotalCollected']?.toString() ?? '') ?? 0,
+      remarks: (json['Remarks'] ?? 'No remarks').toString(),
+      documentDate: (json['DocumentDate'] ?? 'N/A').toString(),
       coreStatus: (json['CoreStatus'] ?? json['Status'] ?? CollectionStatusColors.statusUnassigned).toString(),
       delayStatus: (json['DelayStatus'] ?? CollectionStatusColors.statusOnSchedule).toString(),
       outcomeStatus: (json['OutcomeStatus'] ?? CollectionStatusColors.statusNone).toString(),
       administrativeStatus: (json['AdministrativeStatus'] ?? CollectionStatusColors.statusForVerification).toString(),
-      assignedAt: (json['AssignedAt'] ?? '').toString(),
+      assignedAt: (json['AssignedAt'] ?? 'N/A').toString(),
       collectorName: (json['CollectorName'] ?? 'Unassigned').toString(),
       history: json['History'] != null && json['History'] is List
           ? List<CollectionHistoryModel>.from(
@@ -140,7 +151,8 @@ class CollectionItemModel {
       'Client': client.toJson(),
       'DocumentReferences': documentReferences,
       'BankName': bankName,
-      'Amount': amount,
+      'ToBeCollected': toBeCollected,
+      'TotalCollected': totalCollected,
       'Remarks': remarks,
       'DocumentDate': documentDate,
       'CoreStatus': coreStatus,

@@ -16,12 +16,12 @@ class ClientModel {
 
   /// Empty Model
   static ClientModel empty() => ClientModel(
-      id: '',
-      code: '',
-      name: 'Client',
-      address: 'Address',
-      contact: 'Phone Number',
-      emailAddress: '');
+      id: 'N/A',
+      code: 'N/A',
+      name: 'N/A',
+      address: 'N/A',
+      contact: 'N/A',
+      emailAddress: 'N/A');
 
   Map<String, dynamic> toJson() {
     return {
@@ -47,7 +47,7 @@ class ClientModel {
 
   factory ClientModel.fromJson(Map<String, dynamic> json) {
     // Helper to retrieve the first non-null value from a list of possible keys
-    String firstPresent(Map<String, dynamic> m, List<String> keys, {String fallback = ''}) {
+    String firstPresent(Map<String, dynamic> m, List<String> keys, {String fallback = 'N/A'}) {
       for (final k in keys) {
         if (m.containsKey(k) && m[k] != null) return m[k].toString();
       }

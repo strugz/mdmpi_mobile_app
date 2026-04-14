@@ -105,7 +105,7 @@ class ActivityListTile extends StatelessWidget {
                     ),
                     const SizedBox(height: BSizes.xs),
                     Text(
-                      BFormatter.formatPesoCurrency(item.amount),
+                      BFormatter.formatPesoCurrency(item.toBeCollected),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: BColors.primary,

@@ -23,6 +23,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   late String selectedOutcomeStatus;
   late String selectedAdministrativeStatus;
   late TextEditingController remarksController;
+  late TextEditingController totalCollectedController;
 
   @override
   void initState() {
@@ -31,11 +32,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     selectedOutcomeStatus = widget.item.outcomeStatus;
     selectedAdministrativeStatus = widget.item.administrativeStatus;
     remarksController = TextEditingController(text: widget.item.remarks);
+    totalCollectedController = TextEditingController(text: widget.item.totalCollected.toString());
   }
 
   @override
   void dispose() {
     remarksController.dispose();
+    totalCollectedController.dispose();
     super.dispose();
   }
 
@@ -47,6 +50,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       outcomeStatus: selectedOutcomeStatus,
       administrativeStatus: selectedAdministrativeStatus,
       remarks: remarksController.text,
+      totalCollected: double.tryParse(totalCollectedController.text) ?? 0,
     );
 
     Get.back();
@@ -54,7 +58,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       'Success',
       'Activity updated and moved back to bucket',
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: BColors.success.withOpacity(0.8),
+      backgroundColor: BColors.success.withValues(alpha: 0.8),
       colorText: Colors.white,
     );
   }
@@ -85,6 +89,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               selectedOutcomeStatus: selectedOutcomeStatus,
               selectedAdministrativeStatus: selectedAdministrativeStatus,
               remarksController: remarksController,
+              totalCollectedController: totalCollectedController,
               onDelayChanged: (val) => setState(() => selectedDelayStatus = val!),
               onOutcomeChanged: (val) => setState(() => selectedOutcomeStatus = val!),
               onAdministrativeChanged: (val) => setState(() => selectedAdministrativeStatus = val!),

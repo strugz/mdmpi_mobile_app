@@ -9,6 +9,7 @@ class ActivityUpdateStatusCard extends StatelessWidget {
     required this.selectedOutcomeStatus,
     required this.selectedAdministrativeStatus,
     required this.remarksController,
+    required this.totalCollectedController,
     required this.onDelayChanged,
     required this.onOutcomeChanged,
     required this.onAdministrativeChanged,
@@ -18,6 +19,7 @@ class ActivityUpdateStatusCard extends StatelessWidget {
   final String selectedOutcomeStatus;
   final String selectedAdministrativeStatus;
   final TextEditingController remarksController;
+  final TextEditingController totalCollectedController;
   final ValueChanged<String?> onDelayChanged;
   final ValueChanged<String?> onOutcomeChanged;
   final ValueChanged<String?> onAdministrativeChanged;
@@ -34,14 +36,20 @@ class ActivityUpdateStatusCard extends StatelessWidget {
             _ActivityStatusDropdown(
               label: 'Delay Status',
               value: selectedDelayStatus,
-              items: [CollectionStatusColors.statusOnSchedule, ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryDelays)],
+              items: [
+                CollectionStatusColors.statusOnSchedule,
+                ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryDelays)
+              ],
               onChanged: onDelayChanged,
             ),
             const SizedBox(height: BSizes.spaceBtwInputFields),
             _ActivityStatusDropdown(
               label: 'Outcome Status',
               value: selectedOutcomeStatus,
-              items: [CollectionStatusColors.statusNone, ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryOutcomes)],
+              items: [
+                CollectionStatusColors.statusNone,
+                ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryOutcomes)
+              ],
               onChanged: onOutcomeChanged,
             ),
             const SizedBox(height: BSizes.spaceBtwInputFields),
@@ -50,6 +58,16 @@ class ActivityUpdateStatusCard extends StatelessWidget {
               value: selectedAdministrativeStatus,
               items: CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryAdministrative),
               onChanged: onAdministrativeChanged,
+            ),
+            const SizedBox(height: BSizes.spaceBtwInputFields),
+            TextField(
+              controller: totalCollectedController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Total Collected',
+                hintText: 'Enter amount collected...',
+                prefixText: '₱ ',
+              ),
             ),
             const SizedBox(height: BSizes.spaceBtwInputFields),
             TextField(
@@ -84,7 +102,7 @@ class _ActivityStatusDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: items.contains(value) ? value : items.first,
+      value: items.contains(value) ? value : (items.isNotEmpty ? items.first : null),
       decoration: InputDecoration(labelText: label),
       items: items.map((item) {
         return DropdownMenuItem(

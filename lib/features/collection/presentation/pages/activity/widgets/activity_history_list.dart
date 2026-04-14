@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 
@@ -20,12 +21,15 @@ class ActivityHistoryList extends StatelessWidget {
       );
     }
 
+    // Sort history to show most recent first
+    final sortedHistory = history.reversed.toList();
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: history.length,
+      itemCount: sortedHistory.length,
       itemBuilder: (context, index) {
-        return _ActivityHistoryCard(history: history[index]);
+        return _ActivityHistoryCard(history: sortedHistory[index]);
       },
     );
   }
@@ -52,7 +56,18 @@ class _ActivityHistoryCard extends StatelessWidget {
                 Text(history.collectorName, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey)),
               ],
             ),
-            const SizedBox(height: BSizes.sm),
+            const SizedBox(height: BSizes.xs),
+            if (history.totalCollected > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: BSizes.xs),
+                child: Text(
+                  'Collected: ${BFormatter.formatPesoCurrency(history.totalCollected)}',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: BColors.success,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             Wrap(
               spacing: BSizes.xs,
               runSpacing: BSizes.xs,
@@ -63,7 +78,7 @@ class _ActivityHistoryCard extends StatelessWidget {
                 _ActivityHistoryBadge(status: history.administrativeStatus),
               ],
             ),
-            if (history.remarks.isNotEmpty) ...[
+            if (history.remarks.isNotEmpty && history.remarks != 'No remarks') ...[
               const SizedBox(height: BSizes.xs),
               Text(
                 'Remarks: ${history.remarks}',
@@ -91,7 +106,7 @@ class _ActivityHistoryBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.sm, vertical: BSizes.xxs),
       decoration: BoxDecoration(
-        color: bg.withOpacity(0.1),
+        color: bg.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
       ),
       child: Text(

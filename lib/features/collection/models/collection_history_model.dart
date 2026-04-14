@@ -9,6 +9,7 @@ class CollectionHistoryModel {
   final String outcomeStatus;
   final String administrativeStatus;
   final String remarks;
+  final double totalCollected;
 
   const CollectionHistoryModel({
     required this.date,
@@ -17,18 +18,22 @@ class CollectionHistoryModel {
     this.delayStatus = CollectionStatusColors.statusOnSchedule,
     this.outcomeStatus = CollectionStatusColors.statusNone,
     this.administrativeStatus = CollectionStatusColors.statusForVerification,
-    this.remarks = '',
+    this.remarks = 'No remarks',
+    this.totalCollected = 0,
   });
 
   factory CollectionHistoryModel.fromJson(Map<String, dynamic> json) {
     return CollectionHistoryModel(
-      date: (json['Date'] ?? '').toString(),
-      collectorName: (json['CollectorName'] ?? '').toString(),
+      date: (json['Date'] ?? 'N/A').toString(),
+      collectorName: (json['CollectorName'] ?? 'Unassigned').toString(),
       coreStatus: (json['CoreStatus'] ?? CollectionStatusColors.statusOngoing).toString(),
       delayStatus: (json['DelayStatus'] ?? CollectionStatusColors.statusOnSchedule).toString(),
       outcomeStatus: (json['OutcomeStatus'] ?? CollectionStatusColors.statusNone).toString(),
       administrativeStatus: (json['AdministrativeStatus'] ?? CollectionStatusColors.statusForVerification).toString(),
-      remarks: (json['Remarks'] ?? '').toString(),
+      remarks: (json['Remarks'] ?? 'No remarks').toString(),
+      totalCollected: (json['TotalCollected'] is num)
+          ? (json['TotalCollected'] as num).toDouble()
+          : double.tryParse(json['TotalCollected']?.toString() ?? '') ?? 0,
     );
   }
 
@@ -41,6 +46,7 @@ class CollectionHistoryModel {
       'OutcomeStatus': outcomeStatus,
       'AdministrativeStatus': administrativeStatus,
       'Remarks': remarks,
+      'TotalCollected': totalCollected,
     };
   }
 }

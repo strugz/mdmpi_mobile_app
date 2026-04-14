@@ -87,7 +87,7 @@ class CollectionStatusColors {
 
     // Delays
       case statusOnSchedule:
-        bg = BColors.success.withOpacity(0.1);
+        bg = BColors.success.withValues(alpha: 0.1);
         fg = BColors.success;
         break;
       case statusBehindSchedule:
@@ -99,7 +99,7 @@ class CollectionStatusColors {
 
     // Outcomes
       case statusNone:
-        bg = BColors.darkerGrey.withOpacity(0.1);
+        bg = BColors.darkerGrey.withValues(alpha: 0.1);
         fg = BColors.darkerGrey;
         break;
       case statusFullyCollected:

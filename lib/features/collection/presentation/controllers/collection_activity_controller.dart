@@ -148,6 +148,7 @@ class CollectionActivityController extends GetxController {
     required String outcomeStatus,
     required String administrativeStatus,
     required String remarks,
+    double? totalCollected,
   }) {
     final index = activityItems.indexWhere((e) => e.id == id);
     if (index == -1) return;
@@ -155,28 +156,41 @@ class CollectionActivityController extends GetxController {
     final oldItem = activityItems[index];
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
+    // Update item and calculate new balance
+    final double newlyCollected = totalCollected ?? 0;
+    final double updatedTotalCollected = oldItem.totalCollected + newlyCollected;
+    final double updatedToBeCollected = (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
+
+    // Auto-update outcome status if fully collected
+    String finalOutcomeStatus = outcomeStatus;
+    if (updatedToBeCollected == 0) {
+      finalOutcomeStatus = CollectionStatusColors.statusFullyCollected;
+    } else if (newlyCollected > 0 && finalOutcomeStatus == CollectionStatusColors.statusNone) {
+      // If they collected something but didn't set a status, default to partial
+      finalOutcomeStatus = CollectionStatusColors.statusPartiallyCollected;
+    }
+
     // Create history entry
     final historyEntry = CollectionHistoryModel(
       date: now,
       collectorName: oldItem.collectorName,
       coreStatus: oldItem.coreStatus,
       delayStatus: delayStatus,
-      outcomeStatus: outcomeStatus,
+      outcomeStatus: finalOutcomeStatus,
       administrativeStatus: administrativeStatus,
       remarks: remarks,
+      totalCollected: newlyCollected,
     );
 
-    // Update item and reset assignment info if moving back to bucket
     final updatedItem = oldItem.copyWith(
       delayStatus: delayStatus,
-      outcomeStatus: outcomeStatus,
+      outcomeStatus: finalOutcomeStatus,
       administrativeStatus: administrativeStatus,
       remarks: remarks,
+      toBeCollected: updatedToBeCollected,
+      totalCollected: updatedTotalCollected,
       history: [...oldItem.history, historyEntry],
-      // If we are moving it back to bucket, we might want to clear assignment?
-      // User said: "go back to bucket collection list with the updated status"
-      // Usually "bucket" means unassigned.
-      assignedAt: '',
+      assignedAt: 'N/A',
       collectorName: 'Unassigned',
       coreStatus: CollectionStatusColors.statusUnassigned,
     );
@@ -253,7 +267,8 @@ class CollectionActivityController extends GetxController {
         ),
         documentReferences: ['CHQ-001234'],
         bankName: 'BDO',
-        amount: 25000,
+        toBeCollected: 25000,
+        totalCollected: 0,
         documentDate: '2026-03-01',
         remarks: 'Post-dated cheque',
         coreStatus: CollectionStatusColors.statusUnassigned,
@@ -281,7 +296,8 @@ class CollectionActivityController extends GetxController {
         ),
         documentReferences: ['CHQ-005678'],
         bankName: 'Metrobank',
-        amount: 18500,
+        toBeCollected: 18500,
+        totalCollected: 0,
         documentDate: '2026-02-28',
         remarks: 'Overdue 5 days',
         coreStatus: CollectionStatusColors.statusUnassigned,
@@ -310,7 +326,8 @@ class CollectionActivityController extends GetxController {
         ),
         documentReferences: ['CHQ-009012', 'CHQ-009013'],
         bankName: 'BPI',
-        amount: 42000,
+        toBeCollected: 42000,
+        totalCollected: 42000,
         documentDate: '2026-03-02',
         coreStatus: CollectionStatusColors.statusOngoing,
         delayStatus: CollectionStatusColors.statusOnSchedule,
@@ -345,7 +362,8 @@ class CollectionActivityController extends GetxController {
         ),
         documentReferences: ['CHQ-003456'],
         bankName: 'Landbank',
-        amount: 15750,
+        toBeCollected: 15750,
+        totalCollected: 0,
         documentDate: '2026-03-03',
         remarks: 'Cash on delivery alternative',
         coreStatus: CollectionStatusColors.statusOngoing,
@@ -364,7 +382,8 @@ class CollectionActivityController extends GetxController {
         ),
         documentReferences: ['CHQ-007890'],
         bankName: 'RCBC',
-        amount: 33200,
+        toBeCollected: 33200,
+        totalCollected: 0,
         documentDate: '2026-03-01',
         coreStatus: CollectionStatusColors.statusOngoing,
         delayStatus: CollectionStatusColors.statusOnSchedule,
