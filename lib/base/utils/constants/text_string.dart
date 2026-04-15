@@ -145,6 +145,7 @@ class BTexts {
   static const String statusForDispatch = "For Dispatch";
   static const String statusDispatch = "Dispatch";
   static const String statusDropOff = "Drop Off";
+  static const String statusBackLoad = "Back Load";
 
   /// Request Modal Specific Texts
   static const String requestModalDeliveryShotTitle = "Delivery Shot";

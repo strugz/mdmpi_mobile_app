@@ -4,7 +4,8 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/standard_delivery/standard_delivery_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/back_load/backload_transaction_page.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_card_horizontal.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -65,10 +66,12 @@ class BList extends StatelessWidget {
                       },
                       onLongPress: () {
                         if (request.status != BTexts.statusDoneDelivery &&
-                            request.status != BTexts.statusCancelled) {
-                          requestController.currentSelectedRequest.value =
-                              request;
-                          BDialog.showRemarksDialog(context, request);
+                            request.status != BTexts.statusCancelled &&
+                            request.status != BTexts.statusBackLoad) {
+                          requestController.currentSelectedRequest.value = request;
+                          // Directly open BackLoad page per BackLoad spec (no choice sheet)
+                          Get.find<BackLoadController>().initForRequest(request);
+                          Get.to(() => BackLoadTransactionPage(requestModel: request));
                         }
                       },
                       child: BRequestCardHorizontal(requestModel: request),

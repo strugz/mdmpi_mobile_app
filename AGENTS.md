@@ -22,6 +22,7 @@ Important architectural notes
 - State & DI: GetX is used everywhere. Repositories extend `GetxController` and are registered in `lib/bindings/general_bindings.dart` via `Get.lazyPut(..., fenix: true)`.
   - Example: `Get.lazyPut(() => RoleRepository(), fenix: true);`
   - Controllers resolve deps with `Get.find()` — do not instantiate repos inside controllers.
+- **Firebase guard in GeneralBindings:** All Firestore-backed repositories are wrapped in `if (Firebase.apps.isNotEmpty) { ... }`. On desktop platforms without FlutterFire configuration, these registrations are skipped to avoid runtime errors. Repositories that use REST + local DB only (e.g., `BackLoadRepository`) are registered **outside** the guard so they work on all targets. See `lib/bindings/general_bindings.dart` lines 120–159.
 - Early/ eager registration: some platform services are registered in `lib/main.dart` using `Get.put(...)` before bindings run (notably `PermissionService`, `NotificationService`, and `AuthenticationRepository` after Firebase init). See `lib/main.dart`.
 - Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`.
 
@@ -35,6 +36,11 @@ Important architectural notes
 - Platform initialization helper: `lib/base/utils/platform_init.dart` centralizes several early-start concerns used by `main.dart` (sqflite FFI initialization on desktop, conditional Firebase initialization, eager NotificationService init, and eager registration of `AuthenticationRepository` via `Get.put` when Firebase is available). Inspect `initPlatform(...)` when auditing early/eager registrations and desktop vs mobile platform behavior.
 
 - Note: several core services/controllers are registered eagerly via `Get.put` in `lib/bindings/general_bindings.dart` (not only in `main.dart`). Examples: `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering used by the app.
+
+- Recently added repositories and controllers (all registered in `GeneralBindings`):
+  - **Repositories:** `BackLoadRepository` (`data/repositories/app_data/`, REST + local DB, outside Firebase guard), `InventoryItemRepository` (`data/repositories/inventory/`, Gemini OCR endpoint), `FormCategoryRepository` (`data/repositories/common/`), `CancelRemarksRepository` (`data/repositories/app_data/`), `UserMDMPIRepository` (`data/repositories/user/`).
+  - **Controllers:** `BackLoadController`, `InventoryItemController`, `ChartController`, `RequestController`, `StockReceiveController`, `HotlineDirectController`, `RequestHotlineController` (stub). All in `features/logistics/controllers/`.
+  - **Role handlers:** `features/logistics/services/implementations/` now contains `hotline_direct_role_handler.dart`, `request_role_handler.dart`, `pick_up_role_handler.dart`, `stock_receive_role_handler.dart` — implementing `IRequestActionHandler`.
 
 Conventions & patterns to follow (concrete)
 -----------------------------------------
@@ -57,7 +63,7 @@ DI / registration gotchas
   - `Get.lazyPut<IAuthenticationRepository>(() => AuthenticationRepository(), fenix: true);`
   - `Get.lazyPut(() => LoginWithEmailPasswordUseCase(...), fenix: true);`
 
-- Binding exceptions: some registrations intentionally differ from the default `fenix: true` pattern. For example `UserRepository` is registered without `fenix` in `GeneralBindings` (`Get.lazyPut(() => UserRepository());`) and `SignupController` is registered with `Get.put(...)` to retain form state. Check `lib/bindings/general_bindings.dart` before adding new bindings to match existing intent.
+- Binding exceptions: some registrations intentionally differ from the default `fenix: true` pattern. For example `UserRepository` is registered without `fenix` in `GeneralBindings` (`Get.lazyPut(() => UserRepository());`). Check `lib/bindings/general_bindings.dart` before adding new bindings to match existing intent.
 
 Where to look for examples (key files)
 -------------------------------------
@@ -70,6 +76,8 @@ Where to look for examples (key files)
 - Routes constants and GetPage list: `lib/base/utils/routes/` (BRoutes/AppRoutes)
 - Feature QA tooling: `bin/generate_module_qa.dart` and `lib/features/logistics/screens/data_test/IMPLEMENTATION_SUMMARY.md`
 - DB helper & schema: `lib/data/local/database_helper.dart` and `lib/data/local/db_schema.dart`
+  - Recent tables: `a_tblRequestBackload` (back-load entries), `a_tblClientContactPerson` (autocomplete), `a_tblLocationAlternative` (alternative delivery locations).
+  - Recent DAOs: `data/local/dao/common/backload_dao.dart`, `data/local/dao/common/client_contact_person_dao.dart`.
 
 - Platform init & sqflite FFI: `lib/base/utils/platform_init.dart` — shows `ensureSqfliteFfiInitialized()`, conditional Firebase init, and the code path that registers `AuthenticationRepository` when Firebase is present.
 
@@ -80,6 +88,11 @@ Where to look for examples (key files)
 
 - Local Storage Data Viewer: `lib/features/logistics/screens/data_test/local_storage_data_viewer.dart`, `local_storage_data_controller.dart`, and documentation in the same folder (`README.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`).
 
+- Module documentation: `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`, `docs/modules/inventory_item/INVENTORY_ITEM_MODULE_DOCUMENTATION.md`. See `docs/README.md` for the full module index.
+
+- Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). Note: `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined but `backLoad` does **not** yet have a `GetPage` in `AppRoutes.pages`.
+
+- Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined — `backLoad` now has a corresponding `GetPage` in `AppRoutes.pages` which constructs `BackLoadTransactionPage` and expects a `StandardDeliveryModel` via `Get.arguments` (see `lib/base/utils/routes/app_routes.dart`, lines ~41-48).
 Developer workflows & scripts
 -----------------------------
 - Standard local dev: `flutter pub get` ; `flutter run` (use PowerShell on Windows; chain with `;` if needed).
@@ -101,6 +114,22 @@ Integration & external deps to be aware of
 
 - Documentation cleanup: `.github/copilot-instructions.md` received minor formatting cleanup (no functional changes). Read it first for AI-specific guidance.
 
+- AI / LLM packages in `pubspec.yaml`:
+  - The repository currently includes placeholder dependencies for AI/LLM integration (see `pubspec.yaml`): `flutter_ai_toolkit: any` and `firebase_ml_model_downloader: any`.
+  - These are intentional placeholders. Do NOT add API keys or provider credentials to the repo. When integrating a concrete LLM or on-device model package:
+    - Pin exact package versions in `pubspec.yaml` (do not leave `any`).
+    - Run `flutter pub get` and commit the resulting `pubspec.lock`.
+    - Prefer platform-safe, offline-capable packages for on-device models; use `firebase_ml_model_downloader` only if you understand Firebase model hosting and licensing implications.
+    - Add integration tests where applicable and document the chosen package in `docs/` when requested.
+
+- Placeholder service stubs (empty files, **not** registered in `GeneralBindings`):
+  - `common/services/abstracts/i_ai_service.dart` and `common/services/implementations/ai_service.dart` — AI service interface/impl (empty).
+  - `common/services/abstracts/i_feature_toggle_service.dart` and `common/services/implementations/feature_toggle_service.dart` — feature toggle (empty).
+  - `common/widgets/feature_guard.dart` — empty placeholder widget.
+  - These files exist as scaffolding for future features. Do NOT register them in `GeneralBindings` until they have real implementations.
+
+- `IDeliveryRequestController` (`common/services/abstracts/i_delivery_request_controller.dart`) is a fully implemented 142-line interface (not empty). It defines the contract for delivery request controllers; both `StandardDeliveryController` and `HotlineDirectController` implement it.
+
 What NOT to change / common pitfalls
 -----------------------------------
 - Do not move or rename `GeneralBindings` or migrate DI to a different pattern — bindings ordering is relied upon.
@@ -108,6 +137,14 @@ What NOT to change / common pitfalls
 - Avoid `print` statements and in-widget business logic.
 
 - Do not expose the Local Storage Data Viewer to production users; it is for development/debugging only.
+
+- NOTE: There are a few legacy `print()` calls still present in the codebase (used for quick debugging). Replace these with `logDebug()` or `BloggerHelper` when making changes. Notable instances include:
+  - `lib/data/repositories/inventory/inventory_item_repository.dart` (debug `print("HeHim: ...")` in Gemini integration)
+  - `lib/features/logistics/controllers/standard_delivery_controller.dart` (debug prints when handling API results)
+  - `lib/features/logistics/screens/request_forms/widgets/pull_out_form.dart` and `lib/features/logistics/screens/common/b_request_form.dart` (UI debug prints)
+  - `lib/debug/reset_database.dart` (intentional console utility — safe in debug tool)
+
+  When replacing prints, prefer `logDebug()` from `lib/base/utils/logger.dart` for simple messages and `BloggerHelper` for structured logs.
 
 How to contribute code changes as an agent
 ----------------------------------------
@@ -124,6 +161,8 @@ The project normally keeps docs in `docs/`. This `AGENTS.md` was created at the 
 Contact points in repo (where agents should look first)
 -----------------------------------------------------
 - `.github/copilot-instructions.md` — project-specific AI guidelines (read first). NOTE: this file is referenced in docs but may not be checked into the repository; if it's missing, consult `docs/README.md` and the project `README.md` for equivalent conventions and the top-level `AGENTS.md` itself.
+
+- `.github/copilot-instructions.md` — project-specific AI guidelines (read first). The file is present in the repository at `.github/copilot-instructions.md` and contains the authoritative, project-specific coding conventions and folder layout; read it before making changes.
 - `lib/bindings/general_bindings.dart` — DI and registration order
 - `lib/main.dart` — early initializers and platform registration
 - `lib/base/utils/result.dart` and `lib/base/utils/logger.dart` — error & logging APIs

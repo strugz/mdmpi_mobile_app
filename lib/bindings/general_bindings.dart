@@ -37,6 +37,7 @@ import '../data/repositories/app_data/mobile_repository.dart';
 import '../data/repositories/app_data/role_repository.dart';
 import '../data/repositories/app_data/user_initial_repository.dart';
 import '../data/repositories/app_data/cancel_remarks_repository.dart';
+import '../data/repositories/app_data/backload_repository.dart';
 import '../data/repositories/client/client_repository.dart';
 import '../data/repositories/delivery_vehicle/delivery_vehicle_repository.dart';
 import '../data/repositories/standard_delivery/standard_delivery_repository.dart';
@@ -48,6 +49,7 @@ import '../features/logistics/presentation/controllers/logistics_onboarding_cont
 import '../features/authentication/presentation/controllers/verify_email_controller.dart';
 import '../common/controllers/camera_controller.dart';
 import '../features/logistics/controllers/chart_controller.dart';
+import '../features/logistics/controllers/backload_controller.dart';
 import '../features/logistics/controllers/delivery_location_controller.dart';
 import '../features/logistics/controllers/delivery_vehicle_controller.dart';
 import '../features/logistics/controllers/home_controller.dart';
@@ -152,6 +154,10 @@ class GeneralBindings extends Bindings {
       // platforms to keep the UI operational.
     }
 
+    // BackLoad uses REST + local DB only, so register it outside the Firebase
+    // guard to make the long-press flow available on all targets.
+    Get.lazyPut(() => BackLoadRepository(), fenix: true);
+
     // ========================================================================
     // Controllers
     // ========================================================================
@@ -168,6 +174,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => UserMdmpiController(), fenix: true);
     Get.lazyPut(() => WebSocketDeliveryController(), fenix: true);
     Get.lazyPut(() => DeliveryLocationController(), fenix: true);
+    Get.lazyPut(() => BackLoadController(), fenix: true);
     // SignupController is kept as a lazily registered singleton so it is
     // instantiated only when the signup UI is requested. This prevents
     // creating Firebase-backed repositories during app startup on platforms

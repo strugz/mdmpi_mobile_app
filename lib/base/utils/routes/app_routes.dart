@@ -14,6 +14,8 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widget
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/pull_out_form.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/standard_delivery_form.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_forms/widgets/stock_receive_form.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/back_load/backload_transaction_page.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/address/add_new_address.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
@@ -36,6 +38,14 @@ class AppRoutes {
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
     GetPage(name: BRoutes.pullOutForm, page: () => const PullOutForm()),
     GetPage(name: BRoutes.localStorageViewer, page: () => const LocalStorageDataViewer()),
+    // BackLoad receives the StandardDeliveryModel via Get.arguments
+    GetPage(
+      name: BRoutes.backLoad,
+      page: () {
+        final model = Get.arguments as StandardDeliveryModel;
+        return BackLoadTransactionPage(requestModel: model);
+      },
+    ),
   ];
 
   // Pages to navigate to

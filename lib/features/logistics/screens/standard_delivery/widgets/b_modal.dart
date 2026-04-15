@@ -4,7 +4,9 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_backload_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -36,6 +38,7 @@ class BModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
+    final bool isBackLoad = requestModel.status == BTexts.statusBackLoad;
     final controller = Get.find<StandardDeliveryController>();
 
     // Compute requestId once for reuse in children widgets
@@ -43,9 +46,12 @@ class BModal extends StatelessWidget {
 
     // Preload cancel remarks for cancelled requests
     if (isCancelled) {
-      controller.loadCancelRemarks(
-        requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID,
-      );
+      controller.loadCancelRemarks(requestId);
+    }
+
+    // Preload BackLoad remarks for back-loaded requests
+    if (isBackLoad) {
+      Get.find<BackLoadController>().loadBackLoadRemarks(requestId);
     }
 
     return RequestModalScaffold(
@@ -96,6 +102,23 @@ class BModal extends StatelessWidget {
                   date: remarks.date,
                   user: remarks.userUpdated,
                 ),
+              ],
+            );
+          }),
+        // Back Load Remarks Section
+        if (isBackLoad)
+          Obx(() {
+            final blController = Get.find<BackLoadController>();
+            final entries = blController.backLoadEntries;
+            if (entries.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const BTextDivider(text: 'Back Load Remarks'),
+                ...entries.map((entry) => BBackLoadRemarks(
+                      remarks: entry.remarks,
+                      dateReported: entry.dateReported,
+                    )),
               ],
             );
           }),

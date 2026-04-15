@@ -16,6 +16,7 @@ docs/
     pull-out/README.md               # Pull Out / Return logistics module
     hotline-direct/README.md         # Hotline Direct logistics module
     stock-receive/README.md          # Stock Receive logistics module
+    backload/BACKLOAD_MODULE_DOCUMENTATION.md # BackLoad logistics module
     authentication/README.md         # Authentication module (Clean Architecture)
     collection/README.md             # Collection department module
     personalization/README.md        # User profile, settings, address module
@@ -31,6 +32,7 @@ docs/
 | Pull Out | Logistics | Active | [modules/pull-out/](modules/pull-out/) |
 | Hotline Direct | Logistics | Active | [modules/hotline-direct/](modules/hotline-direct/) |
 | Stock Receive | Logistics | Active | [modules/stock-receive/](modules/stock-receive/) |
+| BackLoad | Logistics | Planned | [modules/backload/](modules/backload/) |
 | Authentication | Cross-cutting | Active | [modules/authentication/](modules/authentication/) |
 | Collection | Collection | Early Dev | [modules/collection/](modules/collection/) |
 | Personalization | Cross-cutting | Active | [modules/personalization/](modules/personalization/) |

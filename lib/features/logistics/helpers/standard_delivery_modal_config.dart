@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -82,6 +83,23 @@ class StandardDeliveryModalConfig {
     if (status == BTexts.statusDoneDelivery ||
         status == BTexts.statusCancelled) {
       return StandardDeliveryModalConfig.viewOnly(role: role);
+    }
+
+    // Back Load — show modal with a "Reprocess" action that resets the request
+    if (status == BTexts.statusBackLoad) {
+      return StandardDeliveryModalConfig(
+        role: role,
+        nextStatus: BTexts.statusNewRequest,
+        isActionVisible: true,
+        buttonLabel: 'Reprocess',
+        onAction: () async {
+          final blController = Get.find<BackLoadController>();
+          final success = await blController.reprocessRequest(request);
+          if (success) {
+            Get.back(); // close the modal / page
+          }
+        },
+      );
     }
 
     switch (role) {

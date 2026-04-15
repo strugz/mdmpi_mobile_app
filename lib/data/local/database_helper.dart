@@ -16,6 +16,7 @@ import 'dao/pick_up/pick_up_dao.dart';
 import 'dao/air_sea/air_sea_dao.dart';
 import 'dao/pull_out/pull_out_dao.dart';
 import 'dao/common/document_reference_dao.dart';
+import 'dao/common/backload_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
 import 'dao/common/mobile_dao.dart';
@@ -40,6 +41,7 @@ class DatabaseHelper {
   AirSeaDao? _airSeaDao;
   PullOutDao? _pullOutDao;
   DocumentReferenceDao? _documentReferenceDao;
+  BackLoadDao? _backLoadDao;
   RemarksDao? _remarksDao;
   ClientDao? _clientDao;
   MobileDao? _mobileDao;
@@ -65,6 +67,35 @@ class DatabaseHelper {
         await createAllTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        // Ensure backload table exists on upgrade paths where it may be missing.
+        // Some older installations created the DB before `a_tblRequestBackload`
+        // was added to the canonical schema. Create it here if absent.
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestBackload (
+              BackLoadID TEXT PRIMARY KEY,
+              RequestID TEXT NOT NULL,
+              Remarks TEXT,
+              DateReported TEXT
+            )
+          ''');
+        } catch (_) {}
+        // Defensive attempts to add missing columns if the table exists but is
+        // missing specific columns (older DB variants). ALTER TABLE ADD
+        // COLUMN is idempotent with try/catch wrapping.
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN BackLoadID TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN RequestID TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN Remarks TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN DateReported TEXT');
+        } catch (_) {}
+
         if (oldVersion < 2) {
           // Add pick-up main table for version 2
           // Pick-up requests reuse the existing shared support tables:
@@ -257,6 +288,35 @@ class DatabaseHelper {
           ''');
         }
       },
+      onOpen: (db) async {
+        // Defensive runtime check: ensure the backload table and its columns
+        // exist even if the database version is already up-to-date. This
+        // handles edge cases where the DB file was created with an incomplete
+        // schema but the version number already matches the current app
+        // version (so onUpgrade won't run).
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS a_tblRequestBackload (
+              BackLoadID TEXT PRIMARY KEY,
+              RequestID TEXT NOT NULL,
+              Remarks TEXT,
+              DateReported TEXT
+            )
+          ''');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN BackLoadID TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN RequestID TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN Remarks TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN DateReported TEXT');
+        } catch (_) {}
+      },
     );
   }
 
@@ -273,6 +333,13 @@ class DatabaseHelper {
     final db = await database;
     _documentReferenceDao = DocumentReferenceDao(db);
     return _documentReferenceDao!;
+  }
+
+  Future<BackLoadDao> get backLoadDao async {
+    if (_backLoadDao != null) return _backLoadDao!;
+    final db = await database;
+    _backLoadDao = BackLoadDao(db);
+    return _backLoadDao!;
   }
 
   Future<RemarksDao> get remarksDao async {
@@ -548,6 +615,7 @@ class DatabaseHelper {
     _mobileDao = null;
     _userDao = null;
     _cntmstDao = null;
+    _backLoadDao = null;
   }
 
   /// Delete the database file and reset the instance.
@@ -573,6 +641,7 @@ class DatabaseHelper {
       _mobileDao = null;
       _userDao = null;
       _cntmstDao = null;
+      _backLoadDao = null;
       _itemCategoryDao = null;
       _formCategoryDao = null;
     } catch (e) {

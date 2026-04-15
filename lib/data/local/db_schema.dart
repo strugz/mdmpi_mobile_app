@@ -274,4 +274,15 @@ Future<void> createAllTables(Database db) async {
       lastUsedAt TEXT NOT NULL
     )
   ''');
+
+  // Table: a_tblRequestBackload
+  // Stores back-load entries per request (multiple entries allowed).
+  await db.execute('''
+    CREATE TABLE a_tblRequestBackload (
+      BackLoadID TEXT PRIMARY KEY,
+      RequestID TEXT NOT NULL,
+      Remarks TEXT,
+      DateReported TEXT
+    )
+  ''');
 }
