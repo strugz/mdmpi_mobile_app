@@ -27,7 +27,7 @@ class CollectionBucketButton extends StatefulWidget {
     super.key,
     required this.itemCount,
     required this.onTap,
-    this.label = 'BUCKET COLLECTION',
+    this.label = 'COLLECTION BUCKET',
     this.imageAsset = 'assets/images/bucket-list.png',
     this.animationAsset = 'assets/images/animations/bucket-list.gif',
     this.isLottie = false,

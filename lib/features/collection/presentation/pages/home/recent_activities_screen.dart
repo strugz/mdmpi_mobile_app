@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/activity_detail_screen.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_chips.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_list_tile.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 
 class RecentActivitiesScreen extends StatelessWidget {
   const RecentActivitiesScreen({super.key});
@@ -34,22 +33,17 @@ class RecentActivitiesScreen extends StatelessWidget {
           Expanded(
             child: Obx(() {
               final items = controller.filteredActivityItems;
+              
+              // Flatten history from the filtered items
+              final allHistory = items.expand((item) => item.history).toList();
 
-              if (items.isEmpty) {
+              if (allHistory.isEmpty) {
                 return const Center(child: Text('No recent activities found.'));
               }
 
-              return ListView.separated(
+              return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: BSizes.sm),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return ActivityListTile(
-                    item: item,
-                    onTap: () => Get.to(() => ActivityDetailScreen(item: item)),
-                  );
-                },
+                child: ActivityHistoryList(history: allHistory),
               );
             }),
           ),

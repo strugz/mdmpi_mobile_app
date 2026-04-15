@@ -11,7 +11,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_ap
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_list_tile.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
@@ -158,23 +158,22 @@ class CollectionHomeScreen extends StatelessWidget {
 
           const SizedBox(height: BSizes.spaceBtwItems),
 
-          // Scrollable Recent Activities section
           Expanded(
             child: Obx(() {
               final controller = CollectionActivityController.instance;
-              final items = controller.activityItems.take(5).toList();
+              
+              // Combine history from the items to show a unified "Recent Activities" log
+              final allHistory = controller.activityItems
+                  .expand((item) => item.history)
+                  .toList();
 
-              if (items.isEmpty) {
+              if (allHistory.isEmpty) {
                 return const Center(child: Text('No recent activities'));
               }
 
-              return ListView.separated(
+              return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: BSizes.sm),
-                itemBuilder: (context, index) {
-                  return ActivityListTile(item: items[index]);
-                },
+                child: ActivityHistoryList(history: allHistory),
               );
             }),
           ),

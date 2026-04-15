@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_chips.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_list_tile.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
@@ -77,7 +76,7 @@ class CategoryDetailScreen extends StatelessWidget {
 
           const SizedBox(height: BSizes.spaceBtwSections),
 
-          /// Activity list
+          /// Activity History list
           Expanded(
             child: Obx(() {
               final items = controller.filteredActivityItems;
@@ -88,13 +87,12 @@ class CategoryDetailScreen extends StatelessWidget {
                 );
               }
 
-              return ListView.separated(
+              // Flatten history from the items in this category
+              final allHistory = items.expand((item) => item.history).toList();
+
+              return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: BSizes.sm),
-                itemBuilder: (context, index) {
-                  return ActivityListTile(item: items[index]);
-                },
+                child: ActivityHistoryList(history: allHistory),
               );
             }),
           ),
