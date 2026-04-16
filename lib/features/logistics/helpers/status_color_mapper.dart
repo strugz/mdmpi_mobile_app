@@ -38,6 +38,12 @@ class LogisticsStatusColors {
         bg = BColors.success; fg = BColors.white; break;
       case BTexts.statusReceived:
         bg = BColors.success; fg = BColors.white; break;
+      case BTexts.statusProvincialPickUp:
+        bg = _adjustAlpha(Colors.teal, darkMode, baseAlpha: 0.3); fg = Colors.teal; break;
+      case BTexts.statusProvincialInTransit:
+        bg = _adjustAlpha(Colors.indigo, darkMode, baseAlpha: 0.3); fg = Colors.indigo; break;
+      case BTexts.statusProvincialDelivered:
+        bg = const Color(0xFF1B5E20); fg = BColors.white; break;
 
       // Preference / Priority values
       case 'Low':

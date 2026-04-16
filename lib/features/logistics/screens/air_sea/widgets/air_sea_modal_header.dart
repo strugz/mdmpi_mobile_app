@@ -45,6 +45,7 @@ class AirSeaRequestModalHeader extends StatelessWidget {
             bold: true,
             fontColor: dark ? BColors.light : BColors.black,
           ),
+
           if (hasAddress) ...[
             const SizedBox(height: BSizes.xxs),
             BLabelValueText(
@@ -56,8 +57,11 @@ class AirSeaRequestModalHeader extends StatelessWidget {
               smallSize: true,
             )
           ],
+
           const SizedBox(height: BSizes.xs),
+
           StatusChip(status: requestModel.status),
+
           // Preparation details section (who prepared and when)
           if (hasPreparedBy) ...[
             const SizedBox(height: BSizes.xs),

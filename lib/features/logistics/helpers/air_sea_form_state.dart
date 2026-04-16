@@ -28,6 +28,8 @@ class AirSeaFormState {
   final TextEditingController vehicleController = TextEditingController();
   final TextEditingController dispatchedAtController = TextEditingController();
   final TextEditingController dropOffAtController = TextEditingController();
+  final TextEditingController provincialDeliveredToController = TextEditingController();
+  final TextEditingController provincialRemarksController = TextEditingController();
   final RxList<TextEditingController> documentReferenceControllers =
       <TextEditingController>[].obs;
   final Rx<ClientModel?> clientInformation =
@@ -80,6 +82,8 @@ class AirSeaFormState {
     vehicleController.text = '';
     dispatchedAtController.text = '';
     dropOffAtController.text = '';
+    provincialDeliveredToController.text = '';
+    provincialRemarksController.text = '';
     receiverSignatureBase64.value = '';
     itemCategoryController.text = '';
     mobileId.value = null;
@@ -125,6 +129,8 @@ class AirSeaFormState {
     vehicleController.dispose();
     dispatchedAtController.dispose();
     dropOffAtController.dispose();
+    provincialDeliveredToController.dispose();
+    provincialRemarksController.dispose();
     for (var controller in documentReferenceControllers) {
       controller.dispose();
     }

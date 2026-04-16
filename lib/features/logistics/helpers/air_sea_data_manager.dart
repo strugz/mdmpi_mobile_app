@@ -298,6 +298,26 @@ class AirSeaDataManager {
             newStatus == BTexts.statusDropOff && request.dropOffAt.isEmpty
                 ? nowString
                 : request.dropOffAt,
+        // Provincial delivery phase
+        provincialReceiverName: newStatus == BTexts.statusProvincialPickUp
+            ? userInitial
+            : request.provincialReceiverName,
+        provincialPickUpAt: newStatus == BTexts.statusProvincialPickUp &&
+                request.provincialPickUpAt.isEmpty
+            ? nowString
+            : request.provincialPickUpAt,
+        provincialDeliveredTo: newStatus == BTexts.statusProvincialDelivered &&
+                formState.provincialDeliveredToController.text.isNotEmpty
+            ? formState.provincialDeliveredToController.text
+            : request.provincialDeliveredTo,
+        provincialDeliveredAt: newStatus == BTexts.statusProvincialDelivered &&
+                request.provincialDeliveredAt.isEmpty
+            ? nowString
+            : request.provincialDeliveredAt,
+        provincialRemarks: newStatus == BTexts.statusProvincialDelivered &&
+                formState.provincialRemarksController.text.isNotEmpty
+            ? formState.provincialRemarksController.text
+            : request.provincialRemarks,
       );
 
       // Handle signature upload for both "Endorsed to Guard" and "Received" statuses

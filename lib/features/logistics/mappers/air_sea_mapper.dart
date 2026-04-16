@@ -41,6 +41,11 @@ class AirSeaMapper {
       helper: m.helper.isNotEmpty ? m.helper : null,
       dispatchedAt: BFormatter.normalizeToIsoDatetime(m.dispatchedAt),
       dropOffAt: BFormatter.normalizeToIsoDatetime(m.dropOffAt),
+      provincialReceiverName: m.provincialReceiverName.isNotEmpty ? m.provincialReceiverName : null,
+      provincialPickUpAt: BFormatter.normalizeToIsoDatetime(m.provincialPickUpAt),
+      provincialDeliveredTo: m.provincialDeliveredTo.isNotEmpty ? m.provincialDeliveredTo : null,
+      provincialDeliveredAt: BFormatter.normalizeToIsoDatetime(m.provincialDeliveredAt),
+      provincialRemarks: m.provincialRemarks.isNotEmpty ? m.provincialRemarks : null,
     );
   }
 
@@ -67,6 +72,11 @@ class AirSeaMapper {
     put('Helper', m.helper);
     put('DispatchedAt', BFormatter.normalizeToIsoDatetime(m.dispatchedAt));
     put('DropOffAt', BFormatter.normalizeToIsoDatetime(m.dropOffAt));
+    put('ProvincialReceiverName', m.provincialReceiverName);
+    put('ProvincialPickUpAt', BFormatter.normalizeToIsoDatetime(m.provincialPickUpAt));
+    put('ProvincialDeliveredTo', m.provincialDeliveredTo);
+    put('ProvincialDeliveredAt', BFormatter.normalizeToIsoDatetime(m.provincialDeliveredAt));
+    put('ProvincialRemarks', m.provincialRemarks);
     put('Remarks', m.remarks);
     put('Status', m.status);
 

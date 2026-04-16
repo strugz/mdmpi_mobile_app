@@ -56,7 +56,10 @@ class AirSeaRequestModalFooter extends StatelessWidget {
         ],
 
         /// -- Receipt Details (use reusable delivery details section) --
-        if (requestModel.status == BTexts.statusReceived) ...[
+        if (requestModel.status == BTexts.statusReceived ||
+            requestModel.status == BTexts.statusProvincialPickUp ||
+            requestModel.status == BTexts.statusProvincialInTransit ||
+            requestModel.status == BTexts.statusProvincialDelivered) ...[
           BDeliveryDetailsSection(
             sectionTitle: 'Receipt Details',
             driver: requestModel.driver,

@@ -13,6 +13,11 @@ class AirSeaUpdateDto {
   final String? helper;
   final String? dispatchedAt;
   final String? dropOffAt;
+  final String? provincialReceiverName;
+  final String? provincialPickUpAt;
+  final String? provincialDeliveredTo;
+  final String? provincialDeliveredAt;
+  final String? provincialRemarks;
   final String? status;
   final String? remarks;
 
@@ -30,6 +35,11 @@ class AirSeaUpdateDto {
     this.helper,
     this.dispatchedAt,
     this.dropOffAt,
+    this.provincialReceiverName,
+    this.provincialPickUpAt,
+    this.provincialDeliveredTo,
+    this.provincialDeliveredAt,
+    this.provincialRemarks,
     this.status,
     this.remarks,
   });
@@ -53,6 +63,11 @@ class AirSeaUpdateDto {
     put('Helper', helper);
     put('DispatchedAt', dispatchedAt);
     put('DropOffAt', dropOffAt);
+    put('ProvincialReceiverName', provincialReceiverName);
+    put('ProvincialPickUpAt', provincialPickUpAt);
+    put('ProvincialDeliveredTo', provincialDeliveredTo);
+    put('ProvincialDeliveredAt', provincialDeliveredAt);
+    put('ProvincialRemarks', provincialRemarks);
     put('Status', status);
     put('Remarks', remarks);
 

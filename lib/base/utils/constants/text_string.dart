@@ -146,6 +146,9 @@ class BTexts {
   static const String statusDispatch = "Dispatch";
   static const String statusDropOff = "Drop Off";
   static const String statusBackLoad = "Back Load";
+  static const String statusProvincialPickUp = "Provincial Pick Up";
+  static const String statusProvincialInTransit = "Provincial In Transit";
+  static const String statusProvincialDelivered = "Provincial Delivered";
 
   /// Request Modal Specific Texts
   static const String requestModalDeliveryShotTitle = "Delivery Shot";
@@ -165,6 +168,7 @@ class BTexts {
   static const String roleRelease = "Release";
   static const String roleCourier = "Courier";
   static const String roleAdmin = "Admin";
+  static const String roleProvincial = "Provincial";
 
   // Labels
   static List<String> requestFormLabels = [

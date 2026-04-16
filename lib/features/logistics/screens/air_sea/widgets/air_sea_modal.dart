@@ -15,6 +15,8 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal_header.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_waybill_input_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_pick_up_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_delivery_section.dart';
 
 /// Modal widget displaying Air/Sea request details.
 ///
@@ -71,6 +73,7 @@ class AirSeaModal extends StatelessWidget {
         statusToTextMapper: (_) => config.buttonLabel,
       ),
       children: [
+        // Waybill number (read-only, shown when filled)
         if (requestModel.waybillNumber.isNotEmpty) ...[
           BLabelValueText(
             label: 'Waybill Number',
@@ -84,13 +87,46 @@ class AirSeaModal extends StatelessWidget {
         ],
 
         // Waybill Input Section (Release role only, when status is "Endorsed to Guard")
-        if (requestModel.status == BTexts.statusEndorsedToGuard &&
-            config.role == BTexts.roleRelease) ...[
+        if (requestModel.status == BTexts.statusEndorsedToGuard && config.role == BTexts.roleRelease) ...[
           AirSeaWaybillInputSection(requestModel: requestModel),
         ],
 
-        // Dispatch Information Section (shown when dispatch fields are populated)
-        AirSeaDispatchInfoSection(requestModel: requestModel),
+        if (requestModel.mobileId != null) ... [
+          // Dispatch Information Section (shown when dispatch fields are populated)
+          AirSeaDispatchInfoSection(requestModel: requestModel),
+        ],
+
+        // Provincial Pick Up Section (Provincial role, status is Received or Drop Off)
+        if ((requestModel.status == BTexts.statusReceived || requestModel.status == BTexts.statusDropOff) && config.role == BTexts.roleProvincial) ...[
+          const AirSeaProvincialPickUpSection(),
+        ],
+
+        // Provincial Delivery Section (Provincial role, status is Provincial In Transit)
+        if (requestModel.status == BTexts.statusProvincialInTransit && config.role == BTexts.roleProvincial) ...[
+          const AirSeaProvincialDeliverySection(),
+        ],
+
+        // Show provincial info (read-only) when already filled
+        if (requestModel.provincialReceiverName.isNotEmpty) ...[
+          BLabelValueText(
+            label: 'Provincial Receiver',
+            value: requestModel.provincialReceiverName,
+            showLabel: true,
+            icon: Iconsax.user,
+            padding: EdgeInsets.zero,
+            mainAlignment: MainAxisAlignment.start,
+          ),
+        ],
+        if (requestModel.provincialDeliveredTo.isNotEmpty) ...[
+          BLabelValueText(
+            label: 'Delivered To',
+            value: requestModel.provincialDeliveredTo,
+            showLabel: true,
+            icon: Iconsax.user,
+            padding: EdgeInsets.zero,
+            mainAlignment: MainAxisAlignment.start,
+          ),
+        ],
 
         if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
         Obx(

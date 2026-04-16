@@ -61,8 +61,18 @@ class AirSeaModalConfig {
 
     // Terminal / view-only statuses — any role
     if (status.toLowerCase() == 'cancelled' ||
-        status == BTexts.statusReceived ||
-        status == BTexts.statusDropOff) {
+        status == BTexts.statusProvincialDelivered) {
+      return AirSeaModalConfig.viewOnly(role: role);
+    }
+
+    // Provincial statuses — only actionable by Provincial role
+    if (status == BTexts.statusReceived ||
+        status == BTexts.statusDropOff ||
+        status == BTexts.statusProvincialPickUp ||
+        status == BTexts.statusProvincialInTransit) {
+      if (role == BTexts.roleProvincial) {
+        return _resolveProvincial(status, role, controller);
+      }
       return AirSeaModalConfig.viewOnly(role: role);
     }
 
@@ -242,6 +252,56 @@ class AirSeaModalConfig {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  // ========================================================================
+  // PROVINCIAL ROLE CONFIG
+  // ========================================================================
+
+  /// Resolves modal config for the Provincial role based on current status.
+  static AirSeaModalConfig _resolveProvincial(
+    String status,
+    String role,
+    AirSeaController controller,
+  ) {
+    if (status == BTexts.statusReceived || status == BTexts.statusDropOff) {
+      return AirSeaModalConfig(
+        role: role,
+        nextStatus: BTexts.statusProvincialPickUp,
+        isActionVisible: true,
+        buttonLabel: 'Confirm Pick Up',
+      );
+    }
+    if (status == BTexts.statusProvincialPickUp) {
+      return AirSeaModalConfig(
+        role: role,
+        nextStatus: BTexts.statusProvincialInTransit,
+        isActionVisible: true,
+        buttonLabel: 'Start Transit',
+      );
+    }
+    if (status == BTexts.statusProvincialInTransit) {
+      return AirSeaModalConfig(
+        role: role,
+        nextStatus: BTexts.statusProvincialDelivered,
+        isActionVisible: true,
+        buttonLabel: 'Confirm Delivery',
+        validate: () => _validateProvincialDelivery(controller.formState),
+      );
+    }
+    return AirSeaModalConfig.viewOnly(role: role);
+  }
+
+  /// Validates provincial delivery: delivered-to is required.
+  static Future<bool> _validateProvincialDelivery(AirSeaFormState formState) async {
+    if (formState.provincialDeliveredToController.text.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter the client contact person name',
       );
       return false;
     }

@@ -16,6 +16,9 @@ enum AirSeaStatusFilter {
   statusDispatch('Dispatch'),
   statusDropOff('Drop Off'),
   statusReceived('Received'),
+  statusProvincialPickUp('Provincial Pick Up'),
+  statusProvincialInTransit('Provincial In Transit'),
+  statusProvincialDelivered('Provincial Delivered'),
   statusCancelled('Cancelled'),
   all('All');
 

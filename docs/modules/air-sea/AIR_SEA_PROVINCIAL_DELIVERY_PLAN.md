@@ -93,8 +93,7 @@ Add fields:
 
 | Field | Type | Description |
 |---|---|---|
-| `provincialReceiverName` | `String` | Name of the provincial receiver |
-| `provincialReceiverSignature` | `String` | Base64 signature |
+| `provincialReceiverName` | `String` | Name of the provincial receiver (auto-populated from logged-in user) |
 | `provincialPickUpAt` | `DateTime?` | When picked up from airline |
 | `provincialDeliveredTo` | `String` | Final client contact name |
 | `provincialDeliveredAt` | `DateTime?` | When delivered to client |
@@ -111,7 +110,6 @@ Add columns to `a_tblRequestAirSea`:
 
 ```sql
 ProvincialReceiverName     TEXT DEFAULT ''
-ProvincialReceiverSignature TEXT DEFAULT ''
 ProvincialPickUpAt         TEXT DEFAULT ''
 ProvincialDeliveredTo      TEXT DEFAULT ''
 ProvincialDeliveredAt      TEXT DEFAULT ''
@@ -172,8 +170,8 @@ Each builds `AirSeaUpdateDto`, calls repository, refreshes list.
 
 | Current Status | Next Status | Button Label | Required Fields |
 |---|---|---|---|
-| Received | Provincial Pick Up | "Confirm Pick Up" | Receiver name, signature |
-| Drop Off | Provincial Pick Up | "Confirm Pick Up" | Receiver name, signature |
+| Received | Provincial Pick Up | "Confirm Pick Up" | Proof image (receiver name auto-filled from logged-in user) |
+| Drop Off | Provincial Pick Up | "Confirm Pick Up" | Proof image (receiver name auto-filled from logged-in user) |
 | Provincial Pick Up | Provincial In Transit | "Start Transit" | — |
 | Provincial In Transit | Provincial Delivered | "Confirm Delivery" | Delivered-to, proof image, remarks (optional) |
 
@@ -183,10 +181,16 @@ Both `Received` (Path A/C) and `Drop Off` (Path B) serve as entry points into th
 
 **New files under** `lib/features/logistics/screens/air_sea/widgets/`:
 
-- `air_sea_provincial_pick_up_section.dart` — receiver name input + signature capture.
-- `air_sea_provincial_delivery_section.dart` — client contact input + delivery timestamp + proof image upload + remarks.
+- `air_sea_provincial_pick_up_section.dart` — shows logged-in user as receiver + proof image note.
+- `air_sea_provincial_delivery_section.dart` — client contact input + delivery timestamp + remarks.
 
-**Update:** `air_sea_modal.dart` — conditionally show provincial sections based on status.
+**Update:** `air_sea_modal.dart` — conditionally show provincial sections based on status. All non-empty details from prior statuses (waybill number, dispatch info, etc.) remain visible during provincial statuses — the provincial user sees the same request details that were visible at "Received" or "Drop Off", plus the new provincial-specific fields.
+
+**Update:** `air_sea_modal_header.dart` — During provincial statuses, only show: **Preparation Details**, client info, and status chip. Guard Endorsement and Drop Off details sections are hidden (not relevant to the provincial user).
+
+**Update:** `air_sea_request_modal_footer.dart` — Receipt Details section (`BDeliveryDetailsSection`) now also displays during provincial statuses, not only at "Received".
+
+**Update:** `air_sea_modal.dart` — Document References remain visible during provincial statuses (already handled by `RequestModalScaffold`). Provincial-specific fields (receiver, delivered-to) are shown when populated.
 
 ### 11. Status Colors — `StatusColorMapper`
 

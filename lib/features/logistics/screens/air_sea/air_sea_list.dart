@@ -18,8 +18,9 @@ import '../../../../base/utils/constants/text_string.dart';
 const _rolePriority = {
   BTexts.roleRelease: 1,
   BTexts.roleCourier: 2,
-  BTexts.roleRequest: 3,
-  BTexts.roleViewer: 4,
+  BTexts.roleProvincial: 3,
+  BTexts.roleRequest: 4,
+  BTexts.roleViewer: 5,
 };
 
 /// Main list screen for Air/Sea requests.
@@ -63,7 +64,8 @@ class AirSeaList extends StatelessWidget {
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
-                        if (item.status != BTexts.statusReceived &&
+                        if (item.status != BTexts.statusProvincialDelivered &&
+                            item.status != BTexts.statusReceived &&
                             item.status != BTexts.statusDropOff &&
                             item.status.toLowerCase() != 'cancelled') {
                           controller.currentSelectedAirSea.value = item;
@@ -158,6 +160,21 @@ void _handleAirSeaTap(
     final config = AirSeaModalConfig.resolve(
       request: request,
       role: BTexts.roleCourier,
+      controller: controller,
+    );
+    BFullScreenLoader.showAirSeaDialog(context, request, config);
+    return;
+  }
+
+  // Force Provincial for provincial-leg statuses
+  if ((request.status == BTexts.statusReceived ||
+          request.status == BTexts.statusDropOff ||
+          request.status == BTexts.statusProvincialPickUp ||
+          request.status == BTexts.statusProvincialInTransit) &&
+      roles.contains(BTexts.roleProvincial)) {
+    final config = AirSeaModalConfig.resolve(
+      request: request,
+      role: BTexts.roleProvincial,
       controller: controller,
     );
     BFullScreenLoader.showAirSeaDialog(context, request, config);

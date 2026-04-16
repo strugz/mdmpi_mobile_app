@@ -29,6 +29,14 @@ class AirSeaModel {
   String dispatchedAt;
   String dropOffAt;
 
+  // Provincial delivery phase
+  String provincialReceiverName;
+  String provincialPickUpAt;
+  String provincialDeliveredTo;
+  String provincialDeliveredAt;
+  String provincialRemarks;
+  String provincialProofImagePath;
+
   String status;
   String remarks;
   String createdBy;
@@ -58,6 +66,12 @@ class AirSeaModel {
     this.helper = '',
     this.dispatchedAt = '',
     this.dropOffAt = '',
+    this.provincialReceiverName = '',
+    this.provincialPickUpAt = '',
+    this.provincialDeliveredTo = '',
+    this.provincialDeliveredAt = '',
+    this.provincialRemarks = '',
+    this.provincialProofImagePath = '',
     this.status = '',
     this.remarks = '',
     this.createdBy = '',
@@ -91,6 +105,12 @@ class AirSeaModel {
     String? helper,
     String? dispatchedAt,
     String? dropOffAt,
+    String? provincialReceiverName,
+    String? provincialPickUpAt,
+    String? provincialDeliveredTo,
+    String? provincialDeliveredAt,
+    String? provincialRemarks,
+    String? provincialProofImagePath,
     String? status,
     String? remarks,
     String? createdBy,
@@ -118,6 +138,12 @@ class AirSeaModel {
       helper: helper ?? this.helper,
       dispatchedAt: dispatchedAt ?? this.dispatchedAt,
       dropOffAt: dropOffAt ?? this.dropOffAt,
+      provincialReceiverName: provincialReceiverName ?? this.provincialReceiverName,
+      provincialPickUpAt: provincialPickUpAt ?? this.provincialPickUpAt,
+      provincialDeliveredTo: provincialDeliveredTo ?? this.provincialDeliveredTo,
+      provincialDeliveredAt: provincialDeliveredAt ?? this.provincialDeliveredAt,
+      provincialRemarks: provincialRemarks ?? this.provincialRemarks,
+      provincialProofImagePath: provincialProofImagePath ?? this.provincialProofImagePath,
       status: status ?? this.status,
       remarks: remarks ?? this.remarks,
       createdBy: createdBy ?? this.createdBy,
@@ -148,6 +174,12 @@ class AirSeaModel {
       'Helper': helper,
       'DispatchedAt': dispatchedAt,
       'DropOffAt': dropOffAt,
+      'ProvincialReceiverName': provincialReceiverName,
+      'ProvincialPickUpAt': provincialPickUpAt,
+      'ProvincialDeliveredTo': provincialDeliveredTo,
+      'ProvincialDeliveredAt': provincialDeliveredAt,
+      'ProvincialRemarks': provincialRemarks,
+      'ProvincialProofImagePath': provincialProofImagePath,
       'Status': status,
       'Remarks': remarks,
       'CreatedBy': createdBy,
@@ -238,6 +270,30 @@ class AirSeaModel {
         'Dropoffat',
         'dropoffat'
       ]),
+      provincialReceiverName: firstPresent(json, [
+        'ProvincialReceiverName',
+        'provincialReceiverName',
+      ]),
+      provincialPickUpAt: firstPresent(json, [
+        'ProvincialPickUpAt',
+        'provincialPickUpAt',
+      ]),
+      provincialDeliveredTo: firstPresent(json, [
+        'ProvincialDeliveredTo',
+        'provincialDeliveredTo',
+      ]),
+      provincialDeliveredAt: firstPresent(json, [
+        'ProvincialDeliveredAt',
+        'provincialDeliveredAt',
+      ]),
+      provincialRemarks: firstPresent(json, [
+        'ProvincialRemarks',
+        'provincialRemarks',
+      ]),
+      provincialProofImagePath: firstPresent(json, [
+        'ProvincialProofImagePath',
+        'provincialProofImagePath',
+      ]),
       status: firstPresent(json, ['Status', 'status']),
       remarks: firstPresent(json, ['Remarks', 'remarks']),
       createdBy: firstPresent(
@@ -296,6 +352,12 @@ class AirSeaModel {
       helper: (lower['helper'] ?? '').toString(),
       dispatchedAt: (lower['dispatchedat'] ?? '').toString(),
       dropOffAt: (lower['dropoffat'] ?? '').toString(),
+      provincialReceiverName: (lower['provincialreceivername'] ?? '').toString(),
+      provincialPickUpAt: (lower['provincialpickupat'] ?? '').toString(),
+      provincialDeliveredTo: (lower['provincialdeliveredto'] ?? '').toString(),
+      provincialDeliveredAt: (lower['provincialdeliveredat'] ?? '').toString(),
+      provincialRemarks: (lower['provincialremarks'] ?? '').toString(),
+      provincialProofImagePath: (lower['provincialproofimagepath'] ?? '').toString(),
       status: (lower['status'] ?? '').toString(),
       remarks: (lower['remarks'] ?? '').toString(),
       createdBy: (lower['createdby'] ?? '').toString(),
