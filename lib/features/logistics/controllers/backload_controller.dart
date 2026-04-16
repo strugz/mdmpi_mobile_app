@@ -130,6 +130,28 @@ class BackLoadController extends GetxController {
         return false;
       }
 
+      // On success, repository already persists the saved BackLoad to local DB.
+      // Update controller-local state so UI reflects the newly created entry
+      // immediately without waiting for a later reload.
+      try {
+        final saved = result.value;
+
+        // Avoid inserting duplicates if the item already exists
+        final exists = backLoadEntries.any((e) => e.backLoadId == saved.backLoadId);
+        if (!exists) {
+          backLoadEntries.insert(0, saved);
+        } else {
+          // Replace the existing item with the new one (if you want to refresh)
+          final idx = backLoadEntries.indexWhere((e) => e.backLoadId == saved.backLoadId);
+          if (idx != -1) backLoadEntries[idx] = saved;
+        }
+
+        latestBackLoad.value = saved;
+      } catch (e) {
+        logDebug('? BackLoadController: failed to update in-memory state after save: $e');
+      }
+
+
       // Refresh the standard delivery list so status reflects 'Back Load'
       try {
         final sdController = Get.find<StandardDeliveryController>();

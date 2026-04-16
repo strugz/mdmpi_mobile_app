@@ -28,12 +28,16 @@ class BackLoadModel {
 
   /// Parse from API JSON.
   factory BackLoadModel.fromJson(Map<String, dynamic> json) {
+    // Normalize keys to lowercase so this accepts both camelCase and PascalCase
+    final Map<String, dynamic> lower = {};
+    json.forEach((k, v) => lower[k.toString().toLowerCase()] = v);
+
     return BackLoadModel(
-      backLoadId: (json['BackLoadID']?.toString() ?? ''),
-      requestId: (json['RequestID']?.toString() ?? ''),
-      remarks: (json['Remarks']?.toString() ?? ''),
-      dateReported: (json['DateReported']?.toString() ?? ''),
-      deliveryDate: (json['DeliveryDate']?.toString() ?? ''),
+      backLoadId: (lower['backloadid']?.toString() ?? ''),
+      requestId: (lower['requestid']?.toString() ?? ''),
+      remarks: (lower['remarks']?.toString() ?? ''),
+      dateReported: (lower['datereported']?.toString() ?? ''),
+      deliveryDate: (lower['deliverydate']?.toString() ?? ''),
     );
   }
 
@@ -46,7 +50,7 @@ class BackLoadModel {
       requestId: (lower['requestid']?.toString() ?? ''),
       remarks: (lower['remarks']?.toString() ?? ''),
       dateReported: (lower['datereported']?.toString() ?? ''),
-      deliveryDate: (lower['deliveryDate']?.toString() ?? ''),
+      deliveryDate: (lower['deliverydate']?.toString() ?? ''),
     );
   }
 

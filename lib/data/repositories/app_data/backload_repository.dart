@@ -66,6 +66,8 @@ class BackLoadRepository extends GetxController {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final dynamic body = jsonDecode(response.body);
+
+
         final BackLoadModel saved = body is Map<String, dynamic>
             ? BackLoadModel.fromJson(body)
             : BackLoadModel(
@@ -76,11 +78,21 @@ class BackLoadRepository extends GetxController {
                 deliveryDate: deliveryDate,
               );
 
+        // Ensure a stable local primary key exists. If API did not return
+        // a BackLoadID, generate a unique local id to avoid replace-on-empty-pk
+        // collisions (which would make the table appear blank or only hold a
+        // single overwritten row). Use requestId + timestamp for uniqueness.
+        BackLoadModel toInsert = saved;
+        if (toInsert.backLoadId.isEmpty) {
+          final generatedId = '${requestId}_${DateTime.now().millisecondsSinceEpoch}';
+          toInsert = toInsert.copyWith(backLoadId: generatedId);
+        }
+
         // Persist locally only after API success
         final dao = await _dbHelper.backLoadDao;
-        await dao.insert(saved);
+        await dao.insert(toInsert);
 
-        return Result.success(saved);
+        return Result.success(toInsert);
       } else {
         return Result.failure(
             'Failed to save back load. Status: ${response.statusCode}');
