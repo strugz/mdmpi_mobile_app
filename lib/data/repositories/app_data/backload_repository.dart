@@ -44,11 +44,13 @@ class BackLoadRepository extends GetxController {
   Future<Result<BackLoadModel>> addBackLoad({
     required String requestId,
     required String remarks,
+    required String deliveryDate,
   }) async {
     try {
       final payload = jsonEncode({
         'RequestID': requestId,
         'Remarks': remarks,
+        'DeliveryDate': deliveryDate
       });
 
       // Use logDebug instead of print for debug output (project convention)
@@ -71,6 +73,7 @@ class BackLoadRepository extends GetxController {
                 requestId: requestId,
                 remarks: remarks,
                 dateReported: DateTime.now().toIso8601String(),
+                deliveryDate: deliveryDate,
               );
 
         // Persist locally only after API success

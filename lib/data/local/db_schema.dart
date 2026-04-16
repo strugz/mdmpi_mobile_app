@@ -282,6 +282,7 @@ Future<void> createAllTables(Database db) async {
       BackLoadID TEXT PRIMARY KEY,
       RequestID TEXT NOT NULL,
       Remarks TEXT,
+      DeliveryDate TEXT,
       DateReported TEXT
     )
   ''');

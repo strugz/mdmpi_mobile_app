@@ -120,6 +120,7 @@ class BackLoadController extends GetxController {
       final result = await _repository.addBackLoad(
         requestId: request.id,
         remarks: selectedRemarks.value!,
+        deliveryDate: deliveryDateController.value.text
       );
 
       if (result.isFailure) {

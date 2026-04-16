@@ -62,262 +62,44 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 11,
+      version: 12,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Ensure backload table exists on upgrade paths where it may be missing.
-        // Some older installations created the DB before `a_tblRequestBackload`
-        // was added to the canonical schema. Create it here if absent.
-        try {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblRequestBackload (
-              BackLoadID TEXT PRIMARY KEY,
-              RequestID TEXT NOT NULL,
-              Remarks TEXT,
-              DateReported TEXT
-            )
-          ''');
-        } catch (_) {}
-        // Defensive attempts to add missing columns if the table exists but is
-        // missing specific columns (older DB variants). ALTER TABLE ADD
-        // COLUMN is idempotent with try/catch wrapping.
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN BackLoadID TEXT');
-        } catch (_) {}
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN RequestID TEXT');
-        } catch (_) {}
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN Remarks TEXT');
-        } catch (_) {}
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN DateReported TEXT');
-        } catch (_) {}
-
-        if (oldVersion < 2) {
-          // Add pick-up main table for version 2
-          // Pick-up requests reuse the existing shared support tables:
-          // - a_tblRequestDocumentReference
-          // - a_tblRequestReceiverSignature
-          // - a_tblRequestImage
-          // - a_tblRequestRemarks
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblRequestPickUp (
-              RequestID INTEGER PRIMARY KEY,
-              ClientID TEXT,
-              ItemCategoryID TEXT,
-              ItemCategoryName TEXT,
-              PreparedBy TEXT,
-              ItemPreparedAt TEXT,
-              ItemPreparedEndAt TEXT,
-              DatePickUp TEXT,
-              Remarks TEXT,
-              Status TEXT,
-              ReleasedBy TEXT,
-              ReceivedBy TEXT,
-              CreatedBy TEXT,
-              CreatedAt TEXT,
-              UpdatedAt TEXT
-            )
-          ''');
-        }
-        if (oldVersion < 3) {
-          // Add ItemCategory and FormCategory tables for version 3
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblItemCategory (
-              ItemCategoryID TEXT PRIMARY KEY,
-              ItemCategoryName TEXT
-            )
-          ''');
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblFormCategory (
-              FormCategoryID TEXT PRIMARY KEY,
-              FormCategoryName TEXT
-            )
-          ''');
-        }
-        if (oldVersion < 4) {
-          // Add Air/Sea main table for version 4
-          // Air/Sea requests reuse the existing shared support tables:
-          // - a_tblRequestDocumentReference
-          // - a_tblRequestReceiverSignature
-          // - a_tblRequestImage
-          // - a_tblRequestRemarks
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblRequestAirSea (
-              RequestID INTEGER PRIMARY KEY,
-              ClientID TEXT,
-              ItemCategoryID TEXT,              MobileID INTEGER,
-              DatePickUp TEXT,
-              ItemPreparedAt TEXT,
-              ItemPreparedEndAt TEXT,              
-              PreparedBy TEXT,
-              EndorsedTo TEXT,
-              EndorsedAt TEXT,
-              EndorsedBy TEXT,
-              WaybillNumber TEXT,
-              ReceivedAt TEXT,
-              ReceivedBy TEXT,
-              TripTicketNumber TEXT,
-              Driver TEXT,
-              Helper TEXT,
-              DispatchedAt TEXT,
-              DropOffAt TEXT,
-              Status TEXT,
-              Remarks TEXT,
-              CreatedBy TEXT,
-              CreatedAt TEXT,
-              UpdatedAt TEXT
-            )
-          ''');
-        }
-        if (oldVersion < 5) {
-          // Version 5: Ensure all Air/Sea columns exist (fix for databases created with incomplete schema)
-          // Add missing columns if they don't exist
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedTo TEXT');
-          } catch (_) {} // Column might already exist
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedAt TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN EndorsedBy TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN WaybillNumber TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN ReceivedAt TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN ReceivedBy TEXT');
-          } catch (_) {}
-        }
-        if (oldVersion < 6) {
-          // Version 6: Add dispatch-related columns (TripTicketNumber, Driver, Helper, DispatchedAt, DropOffAt)
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN TripTicketNumber TEXT');
-          } catch (_) {} // Column might already exist
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Driver TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Helper TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DispatchedAt TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DropOffAt TEXT');
-          } catch (_) {}
-        }
-        if (oldVersion < 7) {
-          // Version 7: Add ItemCategoryID and FormCategoryID columns to a_tblRequest
-          try {
-            await db.execute('ALTER TABLE a_tblRequest ADD COLUMN ItemCategoryID TEXT');
-          } catch (_) {} // Column might already exist
-          try {
-            await db.execute('ALTER TABLE a_tblRequest ADD COLUMN FormCategoryID TEXT');
-          } catch (_) {}
-        }
-        if (oldVersion < 8) {
-          // Version 8: Ensure Air/Sea dispatch columns exist (fix for schema inconsistency)
-          // These columns should have been added in version 6, but base schema was missing them
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN TripTicketNumber TEXT');
-          } catch (_) {} // Column might already exist
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Driver TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN Helper TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DispatchedAt TEXT');
-          } catch (_) {}
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN DropOffAt TEXT');
-          } catch (_) {}
-        }
-        if (oldVersion < 9) {
-          // Version 9: Add CreatedBy column to Air/Sea table (missing from version 4 creation)
-          try {
-            await db.execute('ALTER TABLE a_tblRequestAirSea ADD COLUMN CreatedBy TEXT');
-          } catch (_) {} // Column might already exist
-        }
-        if (oldVersion < 10) {
-          // Version 10: Add Pull-Out/Return/Pick-Up table
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblRequestPullOutReturnPickUp (
-              RequestID INTEGER PRIMARY KEY,
-              ClientID TEXT,
-              ClientContactPerson TEXT,
-              FormCategoryID TEXT,
-              ItemCategoryID TEXT,
-              IRRFNumber TEXT,
-              IRRFDate TEXT,
-              ReasonForReturn TEXT,
-              ReleasedBy TEXT,
-              PullOutDate TEXT,
-              PullOutDateStartAt TEXT,
-              PullOutDateEndAt TEXT,
-              RequestStatus TEXT,
-              TripTicketNumber TEXT,
-              Driver TEXT,
-              Helper TEXT,
-              MobileID INTEGER,
-              MobileName TEXT,
-              CreatedAt TEXT,
-              UpdatedAt TEXT,
-              CreatedBy TEXT,
-              RequestedBy TEXT
-            )
-          ''');
-        }
-        if (oldVersion < 11) {
-          // Version 11: Add ClientContactPerson autocomplete table
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblClientContactPerson (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              name TEXT NOT NULL UNIQUE,
-              usageCount INTEGER DEFAULT 1,
-              lastUsedAt TEXT NOT NULL
-            )
-          ''');
-        }
-      },
-      onOpen: (db) async {
-        // Defensive runtime check: ensure the backload table and its columns
-        // exist even if the database version is already up-to-date. This
-        // handles edge cases where the DB file was created with an incomplete
-        // schema but the version number already matches the current app
-        // version (so onUpgrade won't run).
-        try {
-          await db.execute('''
-            CREATE TABLE IF NOT EXISTS a_tblRequestBackload (
-              BackLoadID TEXT PRIMARY KEY,
-              RequestID TEXT NOT NULL,
-              Remarks TEXT,
-              DateReported TEXT
-            )
-          ''');
-        } catch (_) {}
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN BackLoadID TEXT');
-        } catch (_) {}
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN RequestID TEXT');
-        } catch (_) {}
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN Remarks TEXT');
-        } catch (_) {}
-        try {
-          await db.execute('ALTER TABLE a_tblRequestBackload ADD COLUMN DateReported TEXT');
-        } catch (_) {}
+        // Version 12: consolidated schema. All tables and columns are now
+        // defined in db_schema.dart. Drop and recreate to match the canonical
+        // schema. Local data is a cache of server data and will be re-fetched.
+        await _recreateAllTables(db);
       },
     );
+  }
+
+  /// Drop every known table and recreate from the canonical schema.
+  Future<void> _recreateAllTables(Database db) async {
+    const tables = [
+      'a_tblRequest',
+      'a_tblRequestDocumentReference',
+      'a_tblRequestReceiverSignature',
+      'a_tblRequestImage',
+      'a_tblRequestRemarks',
+      'ACCMST_',
+      'a_tblMobile',
+      'Users',
+      'CNTMST',
+      'a_tblRequestPickUp',
+      'a_tblItemCategory',
+      'a_tblFormCategory',
+      'a_tblRequestAirSea',
+      'a_tblRequestPullOutReturnPickUp',
+      'a_tblLocationAlternative',
+      'a_tblClientContactPerson',
+      'a_tblRequestBackload',
+    ];
+    for (final table in tables) {
+      await db.execute('DROP TABLE IF EXISTS $table');
+    }
+    await createAllTables(db);
   }
 
   // --- DAO getters ---
@@ -435,7 +217,8 @@ class DatabaseHelper {
     return await dao.insertRequests(requestModels);
   }
 
-  Future<void> updateRequest({required StandardDeliveryModel requestModel}) async {
+  Future<void> updateRequest(
+      {required StandardDeliveryModel requestModel}) async {
     final dao = await requestDao;
     return await dao.updateRequest(requestModel: requestModel);
   }
@@ -446,7 +229,8 @@ class DatabaseHelper {
     required String newStatus,
   }) async {
     final dao = await requestDao;
-    return await dao.cancelRequestWithRemarks(requestID: requestID, remarks: remarks, newStatus: newStatus);
+    return await dao.cancelRequestWithRemarks(
+        requestID: requestID, remarks: remarks, newStatus: newStatus);
   }
 
   Future<CancelRemarksModel> getRequestRemarks(String requestID) async {
@@ -495,9 +279,11 @@ class DatabaseHelper {
   }
 
   /// Persist signature and/or image for a request via the RequestDao
-  Future<void> saveRequestMedia({required dynamic requestID, String? signature, String? image}) async {
+  Future<void> saveRequestMedia(
+      {required dynamic requestID, String? signature, String? image}) async {
     final dao = await requestDao;
-    return await dao.saveRequestMedia(requestID: requestID, signature: signature, image: image);
+    return await dao.saveRequestMedia(
+        requestID: requestID, signature: signature, image: image);
   }
 
   /// Load saved request image as bytes (Uint8List) or null if not found/invalid.

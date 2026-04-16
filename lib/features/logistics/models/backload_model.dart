@@ -6,22 +6,23 @@ class BackLoadModel {
   final String backLoadId;
   final String requestId;
   final String remarks;
-  final String dateReported; // server-generated
+  final String dateReported;
+  final String deliveryDate;
 
-  const BackLoadModel({
-    required this.backLoadId,
-    required this.requestId,
-    required this.remarks,
-    required this.dateReported,
-  });
+  const BackLoadModel(
+      {required this.backLoadId,
+      required this.requestId,
+      required this.remarks,
+      required this.dateReported,
+      required this.deliveryDate});
 
   /// Empty sentinel used as default / fallback.
   static const BackLoadModel empty = BackLoadModel(
-    backLoadId: '',
-    requestId: '',
-    remarks: '',
-    dateReported: '',
-  );
+      backLoadId: '',
+      requestId: '',
+      remarks: '',
+      dateReported: '',
+      deliveryDate: '');
 
   bool get isEmpty => backLoadId.isEmpty && requestId.isEmpty;
 
@@ -32,6 +33,7 @@ class BackLoadModel {
       requestId: (json['RequestID']?.toString() ?? ''),
       remarks: (json['Remarks']?.toString() ?? ''),
       dateReported: (json['DateReported']?.toString() ?? ''),
+      deliveryDate: (json['DeliveryDate']?.toString() ?? ''),
     );
   }
 
@@ -44,6 +46,7 @@ class BackLoadModel {
       requestId: (lower['requestid']?.toString() ?? ''),
       remarks: (lower['remarks']?.toString() ?? ''),
       dateReported: (lower['datereported']?.toString() ?? ''),
+      deliveryDate: (lower['deliveryDate']?.toString() ?? ''),
     );
   }
 
@@ -54,6 +57,7 @@ class BackLoadModel {
       'RequestID': requestId,
       'Remarks': remarks,
       'DateReported': dateReported,
+      'DeliveryDate': deliveryDate,
     };
   }
 
@@ -64,6 +68,7 @@ class BackLoadModel {
       'RequestID': requestId,
       'Remarks': remarks,
       'DateReported': dateReported,
+      'DeliveryDate': deliveryDate,
     };
   }
 
@@ -72,13 +77,14 @@ class BackLoadModel {
     String? requestId,
     String? remarks,
     String? dateReported,
+    String? deliveryDate,
   }) {
     return BackLoadModel(
       backLoadId: backLoadId ?? this.backLoadId,
       requestId: requestId ?? this.requestId,
       remarks: remarks ?? this.remarks,
       dateReported: dateReported ?? this.dateReported,
+      deliveryDate: deliveryDate ?? this.deliveryDate,
     );
   }
 }
-

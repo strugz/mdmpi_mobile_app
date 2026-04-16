@@ -24,9 +24,9 @@ Important architectural notes
   - Controllers resolve deps with `Get.find()` — do not instantiate repos inside controllers.
 - **Firebase guard in GeneralBindings:** All Firestore-backed repositories are wrapped in `if (Firebase.apps.isNotEmpty) { ... }`. On desktop platforms without FlutterFire configuration, these registrations are skipped to avoid runtime errors. Repositories that use REST + local DB only (e.g., `BackLoadRepository`) are registered **outside** the guard so they work on all targets. See `lib/bindings/general_bindings.dart` lines 120–159.
 - Early/ eager registration: some platform services are registered in `lib/main.dart` using `Get.put(...)` before bindings run (notably `PermissionService`, `NotificationService`, and `AuthenticationRepository` after Firebase init). See `lib/main.dart`.
-- Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`.
+- Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`. Use GetX routing for app-level screen transitions; keep raw `Navigator.push` limited to low-level helpers such as `BHelperFunctions.navigateToScreen`.
 
- - NavigationController / NavigationMenu updates: The bottom-tab shell (`lib/navigation_menu.dart`) instantiates `NavigationController` via `Get.put(NavigationController())` (acceptable for the shell). The controller now stores screen route names and exposes a computed `screens` getter that selects widgets by user department (see `lib/data/controllers/navigation_controller.dart`). When adding or modifying tab behavior prefer updating `NavigationController.screenRoutes` and `screens` rather than wiring navigation logic directly in widgets.
+ - NavigationController / NavigationMenu updates: The bottom-tab shell (`lib/navigation_menu.dart`) instantiates `NavigationController` via `Get.put(NavigationController())` (acceptable for the shell). The controller now stores screen route names and exposes a computed `screens` getter that selects widgets by user department (see `lib/data/controllers/navigation_controller.dart`). When adding or modifying tab behavior prefer updating `NavigationController.screenRoutes`, `screens`, and `changeScreen` rather than wiring tab logic directly in widgets.
 
  - Text extraction service: The repository now registers an `ITextExtractor` implementation (`DocumentReferenceExtractor`) in `GeneralBindings` and composes it into camera-related controllers. Camera/text composition example:
    - `lib/bindings/general_bindings.dart` registers `Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(), fenix: true);`
@@ -92,7 +92,7 @@ Where to look for examples (key files)
 
 - Local Storage Data Viewer: `lib/features/logistics/screens/data_test/local_storage_data_viewer.dart`, `local_storage_data_controller.dart`, and documentation in the same folder (`README.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`).
 
-- Module documentation: All active modules now have docs in `docs/modules/` — `air-sea/`, `authentication/`, `backload/`, `collection/`, `hotline-direct/`, `inventory_item/`, `personalization/`, `pick-up/`, `pull-out/`, `standard-delivery/`, `stock-receive/`. See `docs/README.md` for the full module index and relationships.
+- Module documentation: keep `docs/README.md` as the live module-doc index. BackLoad has `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`, even though the index still marks BackLoad as Planned.
 
 - Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined — `backLoad` has a corresponding `GetPage` in `AppRoutes.pages` which constructs `BackLoadTransactionPage` and expects a `StandardDeliveryModel` via `Get.arguments`. The request route (`BRoutes.request`) uses `RequestBindings` (currently an empty placeholder — controllers are registered centrally in `GeneralBindings`).
 Developer workflows & scripts
@@ -103,6 +103,7 @@ Developer workflows & scripts
   - `dart run bin/generate_module_qa.dart --name "Name" --area Logistics --routes "/route"` (creates docs/modules/<slug>/README.md and test CSVs)
   - `dart run bin/inspect_db_images.dart` (inspects DB images/signatures)
   - `dart run bin/check_mapper.dart` (small utility stub present in `bin/` — currently empty; available for future mapper checks)
+- Tests live under `test/` and use the `_test.dart` suffix.
 
 - In-app DB inspection: Open the app, go to Settings > Developer Tools > Local Storage Viewer to inspect and manage local database tables. For direct navigation in development, use `Get.to(() => const LocalStorageDataViewer())`.
 
@@ -111,6 +112,7 @@ Integration & external deps to be aware of
 - Firebase (core/auth/firestore/storage) — initialized in `lib/main.dart` using `firebase_options.dart`.
 - Permissions & platform services: `permission_handler`, `location`, `google_maps_flutter`, `google_mlkit_text_recognition` — wrappers live under `lib/common/services/`.
 - WebSockets: uses `web_socket_channel` and controllers such as `WebSocketNotificationController` registered early in bindings.
+- Environment variables are loaded from `.env` in `main.dart`; never commit secrets or API keys.
 
 - Note: recent dependency maintenance updated minor package versions (see `pubspec.lock`). When changing dependencies, run `flutter pub get` and commit the updated lockfile. Example packages that have received minor bumps in recent workspace tasks include `dio`, `uuid`, and platform adapters.
 
