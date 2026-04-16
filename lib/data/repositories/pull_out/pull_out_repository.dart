@@ -128,6 +128,8 @@ class PullOutRepository extends GetxController {
       final payload = dto.toJson();
       final url = _uri(_resource);
 
+      print("Hey:${jsonEncode(payload)}");
+
       final response = await _safePost(url, payload);
       if (response.statusCode == 201) {
         // Parse response to get the created ID if available

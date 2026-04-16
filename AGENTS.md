@@ -26,6 +26,8 @@ Important architectural notes
 - Early/ eager registration: some platform services are registered in `lib/main.dart` using `Get.put(...)` before bindings run (notably `PermissionService`, `NotificationService`, and `AuthenticationRepository` after Firebase init). See `lib/main.dart`.
 - Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`.
 
+ - NavigationController / NavigationMenu updates: The bottom-tab shell (`lib/navigation_menu.dart`) instantiates `NavigationController` via `Get.put(NavigationController())` (acceptable for the shell). The controller now stores screen route names and exposes a computed `screens` getter that selects widgets by user department (see `lib/data/controllers/navigation_controller.dart`). When adding or modifying tab behavior prefer updating `NavigationController.screenRoutes` and `screens` rather than wiring navigation logic directly in widgets.
+
  - Text extraction service: The repository now registers an `ITextExtractor` implementation (`DocumentReferenceExtractor`) in `GeneralBindings` and composes it into camera-related controllers. Camera/text composition example:
    - `lib/bindings/general_bindings.dart` registers `Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(), fenix: true);`
    - `CameraHandlerController` / `CameraController` instances obtain `ICameraService`, `ITextRecognitionService`, and `ITextExtractor` via `Get.find()` (see `CameraHandlerController` registration in `GeneralBindings`).
@@ -39,7 +41,9 @@ Important architectural notes
 
 - Recently added repositories and controllers (all registered in `GeneralBindings`):
   - **Repositories:** `BackLoadRepository` (`data/repositories/app_data/`, REST + local DB, outside Firebase guard), `InventoryItemRepository` (`data/repositories/inventory/`, Gemini OCR endpoint), `FormCategoryRepository` (`data/repositories/common/`), `CancelRemarksRepository` (`data/repositories/app_data/`), `UserMDMPIRepository` (`data/repositories/user/`).
-  - **Controllers:** `BackLoadController`, `InventoryItemController`, `ChartController`, `RequestController`, `StockReceiveController`, `HotlineDirectController`, `RequestHotlineController` (stub). All in `features/logistics/controllers/`.
+  - **Controllers:** `BackLoadController`, `InventoryItemController`, `ChartController`, `RequestController`, `StockReceiveController`, `HotlineDirectController`. All in `features/logistics/controllers/`.
+    - `RequestHotlineController` (stub, **not** registered in `GeneralBindings` — do not `Get.find()` it without registering first).
+    - Additional controllers (present but not previously listed) that agents should inspect: `HomeController`, `DeliveryVehicleController`, `DeliveryLocationController`, `RequestTransportController`, `WebSocketNotificationController`, `WebSocketDispatcherController`, `WebSocketDeliveryController`, and `NavigationController` (`lib/data/controllers/navigation_controller.dart`). These are registered either in `GeneralBindings` or instantiated in-place for developer tools / UI shells — check `lib/bindings/general_bindings.dart` for registration style (fenix/permanent/eager) before using `Get.find()`.
   - **Role handlers:** `features/logistics/services/implementations/` now contains `hotline_direct_role_handler.dart`, `request_role_handler.dart`, `pick_up_role_handler.dart`, `stock_receive_role_handler.dart` — implementing `IRequestActionHandler`.
 
 Conventions & patterns to follow (concrete)
@@ -50,7 +54,7 @@ Conventions & patterns to follow (concrete)
 - Error/result handling: Async operations should return `Result<T>` (see `lib/base/utils/result.dart`) rather than throwing raw exceptions.
 - UI: Keep business/data logic out of widget `build`. Use controllers for logic and `Obx` to observe minimal subtrees.
 
-- Prefer domain-specific helpers and global formatters instead of private utility methods inside widgets. For example, the collection feature now centralizes status handling in `features/collection/helpers/CollectionStatusColors` and uses a shared `BFormatter.formatPesoCurrency` (see `lib/base/utils/formatters/`) and a reusable `BIconLabelChip` widget in `lib/common/widgets/` for compact metadata chips.
+- Prefer domain-specific helpers and global formatters instead of private utility methods inside widgets. Logistics helpers live in `features/logistics/helpers/` (e.g., `StatusColorMapper`, `*DataManager`, `*FilterManager`, `*FormState`, `*ModalConfig`). Shared formatters are in `BFormatter` (`lib/base/utils/formatters/formatters.dart`) — e.g., `formatDate2`, `formatDateWithAmPm`, `formatIntegerNoDecimal`, `normalizeToIsoDatetime`. Reusable chip widgets are in `lib/common/widgets/chips/` (`BSimpleChip`, `ChoiceChip`, `StatusChip`).
 
 - **Developer/debug tools:** For in-app developer tools (such as the Local Storage Data Viewer), it is acceptable to instantiate controllers directly in the widget using `Get.put(...)` rather than registering in `GeneralBindings`. See `local_storage_data_viewer.dart` for an example. These tools must remain hidden from production users.
 
@@ -76,8 +80,8 @@ Where to look for examples (key files)
 - Routes constants and GetPage list: `lib/base/utils/routes/` (BRoutes/AppRoutes)
 - Feature QA tooling: `bin/generate_module_qa.dart` and `lib/features/logistics/screens/data_test/IMPLEMENTATION_SUMMARY.md`
 - DB helper & schema: `lib/data/local/database_helper.dart` and `lib/data/local/db_schema.dart`
-  - Recent tables: `a_tblRequestBackload` (back-load entries), `a_tblClientContactPerson` (autocomplete), `a_tblLocationAlternative` (alternative delivery locations).
-  - Recent DAOs: `data/local/dao/common/backload_dao.dart`, `data/local/dao/common/client_contact_person_dao.dart`.
+  - Tables: `a_tblRequest`, `a_tblRequestDocumentReference`, `a_tblRequestReceiverSignature`, `a_tblRequestImage`, `a_tblRequestRemarks`, `ACCMST_`, `a_tblMobile`, `Users`, `CNTMST`, `a_tblRequestPickUp`, `a_tblItemCategory`, `a_tblFormCategory`, `a_tblRequestAirSea`, `a_tblRequestPullOutReturnPickUp`, `a_tblLocationAlternative`, `a_tblClientContactPerson`, `a_tblRequestBackload`.
+  - DAOs by domain: `dao/standard_delivery/` (`standard_delivery_dao`, `location_alternative_dao`), `dao/air_sea/` (`air_sea_dao`), `dao/pick_up/` (`pick_up_dao`), `dao/pull_out/` (`pull_out_dao`), `dao/common/` (`backload_dao`, `client_contact_person_dao`, `client_dao`, `cntmst_dao`, `document_reference_dao`, `form_category_dao`, `item_category_dao`, `mobile_dao`, `remarks_dao`, `user_dao`).
 
 - Platform init & sqflite FFI: `lib/base/utils/platform_init.dart` — shows `ensureSqfliteFfiInitialized()`, conditional Firebase init, and the code path that registers `AuthenticationRepository` when Firebase is present.
 
@@ -88,11 +92,9 @@ Where to look for examples (key files)
 
 - Local Storage Data Viewer: `lib/features/logistics/screens/data_test/local_storage_data_viewer.dart`, `local_storage_data_controller.dart`, and documentation in the same folder (`README.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`).
 
-- Module documentation: `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`, `docs/modules/inventory_item/INVENTORY_ITEM_MODULE_DOCUMENTATION.md`. See `docs/README.md` for the full module index.
+- Module documentation: All active modules now have docs in `docs/modules/` — `air-sea/`, `authentication/`, `backload/`, `collection/`, `hotline-direct/`, `inventory_item/`, `personalization/`, `pick-up/`, `pull-out/`, `standard-delivery/`, `stock-receive/`. See `docs/README.md` for the full module index and relationships.
 
-- Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). Note: `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined but `backLoad` does **not** yet have a `GetPage` in `AppRoutes.pages`.
-
-- Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined — `backLoad` now has a corresponding `GetPage` in `AppRoutes.pages` which constructs `BackLoadTransactionPage` and expects a `StandardDeliveryModel` via `Get.arguments` (see `lib/base/utils/routes/app_routes.dart`, lines ~41-48).
+- Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined — `backLoad` has a corresponding `GetPage` in `AppRoutes.pages` which constructs `BackLoadTransactionPage` and expects a `StandardDeliveryModel` via `Get.arguments`. The request route (`BRoutes.request`) uses `RequestBindings` (currently an empty placeholder — controllers are registered centrally in `GeneralBindings`).
 Developer workflows & scripts
 -----------------------------
 - Standard local dev: `flutter pub get` ; `flutter run` (use PowerShell on Windows; chain with `;` if needed).
@@ -130,6 +132,11 @@ Integration & external deps to be aware of
 
 - `IDeliveryRequestController` (`common/services/abstracts/i_delivery_request_controller.dart`) is a fully implemented 142-line interface (not empty). It defines the contract for delivery request controllers; both `StandardDeliveryController` and `HotlineDirectController` implement it.
 
+- Empty placeholder files/folders (exist as scaffolding, not real implementations):
+  - `data/repositories/backload/` — empty folder; the actual `BackLoadRepository` lives in `data/repositories/app_data/backload_repository.dart`.
+  - `data/repositories/app_data/sign_up_repository.dart` — empty file; signup logic is in `SignupController` + auth repos.
+  - `features/collection/domain/` — empty folder; collection does not yet use a domain layer.
+
 What NOT to change / common pitfalls
 -----------------------------------
 - Do not move or rename `GeneralBindings` or migrate DI to a different pattern — bindings ordering is relied upon.
@@ -141,6 +148,8 @@ What NOT to change / common pitfalls
 - NOTE: There are a few legacy `print()` calls still present in the codebase (used for quick debugging). Replace these with `logDebug()` or `BloggerHelper` when making changes. Notable instances include:
   - `lib/data/repositories/inventory/inventory_item_repository.dart` (debug `print("HeHim: ...")` in Gemini integration)
   - `lib/features/logistics/controllers/standard_delivery_controller.dart` (debug prints when handling API results)
+  - `lib/features/logistics/controllers/home_controller.dart` (debug prints in init/refresh)
+  - `lib/features/logistics/helpers/hotline_direct_data_manager.dart` (debug `print('HEY2: ...')`)
   - `lib/features/logistics/screens/request_forms/widgets/pull_out_form.dart` and `lib/features/logistics/screens/common/b_request_form.dart` (UI debug prints)
   - `lib/debug/reset_database.dart` (intentional console utility — safe in debug tool)
 
@@ -160,9 +169,7 @@ The project normally keeps docs in `docs/`. This `AGENTS.md` was created at the 
 
 Contact points in repo (where agents should look first)
 -----------------------------------------------------
-- `.github/copilot-instructions.md` — project-specific AI guidelines (read first). NOTE: this file is referenced in docs but may not be checked into the repository; if it's missing, consult `docs/README.md` and the project `README.md` for equivalent conventions and the top-level `AGENTS.md` itself.
-
-- `.github/copilot-instructions.md` — project-specific AI guidelines (read first). The file is present in the repository at `.github/copilot-instructions.md` and contains the authoritative, project-specific coding conventions and folder layout; read it before making changes.
+- `.github/copilot-instructions.md` — project-specific AI guidelines (read first). The file is present in the repository and contains the authoritative coding conventions and folder layout.
 - `lib/bindings/general_bindings.dart` — DI and registration order
 - `lib/main.dart` — early initializers and platform registration
 - `lib/base/utils/result.dart` and `lib/base/utils/logger.dart` — error & logging APIs

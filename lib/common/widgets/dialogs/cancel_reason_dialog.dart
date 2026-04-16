@@ -17,8 +17,7 @@ class CancelReasonDialog {
 
   /// Shows the dialog and calls [onSubmit] with the selected reason when user submits.
   /// [onSubmit] may be sync or async; the dialog will await the returned future.
-  static Future<void> show(BuildContext context, Future<void> Function(String reason) onSubmit,
-      {List<String>? reasons}) async {
+  static Future<void> show(BuildContext context, Future<void> Function(String reason) onSubmit, {List<String>? reasons}) async {
     final items = reasons ?? _defaultReasons;
 
     String? selectedTerm;
@@ -30,8 +29,8 @@ class CancelReasonDialog {
       builder: (BuildContext dialogContext) {
         return StatefulBuilder(builder: (context, setState) {
           final bool isOther = selectedTerm == "Other (specify)";
-          final bool isSubmitEnabled =
-              selectedTerm != null && (!isOther || otherReasonController.text.trim().isNotEmpty);
+          final bool isSubmitEnabled = selectedTerm != null &&
+              (!isOther || otherReasonController.text.trim().isNotEmpty);
 
           return AlertDialog(
             title: const Text('Select Reason'),
@@ -44,7 +43,7 @@ class CancelReasonDialog {
                     border: OutlineInputBorder(),
                   ),
                   initialValue: selectedTerm,
-                  hint: const Text("Select a reason"),
+                  // hint: const Text("Select a reason"),
                   isExpanded: true,
                   onChanged: (String? newValue) {
                     setState(() {
@@ -87,13 +86,17 @@ class CancelReasonDialog {
                         if (selectedTerm == "Other (specify)") {
                           finalReason = otherReasonController.text.trim();
                           if (finalReason.isEmpty) {
-                            BLoaders.warningSnackBar(title: 'Please enter a reason', message: 'Reason is required');
+                            BLoaders.warningSnackBar(
+                                title: 'Please enter a reason',
+                                message: 'Reason is required');
                             return;
                           }
                         } else if (selectedTerm != null) {
                           finalReason = selectedTerm!;
                         } else {
-                          BLoaders.warningSnackBar(title: 'Please enter a reason', message: 'Reason is required');
+                          BLoaders.warningSnackBar(
+                              title: 'Please enter a reason',
+                              message: 'Reason is required');
                           return;
                         }
 
@@ -101,7 +104,8 @@ class CancelReasonDialog {
                           await onSubmit(finalReason);
                         } catch (e) {
                           // onSubmit can show its own snackbars; swallow unexpected errors
-                          BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+                          BLoaders.errorSnackBar(
+                              title: 'Error', message: e.toString());
                         } finally {
                           Navigator.of(dialogContext).pop();
                         }
@@ -118,4 +122,3 @@ class CancelReasonDialog {
     otherReasonController.dispose();
   }
 }
-

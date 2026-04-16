@@ -100,8 +100,6 @@ class PullOutController extends GetxController {
   /// Build a PullOutModel from the controllers and submit.
   Future<void> submitFromForm() async {
     await dataManager.saveRequestFromForm(this);
-    // Do not reset here; the screen's onSave handles visual clearing to keep
-    // behavior localized to the widget as requested.
   }
 
   /// Update status using data manager to merge UI inputs.
