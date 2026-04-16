@@ -21,11 +21,12 @@ class AirSeaMapper {
       datePickUp: m.datePickUp.isNotEmpty ? m.datePickUp : null,
       status: m.status.isNotEmpty ? m.status : null,
       createdBy: m.createdBy.isNotEmpty ? m.createdBy : null,
+      updatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
     );
   }
 
   /// Maps AirSeaModel to AirSeaUpdateDto for API update operations
-  static AirSeaUpdateDto toUpdateDto(AirSeaModel m) {
+  static AirSeaUpdateDto toUpdateDto(AirSeaModel m, String updatedBy) {
     return AirSeaUpdateDto(
       requestID: m.id.isNotEmpty ? m.id : null,
       mobileID: m.mobileId,
@@ -46,6 +47,7 @@ class AirSeaMapper {
       provincialDeliveredTo: m.provincialDeliveredTo.isNotEmpty ? m.provincialDeliveredTo : null,
       provincialDeliveredAt: BFormatter.normalizeToIsoDatetime(m.provincialDeliveredAt),
       provincialRemarks: m.provincialRemarks.isNotEmpty ? m.provincialRemarks : null,
+      updatedBy: updatedBy.isNotEmpty ? updatedBy : null,
     );
   }
 

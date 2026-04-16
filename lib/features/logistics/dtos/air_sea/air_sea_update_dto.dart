@@ -20,6 +20,7 @@ class AirSeaUpdateDto {
   final String? provincialRemarks;
   final String? status;
   final String? remarks;
+  final String? updatedBy;
 
   AirSeaUpdateDto({
     this.requestID,
@@ -42,6 +43,7 @@ class AirSeaUpdateDto {
     this.provincialRemarks,
     this.status,
     this.remarks,
+    this.updatedBy,
   });
 
   Map<String, dynamic> toJson() {
@@ -70,6 +72,7 @@ class AirSeaUpdateDto {
     put('ProvincialRemarks', provincialRemarks);
     put('Status', status);
     put('Remarks', remarks);
+    put('UpdatedBy', updatedBy);
 
     return data;
   }

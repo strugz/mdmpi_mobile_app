@@ -1,4 +1,6 @@
 
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -393,7 +395,7 @@ class AirSeaDataManager {
             'AirSeaDataManager: Skipping proof image upload - already uploaded during previous status transition (current: ${request.status} → new: $newStatus)');
       }
 
-      final payload = AirSeaMapper.toUpdateDto(updated);
+      final payload = AirSeaMapper.toUpdateDto(updated, userInitial);
 
       await _repository.updateWithPayload(payload.toJson(), silent: true);
 

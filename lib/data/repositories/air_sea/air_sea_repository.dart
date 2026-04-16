@@ -253,13 +253,13 @@ class AirSeaRepository extends GetxController {
   }
 
   /// Update an existing Air/Sea request in API and local DB.
-  Future<void> updateAirSea(AirSeaModel data, {bool silent = false}) async {
+/*
+  Future<void> updateAirSea(AirSeaModel data, String actionBy, {bool silent = false}) async {
     try {
-      final dto = AirSeaMapper.toUpdateDto(data);
+      final dto = AirSeaMapper.toUpdateDto(data, actionBy);
       final payload = dto.toJson();
       final url = _uri(_resource);
       final response = await _safePatch(url, payload);
-
       if (response.statusCode == 200) {
         // Update local DB
         try {
@@ -315,6 +315,7 @@ class AirSeaRepository extends GetxController {
       }
     }
   }
+*/
 
   /// Update using a pre-built payload and sync to local DB.
   Future<void> updateWithPayload(Map<String, dynamic> payload,

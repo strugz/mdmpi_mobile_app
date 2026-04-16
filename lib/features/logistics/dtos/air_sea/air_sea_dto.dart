@@ -17,6 +17,7 @@ class AirSeaDto {
   final String? remarks;
   final String? createdAt;
   final String? updatedAt;
+  final String? updatedBy;
   final SignatureDto? signature;
   final ClientDto? client;
 
@@ -35,6 +36,7 @@ class AirSeaDto {
     this.remarks,
     this.createdAt,
     this.updatedAt,
+    this.updatedBy,
     this.signature,
     this.client,
   });
@@ -59,6 +61,7 @@ class AirSeaDto {
     put('Remarks', remarks);
     put('CreatedAt', createdAt);
     put('UpdatedAt', updatedAt);
+    put('UpdatedBy', updatedBy);
     put('Signature', signature?.toJson());
     put('Client', client?.toJson());
 
@@ -105,6 +108,7 @@ class AirSeaDto {
       remarks: json['Remarks'] ?? json['remarks'],
       createdAt: json['CreatedAt'] ?? json['createdAt'],
       updatedAt: json['UpdatedAt'] ?? json['updatedAt'],
+      updatedBy: json['UpdatedBy'] ?? json['updatedBy'],
       signature: json['Signature'] != null
           ? SignatureDto.fromJson(Map<String, dynamic>.from(json['Signature']))
           : null,
