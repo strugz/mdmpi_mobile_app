@@ -66,6 +66,7 @@ DI / registration gotchas
 - Authentication DI note: the project registers the authentication repository via its interface and wires use-cases in `GeneralBindings`. See `lib/bindings/general_bindings.dart` for examples:
   - `Get.lazyPut<IAuthenticationRepository>(() => AuthenticationRepository(), fenix: true);`
   - `Get.lazyPut(() => LoginWithEmailPasswordUseCase(...), fenix: true);`
+  - `Get.lazyPut(() => LoginWithGoogleUseCase(...), fenix: true);` — resolves `IAuthenticationRepository`, `UserRepository`, and `NetworkManager` via `Get.find()`.
 
 - Binding exceptions: some registrations intentionally differ from the default `fenix: true` pattern. For example `UserRepository` is registered without `fenix` in `GeneralBindings` (`Get.lazyPut(() => UserRepository());`). Check `lib/bindings/general_bindings.dart` before adding new bindings to match existing intent.
 
@@ -92,7 +93,7 @@ Where to look for examples (key files)
 
 - Local Storage Data Viewer: `lib/features/logistics/screens/data_test/local_storage_data_viewer.dart`, `local_storage_data_controller.dart`, and documentation in the same folder (`README.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`).
 
-- Module documentation: keep `docs/README.md` as the live module-doc index. BackLoad has `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`, even though the index still marks BackLoad as Planned.
+- Module documentation: keep `docs/README.md` as the live module-doc index. BackLoad has `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`, even though the index still marks BackLoad as Planned. Inventory Item has `docs/modules/inventory_item/INVENTORY_ITEM_MODULE_DOCUMENTATION.md`. Additional module READMEs exist under `docs/modules/` for: air-sea, authentication, collection, hotline-direct, personalization, pick-up, pull-out, standard-delivery, stock-receive. `docs/modules/advanced_filter/` is an empty scaffold.
 
 - Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined — `backLoad` has a corresponding `GetPage` in `AppRoutes.pages` which constructs `BackLoadTransactionPage` and expects a `StandardDeliveryModel` via `Get.arguments`. The request route (`BRoutes.request`) uses `RequestBindings` (currently an empty placeholder — controllers are registered centrally in `GeneralBindings`).
 Developer workflows & scripts
@@ -153,6 +154,7 @@ What NOT to change / common pitfalls
   - `lib/features/logistics/controllers/home_controller.dart` (debug prints in init/refresh)
   - `lib/features/logistics/helpers/hotline_direct_data_manager.dart` (debug `print('HEY2: ...')`)
   - `lib/features/logistics/screens/request_forms/widgets/pull_out_form.dart` and `lib/features/logistics/screens/common/b_request_form.dart` (UI debug prints)
+  - `lib/features/authentication/domain/usecases/login_with_google_usecase.dart` (debug `print('Warning: ...')` in Google sign-in user record save)
   - `lib/debug/reset_database.dart` (intentional console utility — safe in debug tool)
 
   When replacing prints, prefer `logDebug()` from `lib/base/utils/logger.dart` for simple messages and `BloggerHelper` for structured logs.

@@ -1,10 +1,20 @@
 # Copilot Custom Instructions (mdmpi_mobile_app)
 
+**Platform Note:** Always assume that all code, scripts, and guidance must cater to both Windows and Android app targets. All workflows, integrations, and platform-specific logic should be compatible with both environments unless explicitly stated otherwise.
+
 ## Architecture
 
 * Use **GetX** (controllers + Rx). No Riverpod.
 * Keep UI pure: no business/data logic in `build`.
 * Controllers call repositories (and services where they exist); DI via `Get.lazyPut(fenix: true)` and `Get.find()`.
+
+### Firebase guard in GeneralBindings
+
+All Firestore-backed repositories are wrapped in `if (Firebase.apps.isNotEmpty) { ... }` in `GeneralBindings`. On desktop platforms without FlutterFire configuration, these registrations are skipped to avoid runtime errors. Repositories that use REST + local DB only (e.g., `BackLoadRepository`) are registered **outside** the guard so they work on all targets. See `lib/bindings/general_bindings.dart`.
+
+### Platform initialization helper
+
+`lib/base/utils/platform_init.dart` centralizes early-start concerns used by `main.dart`: sqflite FFI initialization on desktop, conditional Firebase initialization, eager `NotificationService` init, and eager registration of `AuthenticationRepository` via `Get.put` when Firebase is available. Inspect `initPlatform(...)` when auditing early/eager registrations and desktop vs mobile platform behavior.
 
 ### Top-level folder layout
 
@@ -74,13 +84,17 @@ local/
   db_schema.dart
 models/               # Shared domain models (UserInitialModel, ItemCategoryModel, etc.)
 repositories/         # Repositories (extend GetxController, call APIs + local DB directly):
-                      #   air_sea/, app_data/, authentication/, client/, common/,
-                      #   delivery_vehicle/, image/, pick_up/, pull_out/,
+                      #   air_sea/, app_data/, authentication/, backload/, client/, common/,
+                      #   delivery_vehicle/, image/, inventory/, pick_up/, pull_out/,
                       #   standard_delivery/, user/
 services/             # MessagingController (SMS via telephony)
 ```
 
 > **Note:** Repositories extend `GetxController` and make API/DB calls directly — there is no separate service layer wrapping HTTP for most features. This is the established pattern.
+
+> **DB schema tables:** `a_tblRequest`, `a_tblRequestDocumentReference`, `a_tblRequestReceiverSignature`, `a_tblRequestImage`, `a_tblRequestRemarks`, `ACCMST_`, `a_tblMobile`, `Users`, `CNTMST`, `a_tblRequestPickUp`, `a_tblItemCategory`, `a_tblFormCategory`, `a_tblRequestAirSea`, `a_tblRequestPullOutReturnPickUp`, `a_tblLocationAlternative`, `a_tblClientContactPerson`, `a_tblRequestBackload`.
+
+> **DAOs by domain:** `dao/standard_delivery/` (`standard_delivery_dao`, `location_alternative_dao`), `dao/air_sea/` (`air_sea_dao`), `dao/pick_up/` (`pick_up_dao`), `dao/pull_out/` (`pull_out_dao`), `dao/common/` (`backload_dao`, `client_contact_person_dao`, `client_dao`, `cntmst_dao`, `document_reference_dao`, `form_category_dao`, `item_category_dao`, `mobile_dao`, `remarks_dao`, `user_dao`).
 
 ### `lib/features/` — feature modules
 
@@ -164,6 +178,8 @@ presentation/
 * Named routes via `BRoutes` (constants) + `AppRoutes.pages` (GetPage list).
 * Bottom tabs handled by `NavigationMenu` using `NavigationController` (instantiated via `Get.put` in the widget).
 * Post-auth department routing handled by `AppRouter`.
+* **NavigationController details:** The controller stores screen route names and exposes a computed `screens` getter that selects widgets by user department (see `lib/data/controllers/navigation_controller.dart`). When adding or modifying tab behavior, prefer updating `NavigationController.screenRoutes`, `screens`, and `changeScreen` rather than wiring tab logic directly in widgets.
+* Use GetX routing for app-level screen transitions; keep raw `Navigator.push` limited to low-level helpers such as `BHelperFunctions.navigateToScreen`.
 
 ---
 
@@ -190,6 +206,13 @@ presentation/
 * **Known legacy pattern (do not replicate):** Some controllers still instantiate repositories inline with `Get.put(UserRepository())`. New code must use `Get.find()` instead.
 * Some services (`IPermissionService`, `INotificationService`) are registered early in `main.dart` via `Get.put` before `GeneralBindings` runs. This is intentional for pre-app-start initialization.
 * `NavigationController` is instantiated via `Get.put` directly in `NavigationMenu` — acceptable for the bottom-tab shell.
+* **Eager registrations in GeneralBindings:** Several core services/controllers are registered eagerly via `Get.put` in `GeneralBindings` (not only in `main.dart`): `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering.
+* **Authentication DI:** The project registers the authentication repository via its interface and wires use-cases in `GeneralBindings`:
+    * `Get.lazyPut<IAuthenticationRepository>(() => AuthenticationRepository(), fenix: true);`
+    * `Get.lazyPut(() => LoginWithEmailPasswordUseCase(...), fenix: true);`
+    * `Get.lazyPut(() => LoginWithGoogleUseCase(...), fenix: true);` — resolves `IAuthenticationRepository`, `UserRepository`, and `NetworkManager` via `Get.find()`.
+* **Binding exceptions:** Some registrations intentionally differ from the default `fenix: true` pattern. For example `UserRepository` is registered without `fenix` (`Get.lazyPut(() => UserRepository());`). Check `GeneralBindings` before adding new bindings to match existing intent.
+* **Developer/debug tools:** For in-app developer tools (such as the Local Storage Data Viewer), it is acceptable to instantiate controllers directly in the widget using `Get.put(...)` rather than registering in `GeneralBindings`.
 
 ---
 
@@ -263,6 +286,85 @@ Never skip layers that exist for the target domain.
 Respect the feature-based folder structure already in use for that domain.
 
 > For `authentication`, follow the Clean Architecture variant: Entity → Interface Repo → Use Case → Controller → UI.
+
+---
+
+## Recently added repositories and controllers
+
+All registered in `GeneralBindings` unless noted:
+
+### Repositories
+- `BackLoadRepository` (`data/repositories/app_data/`, REST + local DB, outside Firebase guard)
+- `InventoryItemRepository` (`data/repositories/inventory/`, Gemini OCR endpoint)
+- `FormCategoryRepository` (`data/repositories/common/`)
+- `CancelRemarksRepository` (`data/repositories/app_data/`)
+- `UserMDMPIRepository` (`data/repositories/user/`)
+
+### Controllers
+- `BackLoadController`, `InventoryItemController`, `ChartController`, `RequestController`, `StockReceiveController`, `HotlineDirectController` — all in `features/logistics/controllers/`.
+- `RequestHotlineController` (stub, **not** registered in `GeneralBindings` — do not `Get.find()` it without registering first).
+- Additional controllers to inspect: `HomeController`, `DeliveryVehicleController`, `DeliveryLocationController`, `RequestTransportController`, `WebSocketNotificationController`, `WebSocketDispatcherController`, `WebSocketDeliveryController`, and `NavigationController`. Check `GeneralBindings` for registration style before using `Get.find()`.
+
+### Role handlers
+- `features/logistics/services/implementations/` contains `hotline_direct_role_handler.dart`, `request_role_handler.dart`, `pick_up_role_handler.dart`, `stock_receive_role_handler.dart` — implementing `IRequestActionHandler`.
+
+---
+
+## Text extraction service
+
+The repository registers an `ITextExtractor` implementation (`DocumentReferenceExtractor`) in `GeneralBindings`:
+- `Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(), fenix: true);`
+- `CameraHandlerController` / `CameraController` obtain `ICameraService`, `ITextRecognitionService`, and `ITextExtractor` via `Get.find()`.
+- Use `Get.find<ITextExtractor>()` when you need the extractor. Implement new extractors under `lib/common/services/abstracts/` and register in `GeneralBindings`.
+
+---
+
+## Local Storage Data Viewer
+
+A developer-only tool for inspecting and managing SQLite database tables, under `lib/features/logistics/screens/data_test/`. Accessible from Settings > Developer Tools and via `/local-storage-viewer`. Must not be exposed in production builds.
+
+---
+
+## AI / LLM packages
+
+Placeholder dependencies in `pubspec.yaml`: `flutter_ai_toolkit: any` and `firebase_ml_model_downloader: any`. Do NOT add API keys to the repo. When integrating a concrete package:
+- Pin exact versions (do not leave `any`).
+- Run `flutter pub get` and commit the resulting `pubspec.lock`.
+- Prefer platform-safe, offline-capable packages for on-device models.
+
+---
+
+## Placeholder service stubs
+
+Empty files, **not** registered in `GeneralBindings`:
+- `common/services/abstracts/i_ai_service.dart` and `common/services/implementations/ai_service.dart`
+- `common/services/abstracts/i_feature_toggle_service.dart` and `common/services/implementations/feature_toggle_service.dart`
+- `common/widgets/feature_guard.dart`
+
+Do NOT register these until they have real implementations.
+
+> **`IDeliveryRequestController`** (`common/services/abstracts/i_delivery_request_controller.dart`) is a fully implemented 142-line interface (not empty). It defines the contract for delivery request controllers; both `StandardDeliveryController` and `HotlineDirectController` implement it.
+
+---
+
+## Empty placeholder files/folders
+
+- `data/repositories/backload/` — empty folder; actual `BackLoadRepository` lives in `data/repositories/app_data/backload_repository.dart`.
+- `data/repositories/app_data/sign_up_repository.dart` — empty file; signup logic is in `SignupController` + auth repos.
+- `features/collection/domain/` — empty folder; collection does not yet use a domain layer.
+
+---
+
+## Known legacy print() calls
+
+Replace with `logDebug()` or `BloggerHelper` when making changes in these files:
+- `lib/data/repositories/inventory/inventory_item_repository.dart`
+- `lib/features/logistics/controllers/standard_delivery_controller.dart`
+- `lib/features/logistics/controllers/home_controller.dart`
+- `lib/features/logistics/helpers/hotline_direct_data_manager.dart`
+- `lib/features/logistics/screens/request_forms/widgets/pull_out_form.dart` and `lib/features/logistics/screens/common/b_request_form.dart`
+- `lib/features/authentication/domain/usecases/login_with_google_usecase.dart`
+- `lib/debug/reset_database.dart` (intentional console utility — safe in debug tool)
 
 ---
 

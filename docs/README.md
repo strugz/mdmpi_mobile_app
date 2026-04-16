@@ -11,6 +11,7 @@ docs/
   README.md                          # This file — documentation index
   modules/
     air-sea/README.md                # Air & Sea logistics module
+    air-sea/AIR_SEA_PROVINCIAL_DELIVERY_PLAN.md  # Provincial delivery extension plan
     standard-delivery/README.md      # Standard Delivery logistics module
     pick-up/README.md                # Pick Up logistics module
     pull-out/README.md               # Pull Out / Return logistics module
