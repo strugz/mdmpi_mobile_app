@@ -30,12 +30,27 @@ class AirSeaModel {
   String dropOffAt;
 
   // Provincial delivery phase
+  // Backwards-compatible textual fields (kept for existing callers)
   String provincialReceiverName;
   String provincialPickUpAt;
   String provincialDeliveredTo;
   String provincialDeliveredAt;
   String provincialRemarks;
   String provincialProofImagePath;
+
+  // New structured fields (preferred) — timestamps as DateTime and extra metadata
+  DateTime? provincialPickUpAtDateTime;
+  DateTime? provincialInTransitAt;
+  DateTime? provincialDeliveredAtDateTime;
+
+  /// Name or id of the provincial actor who performed the pick-up
+  String provincialPickUpBy;
+
+  /// Explicit receiver name captured at delivery (more explicit than legacy provincialReceiverName)
+  String provincialDeliveredReceiverName;
+
+  // Proof/signature files are uploaded via ImageRepository and must not be
+  // stored as DB blobs or included in the main request DTO.
 
   String status;
   String remarks;
@@ -72,6 +87,12 @@ class AirSeaModel {
     this.provincialDeliveredAt = '',
     this.provincialRemarks = '',
     this.provincialProofImagePath = '',
+    this.provincialPickUpAtDateTime,
+    this.provincialInTransitAt,
+    this.provincialDeliveredAtDateTime,
+    this.provincialPickUpBy = '',
+    this.provincialDeliveredReceiverName = '',
+    // Local proof/signature paths are intentionally not part of the model ctor
     this.status = '',
     this.remarks = '',
     this.createdBy = '',
@@ -111,6 +132,12 @@ class AirSeaModel {
     String? provincialDeliveredAt,
     String? provincialRemarks,
     String? provincialProofImagePath,
+    DateTime? provincialPickUpAtDateTime,
+    DateTime? provincialInTransitAt,
+    DateTime? provincialDeliveredAtDateTime,
+    String? provincialPickUpBy,
+    String? provincialDeliveredReceiverName,
+    // Local proof/signature path parameters removed; upload handled separately
     String? status,
     String? remarks,
     String? createdBy,
@@ -144,6 +171,12 @@ class AirSeaModel {
       provincialDeliveredAt: provincialDeliveredAt ?? this.provincialDeliveredAt,
       provincialRemarks: provincialRemarks ?? this.provincialRemarks,
       provincialProofImagePath: provincialProofImagePath ?? this.provincialProofImagePath,
+      provincialPickUpAtDateTime: provincialPickUpAtDateTime ?? this.provincialPickUpAtDateTime,
+      provincialInTransitAt: provincialInTransitAt ?? this.provincialInTransitAt,
+      provincialDeliveredAtDateTime: provincialDeliveredAtDateTime ?? this.provincialDeliveredAtDateTime,
+      provincialPickUpBy: provincialPickUpBy ?? this.provincialPickUpBy,
+      provincialDeliveredReceiverName: provincialDeliveredReceiverName ?? this.provincialDeliveredReceiverName,
+      // Local proof/signature path assignments removed; use ImageRepository for uploads
       status: status ?? this.status,
       remarks: remarks ?? this.remarks,
       createdBy: createdBy ?? this.createdBy,
@@ -175,9 +208,22 @@ class AirSeaModel {
       'DispatchedAt': dispatchedAt,
       'DropOffAt': dropOffAt,
       'ProvincialReceiverName': provincialReceiverName,
-      'ProvincialPickUpAt': provincialPickUpAt,
+      // Prefer structured ISO8601 timestamps when available, fall back to legacy string
+      'ProvincialPickUpAt': provincialPickUpAtDateTime != null
+          ? provincialPickUpAtDateTime!.toUtc().toIso8601String()
+          : provincialPickUpAt,
+      'ProvincialInTransitAt': provincialInTransitAt != null
+          ? provincialInTransitAt!.toUtc().toIso8601String()
+          : null,
       'ProvincialDeliveredTo': provincialDeliveredTo,
-      'ProvincialDeliveredAt': provincialDeliveredAt,
+      'ProvincialDeliveredAt': provincialDeliveredAtDateTime != null
+          ? provincialDeliveredAtDateTime!.toUtc().toIso8601String()
+          : provincialDeliveredAt,
+      'ProvincialDeliveredReceiverName': provincialDeliveredReceiverName,
+      'ProvincialPickUpBy': provincialPickUpBy,
+      // Proof/signature paths are transient local paths; include them in payloads when needed
+      // Note: do NOT include local file paths for proofs/signatures in the
+      // main DTO. These are uploaded separately via ImageRepository.
       'ProvincialRemarks': provincialRemarks,
       'ProvincialProofImagePath': provincialProofImagePath,
       'Status': status,
@@ -206,6 +252,23 @@ class AirSeaModel {
       if (value is String) return int.tryParse(value);
       return null;
     }
+
+    // DateTime parsing for DB values is done inline below to avoid helper scope issues
+
+    DateTime? parseDateTimeOrNull(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value;
+      if (value is String && value.isNotEmpty) {
+        try {
+          return DateTime.tryParse(value);
+        } catch (_) {
+          return null;
+        }
+      }
+      return null;
+    }
+
+    // (parseDateTimeOrNull defined above)
 
     return AirSeaModel(
       id: firstPresent(json,
@@ -278,6 +341,16 @@ class AirSeaModel {
         'ProvincialPickUpAt',
         'provincialPickUpAt',
       ]),
+      provincialPickUpAtDateTime: parseDateTimeOrNull(firstPresent(json, [
+        'ProvincialPickUpAt',
+        'provincialPickUpAt',
+        'provincial_pick_up_at',
+      ])),
+      provincialInTransitAt: parseDateTimeOrNull(firstPresent(json, [
+        'ProvincialInTransitAt',
+        'provincialInTransitAt',
+        'provincial_in_transit_at',
+      ])),
       provincialDeliveredTo: firstPresent(json, [
         'ProvincialDeliveredTo',
         'provincialDeliveredTo',
@@ -293,6 +366,17 @@ class AirSeaModel {
       provincialProofImagePath: firstPresent(json, [
         'ProvincialProofImagePath',
         'provincialProofImagePath',
+      ]),
+      // Image/signature local paths are not parsed into model; uploads handled separately
+      provincialPickUpBy: firstPresent(json, [
+        'ProvincialPickUpBy',
+        'provincialPickUpBy',
+        'provincial_pick_up_by'
+      ]),
+      provincialDeliveredReceiverName: firstPresent(json, [
+        'ProvincialDeliveredReceiverName',
+        'provincialDeliveredReceiverName',
+        'provincial_delivered_receiver_name'
       ]),
       status: firstPresent(json, ['Status', 'status']),
       remarks: firstPresent(json, ['Remarks', 'remarks']),
@@ -358,6 +442,18 @@ class AirSeaModel {
       provincialDeliveredAt: (lower['provincialdeliveredat'] ?? '').toString(),
       provincialRemarks: (lower['provincialremarks'] ?? '').toString(),
       provincialProofImagePath: (lower['provincialproofimagepath'] ?? '').toString(),
+      provincialPickUpAtDateTime: (lower['provincialpickupat'] ?? '').toString().isNotEmpty
+          ? DateTime.tryParse((lower['provincialpickupat'] ?? '').toString())
+          : null,
+      provincialInTransitAt: (lower['provincialintransitat'] ?? '').toString().isNotEmpty
+          ? DateTime.tryParse((lower['provincialintransitat'] ?? '').toString())
+          : null,
+      provincialDeliveredAtDateTime: (lower['provincialdeliveredat'] ?? '').toString().isNotEmpty
+          ? DateTime.tryParse((lower['provincialdeliveredat'] ?? '').toString())
+          : null,
+      provincialPickUpBy: (lower['provincialpickupby'] ?? '').toString(),
+      provincialDeliveredReceiverName: (lower['provincialdeliveredreceivername'] ?? '').toString(),
+      // Local image/signature paths omitted here; repository handles uploads separately
       status: (lower['status'] ?? '').toString(),
       remarks: (lower['remarks'] ?? '').toString(),
       createdBy: (lower['createdby'] ?? '').toString(),
