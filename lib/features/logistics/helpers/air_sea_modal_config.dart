@@ -157,8 +157,7 @@ class AirSeaModalConfig {
   /// The user picks Endorsed to Guard / Received / For Dispatch from a dropdown.
   /// Returns `true` and sets `nextStatus` on success; shows error + returns
   /// `false` on failure.
-  static Future<bool> _validateItemPackedTransition(
-      AirSeaController controller) async {
+  static Future<bool> _validateItemPackedTransition(AirSeaController controller) async {
     final formState = controller.formState;
     final selectedStatus = formState.endorsedToController.text;
 
@@ -263,11 +262,7 @@ class AirSeaModalConfig {
   // ========================================================================
 
   /// Resolves modal config for the Provincial role based on current status.
-  static AirSeaModalConfig _resolveProvincial(
-    String status,
-    String role,
-    AirSeaController controller,
-  ) {
+  static AirSeaModalConfig _resolveProvincial(String status, String role, AirSeaController controller) {
     if (status == BTexts.statusReceived || status == BTexts.statusDropOff) {
       return AirSeaModalConfig(
         role: role,
@@ -308,5 +303,3 @@ class AirSeaModalConfig {
     return true;
   }
 }
-
-

@@ -170,13 +170,10 @@ Add provincial fields to DTOs. Update mapper to convert between DTO ↔ model �
 Recommended DTO / JSON keys
 - Use snake_case keys for API/DTO if the backend follows that convention (confirm with backend):
   - provincial_pick_up_at
-  - provincial_pick_up_proof_image_path
   - provincial_pick_up_by
   - provincial_in_transit_at
   - provincial_delivered_at
-  - provincial_delivered_proof_image_path
   - provincial_delivered_receiver_name
-  - provincial_delivered_receiver_signature_path
 
 Mapper responsibilities:
 - Convert DateTime <-> ISO8601 string.
@@ -197,13 +194,69 @@ Update insert/update/select queries to include the new timestamp/text columns (t
 
 **File:** `lib/features/logistics/helpers/air_sea_form_state.dart`
 
-Add:
-- `provincialSignature` (Rx<Uint8List?>)
+Purpose
+- `AirSeaFormState` holds transient UI inputs for modal interactions (pick-up, start-transit, delivery). It should contain only ephemeral state used to validate inputs and build the update payload; persistent values (timestamps, receiver name, pick-up-by) are saved to the `AirSeaModel` / DB via the data manager.
 
-Wire into `reset()` and `dispose()`.
+- Fields to include (recommended types shown as Dart / GetX patterns):
+- Note: the local file path for a pick-up proof is managed by the shared capture widget (see `BDropOffCapture` + `CameraHandlerController.takePictureWithAnimation(requestId)`) which saves the image using the requestId. Do NOT add a persistent `provincialPickUpProofLocalPath` field to the form state — the UI should either read `CameraHandlerController.imageProofPath` after capture or use the requestId to resolve the stored file via `FileStorageService`.
+ - NOTE: Do NOT include a `provincialPickUpProofRemoteUrl` field in the form state.
+   - The app can fetch pick-up proof images from the API using the requestId (backend-provided URL or direct image endpoint). The form state should remain simple — the UI should either resolve an API-provided proof via the model/DAO or read the locally saved proof via `CameraHandlerController.imageProofPath` / `FileStorageService` when the user captures an image.
+- provincialPickUpAt — Rxn<DateTime?>
+  - Transient timestamp captured when the user confirms Pick Up. The data manager will persist this into the model/DB as an ISO8601 string.
+- provincialPickUpBy — RxnString
+  - Actor id or display name captured automatically from `UserController` when confirming pick up. Persisted to the model/DB (text).
+- provincialInTransitAt — Rxn<DateTime?>
+  - Timestamp captured when the user taps Start Transit. Captured automatically by controller and sent in the DTO.
+ - NOTE: Do NOT include a `provincialDeliveredProofLocalPath` field in the form state.
+   - The delivered proof image local path follows the same pattern as pick-up proof: the capture widget saves the image using the `requestId` (or the `CameraHandlerController` sets `imageProofPath`). The form state should rely on resolving the saved file via `CameraHandlerController.imageProofPath` or via `FileStorageService` using the `requestId`, or read the canonical model/DB remote URL when present. Do NOT persist binary image data in DB columns.
+  - NOTE: Do NOT include a `provincialDeliveredProofRemoteUrl` field in the form state.
+    - The delivered proof image remote URL is part of the canonical model/DAO (or fetched from the API using requestId). Keep the form state minimal: resolve delivered proofs via `CameraHandlerController.imageProofPath`, `FileStorageService` (using requestId), or read the model/DAO remote URL when needed. Do not keep a transient remote-url field in the form state.
+- provincialDeliveredReceiverNameController — TextEditingController
+  - Input controller for recipient name. Validate non-empty before submitting Delivered status.
+- provincialDeliveredSignatureBytes — Rxn<Uint8List?>
+  - In-memory bytes captured from `SignatureCaptureDialog` when the user collects a signature to send to the backend. IMPORTANT: per decisions above, do NOT persist this signature path/bytes to long-term local storage or DB. Use it to upload in the API call and then discard or keep a short-lived temp file if needed for upload.
+- isSubmitting — RxBool
+  - Simple loading flag to disable UI during network/upload operations.
+- validation/error observables — RxnString or Rxn<ValidationState>
+  - Expose small observables to surface validation errors for modal fields (e.g., missing proof, missing signature).
 
-Notes:
-- Reuse existing signature capture widget and storage utilities. Prefer storing a file path in the model/DB after saving the signature image via the project's FileStorageService.
+Wiring and lifecycle
+- Initialize TextEditingController(s) in the form state's constructor or `onInit` and call `dispose()` in the form state's `dispose()` method.
+- All Rx fields should be reset in `reset()` to their default (null/empty) values when the modal closes or when switching between requests.
+
+Validation helpers (recommended methods inside `AirSeaFormState`):
+ - bool validatePickUp() — checks that a pick-up proof exists. Because the capture widget saves the local file named by requestId, validation should accept either a saved local proof (resolved via `CameraHandlerController.imageProofPath` after capture or by resolving the file from `FileStorageService` using the requestId) OR that the canonical model/DB contains a remote URL (i.e., the backend already has a proof for this request). Do NOT rely on a `provincialPickUpProofRemoteUrl` form-state field.
+- bool validateStartTransit() — checks that pick-up proof exists (either remote or saved locally) before allowing Start Transit.
+ - bool validateDelivery() — checks that a delivered proof exists (either a saved local proof resolved via `CameraHandlerController.imageProofPath` after capture or from `FileStorageService` using the `requestId`, OR that the canonical model/DB contains a remote URL), `provincialDeliveredReceiverNameController.text` (non-empty), and `provincialDeliveredSignatureBytes` (non-null) before allowing Delivered. Do NOT depend on a `provincialDeliveredProofLocalPath` form-state field.
+
+Helpers for DTO/payload creation
+- Provide a `toUpdatePayload(String nextStatus)` or similar helper that returns a Map / DTO-ready object using the current form state values (convert DateTime → ISO8601 strings, include remote URLs or attach files via repository multipart helpers). This keeps the controller thin and centralizes conversion logic.
+
+Persistence rules (repeat of decisions):
+- Do NOT add image/signature binary columns to DB. Local paths are transient and used only by the upload queue and UI previews.
+- `provincialDeliveredSignatureBytes` must not be persisted to long-term storage; send it as part of the API request and discard or store only a short-lived temp file for upload if necessary.
+
+Usage patterns
+   - UI widgets (`air_sea_provincial_pick_up_section.dart`, `air_sea_provincial_delivery_section.dart`) should bind to the minimal Rx fields (`isSubmitting` and `provincialDeliveredReceiverNameController`) and call `controller.updateStatusWithInputs(...)` after validating via the formState helpers. For both pick-up and delivered proofs, the UI should resolve proofs either by reading the saved local proof via `CameraHandlerController.imageProofPath` (after capture) or by resolving the model/DAO remote URL. Do NOT rely on dedicated `provincialPickUpProofLocalPath`, `provincialPickUpProofRemoteUrl`, or `provincialDeliveredProofLocalPath` form-state fields.
+- When the user captures an image via `BDropOffCapture`, the caller should open the capture widget with `onCapture: (camera) => camera.takePictureWithAnimation(requestId)`. After confirm, read `CameraHandlerController.imageProofPath` or resolve the saved file via `FileStorageService` using the `requestId`. The repository/data manager will attach the saved file (or remote URL) to the multipart upload during `updateRequestStatus`.
+
+Example field list summary (copyable):
+
+```dart
+// inside AirSeaFormState
+ // Note: pick-up proof remote URL is not stored in the form state; resolve via model/DAO or FileStorageService when needed.
+final provincialPickUpAt = Rxn<DateTime?>.nil();
+final provincialPickUpBy = RxnString();
+final provincialInTransitAt = Rxn<DateTime?>.nil();
+ // Note: delivered proof local path / remote URL are not stored in the form state; resolve via CameraHandlerController, FileStorageService, or the model/DAO when needed.
+final provincialDeliveredReceiverNameController = TextEditingController();
+final provincialDeliveredSignatureBytes = Rxn<Uint8List?>.nil();
+final isSubmitting = false.obs;
+final validationError = RxnString();
+// Note: local pick-up proof path is managed by the capture widget (saved using requestId).
+```
+
+Document these choices in the PR and add unit tests that exercise `validatePickUp()`, `validateStartTransit()`, and `validateDelivery()` so the modal behavior is well-covered.
 
 ### 8. Controller — `AirSeaController` / `AirSeaDataManager`
 

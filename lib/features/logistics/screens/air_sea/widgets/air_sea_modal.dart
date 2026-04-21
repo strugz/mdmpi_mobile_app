@@ -87,22 +87,26 @@ class AirSeaModal extends StatelessWidget {
         ],
 
         // Waybill Input Section (Release role only, when status is "Endorsed to Guard")
-        if (requestModel.status == BTexts.statusEndorsedToGuard && config.role == BTexts.roleRelease) ...[
+        if (requestModel.status == BTexts.statusEndorsedToGuard &&
+            config.role == BTexts.roleRelease) ...[
           AirSeaWaybillInputSection(requestModel: requestModel),
         ],
 
-        if (requestModel.mobileId != null) ... [
+        if (requestModel.mobileId != null) ...[
           // Dispatch Information Section (shown when dispatch fields are populated)
           AirSeaDispatchInfoSection(requestModel: requestModel),
         ],
 
         // Provincial Pick Up Section (Provincial role, status is Received or Drop Off)
-        if ((requestModel.status == BTexts.statusReceived || requestModel.status == BTexts.statusDropOff) && config.role == BTexts.roleProvincial) ...[
+        if ((requestModel.status == BTexts.statusReceived ||
+                requestModel.status == BTexts.statusDropOff) &&
+            config.role == BTexts.roleProvincial) ...[
           const AirSeaProvincialPickUpSection(),
         ],
 
         // Provincial Delivery Section (Provincial role, status is Provincial In Transit)
-        if (requestModel.status == BTexts.statusProvincialInTransit && config.role == BTexts.roleProvincial) ...[
+        if (requestModel.status == BTexts.statusProvincialInTransit &&
+            config.role == BTexts.roleProvincial) ...[
           const AirSeaProvincialDeliverySection(),
         ],
 
