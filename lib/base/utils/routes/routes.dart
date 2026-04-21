@@ -30,4 +30,6 @@ class BRoutes{
   static const pullOutForm = '/pull-out-form';
   // Data test routes
   static const localStorageViewer = '/local-storage-viewer';
+  // Collection - total collected
+  static const totalCollected = '/collection/total-collected';
 }
