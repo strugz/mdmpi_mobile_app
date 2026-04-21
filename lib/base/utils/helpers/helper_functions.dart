@@ -66,6 +66,36 @@ class BHelperFunctions {
     );
   }
 
+  /// Navigate with a right-to-left slide transition while painting a
+  /// background Material (default: theme scaffold background) to avoid
+  /// visual flashes during route transitions.
+  static Future<T?> navigateWithSlide<T>(
+    BuildContext context,
+    Widget page, {
+    Duration duration = const Duration(milliseconds: 350),
+    Curve curve = Curves.easeInOut,
+    Offset beginOffset = const Offset(1.0, 0.0),
+    bool opaque = true,
+    Color? backgroundColor,
+  }) {
+    final bg = backgroundColor ?? Theme.of(context).scaffoldBackgroundColor;
+    return Navigator.of(context).push<T>(PageRouteBuilder(
+      pageBuilder: (c, animation, secondaryAnimation) {
+        return Material(color: bg, child: page);
+      },
+      transitionDuration: duration,
+      transitionsBuilder: (c, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(parent: animation, curve: curve);
+        final offsetTween = Tween<Offset>(begin: beginOffset, end: Offset.zero);
+        return SlideTransition(
+          position: offsetTween.animate(curved),
+          child: child,
+        );
+      },
+      opaque: opaque,
+    ));
+  }
+
   static String truncateText(String text, int maxLength) {
     if (text.length <= maxLength) {
       return text;

@@ -68,10 +68,13 @@ class BList extends StatelessWidget {
                         if (request.status != BTexts.statusDoneDelivery &&
                             request.status != BTexts.statusCancelled &&
                             request.status != BTexts.statusBackLoad) {
-                          requestController.currentSelectedRequest.value = request;
+                          requestController.currentSelectedRequest.value =
+                              request;
                           // Directly open BackLoad page per BackLoad spec (no choice sheet)
-                          Get.find<BackLoadController>().initForRequest(request);
-                          Get.to(() => BackLoadTransactionPage(requestModel: request));
+                          Get.find<BackLoadController>()
+                              .initForRequest(request);
+                          Get.to(() =>
+                              BackLoadTransactionPage(requestModel: request));
                         }
                       },
                       child: BRequestCardHorizontal(requestModel: request),
@@ -171,7 +174,11 @@ void _handleRequestTap(
       role: BTexts.roleRelease,
       controller: controller,
     );
-    _openConfigResult(context, request, config);
+    BHelperFunctions.navigateWithSlide(
+      context,
+      StandardDeliveryPage(requestModel: request, config: config),
+      duration: const Duration(milliseconds: 350),
+    );
     return;
   }
 
@@ -184,7 +191,11 @@ void _handleRequestTap(
       role: BTexts.roleCourier,
       controller: controller,
     );
-    _openConfigResult(context, request, config);
+    BHelperFunctions.navigateWithSlide(
+      context,
+      StandardDeliveryPage(requestModel: request, config: config),
+      duration: const Duration(milliseconds: 350),
+    );
     return;
   }
 
@@ -205,27 +216,10 @@ void _handleRequestTap(
     role: selectedRole,
     controller: controller,
   );
-  _openConfigResult(context, request, config);
-}
 
-/// Opens the appropriate screen based on [config].
-/// If [config.navigateTo] is set, navigates to the transport screen;
-/// otherwise opens the standard modal dialog.
-void _openConfigResult(
-  BuildContext context,
-  StandardDeliveryModel request,
-  StandardDeliveryModalConfig config,
-) {
-  if (config.navigateTo != null) {
-    config.navigateTo!(context);
-  } else {
-    // Navigate to the full-screen StandardDeliveryPage instead of showing a modal bottom sheet
-    Get.to(
-      () => StandardDeliveryPage(
-        requestModel: request,
-        config: config,
-      ),
-      fullscreenDialog: true,
-    );
-  }
+  BHelperFunctions.navigateWithSlide(
+    context,
+    StandardDeliveryPage(requestModel: request, config: config),
+    duration: const Duration(milliseconds: 350),
+  );
 }

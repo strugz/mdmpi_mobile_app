@@ -3,16 +3,16 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/air_sea/air_sea_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_string.dart';
+import '../../../../base/utils/popups/shimmer.dart';
 
 /// Role priority map: Lower number = Higher priority (more capabilities)
 const _rolePriority = {
@@ -167,7 +167,11 @@ void _handleAirSeaTap(
       roles.contains(BTexts.roleCourier)) {
     final config = AirSeaModalConfig.resolve(
         request: request, role: BTexts.roleCourier, controller: controller);
-    BFullScreenLoader.showAirSeaDialog(context, request, config);
+    BHelperFunctions.navigateWithSlide(
+      context,
+      AirSeaPage(requestModel: request, config: config),
+      duration: const Duration(milliseconds: 350),
+    );
     return;
   }
 
@@ -182,7 +186,11 @@ void _handleAirSeaTap(
       role: BTexts.roleProvincial,
       controller: controller,
     );
-    BFullScreenLoader.showAirSeaDialog(context, request, config);
+    BHelperFunctions.navigateWithSlide(
+      context,
+      AirSeaPage(requestModel: request, config: config),
+      duration: const Duration(milliseconds: 350),
+    );
     return;
   }
 
@@ -203,5 +211,11 @@ void _handleAirSeaTap(
     role: selectedRole,
     controller: controller,
   );
-  BFullScreenLoader.showAirSeaDialog(context, request, config);
+  BHelperFunctions.navigateWithSlide(
+    context,
+    AirSeaPage(requestModel: request, config: config),
+    duration: const Duration(milliseconds: 350),
+  );
 }
+
+
