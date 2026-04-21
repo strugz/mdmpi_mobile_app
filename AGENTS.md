@@ -68,11 +68,20 @@ DI / registration gotchas
   - `Get.lazyPut(() => LoginWithEmailPasswordUseCase(...), fenix: true);`
   - `Get.lazyPut(() => LoginWithGoogleUseCase(...), fenix: true);` — resolves `IAuthenticationRepository`, `UserRepository`, and `NetworkManager` via `Get.find()`.
 
+  - Note: the `LoginWithEmailPasswordUseCase` is constructed with a `GetStorage()` instance for local caching (see `lib/bindings/general_bindings.dart` where `GetStorage()` is passed into the usecase). Agents should be aware that some use-cases expect `GetStorage` to be available at construction time.
+
 - Binding exceptions: some registrations intentionally differ from the default `fenix: true` pattern. For example `UserRepository` is registered without `fenix` in `GeneralBindings` (`Get.lazyPut(() => UserRepository());`). Check `lib/bindings/general_bindings.dart` before adding new bindings to match existing intent.
+
+  - Implementation note: `SignupController` is intentionally lazy-registered (`fenix: true`) to avoid instantiating Firebase-backed repositories during app startup on platforms where Firebase is not initialized. Keep this pattern when adding new auth-related controllers to avoid unexpected Firebase initializations on desktop.
+
+  - `UserController()` is registered via `Get.put(..., permanent: true)` in both the Firebase and non-Firebase branches of `GeneralBindings` — expect it to be available and treated as a long-lived singleton.
 
 Where to look for examples (key files)
 -------------------------------------
 - DI & ordering: `lib/bindings/general_bindings.dart` (the canonical registration list)
+  - See `lib/bindings/general_bindings.dart` for additional wiring examples agents should reuse:
+    - The `CameraHandlerController` is constructed with explicit dependencies resolved via `Get.find()` (ICameraService, ITextRecognitionService, ITextExtractor) — review its registration to mirror constructor injection when creating similar controllers.
+    - `GetStorage()` is provided directly into the `LoginWithEmailPasswordUseCase` at registration time; use the same pattern for use-cases that require lightweight local storage access.
 - App start & early services: `lib/main.dart` (Firebase init, permission/notification registration, HttpOverrides)
 - Router & department logic: `lib/app_router.dart`
 - App entry & bindings usage: `lib/app.dart`
