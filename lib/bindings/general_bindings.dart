@@ -62,6 +62,7 @@ import '../features/logistics/controllers/web_socket_notification_controller.dar
 import '../features/personalization/controller/update_name_controller.dart';
 import '../features/personalization/controller/realtime_location_saver_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
+import '../features/personalization/controller/contact_directory_controller.dart';
 import '../data/repositories/pull_out/pull_out_repository.dart';
 import '../features/logistics/controllers/pull_out_controller.dart';
 import '../data/repositories/pick_up/pick_up_repository.dart';
@@ -73,6 +74,7 @@ import '../features/logistics/controllers/stock_receive_controller.dart';
 import '../features/logistics/controllers/request_controller.dart';
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
+import '../data/repositories/common/contact_repository.dart';
 import '../features/collection/presentation/controllers/collection_onboarding_controller.dart';
 import '../data/repositories/inventory/inventory_item_repository.dart';
 
@@ -158,6 +160,7 @@ class GeneralBindings extends Bindings {
     // BackLoad uses REST + local DB only, so register it outside the Firebase
     // guard to make the long-press flow available on all targets.
     Get.lazyPut(() => BackLoadRepository(), fenix: true);
+    Get.lazyPut(() => ContactRepository(), fenix: true);
 
     // ========================================================================
     // Controllers
@@ -189,6 +192,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => ForgetPasswordController(), fenix: true);
     Get.lazyPut(() => UpdateNameController(), fenix: true);
     Get.lazyPut(() => RealtimeLocationSaverController(), fenix: true);
+    Get.lazyPut(() => ContactDirectoryController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);
     Get.lazyPut(() => MobileController(), fenix: true);
     Get.lazyPut(() => PullOutController(), fenix: true);

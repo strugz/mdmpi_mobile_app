@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/local_storage_data_viewer.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/contact_directory_screen.dart';
 
 import '../../../../data/controllers/app_data/mobile_controller.dart';
 import '../../../../data/controllers/app_data/user_mdmpi_controller.dart';
@@ -200,6 +201,13 @@ class SettingsScreen extends StatelessWidget {
                   ),
 
                   const SizedBox(height: BSizes.spaceBtwItems),
+                  BSettingsMenuTile(
+                    icon: Iconsax.call,
+                    title: 'Contact Directory',
+                    subTitle: 'View and manage local contacts',
+                    onTap: () => Get.to(() => ContactDirectoryScreen()),
+                  ),
+
                   const BSectionHeading(
                       title: 'Developer Tools', showActionButton: false),
                   const SizedBox(height: BSizes.spaceBtwItems),

@@ -25,6 +25,7 @@ import 'dao/common/cntmst_dao.dart';
 import 'dao/common/item_category_dao.dart';
 import 'dao/common/form_category_dao.dart';
 import 'dao/common/client_contact_person_dao.dart';
+import 'dao/common/contact_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -50,6 +51,7 @@ class DatabaseHelper {
   ItemCategoryDao? _itemCategoryDao;
   FormCategoryDao? _formCategoryDao;
   ClientContactPersonDao? _clientContactPersonDao;
+  ContactDao? _contactDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -62,7 +64,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -95,6 +97,7 @@ class DatabaseHelper {
       'a_tblLocationAlternative',
       'a_tblClientContactPerson',
       'a_tblRequestBackload',
+      'contacts',
     ];
     for (final table in tables) {
       await db.execute('DROP TABLE IF EXISTS $table');
@@ -199,6 +202,13 @@ class DatabaseHelper {
     final db = await database;
     _clientContactPersonDao = ClientContactPersonDao(db);
     return _clientContactPersonDao!;
+  }
+
+  Future<ContactDao> get contactDao async {
+    if (_contactDao != null) return _contactDao!;
+    final db = await database;
+    _contactDao = ContactDao(db);
+    return _contactDao!;
   }
 
   // --- Request operations (delegated to RequestDao) ---
