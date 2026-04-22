@@ -61,11 +61,10 @@ class RealtimeLocationSaverController extends GetxController {
         return;
       }
 
-      final permission = await _locationTrackingService.checkLocationPermission();
+      var permission = await _locationTrackingService.checkLocationPermission();
       if (permission == LocationPermission.denied) {
-        final requested =
-            await _locationTrackingService.requestLocationPermission();
-        if (requested == LocationPermission.denied) {
+        permission = await _locationTrackingService.requestLocationPermission();
+        if (permission == LocationPermission.denied) {
           BLoaders.warningSnackBar(
             title: 'Location',
             message: 'Location permission is required for realtime saver.',
