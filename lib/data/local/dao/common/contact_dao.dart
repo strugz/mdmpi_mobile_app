@@ -23,4 +23,12 @@ class ContactDao {
 
     return rows.map(ContactModel.fromJson).toList();
   }
+
+  Future<int> deleteById(int id) async {
+    return db.delete(
+      'contacts',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }
