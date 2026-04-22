@@ -162,6 +162,7 @@ class RealtimeLocationSaverController extends GetxController {
   @override
   void onClose() {
     _positionSubscription?.cancel();
+    _locationTrackingService.stopTracking();
     super.onClose();
   }
 }
