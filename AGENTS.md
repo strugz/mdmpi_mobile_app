@@ -25,6 +25,8 @@ Important architectural notes
 - **Firebase guard in GeneralBindings:** All Firestore-backed repositories are wrapped in `if (Firebase.apps.isNotEmpty) { ... }`. On desktop platforms without FlutterFire configuration, these registrations are skipped to avoid runtime errors. Repositories that use REST + local DB only (e.g., `BackLoadRepository`) are registered **outside** the guard so they work on all targets. See `lib/bindings/general_bindings.dart` lines 120–159.
 - Early/ eager registration: some platform services are registered in `lib/main.dart` using `Get.put(...)` before bindings run (notably `PermissionService`, `NotificationService`, and `AuthenticationRepository` after Firebase init). See `lib/main.dart`.
 - Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`. Use GetX routing for app-level screen transitions; keep raw `Navigator.push` limited to low-level helpers such as `BHelperFunctions.navigateToScreen`.
+- AppRouter cold-start routing now depends on cached user state as well as live controller state: `lib/app_router.dart` first reads `UserController.user.department`, then falls back to `GetStorage` key `CurrentUser` (with legacy `UserDepartment` as a migration fallback). Department onboarding completion flags currently stored in `GetStorage` are `LogisticsOnboardingComplete`, `CollectionOnboardingComplete`, `ServiceOnboardingComplete`, and `InHouseOnboardingComplete`. See also `lib/features/personalization/controller/user_controller.dart` for the `CurrentUser` cache writer.
+- Startup/platform bootstrap in `lib/main.dart` is now explicitly platform-aware: Android requests `storage`, `location`, `camera`, and `sms`, while desktop/web requests only `location` and `camera`; after permission grant it creates the `MDMPIAPP` folder under `/storage/emulated/0/MDMPIAPP` on Android or the app documents directory on desktop. Keep new permission/file-storage flows aligned with this split.
 
  - NavigationController / NavigationMenu updates: The bottom-tab shell (`lib/navigation_menu.dart`) instantiates `NavigationController` via `Get.put(NavigationController())` (acceptable for the shell). The controller now stores screen route names and exposes a computed `screens` getter that selects widgets by user department (see `lib/data/controllers/navigation_controller.dart`). When adding or modifying tab behavior prefer updating `NavigationController.screenRoutes`, `screens`, and `changeScreen` rather than wiring tab logic directly in widgets.
 
@@ -38,6 +40,7 @@ Important architectural notes
 - Platform initialization helper: `lib/base/utils/platform_init.dart` centralizes several early-start concerns used by `main.dart` (sqflite FFI initialization on desktop, conditional Firebase initialization, eager NotificationService init, and eager registration of `AuthenticationRepository` via `Get.put` when Firebase is available). Inspect `initPlatform(...)` when auditing early/eager registrations and desktop vs mobile platform behavior.
 
 - Note: several core services/controllers are registered eagerly via `Get.put` in `lib/bindings/general_bindings.dart` (not only in `main.dart`). Examples: `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering used by the app.
+- Delivery-location integrations are also DI-managed in `GeneralBindings`: `ILocationAlternativeService`, `IMapsService`, `IPlacesService`, and `ILocationTrackingService` are lazy-registered there. When touching map/location flows, resolve these abstractions with `Get.find()` instead of calling geolocation/maps APIs directly from widgets or controllers.
 
 - Recently added repositories and controllers (all registered in `GeneralBindings`):
   - **Repositories:** `BackLoadRepository` (`data/repositories/app_data/`, REST + local DB, outside Firebase guard), `InventoryItemRepository` (`data/repositories/inventory/`, Gemini OCR endpoint), `FormCategoryRepository` (`data/repositories/common/`), `CancelRemarksRepository` (`data/repositories/app_data/`), `UserMDMPIRepository` (`data/repositories/user/`).
@@ -116,6 +119,7 @@ Developer workflows & scripts
 - Tests live under `test/` and use the `_test.dart` suffix.
 
 - In-app DB inspection: Open the app, go to Settings > Developer Tools > Local Storage Viewer to inspect and manage local database tables. For direct navigation in development, use `Get.to(() => const LocalStorageDataViewer())`.
+- Although `BRoutes.localStorageViewer` exists, the feature README currently recommends direct widget navigation (`Get.to(() => const LocalStorageDataViewer())`) during development to avoid auth-redirect edge cases.
 
 Integration & external deps to be aware of
 ----------------------------------------
@@ -123,6 +127,8 @@ Integration & external deps to be aware of
 - Permissions & platform services: `permission_handler`, `location`, `google_maps_flutter`, `google_mlkit_text_recognition` — wrappers live under `lib/common/services/`.
 - WebSockets: uses `web_socket_channel` and controllers such as `WebSocketNotificationController` registered early in bindings.
 - Environment variables are loaded from `.env` in `main.dart`; never commit secrets or API keys.
+- Inventory OCR / AI is no longer just placeholder scaffolding: `lib/data/repositories/inventory/inventory_item_repository.dart` provides both backend OCR (`analyzeFile()` → `/api4/Gemini/analyze-file`) and direct Gemini calls (`analyzeFileWithGemini()`). The direct path reads `.env` keys `AI_TOOLKIT_MODEL`, `AI_TOOLKIT_API_KEY`, and optional `AI_PROMPT` (with fallbacks to `AI_MODEL` / `API_KEY`), and `StandardDeliveryController` invokes both repository methods for scanned inventory intake.
+- Maps/places credentials are mixed today: `MapsService` reads `API_KEY` from `.env`, but `lib/common/services/implementations/places_service.dart` still contains a hardcoded RapidAPI key/TODO. Treat that file as legacy debt and do not copy its key-management pattern into new code.
 
 - Note: recent dependency maintenance updated minor package versions (see `pubspec.lock`). When changing dependencies, run `flutter pub get` and commit the updated lockfile. Example packages that have received minor bumps in recent workspace tasks include `dio`, `uuid`, and platform adapters.
 
@@ -130,6 +136,7 @@ Integration & external deps to be aware of
 
 - AI / LLM packages in `pubspec.yaml`:
   - The repository currently includes placeholder dependencies for AI/LLM integration (see `pubspec.yaml`): `flutter_ai_toolkit: any` and `firebase_ml_model_downloader: any`.
+  - Current concrete AI usage bypasses the empty `IAiService` scaffold: inventory extraction is wired directly in `InventoryItemRepository`, and the placeholder service files remain unregistered.
   - These are intentional placeholders. Do NOT add API keys or provider credentials to the repo. When integrating a concrete LLM or on-device model package:
     - Pin exact package versions in `pubspec.yaml` (do not leave `any`).
     - Run `flutter pub get` and commit the resulting `pubspec.lock`.
