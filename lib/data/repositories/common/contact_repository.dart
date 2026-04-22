@@ -32,4 +32,9 @@ class ContactRepository extends GetxController {
 
     return dao.insert(contact);
   }
+
+  Future<int> deleteContact(int id) async {
+    final dao = await _databaseHelper.contactDao;
+    return dao.deleteById(id);
+  }
 }

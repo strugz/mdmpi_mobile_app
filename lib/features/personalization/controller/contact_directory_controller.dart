@@ -57,4 +57,15 @@ class ContactDirectoryController extends GetxController {
     );
     await loadContacts();
   }
+
+  Future<void> deleteContact(ContactModel contact) async {
+    final contactId = contact.id;
+    if (contactId == null) {
+      logDebug('ContactDirectoryController.deleteContact skipped: null id');
+      return;
+    }
+
+    await _contactRepository.deleteContact(contactId);
+    await loadContacts();
+  }
 }
