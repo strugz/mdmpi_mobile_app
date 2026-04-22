@@ -60,6 +60,7 @@ import '../features/logistics/controllers/web_socket_delivery_controller.dart';
 import '../features/logistics/controllers/web_socket_dispatcher_controller.dart';
 import '../features/logistics/controllers/web_socket_notification_controller.dart';
 import '../features/personalization/controller/update_name_controller.dart';
+import '../features/personalization/controller/realtime_location_saver_controller.dart';
 import '../features/personalization/controller/user_controller.dart';
 import '../data/repositories/pull_out/pull_out_repository.dart';
 import '../features/logistics/controllers/pull_out_controller.dart';
@@ -187,6 +188,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionOnboardingController(), fenix: true);
     Get.lazyPut(() => ForgetPasswordController(), fenix: true);
     Get.lazyPut(() => UpdateNameController(), fenix: true);
+    Get.lazyPut(() => RealtimeLocationSaverController(), fenix: true);
     Get.lazyPut(() => ChartController(), fenix: true);
     Get.lazyPut(() => MobileController(), fenix: true);
     Get.lazyPut(() => PullOutController(), fenix: true);

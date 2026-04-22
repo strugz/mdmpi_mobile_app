@@ -17,6 +17,7 @@ import '../../../../data/controllers/app_data/user_mdmpi_controller.dart';
 import '../../../../data/controllers/client_controller.dart';
 import '../../../../data/repositories/authentication/authentication_repository.dart';
 import '../../../logistics/controllers/standard_delivery_controller.dart';
+import '../../controller/realtime_location_saver_controller.dart';
 import '../../controller/user_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -45,6 +46,8 @@ class SettingsScreen extends StatelessWidget {
     final userController = Get.find<UserController>();
     final mobileController = Get.find<MobileController>();
     final userMDMPIController = Get.find<UserMdmpiController>();
+    final realtimeLocationSaverController =
+        Get.find<RealtimeLocationSaverController>();
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -177,6 +180,23 @@ class SettingsScreen extends StatelessWidget {
                     onTap: () {
                       mobileController.getAllMobileInServer(true);
                     },
+                  ),
+                  Obx(
+                    () => BSettingsMenuTile(
+                      icon: Iconsax.location,
+                      title: 'Realtime Location Saver',
+                      subTitle:
+                          'Save current location locally every 15 meters',
+                      trailing: Switch(
+                        value: realtimeLocationSaverController.isEnabled.value,
+                        onChanged: realtimeLocationSaverController.toggle,
+                      ),
+                      onTap: () {
+                        realtimeLocationSaverController.toggle(
+                          !realtimeLocationSaverController.isEnabled.value,
+                        );
+                      },
+                    ),
                   ),
 
                   const SizedBox(height: BSizes.spaceBtwItems),
