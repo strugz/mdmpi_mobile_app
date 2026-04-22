@@ -69,14 +69,31 @@ class DatabaseHelper {
         await createAllTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Version 12: consolidated schema. All tables and columns are now
-        // defined in db_schema.dart. Drop and recreate to match the canonical
-        // schema. Local data is a cache of server data and will be re-fetched.
-        // NOTE: The `contacts` table stores user-entered local directory data
-        // and must be preserved across destructive upgrades.
-        await _recreateAllTables(db);
+        // Keep legacy behavior for cache-backed tables while preserving the
+        // user-entered `contacts` table across version bumps.
+        await _upgradeSchema(db, oldVersion, newVersion);
       },
     );
+  }
+
+  Future<void> _upgradeSchema(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    // Version 12 consolidated the cache-backed schema in db_schema.dart and
+    // relies on a destructive rebuild for those tables.
+    if (oldVersion < 12) {
+      await _recreateAllTables(db);
+      return;
+    }
+
+    // Maintain existing cache-table rebuild behavior for future upgrades,
+    // but explicitly keep contacts (local user data) out of the destructive
+    // path by excluding it in _recreateAllTables.
+    if (oldVersion < newVersion) {
+      await _recreateAllTables(db);
+    }
   }
 
   /// Drop cache-backed tables and recreate from the canonical schema.
