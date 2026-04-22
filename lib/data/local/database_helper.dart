@@ -25,6 +25,7 @@ import 'dao/common/cntmst_dao.dart';
 import 'dao/common/item_category_dao.dart';
 import 'dao/common/form_category_dao.dart';
 import 'dao/common/client_contact_person_dao.dart';
+import 'dao/common/contact_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -50,6 +51,7 @@ class DatabaseHelper {
   ItemCategoryDao? _itemCategoryDao;
   FormCategoryDao? _formCategoryDao;
   ClientContactPersonDao? _clientContactPersonDao;
+  ContactDao? _contactDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -62,7 +64,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 13,
+      version: 14,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -70,12 +72,16 @@ class DatabaseHelper {
         // Version 12: consolidated schema. All tables and columns are now
         // defined in db_schema.dart. Drop and recreate to match the canonical
         // schema. Local data is a cache of server data and will be re-fetched.
+        // NOTE: The `contacts` table stores user-entered local directory data
+        // and must be preserved across destructive upgrades.
         await _recreateAllTables(db);
       },
     );
   }
 
-  /// Drop every known table and recreate from the canonical schema.
+  /// Drop cache-backed tables and recreate from the canonical schema.
+  /// The `contacts` table is intentionally excluded to preserve user-entered
+  /// data across app upgrades.
   Future<void> _recreateAllTables(Database db) async {
     const tables = [
       'a_tblRequest',
@@ -199,6 +205,13 @@ class DatabaseHelper {
     final db = await database;
     _clientContactPersonDao = ClientContactPersonDao(db);
     return _clientContactPersonDao!;
+  }
+
+  Future<ContactDao> get contactDao async {
+    if (_contactDao != null) return _contactDao!;
+    final db = await database;
+    _contactDao = ContactDao(db);
+    return _contactDao!;
   }
 
   // --- Request operations (delegated to RequestDao) ---
