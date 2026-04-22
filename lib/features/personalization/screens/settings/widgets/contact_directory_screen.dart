@@ -71,37 +71,34 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
                         style: Theme.of(dialogContext).textTheme.titleLarge,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
-                      Obx(
-                        () => DropdownButtonFormField<CNTMSTModel>(
-                          value: selectedDirectoryContact,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Select Contact from Directory',
-                          ),
-                          hint: const Text('Choose a contact'),
-                          items: controller.directoryOptions
-                              .map(
-                                (item) => DropdownMenuItem<CNTMSTModel>(
-                                  value: item,
-                                  child: Text(
-                                    '${item.cntmnn ?? '-'} - ${item.cntdpt ?? '-'}',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            setModalState(() {
-                              selectedDirectoryContact = value;
-                            });
-
-                            if (value != null) {
-                              _initialController.text = value.cntmnn ?? '';
-                              _departmentController.text = value.cntdpt ?? '';
-                              _contactNumberController.text = value.cntnum ?? '';
-                            }
-                          },
+                      DropdownButtonFormField<CNTMSTModel>(
+                        value: selectedDirectoryContact,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Select Contact from Directory',
                         ),
+                        items: controller.directoryOptions
+                            .map(
+                              (item) => DropdownMenuItem<CNTMSTModel>(
+                                value: item,
+                                child: Text(
+                                  '${item.cntmnn ?? '-'} - ${item.cntdpt ?? '-'}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setModalState(() {
+                            selectedDirectoryContact = value;
+                          });
+
+                          if (value != null) {
+                            _initialController.text = value.cntmnn ?? '';
+                            _departmentController.text = value.cntdpt ?? '';
+                            _contactNumberController.text = value.cntnum ?? '';
+                          }
+                        },
                       ),
                       const SizedBox(height: BSizes.spaceBtwInputFields),
                       TextFormField(
