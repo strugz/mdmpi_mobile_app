@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/data/models/cnstmst_model.dart';
 import 'package:mdmpi_mobile_app/data/models/contact_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/contact_repository.dart';
 
@@ -7,12 +8,20 @@ class ContactDirectoryController extends GetxController {
   final ContactRepository _contactRepository = Get.find<ContactRepository>();
 
   final RxList<ContactModel> contacts = <ContactModel>[].obs;
+  final RxList<CNTMSTModel> directoryOptions = <CNTMSTModel>[].obs;
   final RxBool isLoading = false.obs;
 
   @override
   void onInit() {
     super.onInit();
-    loadContacts();
+    loadData();
+  }
+
+  Future<void> loadData() async {
+    await Future.wait([
+      loadContacts(),
+      loadDirectoryOptions(),
+    ]);
   }
 
   Future<void> loadContacts() async {
@@ -27,6 +36,15 @@ class ContactDirectoryController extends GetxController {
     }
   }
 
+  Future<void> loadDirectoryOptions() async {
+    try {
+      final result = await _contactRepository.getContactDirectoryOptions();
+      directoryOptions.assignAll(result);
+    } catch (e) {
+      logDebug('ContactDirectoryController.loadDirectoryOptions error: $e');
+    }
+  }
+
   Future<void> addContact({
     required String initial,
     required String department,
@@ -37,6 +55,17 @@ class ContactDirectoryController extends GetxController {
       department: department,
       contactNumber: contactNumber,
     );
+    await loadContacts();
+  }
+
+  Future<void> deleteContact(ContactModel contact) async {
+    final contactId = contact.id;
+    if (contactId == null) {
+      logDebug('ContactDirectoryController.deleteContact skipped: null id');
+      return;
+    }
+
+    await _contactRepository.deleteContact(contactId);
     await loadContacts();
   }
 }

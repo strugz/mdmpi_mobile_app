@@ -4,11 +4,18 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
+import 'package:mdmpi_mobile_app/data/models/cnstmst_model.dart';
+import 'package:mdmpi_mobile_app/data/models/contact_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/contact_directory_controller.dart';
 
-class ContactDirectoryScreen extends StatelessWidget {
-  ContactDirectoryScreen({super.key});
+class ContactDirectoryScreen extends StatefulWidget {
+  const ContactDirectoryScreen({super.key});
 
+  @override
+  State<ContactDirectoryScreen> createState() => _ContactDirectoryScreenState();
+}
+
+class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
   final ContactDirectoryController controller =
       Get.find<ContactDirectoryController>();
 
@@ -16,6 +23,14 @@ class ContactDirectoryScreen extends StatelessWidget {
   final TextEditingController _initialController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
   final TextEditingController _contactNumberController = TextEditingController();
+
+  @override
+  void dispose() {
+    _initialController.dispose();
+    _departmentController.dispose();
+    _contactNumberController.dispose();
+    super.dispose();
+  }
 
   String? _requiredValidator(String? value) {
     if (value == null || value.trim().isEmpty) {
@@ -28,6 +43,7 @@ class ContactDirectoryScreen extends StatelessWidget {
     _initialController.clear();
     _departmentController.clear();
     _contactNumberController.clear();
+    CNTMSTModel? selectedDirectoryContact;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -44,68 +60,151 @@ class ContactDirectoryScreen extends StatelessWidget {
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Add Contact',
-                    style: Theme.of(dialogContext).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: BSizes.spaceBtwItems),
-                  TextFormField(
-                    controller: _initialController,
-                    decoration: const InputDecoration(labelText: 'Initial'),
-                    validator: _requiredValidator,
-                  ),
-                  const SizedBox(height: BSizes.spaceBtwInputFields),
-                  TextFormField(
-                    controller: _departmentController,
-                    decoration: const InputDecoration(labelText: 'Department'),
-                    validator: _requiredValidator,
-                  ),
-                  const SizedBox(height: BSizes.spaceBtwInputFields),
-                  TextFormField(
-                    controller: _contactNumberController,
-                    keyboardType: TextInputType.phone,
-                    decoration:
-                        const InputDecoration(labelText: 'Contact Number'),
-                    validator: _requiredValidator,
-                  ),
-                  const SizedBox(height: BSizes.spaceBtwItems),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (!_formKey.currentState!.validate()) {
-                          return;
-                        }
+              child: StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Add Contact',
+                        style: Theme.of(dialogContext).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+                      Obx(
+                        () => DropdownButtonFormField<CNTMSTModel>(
+                          value: selectedDirectoryContact,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Select Contact from Directory',
+                          ),
+                          hint: const Text('Choose a contact'),
+                          items: controller.directoryOptions
+                              .map(
+                                (item) => DropdownMenuItem<CNTMSTModel>(
+                                  value: item,
+                                  child: Text(
+                                    '${item.cntmnn ?? '-'} - ${item.cntdpt ?? '-'}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setModalState(() {
+                              selectedDirectoryContact = value;
+                            });
 
-                        await controller.addContact(
-                          initial: _initialController.text,
-                          department: _departmentController.text,
-                          contactNumber: _contactNumberController.text,
-                        );
+                            if (value != null) {
+                              _initialController.text = value.cntmnn ?? '';
+                              _departmentController.text = value.cntdpt ?? '';
+                              _contactNumberController.text = value.cntnum ?? '';
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwInputFields),
+                      TextFormField(
+                        controller: _initialController,
+                        decoration: const InputDecoration(labelText: 'Initial'),
+                        validator: _requiredValidator,
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwInputFields),
+                      TextFormField(
+                        controller: _departmentController,
+                        decoration:
+                            const InputDecoration(labelText: 'Department'),
+                        validator: _requiredValidator,
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwInputFields),
+                      TextFormField(
+                        controller: _contactNumberController,
+                        keyboardType: TextInputType.phone,
+                        decoration:
+                            const InputDecoration(labelText: 'Contact Number'),
+                        validator: _requiredValidator,
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (!_formKey.currentState!.validate()) {
+                              return;
+                            }
 
-                        if (!dialogContext.mounted) {
-                          return;
-                        }
+                            await controller.addContact(
+                              initial: _initialController.text,
+                              department: _departmentController.text,
+                              contactNumber: _contactNumberController.text,
+                            );
 
-                        Navigator.of(dialogContext).pop();
-                        BLoaders.successSnackBar(
-                          title: 'Saved',
-                          message: 'Contact added successfully',
-                        );
-                      },
-                      child: const Text('Save Contact'),
-                    ),
-                  ),
-                ],
+                            if (!dialogContext.mounted) {
+                              return;
+                            }
+
+                            Navigator.of(dialogContext).pop();
+                            BLoaders.successSnackBar(
+                              title: 'Saved',
+                              message: 'Contact added successfully',
+                            );
+                          },
+                          child: const Text('Save Contact'),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  Future<void> _deleteContact(
+    BuildContext context,
+    ContactModel contact,
+  ) async {
+    if (contact.id == null) {
+      BLoaders.errorSnackBar(
+        title: 'Delete Failed',
+        message: 'This contact cannot be deleted because it has no local id.',
+      );
+      return;
+    }
+
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Contact'),
+          content: Text(
+            'Are you sure you want to delete ${contact.initial}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldDelete != true) {
+      return;
+    }
+
+    await controller.deleteContact(contact);
+    BLoaders.successSnackBar(
+      title: 'Deleted',
+      message: 'Contact removed successfully',
     );
   }
 
@@ -155,6 +254,10 @@ class ContactDirectoryScreen extends StatelessWidget {
                   '${contact.department}\n${contact.contactNumber}',
                 ),
                 isThreeLine: true,
+                trailing: IconButton(
+                  icon: const Icon(Iconsax.trash),
+                  onPressed: () => _deleteContact(context, contact),
+                ),
               ),
             );
           },
