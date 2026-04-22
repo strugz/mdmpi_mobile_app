@@ -69,14 +69,32 @@ class DatabaseHelper {
         await createAllTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Version 12: consolidated schema. All tables and columns are now
-        // defined in db_schema.dart. Drop and recreate to match the canonical
-        // schema. Local data is a cache of server data and will be re-fetched.
-        // NOTE: The `contacts` table stores user-entered local directory data
-        // and must be preserved across destructive upgrades.
-        await _recreateAllTables(db);
+        // Keep legacy behavior for cache-backed tables while preserving the
+        // user-entered `contacts` table across version bumps.
+        await _upgradeSchema(db, oldVersion, newVersion);
       },
     );
+  }
+
+  Future<void> _upgradeSchema(
+    Database db,
+    int oldVersion,
+    int newVersion,
+  ) async {
+    // Contacts are user-entered local data. Always ensure the table exists via
+    // non-destructive migration logic.
+    await _ensureContactsTable(db);
+
+    // Version 12 consolidated the cache-backed schema in db_schema.dart and
+    // relies on a destructive rebuild for those tables.
+    if (oldVersion < 12) {
+      await _recreateAllTables(db);
+    } else if (oldVersion < newVersion) {
+      // Maintain existing cache-table rebuild behavior for future upgrades,
+      // but explicitly keep contacts (local user data) out of the destructive
+      // path by excluding it in _recreateAllTables.
+      await _recreateAllTables(db);
+    }
   }
 
   /// Drop cache-backed tables and recreate from the canonical schema.
@@ -106,6 +124,18 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS $table');
     }
     await createAllTables(db);
+  }
+
+  Future<void> _ensureContactsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        initial TEXT NOT NULL,
+        department TEXT NOT NULL,
+        contact_number TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
   }
 
   // --- DAO getters ---
