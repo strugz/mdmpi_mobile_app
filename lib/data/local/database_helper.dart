@@ -72,12 +72,16 @@ class DatabaseHelper {
         // Version 12: consolidated schema. All tables and columns are now
         // defined in db_schema.dart. Drop and recreate to match the canonical
         // schema. Local data is a cache of server data and will be re-fetched.
+        // NOTE: The `contacts` table stores user-entered local directory data
+        // and must be preserved across destructive upgrades.
         await _recreateAllTables(db);
       },
     );
   }
 
-  /// Drop every known table and recreate from the canonical schema.
+  /// Drop cache-backed tables and recreate from the canonical schema.
+  /// The `contacts` table is intentionally excluded to preserve user-entered
+  /// data across app upgrades.
   Future<void> _recreateAllTables(Database db) async {
     const tables = [
       'a_tblRequest',
@@ -97,7 +101,6 @@ class DatabaseHelper {
       'a_tblLocationAlternative',
       'a_tblClientContactPerson',
       'a_tblRequestBackload',
-      'contacts',
     ];
     for (final table in tables) {
       await db.execute('DROP TABLE IF EXISTS $table');

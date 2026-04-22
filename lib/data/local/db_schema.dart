@@ -294,7 +294,7 @@ Future<void> createAllTables(Database db) async {
   ''');
   // Table: contacts
   await db.execute('''
-    CREATE TABLE contacts (
+    CREATE TABLE IF NOT EXISTS contacts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       initial TEXT NOT NULL,
       department TEXT NOT NULL,
