@@ -41,15 +41,18 @@ class _SimpleTextScannerState extends State<SimpleTextScanner> {
           Get.find<ITextRecognitionService>();
       final ITextExtractor extractor = Get.find<ITextExtractor>();
 
-      // Build ML Kit input and process
       final InputImage inputImage = InputImage.fromFile(file);
       final String rawText = await textRecognition.processImage(inputImage);
 
-      final List<String> matches = extractor.extractPatterns(rawText);
+      final RegExp inventoryHeader = RegExp(r'inventory\s*transfer', caseSensitive: false);
+      final String filteredRawText = rawText
+          .split(RegExp(r'\r?\n'))
+          .where((line) => !inventoryHeader.hasMatch(line))
+          .join('\n');
+      final List<String> matches = extractor.extractPatterns(filteredRawText);
 
-      // Return matches (could be empty list)
       Get.back(result: matches);
-    } catch (e, st) {
+    } catch (e) {
       try {
         // Use existing logger if available; avoid print
         // logDebug('SimpleTextScanner error: $e\n$st');

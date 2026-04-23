@@ -88,7 +88,6 @@ class BDocumentReference extends StatelessWidget {
                     validator: (value) {
                       final text = value?.trim() ?? '';
                       if (text.isEmpty) return 'Document Reference is required';
-                      // Optional: prevent duplicates
                       final all = requestController
                           .formState.documentReferenceControllers
                           .map((c) => c.text.trim())
