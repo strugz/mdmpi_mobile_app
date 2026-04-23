@@ -157,7 +157,8 @@ class AirSeaModalConfig {
   /// The user picks Endorsed to Guard / Received / For Dispatch from a dropdown.
   /// Returns `true` and sets `nextStatus` on success; shows error + returns
   /// `false` on failure.
-  static Future<bool> _validateItemPackedTransition(AirSeaController controller) async {
+  static Future<bool> _validateItemPackedTransition(
+      AirSeaController controller) async {
     final formState = controller.formState;
     final selectedStatus = formState.endorsedToController.text;
 
@@ -262,13 +263,15 @@ class AirSeaModalConfig {
   // ========================================================================
 
   /// Resolves modal config for the Provincial role based on current status.
-  static AirSeaModalConfig _resolveProvincial(String status, String role, AirSeaController controller) {
+  static AirSeaModalConfig _resolveProvincial(
+      String status, String role, AirSeaController controller) {
     if (status == BTexts.statusReceived || status == BTexts.statusDropOff) {
       return AirSeaModalConfig(
         role: role,
         nextStatus: BTexts.statusProvincialPickUp,
         isActionVisible: true,
         buttonLabel: 'Confirm Pick Up',
+        validate: () => _validateProvincialPickUp(controller.formState),
       );
     }
     if (status == BTexts.statusProvincialPickUp) {
@@ -291,12 +294,54 @@ class AirSeaModalConfig {
     return AirSeaModalConfig.viewOnly(role: role);
   }
 
-  /// Validates provincial delivery: delivered-to is required.
-  static Future<bool> _validateProvincialDelivery(AirSeaFormState formState) async {
+  /// Validates provincial pick-up confirmation: requires pick-up proof image.
+  static Future<bool> _validateProvincialPickUp(
+      AirSeaFormState formState) async {
+    if (formState.cameraPickUpPicture.value.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture or attach pick-up proof image',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  /// Validates start transit: requires pick-up proof image exists before starting transit.
+  static Future<bool> _validateProvincialStartTransit(
+      AirSeaFormState formState) async {
+    if (formState.cameraPickUpPicture.value.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Cannot start transit without pick-up proof image',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  /// Validates provincial delivery: delivered-to is required, signature and proof image required.
+  static Future<bool> _validateProvincialDelivery(
+      AirSeaFormState formState) async {
     if (formState.provincialDeliveredToController.text.trim().isEmpty) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please enter the client contact person name',
+      );
+      return false;
+    }
+    if (formState.receiverSignatureBytes.value == null ||
+        formState.receiverSignatureBytes.value!.isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture recipient signature',
+      );
+      return false;
+    }
+    if (formState.cameraDropOffPicture.value.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture proof image for delivery',
       );
       return false;
     }

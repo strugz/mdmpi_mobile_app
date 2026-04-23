@@ -36,7 +36,7 @@ After **Received** or **Drop Off** (item arrives at destination via airline), th
 Capture points and required proof at each provincial stage:
 - Provincial Pick Up: capture a pick-up proof image (photo of item at airline or receipt). This proof must be stored (local path/URL) and attached to the request when marking `Provincial Pick Up`.
 - Provincial In Transit: capture the timestamp when the provincial actor starts the transit to the client (this becomes `provincialInTransitAt`). No proof image required at this step, but the start timestamp should be recorded automatically when the actor taps "Start Transit".
-- Provincial Delivered: capture drop-off proof image (photo), the recipient name (who accepted the delivery), the recipient signature (image or signature data), and the timestamp when the drop-off occurred (`provincialDeliveredAt`). These should be required fields for confirming delivery.
+- Provincial Delivered: capture drop-off proof image (photo), the recipient name (who accepted the delivery), the recipient signature (image or signature data), and the timestamp when the drop-off completed (`provincialDeliveredEndAt`). These should be required fields for confirming delivery.
 
 ### Full Flow Diagram
 
@@ -85,7 +85,9 @@ static const String roleProvincial = 'Provincial';
 Add to `_rolePriority`:
 
 ```dart
-BTexts.roleProvincial: 2, // same level as Courier, or adjust as needed
+const rolePriority = <String, int>{
+  BTexts.roleProvincial: 2, // same level as Courier, or adjust as needed
+};
 ```
 
 Update the dispatch-status force logic to also force `roleProvincial` for provincial statuses.
@@ -98,28 +100,20 @@ Add fields:
 
 | Field | Type | Description |
 |---|---|---|
-| `provincialPickUpAt` | `DateTime?` | When picked up from airline |
-| `provincialInTransitAt` | `DateTime?` | When status changed to Provincial In Transit (optional) |
-| `provincialDeliveredAt` | `DateTime?` | When delivered to client |
-| `provincialDeliveredReceiverName` | `String` | Name of the person who received the package at drop-off |
 | `provincialPickUpBy` | `String` | Identifier (name or userId) of the provincial actor who performed the pick-up |
-
-
-Additional recommended model fields (for explicit pick-up / delivery proofs):
-
-| Field | Type | Description |
-|---|---|---|
-| `provincialPickUpProofImagePath` | `String` | Proof image reference for Provincial Pick Up. The data may be provided by the API (remote URL) and the app may save a local copy when the user captures/posts the proof. Do NOT add a DB column for binary data; treat any local-path field as transient and map it in DTOs only. |
-| `provincialDeliveredProofImagePath` | `String` | Proof image reference for Provincial Delivered (drop-off photo). Same pattern as pick-up: the API provides the resource and when the user posts/saves a proof the app stores a local copy (via `FileStorageService`) but does not persist binary blobs in DB columns. |
-| `provincialDeliveredReceiverSignaturePath` | `String` | Signature reference for recipient at drop-off. THIS FIELD WILL NOT BE SAVED TO LOCAL STORAGE — signatures are loaded from the API for display. If the UI captures a signature to send to the backend, do not persist its path to the DB; send it as part of the API payload and discard local temporary files (or keep only in-memory/temp cache per app policy). |
-
-Note: the GET endpoints that surface these resources currently return raw PNG images (content-type: image/png). Implementations should therefore accept either a remote URL (that can be downloaded) or a direct image endpoint returning image/png; handle binary responses by saving to a temp/local file via `FileStorageService` or rendering directly from bytes (`Image.memory`) as appropriate for the UI.
+| `provincialPickUpAt` | `DateTime?` | When the provincial actor completed the pick-up from the airline |
+| `provincialInTransitAt` | `DateTime?` | When status changed to Provincial In Transit |
+| `provincialInTransitLocation` | `String` | Location coordinate stored as string when transit starts |
+| `provincialDeliveredEndAt` | `DateTime?` | When delivery to the final receiver was completed |
+| `provincialDeliveredLocation` | `String` | Delivery location coordinate stored as string |
+| `provincialReceiverName` | `String` | Name of the person who received the package at the end of the provincial leg |
 
 Update `copyWith`, `toJson`, `fromJson`, `fromDbJson`.
 
 Notes / recommendations:
-- Use `DateTime?` for timestamp fields and serialize as ISO8601 strings in DTO/DB (`toIso8601String()`).
+- Use `DateTime?` for `provincialPickUpAt`, `provincialInTransitAt`, and `provincialDeliveredEndAt`, and map them consistently across JSON and DB conversions.
 - Keep model property names camelCase, but map to backend/DB keys consistently via the mapper.
+- Use the exact `AirSeaModel` names above in the plan and related mappings; avoid introducing alternate model aliases for the delivery receiver fields.
 
 
 ### 4. DB Schema (no runtime migration — early-phase app)
@@ -129,33 +123,43 @@ Notes / recommendations:
 Rationale
 - This project is still in an early phase. Instead of adding guarded ALTER TABLE migrations that run at runtime, update the canonical DB schema source (`db_schema.dart`) so new installs (and developer builds) include the provincial columns from the initial schema. This keeps the local DB simple during early development and avoids migration complexity. When the app reaches production / stable releases, convert this to a proper migration plan if needed.
 
-Summary of decision for image/signature fields
-- The three image/signature fields behave differently and MUST NOT be persisted as binary columns in the local DB. Follow these rules:
-  - `provincialDeliveredReceiverSignaturePath`: do NOT save this signature to local storage. Signatures for delivered receiver are obtained from the API for display; if the app collects a signature to send to the backend, submit it in the API call but avoid persisting the path in the local DB or long-term file storage.
-  - `provincialPickUpProofImagePath` and `provincialDeliveredProofImagePath`: these two proof images are provided and loaded via the API for display (the API may return remote URLs). When the user captures/posts a proof image (via the app), save a local copy using `FileStorageService` so the app can show a thumbnail offline and include the file in multipart uploads. Do NOT add DB columns for binary/image blobs; store only lightweight text (e.g., remote URL or local path if you need short-term caching) and handle persistence via file storage + sync queue.
-      - `provincialPickUpProofImagePath` and `provincialDeliveredProofImagePath`: these two proof images are provided and loaded via the API for display. The current API surfaces these resources as PNG binary responses (content-type: image/png) or as URLs that resolve to PNGs. When the user captures/posts a proof image (via the app), save a local copy using `FileStorageService` so the app can show a thumbnail offline and include the file in multipart uploads. Do NOT add DB columns for binary/image blobs; store only lightweight text (e.g., remote URL or local path if you need short-term caching) and handle persistence via file storage + sync queue.
+Schema scope
+- This section covers only the seven finalized provincial fields that now exist in `AirSeaModel` and must be backed by the local DB schema:
+  - `provincialPickUpBy`
+  - `provincialPickUpAt`
+  - `provincialInTransitAt`
+  - `provincialInTransitLocation`
+  - `provincialDeliveredEndAt`
+  - `provincialDeliveredLocation`
+  - `provincialReceiverName`
+- Proof images and signature payloads are intentionally handled outside the DB schema. Do not add extra provincial image/signature columns as part of this step.
 
 Schema change (add directly to canonical schema)
-- Add the following columns to the `a_tblRequestAirSea` table definition in `db_schema.dart` (timestamps and textual fields only). Use empty-string defaults or nullable TEXT as preferred by the project's schema conventions:
+- Add the following columns to the `a_tblRequestAirSea` table definition in `db_schema.dart`. These columns map directly to the finalized section 3 model fields only. Store the three nullable `DateTime?` values as `TEXT` in the local DB using the project's existing timestamp convention:
 
 ```sql
-ProvincialPickUpAt                   TEXT DEFAULT ''
-ProvincialInTransitAt                TEXT DEFAULT ''
-ProvincialDeliveredAt                TEXT DEFAULT ''
-ProvincialDeliveredReceiverName      TEXT DEFAULT ''
-ProvincialPickUpBy                   TEXT DEFAULT ''
+ProvincialPickUpBy TEXT DEFAULT '',
+ProvincialPickUpAt TEXT DEFAULT '',
+ProvincialInTransitAt TEXT DEFAULT '',
+ProvincialInTransitLocation TEXT DEFAULT '',
+ProvincialDeliveredEndAt TEXT DEFAULT '',
+ProvincialDeliveredLocation TEXT DEFAULT '',
+ProvincialReceiverName TEXT DEFAULT '',
 ```
 
 Notes and developer guidance
-- Do NOT add columns that store binary data or base64-encoded images. Store file paths (if needed transiently) only in memory or in DTOs; persist any returned remote URLs as lightweight TEXT fields if backend returns them.
-- Update DAO queries and `fromDbJson` / `toDbJson` mappings to read these new columns; treat empty string values as null when converting to `DateTime?`.
+- Keep the DB mapping aligned with section 3:
+  - `provincialPickUpAt`, `provincialInTransitAt`, and `provincialDeliveredEndAt` are nullable `DateTime?` values in the model and should be stored/read as DB `TEXT` timestamps.
+  - `provincialPickUpBy`, `provincialInTransitLocation`, `provincialDeliveredLocation`, and `provincialReceiverName` are `String` fields.
+- Update DAO queries and `fromDbJson` / `toDbJson` mappings to read and write only these seven columns; treat empty string values as null when converting the datetime fields back to `DateTime?`.
 - Because we're changing the canonical schema rather than performing a runtime migration, developers should:
   - Recreate their local DB (uninstall/reinstall or delete the app DB) after pulling this change during development to obtain the updated schema.
   - Document this behavior in a short dev note in the PR so reviewers understand that no runtime migration was added intentionally.
-- When the project stabilizes, replace the direct-schema approach with idempotent ALTER TABLE migrations in `database_helper.dart` and bump the DB version — follow the repository's existing migration pattern at that time.
+- Do not implement runtime `ALTER TABLE` work in `database_helper.dart` for this change.
+- When the project stabilizes, replace the direct-schema approach with idempotent ALTER TABLE migrations in `database_helper.dart` and bump the DB version following the repository's migration pattern at that time.
 
 Offline and upload behavior
-- Repositories should continue to enqueue image uploads and status updates if offline; use the existing pending-upload/sync queue pattern rather than attempting to store files in the DB.
+- Repositories should continue to enqueue status updates if offline using the existing sync pattern. Any proof-image or signature upload flow should remain outside these seven DB columns.
 
 
 ### 5. DTOs + Mapper
@@ -169,167 +173,176 @@ Add provincial fields to DTOs. Update mapper to convert between DTO ↔ model �
 
 Recommended DTO / JSON keys
 - Use snake_case keys for API/DTO if the backend follows that convention (confirm with backend):
-  - provincial_pick_up_at
   - provincial_pick_up_by
+  - provincial_pick_up_at
   - provincial_in_transit_at
-  - provincial_delivered_at
-  - provincial_delivered_receiver_name
+  - provincial_in_transit_location
+  - provincial_delivered_end_at
+  - provincial_delivered_location
+  - provincial_receiver_name
 
 Mapper responsibilities:
-- Convert DateTime <-> ISO8601 string.
-- Treat empty string / null interchangeably for backward compatibility.
-- Map DB column names (PascalCase or existing convention) to model properties in `fromDbJson`.
-  - Map `provincial_pick_up_by` (DTO/JSON) <-> `ProvincialPickUpBy` (DB column) <-> `provincialPickUpBy` (model).
+- Map only the finalized provincial fields from section 3 and section 4.
+- Convert `DateTime?` values to and from ISO8601 strings for:
+  - `provincialPickUpAt`
+  - `provincialInTransitAt`
+  - `provincialDeliveredEndAt`
+- Treat empty string / null interchangeably for backward compatibility when reading timestamps.
+- Map DTO keys, DB columns, and model properties consistently. Canonical mappings should be:
+  - `provincial_pick_up_by` <-> `ProvincialPickUpBy` <-> `provincialPickUpBy`
+  - `provincial_pick_up_at` <-> `ProvincialPickUpAt` <-> `provincialPickUpAt`
+  - `provincial_in_transit_at` <-> `ProvincialInTransitAt` <-> `provincialInTransitAt`
+  - `provincial_in_transit_location` <-> `ProvincialInTransitLocation` <-> `provincialInTransitLocation`
+  - `provincial_delivered_end_at` <-> `ProvincialDeliveredEndAt` <-> `provincialDeliveredEndAt`
+  - `provincial_delivered_location` <-> `ProvincialDeliveredLocation` <-> `provincialDeliveredLocation`
+  - `provincial_receiver_name` <-> `ProvincialReceiverName` <-> `provincialReceiverName`
 
-API/DTO image guidance:
-- DTOs must include the image/signature payloads only in the API request (multipart form-data or as files) — do not rely on a persisted DB image column. The repository should attach File objects (or multipart fields) when calling the backend and may store returned remote URLs in lightweight DB fields or a dedicated sync table; do NOT add image columns for binary data.
+Backward compatibility note:
+- If older payloads still return legacy keys such as `provincial_delivered_at`, `provincial_delivered_to`, or `provincial_delivered_receiver_name`, treat them as read-only fallback aliases during parsing only. New DTO writes should use the canonical keys listed above.
+
+DTO scope note:
+- This DTO/mapper step covers only the seven finalized provincial model fields. Proof-image and signature payload handling should stay in the repository/upload flow and must not introduce additional provincial DB-backed DTO fields in this section.
 
 ### 6. DAO
 
 **File:** `lib/data/local/dao/air_sea/air_sea_dao.dart`
 
-Update insert/update/select queries to include the new timestamp/text columns (timestamps + receiver name). Do NOT include image/signature path columns in DB queries — images are saved on disk and uploaded via the repository.
+DAO scope
+- Update DAO insert, update, and select flows to read and write only the seven canonical provincial columns defined in sections 3, 4, and 5:
+  - `ProvincialPickUpBy`
+  - `ProvincialPickUpAt`
+  - `ProvincialInTransitAt`
+  - `ProvincialInTransitLocation`
+  - `ProvincialDeliveredEndAt`
+  - `ProvincialDeliveredLocation`
+  - `ProvincialReceiverName`
+
+DAO responsibilities
+- Update insert/update methods in `air_sea_dao.dart` so new and existing Air/Sea rows persist these seven columns consistently.
+- Update select/read mappings so DAO results return these columns for downstream `fromDbJson` / mapper conversion.
+- Keep datetime handling aligned with sections 3–5:
+  - `ProvincialPickUpAt`, `ProvincialInTransitAt`, and `ProvincialDeliveredEndAt` are stored as DB `TEXT` timestamps.
+  - Empty string values should be treated as null when converting them back to `DateTime?`.
+- Keep string handling aligned with sections 3–5 for:
+  - `ProvincialPickUpBy`
+  - `ProvincialInTransitLocation`
+  - `ProvincialDeliveredLocation`
+  - `ProvincialReceiverName`
+
+Guardrails
+- Do not introduce or document legacy delivered column names such as `ProvincialDeliveredAt` or `ProvincialDeliveredTo` as canonical DAO fields for this change.
+- Do not include proof-image or signature path columns in `a_tblRequestAirSea` DAO queries. Proof and signature assets remain outside the DAO column contract and should continue to be handled by repository/upload flows.
 
 ### 7. Form State — `AirSeaFormState`
 
 **File:** `lib/features/logistics/helpers/air_sea_form_state.dart`
 
-Purpose
-- `AirSeaFormState` holds transient UI inputs for modal interactions (pick-up, start-transit, delivery). It should contain only ephemeral state used to validate inputs and build the update payload; persistent values (timestamps, receiver name, pick-up-by) are saved to the `AirSeaModel` / DB via the data manager.
+Fields to include
+- `provincialReceiverNameController` — `TextEditingController`
+  - Single source of truth for the final recipient name entered during `Provincial Delivered`.
+- `provincialDeliveredSignatureBytes` — `Rxn<Uint8List>`
+  - Short-lived in-memory signature payload captured from `SignatureCaptureDialog` for upload.
+- `isSubmitting` — `RxBool`
+  - Disables action buttons and prevents duplicate submissions while a status transition is in progress.
+- `validationError` — `RxnString`
+  - Holds the latest modal-level validation error message.
 
-- Fields to include (recommended types shown as Dart / GetX patterns):
-- Note: the local file path for a pick-up proof is managed by the shared capture widget (see `BDropOffCapture` + `CameraHandlerController.takePictureWithAnimation(requestId)`) which saves the image using the requestId. Do NOT add a persistent `provincialPickUpProofLocalPath` field to the form state — the UI should either read `CameraHandlerController.imageProofPath` after capture or use the requestId to resolve the stored file via `FileStorageService`.
- - NOTE: Do NOT include a `provincialPickUpProofRemoteUrl` field in the form state.
-   - The app can fetch pick-up proof images from the API using the requestId (backend-provided URL or direct image endpoint). The form state should remain simple — the UI should either resolve an API-provided proof via the model/DAO or read the locally saved proof via `CameraHandlerController.imageProofPath` / `FileStorageService` when the user captures an image.
-- provincialPickUpAt — Rxn<DateTime?>
-  - Transient timestamp captured when the user confirms Pick Up. The data manager will persist this into the model/DB as an ISO8601 string.
-- provincialPickUpBy — RxnString
-  - Actor id or display name captured automatically from `UserController` when confirming pick up. Persisted to the model/DB (text).
-- provincialInTransitAt — Rxn<DateTime?>
-  - Timestamp captured when the user taps Start Transit. Captured automatically by controller and sent in the DTO.
- - NOTE: Do NOT include a `provincialDeliveredProofLocalPath` field in the form state.
-   - The delivered proof image local path follows the same pattern as pick-up proof: the capture widget saves the image using the `requestId` (or the `CameraHandlerController` sets `imageProofPath`). The form state should rely on resolving the saved file via `CameraHandlerController.imageProofPath` or via `FileStorageService` using the `requestId`, or read the canonical model/DB remote URL when present. Do NOT persist binary image data in DB columns.
-  - NOTE: Do NOT include a `provincialDeliveredProofRemoteUrl` field in the form state.
-    - The delivered proof image remote URL is part of the canonical model/DAO (or fetched from the API using requestId). Keep the form state minimal: resolve delivered proofs via `CameraHandlerController.imageProofPath`, `FileStorageService` (using requestId), or read the model/DAO remote URL when needed. Do not keep a transient remote-url field in the form state.
-- provincialDeliveredReceiverNameController — TextEditingController
-  - Input controller for recipient name. Validate non-empty before submitting Delivered status.
-- provincialDeliveredSignatureBytes — Rxn<Uint8List?>
-  - In-memory bytes captured from `SignatureCaptureDialog` when the user collects a signature to send to the backend. IMPORTANT: per decisions above, do NOT persist this signature path/bytes to long-term local storage or DB. Use it to upload in the API call and then discard or keep a short-lived temp file if needed for upload.
-- isSubmitting — RxBool
-  - Simple loading flag to disable UI during network/upload operations.
-- validation/error observables — RxnString or Rxn<ValidationState>
-  - Expose small observables to surface validation errors for modal fields (e.g., missing proof, missing signature).
-
-Wiring and lifecycle
-- Initialize TextEditingController(s) in the form state's constructor or `onInit` and call `dispose()` in the form state's `dispose()` method.
-- All Rx fields should be reset in `reset()` to their default (null/empty) values when the modal closes or when switching between requests.
-
-Validation helpers (recommended methods inside `AirSeaFormState`):
- - bool validatePickUp() — checks that a pick-up proof exists. Because the capture widget saves the local file named by requestId, validation should accept either a saved local proof (resolved via `CameraHandlerController.imageProofPath` after capture or by resolving the file from `FileStorageService` using the requestId) OR that the canonical model/DB contains a remote URL (i.e., the backend already has a proof for this request). Do NOT rely on a `provincialPickUpProofRemoteUrl` form-state field.
-- bool validateStartTransit() — checks that pick-up proof exists (either remote or saved locally) before allowing Start Transit.
- - bool validateDelivery() — checks that a delivered proof exists (either a saved local proof resolved via `CameraHandlerController.imageProofPath` after capture or from `FileStorageService` using the `requestId`, OR that the canonical model/DB contains a remote URL), `provincialDeliveredReceiverNameController.text` (non-empty), and `provincialDeliveredSignatureBytes` (non-null) before allowing Delivered. Do NOT depend on a `provincialDeliveredProofLocalPath` form-state field.
-
-Helpers for DTO/payload creation
-- Provide a `toUpdatePayload(String nextStatus)` or similar helper that returns a Map / DTO-ready object using the current form state values (convert DateTime → ISO8601 strings, include remote URLs or attach files via repository multipart helpers). This keeps the controller thin and centralizes conversion logic.
-
-Persistence rules (repeat of decisions):
-- Do NOT add image/signature binary columns to DB. Local paths are transient and used only by the upload queue and UI previews.
-- `provincialDeliveredSignatureBytes` must not be persisted to long-term storage; send it as part of the API request and discard or store only a short-lived temp file for upload if necessary.
-
-Usage patterns
-   - UI widgets (`air_sea_provincial_pick_up_section.dart`, `air_sea_provincial_delivery_section.dart`) should bind to the minimal Rx fields (`isSubmitting` and `provincialDeliveredReceiverNameController`) and call `controller.updateStatusWithInputs(...)` after validating via the formState helpers. For both pick-up and delivered proofs, the UI should resolve proofs either by reading the saved local proof via `CameraHandlerController.imageProofPath` (after capture) or by resolving the model/DAO remote URL. Do NOT rely on dedicated `provincialPickUpProofLocalPath`, `provincialPickUpProofRemoteUrl`, or `provincialDeliveredProofLocalPath` form-state fields.
-- When the user captures an image via `BDropOffCapture`, the caller should open the capture widget with `onCapture: (camera) => camera.takePictureWithAnimation(requestId)`. After confirm, read `CameraHandlerController.imageProofPath` or resolve the saved file via `FileStorageService` using the `requestId`. The repository/data manager will attach the saved file (or remote URL) to the multipart upload during `updateRequestStatus`.
-
-Example field list summary (copyable):
-
-```dart
-// inside AirSeaFormState
- // Note: pick-up proof remote URL is not stored in the form state; resolve via model/DAO or FileStorageService when needed.
-final provincialPickUpAt = Rxn<DateTime?>.nil();
-final provincialPickUpBy = RxnString();
-final provincialInTransitAt = Rxn<DateTime?>.nil();
- // Note: delivered proof local path / remote URL are not stored in the form state; resolve via CameraHandlerController, FileStorageService, or the model/DAO when needed.
-final provincialDeliveredReceiverNameController = TextEditingController();
-final provincialDeliveredSignatureBytes = Rxn<Uint8List?>.nil();
-final isSubmitting = false.obs;
-final validationError = RxnString();
-// Note: local pick-up proof path is managed by the capture widget (saved using requestId).
-```
-
-Document these choices in the PR and add unit tests that exercise `validatePickUp()`, `validateStartTransit()`, and `validateDelivery()` so the modal behavior is well-covered.
 
 ### 8. Controller — `AirSeaController` / `AirSeaDataManager`
 
 Recommended approach: reuse and extend the existing `updateRequestStatus` method in `AirSeaDataManager` rather than adding three separate provincial-only methods.
 
 Rationale
-- `AirSeaDataManager.updateRequestStatus(...)` already implements the established patterns for status transitions in this module: it builds an updated model via `copyWith`, handles timestamps, uploads signatures and proof images (with offline handling), converts the model to a DTO via `AirSeaMapper.toUpdateDto(...)`, calls `_repository.updateWithPayload(...)`, and refreshes the controller list. Reusing this single method keeps status-transition behavior consistent and centralizes upload/validation logic.
+- `AirSeaDataManager.updateRequestStatus(...)` already owns the heavy work for status transitions in this module: it builds the updated model via `copyWith`, sets transition metadata, coordinates proof/signature upload behavior, converts the model through `AirSeaMapper.toUpdateDto(...)`, calls `_repository.updateWithPayload(...)`, and refreshes the controller list.
+- Reusing this single path keeps provincial transitions consistent with the rest of Air/Sea and avoids creating duplicate controller-side business logic.
 
 What to change
-- Extend `updateRequestStatus` to recognise the new provincial statuses (`statusProvincialPickUp`, `statusProvincialInTransit`, `statusProvincialDelivered`) and to populate the appropriate fields already added to the `AirSeaModel` (for example: `provincialReceiverName`, `provincialPickUpAt`, `provincialInTransitAt`, `provincialDeliveredAt`, `provincialDeliveredReceiverName`, `provincialRemarks`). The method already contains hooks for signature and proof upload; align those hooks to handle provincial-specific proof/signature sources (formState fields and `CameraHandlerController.imageProofPath`).
+- Extend `updateRequestStatus` to recognize the new provincial statuses (`statusProvincialPickUp`, `statusProvincialInTransit`, `statusProvincialDelivered`).
+- Inside `AirSeaDataManager`, populate only the canonical provincial model fields added in section 3:
+  - `provincialPickUpBy`
+  - `provincialPickUpAt`
+  - `provincialInTransitAt`
+  - `provincialInTransitLocation`
+  - `provincialDeliveredEndAt`
+  - `provincialDeliveredLocation`
+  - `provincialReceiverName`
+- Keep payload construction, mapper conversion, repository calls, proof lookup, upload handling, offline behavior, and list refresh inside `AirSeaDataManager`.
+- `AirSeaFormState` should contribute only the minimal transient inputs from section 7 (recipient name, delivered signature bytes, loading/error state). Any actor identity, timestamps, location, and proof references should be resolved by the controller/data-manager flow at submit time.
 
 Controller responsibilities
 - Keep `AirSeaController` thin. Reuse the existing controller helper `updateStatusWithInputs(...)` (it already wraps `dataManager.updateRequestStatus`) to perform provincial transitions from the UI layer. This keeps call-sites consistent and centralizes loader/error handling. Example usage:
   - `onConfirmProvincialPickUp(AirSeaModel request)` → call `updateStatusWithInputs(request, BTexts.statusProvincialPickUp)`
   - `onStartProvincialTransit(AirSeaModel request)` → call `updateStatusWithInputs(request, BTexts.statusProvincialInTransit)`
   - `onConfirmProvincialDelivery(AirSeaModel request)` → call `updateStatusWithInputs(request, BTexts.statusProvincialDelivered)`
-These small UI handlers only need to validate formState preconditions (e.g., proof image present) before delegating to `updateStatusWithInputs` which calls `dataManager.updateRequestStatus` under the hood.
+- These handlers should stay small: perform light UI prechecks, then delegate to `updateStatusWithInputs(...)`.
+- Avoid building DTOs, copying models, or writing repository logic directly in the controller.
 
 Validation and UI rules
-- Keep validation in the controller/formState layer (e.g., ensure the proof image exists before calling the data manager), or let `updateRequestStatus` perform defensive checks and return a failure result. Use `BLoaders` / `BFullScreenLoader` for consistent UX and `BLoaders.warningSnackBar` for offline messaging (follow the pattern already used in `updateRequestStatus`).
+- Keep lightweight UI prechecks in the controller / modal layer (for example, recipient name entered, signature captured, proof present).
+- Keep authoritative transition validation in `AirSeaDataManager.updateRequestStatus(...)` so invalid state changes are still blocked even if a UI check is skipped.
+- Continue using the existing loader/snackbar pattern already used by `updateRequestStatus` for success, error, and offline messaging.
 
 Return types
 - `updateRequestStatus` returns void today (updates the controller directly). If you prefer explicit success/failure semantics, consider refactoring it to return `Result<bool>`; otherwise use the existing pattern (it updates controller state and shows snackbars) and keep controller wrappers async `Future<void>` that await the data manager call.
 
 Implementation note
-- This approach reduces code duplication, centralises upload/queue/offline logic, and leverages the existing `AirSeaDataManager` code paths that already correctly handle signatures and proof images. Only small additions are required: recognise the new status constants and add any provincial-specific field mapping in the `copyWith` block (the current `updateRequestStatus` already contains several `provincial*` fields—verify and finish any missing mappings).
+- This approach reduces code duplication, centralizes upload/queue/offline logic, and preserves the existing GetX flow where `AirSeaController` orchestrates while `AirSeaDataManager` performs the actual update work.
+- When updating this section in code, prefer finishing the provincial mappings inside the existing `copyWith` + mapper path rather than introducing a separate provincial-only update pipeline.
 
 ### 9. Modal Config — `AirSeaModalConfig.resolve()`
 
 **File:** `lib/features/logistics/helpers/air_sea_modal_config.dart`
 
 - Remove `statusReceived` and `statusDropOff` from terminal/view-only guard so they become actionable for `roleProvincial`.
- - Add config entries for the provincial role (entry → action → validation → persisted fields):
+- Add config entries for the provincial role so `AirSeaModalConfig.resolve(...)` remains the single source of truth for provincial action visibility, button labels, next-status mapping, and modal-level validation.
 
-| Current Status | Next Status | Button Label | Required Fields | On-press behavior |
+| Current Status | Next Status | Button Label | Required Inputs | Modal behavior |
 |---|---|---|---|---|
-| Received | Provincial Pick Up | "Confirm Pick Up" | Proof image | Save `provincialPickUpProofImagePath` and `provincialPickUpAt` when confirmed |
-| Drop Off | Provincial Pick Up | "Confirm Pick Up" | Proof image | Save `provincialPickUpProofImagePath` and `provincialPickUpAt` when confirmed |
-| Provincial Pick Up | Provincial In Transit | "Start Transit" | — | Set `provincialInTransitAt` automatically (see details) and persist status change |
-| Provincial In Transit | Provincial Delivered | "Confirm Delivery" | Recipient name, recipient signature, proof image | Save `provincialDelivered*` fields and `provincialDeliveredAt` when confirmed |
+| Received | Provincial Pick Up | "Confirm Pick Up" | Proof image present | Show provincial action and delegate submit to `updateStatusWithInputs(...)` |
+| Drop Off | Provincial Pick Up | "Confirm Pick Up" | Proof image present | Show provincial action and delegate submit to `updateStatusWithInputs(...)` |
+| Provincial Pick Up | Provincial In Transit | "Start Transit" | Pick-up proof already available | Show provincial action and delegate submit to `updateStatusWithInputs(...)` |
+| Provincial In Transit | Provincial Delivered | "Confirm Delivery" | Recipient name, recipient signature, proof image present | Run delivery validation, then delegate submit to `updateStatusWithInputs(...)` |
 
 Both `Received` (Path A/C) and `Drop Off` (Path B) serve as entry points into the provincial leg.
 
 UI / controller responsibilities & validation notes:
-- Enforce required fields (proof image at Pick Up; recipient name/signature/photo at Delivered) in the controller before calling the repository.
-- Keep business logic out of widget `build` methods; validation, DTO creation and side-effects belong in controllers.
+- `AirSeaModalConfig.resolve(...)` should stay responsible for deciding whether the action is visible, what label is shown, what `nextStatus` is used, and whether a modal-level validator must run.
+- Keep business logic out of widget `build` methods; widgets read config and call the controller, while transition work remains in `AirSeaController` / `AirSeaDataManager`.
+- Required inputs at the modal layer should be treated as validation inputs, not as new canonical model/DB fields.
 
 Detailed behavior for "Start Transit" (Provincial Pick Up → Provincial In Transit):
 
 - Trigger: the provincial actor taps the "Start Transit" button in the modal for a request that is currently in `Provincial Pick Up`.
-- Preconditions: the request must already have a saved `provincialPickUpProofImagePath` (the Pick Up step requires proof). If missing, disable the button or show an inline validation message.
-- Timestamp capture: the controller must capture the current timestamp immediately when the user confirms Start Transit. Record in the model as `provincialInTransitAt` and persist as an ISO8601 UTC string (e.g., `DateTime.now().toUtc().toIso8601String()`).
-- Optional location: if location permission is granted and the app collects location for transit events, also capture a `provincialInTransitLocation` (latitude/longitude) and include it with the DTO; otherwise omit.
-- Atomic update: the controller should set `provincialInTransitAt` on the DTO before sending the status update. The repository call should update status and timestamp together so the backend/audit sees them as a single transition event.
-- Offline behavior: if the device is offline, persist `provincialInTransitAt` locally and mark the request (or a separate sync queue entry) with a pending sync flag. The repository should attempt to sync when connectivity returns and reconcile using server timestamps if the backend overrides timestamps.
-- UI feedback: disable the Start Transit button immediately after press, show a loader, and on success update the modal UI to the `Provincial In Transit` state and display the recorded `provincialInTransitAt` timestamp. On failure, re-enable the button and show a user-friendly error.
-- History/audit: push a history event (local cache and, if possible, the backend) recording: actorId, actorRole (`roleProvincial`), action `Provincial In Transit (Start)`, `provincialInTransitAt`, optional location, and any attached proof references.
+- Preconditions: the request must already have pick-up proof available. If missing, the modal should block the action and surface a validation message.
+- The modal config does not persist timestamps itself. On confirmation, it should delegate to `AirSeaController.updateStatusWithInputs(...)`, and `AirSeaDataManager.updateRequestStatus(...)` should set `provincialInTransitAt` and optional `provincialInTransitLocation` as part of the status transition.
+- UI feedback should follow the existing loader/snackbar flow already used in the module.
 
 Specific validation rules for provincial flow (summary):
-- When transitioning Request -> `Provincial Pick Up`: require `provincialPickUpProofImagePath` (photo proof). Block transition if missing and show user-friendly message.
-- When transitioning `Provincial Pick Up` -> `Provincial In Transit`: require that the Pick Up proof exists; set `provincialInTransitAt` automatically when user taps "Start Transit" and include it in the update DTO.
-- When transitioning `Provincial In Transit` -> `Provincial Delivered`: require `provincialDeliveredProofImagePath`, `provincialDeliveredReceiverName` and `provincialDeliveredReceiverSignaturePath`. Save `provincialDeliveredAt` as the delivery timestamp.
+- When transitioning to `Provincial Pick Up`: require proof image presence. Block transition if missing and show a user-friendly message.
+- When transitioning to `Provincial In Transit`: require that pick-up proof is already available before allowing Start Transit.
+- When transitioning to `Provincial Delivered`: require proof image presence, `provincialReceiverName`, and a captured delivery signature before allowing confirmation.
 
 DTO / Mapper notes (modal-driven updates):
 - `AirSeaUpdateDto` should include `provincial_in_transit_at` (ISO8601 string) when transitioning to `Provincial In Transit`.
 - Mapper must accept null/empty strings and convert to/from `DateTime?` on the model.
-- When offline, enqueue the DTO update with the timestamp and pending-upload metadata so the repository can reconcile with server state on sync.
+- When offline, enqueue the DTO update with canonical provincial fields and any pending upload metadata so the repository can reconcile with server state on sync.
+
+Canonical persistence note:
+- Section 9 should reference only the canonical provincial model fields from section 3 for persisted data:
+  - `provincialPickUpBy`
+  - `provincialPickUpAt`
+  - `provincialInTransitAt`
+  - `provincialInTransitLocation`
+  - `provincialDeliveredEndAt`
+  - `provincialDeliveredLocation`
+  - `provincialReceiverName`
+- Proof images and signatures remain modal validation/upload inputs handled by the controller/data-manager flow; they should not be introduced here as canonical model or DB field names.
 
 
 ### 10. UI Widgets (simplified)
 
 Design goals
-- Keep provincial UI minimal and predictable: each provincial status (Pick Up, In Transit, Delivered) is presented as a clearly labelled section separated by a divider so users can quickly identify the active stage.
+- Keep provincial UI minimal and predictable: each provincial status (Pick Up, In Transit, Delivered) is presented as a clearly labeled section separated by a divider so users can quickly identify the active stage.
 - Only show the minimal input controls required to complete the active status. After a status is completed, show its inputs as a readonly summary so the user can verify prior steps without confusion.
 
 Structure & placement
@@ -342,7 +355,7 @@ Divider & summary behavior
 - Use the project's section divider (`BTextDivider`) or a thin `Divider` at the top of each section with the status title (e.g., "Provincial Pick Up"). This visually separates stages and makes scanning simple.
 - Each section contains two modes:
   1. Active/edit mode — show only the required inputs and action button(s) for that status.
-  2. Summary/read-only mode — after successful completion of the status, replace inputs with a compact readonly summary showing the captured values (timestamp, actor name, proof thumbnail, signature preview, remarks). Use `BLabelValueText` rows and `CapturedSignatureImage`/image thumbnail widgets for previews.
+  2. Summary/read-only mode — after successful completion of the status, replace inputs with a compact readonly summary showing the captured values (timestamp, actor name, proof thumbnail, signature preview). Use `BLabelValueText` rows and `CapturedSignatureImage`/image thumbnail widgets for previews.
 
 Visibility rules and previous-status visibility
 - When a section becomes active, it should display its inputs plus a compact readonly summary of all previous provincial stages above or below it (not editable). For example:
@@ -558,7 +571,7 @@ Implementation note for this plan: to remain consistent with the rest of the cod
 
 Additional tests for proofs & signatures:
  - File system tests: verify that `provincialPickUpProofImagePath`, `provincialDeliveredProofImagePath`, and `provincialDeliveredReceiverSignaturePath` are saved to the app's local storage (via `FileStorageService`) and that the repository enqueues/uploads them to the backend correctly.
- - Controller tests: ensure transitions validate required proofs and timestamps are recorded (`provincialInTransitAt`, `provincialDeliveredAt`).
+  - Controller tests: ensure transitions validate required proofs and timestamps are recorded (`provincialInTransitAt`, `provincialDeliveredEndAt`).
  - Integration test: simulate pick-up -> start transit -> delivery flow including image/signature capture (mock file system or use test fixtures) and assert repository calls, local DB updates (timestamps/receiver name), and upload queue behavior.
 
 Use the generator for a QA checklist:

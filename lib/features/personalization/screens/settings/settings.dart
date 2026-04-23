@@ -25,13 +25,14 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   Future<void> _fetchAndLoadToLocal() async {
-    final StandardDeliveryController requestController = Get.find<StandardDeliveryController>();
+    final StandardDeliveryController requestController =
+        Get.find<StandardDeliveryController>();
 
     try {
       await DatabaseHelper.instance.deleteRequest();
 
       await requestController.dataManager.fetchStandardDeliveryRequests(
-          requestController, false); // false = force API fetch
+          requestController, false);
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
@@ -186,8 +187,7 @@ class SettingsScreen extends StatelessWidget {
                     () => BSettingsMenuTile(
                       icon: Iconsax.location,
                       title: 'Realtime Location Saver',
-                      subTitle:
-                          'Save current location locally every 15 meters',
+                      subTitle: 'Save current location locally every 15 meters',
                       trailing: Switch(
                         value: realtimeLocationSaverController.isEnabled.value,
                         onChanged: realtimeLocationSaverController.toggle,

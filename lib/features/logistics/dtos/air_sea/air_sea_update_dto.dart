@@ -13,11 +13,15 @@ class AirSeaUpdateDto {
   final String? helper;
   final String? dispatchedAt;
   final String? dropOffAt;
+
   final String? provincialReceiverName;
+  final String? provincialPickUpBy;
   final String? provincialPickUpAt;
-  final String? provincialDeliveredTo;
-  final String? provincialDeliveredAt;
-  final String? provincialRemarks;
+  final String? provincialInTransitAt;
+  final String? provincialInTransitLocation;
+  final String? provincialDeliveredEndAt;
+  final String? provincialDeliveredLocation;
+
   final String? status;
   final String? remarks;
   final String? updatedBy;
@@ -37,10 +41,12 @@ class AirSeaUpdateDto {
     this.dispatchedAt,
     this.dropOffAt,
     this.provincialReceiverName,
+    this.provincialPickUpBy,
     this.provincialPickUpAt,
-    this.provincialDeliveredTo,
-    this.provincialDeliveredAt,
-    this.provincialRemarks,
+    this.provincialInTransitAt,
+    this.provincialInTransitLocation,
+    this.provincialDeliveredEndAt,
+    this.provincialDeliveredLocation,
     this.status,
     this.remarks,
     this.updatedBy,
@@ -65,11 +71,13 @@ class AirSeaUpdateDto {
     put('Helper', helper);
     put('DispatchedAt', dispatchedAt);
     put('DropOffAt', dropOffAt);
-    put('ProvincialReceiverName', provincialReceiverName);
-    put('ProvincialPickUpAt', provincialPickUpAt);
-    put('ProvincialDeliveredTo', provincialDeliveredTo);
-    put('ProvincialDeliveredAt', provincialDeliveredAt);
-    put('ProvincialRemarks', provincialRemarks);
+    put('provincial_receiver_name', provincialReceiverName);
+    put('provincial_pick_up_by', provincialPickUpBy);
+    put('provincial_pick_up_at', provincialPickUpAt);
+    put('provincial_in_transit_at', provincialInTransitAt);
+    put('provincial_in_transit_location', provincialInTransitLocation);
+    put('provincial_delivered_end_at', provincialDeliveredEndAt);
+    put('provincial_delivered_location', provincialDeliveredLocation);
     put('Status', status);
     put('Remarks', remarks);
     put('UpdatedBy', updatedBy);

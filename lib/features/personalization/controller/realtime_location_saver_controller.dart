@@ -96,10 +96,6 @@ class RealtimeLocationSaverController extends GetxController {
 
       isEnabled.value = true;
       _storage.write(_enabledKey, true);
-      BLoaders.successSnackBar(
-        title: 'Realtime Saver',
-        message: 'Realtime location saver is enabled (every 15 meters).',
-      );
     } catch (e) {
       isEnabled.value = false;
       _storage.write(_enabledKey, false);

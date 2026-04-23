@@ -5,6 +5,20 @@ import '../../../base/utils/formatters/formatters.dart';
 
 /// Mapper class for converting AirSeaModel to DTOs for API operations.
 class AirSeaMapper {
+  static String? _nonEmptyOrNull(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  static String? _normalizeDateTimeValue(DateTime? dateTime, String? fallback) {
+    if (dateTime != null) {
+      return dateTime.toUtc().toIso8601String();
+    }
+
+    return BFormatter.normalizeToIsoDatetime(fallback, toUtc: true);
+  }
+
   /// Maps AirSeaModel to AirSeaInsertDto for API insert operations
   static AirSeaInsertDto toInsertDto(AirSeaModel m) {
     dynamic parseIntIfPossible(String s) {
@@ -30,24 +44,29 @@ class AirSeaMapper {
     return AirSeaUpdateDto(
       requestID: m.id.isNotEmpty ? m.id : null,
       mobileID: m.mobileId,
-      preparedBy: m.preparedBy.isNotEmpty ? m.preparedBy : null,
+      preparedBy: _nonEmptyOrNull(m.preparedBy),
       itemPreparedAt: BFormatter.normalizeToIsoDatetime(m.itemPreparedAt),
       itemPreparedEndAt: BFormatter.normalizeToIsoDatetime(m.itemPreparedEndAt),
-      remarks: m.remarks.isNotEmpty ? m.remarks : null,
-      status: m.status.isNotEmpty ? m.status : null,
-      receivedBy: m.receivedBy.isNotEmpty ? m.receivedBy : null,
-      waybillNumber: m.waybillNumber.isNotEmpty ? m.waybillNumber : null,
-      tripTicketNumber: m.tripTicketNumber.isNotEmpty ? m.tripTicketNumber : null,
-      driver: m.driver.isNotEmpty ? m.driver : null,
-      helper: m.helper.isNotEmpty ? m.helper : null,
+      remarks: _nonEmptyOrNull(m.remarks),
+      status: _nonEmptyOrNull(m.status),
+      receivedBy: _nonEmptyOrNull(m.receivedBy),
+      waybillNumber: _nonEmptyOrNull(m.waybillNumber),
+      tripTicketNumber: _nonEmptyOrNull(m.tripTicketNumber),
+      driver: _nonEmptyOrNull(m.driver),
+      helper: _nonEmptyOrNull(m.helper),
       dispatchedAt: BFormatter.normalizeToIsoDatetime(m.dispatchedAt),
       dropOffAt: BFormatter.normalizeToIsoDatetime(m.dropOffAt),
-      provincialReceiverName: m.provincialReceiverName.isNotEmpty ? m.provincialReceiverName : null,
-      provincialPickUpAt: BFormatter.normalizeToIsoDatetime(m.provincialPickUpAt),
-      provincialDeliveredTo: m.provincialDeliveredTo.isNotEmpty ? m.provincialDeliveredTo : null,
-      provincialDeliveredAt: BFormatter.normalizeToIsoDatetime(m.provincialDeliveredAt),
-      provincialRemarks: m.provincialRemarks.isNotEmpty ? m.provincialRemarks : null,
-      updatedBy: updatedBy.isNotEmpty ? updatedBy : null,
+      provincialReceiverName: _nonEmptyOrNull(m.provincialReceiverName),
+      provincialPickUpBy: _nonEmptyOrNull(m.provincialPickUpBy),
+      provincialPickUpAt: _normalizeDateTimeValue(m.provincialPickUpAt, null),
+      provincialInTransitAt:
+          _normalizeDateTimeValue(m.provincialInTransitAt, null),
+      provincialInTransitLocation: _nonEmptyOrNull(m.provincialInTransitLocation),
+      provincialDeliveredEndAt:
+          _normalizeDateTimeValue(m.provincialDeliveredEndAt, null),
+      provincialDeliveredLocation:
+          _nonEmptyOrNull(m.provincialDeliveredLocation),
+      updatedBy: _nonEmptyOrNull(updatedBy),
     );
   }
 
@@ -74,11 +93,16 @@ class AirSeaMapper {
     put('Helper', m.helper);
     put('DispatchedAt', BFormatter.normalizeToIsoDatetime(m.dispatchedAt));
     put('DropOffAt', BFormatter.normalizeToIsoDatetime(m.dropOffAt));
-    put('ProvincialReceiverName', m.provincialReceiverName);
-    put('ProvincialPickUpAt', BFormatter.normalizeToIsoDatetime(m.provincialPickUpAt));
-    put('ProvincialDeliveredTo', m.provincialDeliveredTo);
-    put('ProvincialDeliveredAt', BFormatter.normalizeToIsoDatetime(m.provincialDeliveredAt));
-    put('ProvincialRemarks', m.provincialRemarks);
+    put('provincial_receiver_name', m.provincialReceiverName);
+    put('provincial_pick_up_by', m.provincialPickUpBy);
+    put('provincial_pick_up_at',
+        _normalizeDateTimeValue(m.provincialPickUpAt, null));
+    put('provincial_in_transit_at',
+        _normalizeDateTimeValue(m.provincialInTransitAt, null));
+    put('provincial_in_transit_location', m.provincialInTransitLocation);
+    put('provincial_delivered_end_at',
+        _normalizeDateTimeValue(m.provincialDeliveredEndAt, null));
+    put('provincial_delivered_location', m.provincialDeliveredLocation);
     put('Remarks', m.remarks);
     put('Status', m.status);
 

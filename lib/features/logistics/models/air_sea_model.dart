@@ -29,28 +29,13 @@ class AirSeaModel {
   String dispatchedAt;
   String dropOffAt;
 
-  // Provincial delivery phase
-  // Backwards-compatible textual fields (kept for existing callers)
-  String provincialReceiverName;
-  String provincialPickUpAt;
-  String provincialDeliveredTo;
-  String provincialDeliveredAt;
-  String provincialRemarks;
-  String provincialProofImagePath;
-
-  // New structured fields (preferred) — timestamps as DateTime and extra metadata
-  DateTime? provincialPickUpAtDateTime;
-  DateTime? provincialInTransitAt;
-  DateTime? provincialDeliveredAtDateTime;
-
-  /// Name or id of the provincial actor who performed the pick-up
   String provincialPickUpBy;
-
-  /// Explicit receiver name captured at delivery (more explicit than legacy provincialReceiverName)
-  String provincialDeliveredReceiverName;
-
-  // Proof/signature files are uploaded via ImageRepository and must not be
-  // stored as DB blobs or included in the main request DTO.
+  DateTime? provincialPickUpAt;
+  DateTime? provincialInTransitAt;
+  String provincialInTransitLocation;
+  DateTime? provincialDeliveredEndAt;
+  String provincialDeliveredLocation;
+  String provincialReceiverName;
 
   String status;
   String remarks;
@@ -81,18 +66,13 @@ class AirSeaModel {
     this.helper = '',
     this.dispatchedAt = '',
     this.dropOffAt = '',
-    this.provincialReceiverName = '',
-    this.provincialPickUpAt = '',
-    this.provincialDeliveredTo = '',
-    this.provincialDeliveredAt = '',
-    this.provincialRemarks = '',
-    this.provincialProofImagePath = '',
-    this.provincialPickUpAtDateTime,
-    this.provincialInTransitAt,
-    this.provincialDeliveredAtDateTime,
     this.provincialPickUpBy = '',
-    this.provincialDeliveredReceiverName = '',
-    // Local proof/signature paths are intentionally not part of the model ctor
+    this.provincialPickUpAt,
+    this.provincialInTransitAt,
+    this.provincialInTransitLocation = '',
+    this.provincialDeliveredEndAt,
+    this.provincialDeliveredLocation = '',
+    this.provincialReceiverName = '',
     this.status = '',
     this.remarks = '',
     this.createdBy = '',
@@ -107,6 +87,68 @@ class AirSeaModel {
 
   /// Convenience empty factory
   static AirSeaModel empty() => AirSeaModel();
+
+  static String _firstPresent(
+    Map<String, dynamic> map,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      if (!map.containsKey(key)) continue;
+
+      final value = map[key];
+      if (value == null) continue;
+
+      final normalized = value.toString();
+      if (normalized.isNotEmpty) return normalized;
+    }
+
+    return fallback;
+  }
+
+  static int? _parseIntOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static DateTime? _parseDateTimeOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty) return null;
+
+    try {
+      return DateTime.tryParse(normalized);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _serializeDateTime(DateTime? value, String fallback) {
+    if (value != null) {
+      return value.toUtc().toIso8601String();
+    }
+
+    return fallback;
+  }
+
+  /// Legacy compatibility alias. Prefer using [provincialDeliveredEndAt].
+  String get provincialDeliveredAt =>
+      _serializeDateTime(provincialDeliveredEndAt, '');
+
+  set provincialDeliveredAt(String value) {
+    provincialDeliveredEndAt = _parseDateTimeOrNull(value);
+  }
+
+  /// Legacy compatibility alias. Prefer using [provincialDeliveredEndAt].
+  DateTime? get provincialDeliveredAtDateTime => provincialDeliveredEndAt;
+
+  set provincialDeliveredAtDateTime(DateTime? value) {
+    provincialDeliveredEndAt = value;
+  }
 
   AirSeaModel copyWith({
     String? id,
@@ -126,18 +168,15 @@ class AirSeaModel {
     String? helper,
     String? dispatchedAt,
     String? dropOffAt,
-    String? provincialReceiverName,
-    String? provincialPickUpAt,
-    String? provincialDeliveredTo,
-    String? provincialDeliveredAt,
-    String? provincialRemarks,
-    String? provincialProofImagePath,
-    DateTime? provincialPickUpAtDateTime,
-    DateTime? provincialInTransitAt,
-    DateTime? provincialDeliveredAtDateTime,
+
     String? provincialPickUpBy,
-    String? provincialDeliveredReceiverName,
-    // Local proof/signature path parameters removed; upload handled separately
+    DateTime? provincialPickUpAt,
+    DateTime? provincialInTransitAt,
+    String? provincialInTransitLocation,
+    DateTime? provincialDeliveredAtDateTime,
+    String? provincialDeliveredLocation,
+    String? provincialReceiverName,
+
     String? status,
     String? remarks,
     String? createdBy,
@@ -165,18 +204,18 @@ class AirSeaModel {
       helper: helper ?? this.helper,
       dispatchedAt: dispatchedAt ?? this.dispatchedAt,
       dropOffAt: dropOffAt ?? this.dropOffAt,
-      provincialReceiverName: provincialReceiverName ?? this.provincialReceiverName,
-      provincialPickUpAt: provincialPickUpAt ?? this.provincialPickUpAt,
-      provincialDeliveredTo: provincialDeliveredTo ?? this.provincialDeliveredTo,
-      provincialDeliveredAt: provincialDeliveredAt ?? this.provincialDeliveredAt,
-      provincialRemarks: provincialRemarks ?? this.provincialRemarks,
-      provincialProofImagePath: provincialProofImagePath ?? this.provincialProofImagePath,
-      provincialPickUpAtDateTime: provincialPickUpAtDateTime ?? this.provincialPickUpAtDateTime,
-      provincialInTransitAt: provincialInTransitAt ?? this.provincialInTransitAt,
-      provincialDeliveredAtDateTime: provincialDeliveredAtDateTime ?? this.provincialDeliveredAtDateTime,
       provincialPickUpBy: provincialPickUpBy ?? this.provincialPickUpBy,
-      provincialDeliveredReceiverName: provincialDeliveredReceiverName ?? this.provincialDeliveredReceiverName,
-      // Local proof/signature path assignments removed; use ImageRepository for uploads
+      provincialPickUpAt: provincialPickUpAt ?? this.provincialPickUpAt,
+      provincialInTransitAt:
+          provincialInTransitAt ?? this.provincialInTransitAt,
+      provincialInTransitLocation:
+          provincialInTransitLocation ?? this.provincialInTransitLocation,
+      provincialDeliveredEndAt:
+          provincialDeliveredAtDateTime ?? provincialDeliveredEndAt,
+      provincialDeliveredLocation:
+          provincialDeliveredLocation ?? this.provincialDeliveredLocation,
+      provincialReceiverName:
+          provincialReceiverName ?? this.provincialReceiverName,
       status: status ?? this.status,
       remarks: remarks ?? this.remarks,
       createdBy: createdBy ?? this.createdBy,
@@ -207,25 +246,16 @@ class AirSeaModel {
       'Helper': helper,
       'DispatchedAt': dispatchedAt,
       'DropOffAt': dropOffAt,
-      'ProvincialReceiverName': provincialReceiverName,
-      // Prefer structured ISO8601 timestamps when available, fall back to legacy string
-      'ProvincialPickUpAt': provincialPickUpAtDateTime != null
-          ? provincialPickUpAtDateTime!.toUtc().toIso8601String()
-          : provincialPickUpAt,
-      'ProvincialInTransitAt': provincialInTransitAt != null
-          ? provincialInTransitAt!.toUtc().toIso8601String()
-          : null,
-      'ProvincialDeliveredTo': provincialDeliveredTo,
-      'ProvincialDeliveredAt': provincialDeliveredAtDateTime != null
-          ? provincialDeliveredAtDateTime!.toUtc().toIso8601String()
-          : provincialDeliveredAt,
-      'ProvincialDeliveredReceiverName': provincialDeliveredReceiverName,
       'ProvincialPickUpBy': provincialPickUpBy,
-      // Proof/signature paths are transient local paths; include them in payloads when needed
-      // Note: do NOT include local file paths for proofs/signatures in the
-      // main DTO. These are uploaded separately via ImageRepository.
-      'ProvincialRemarks': provincialRemarks,
-      'ProvincialProofImagePath': provincialProofImagePath,
+      'ProvincialPickUpAt': provincialPickUpAt,
+      'ProvincialInTransitAt': _serializeDateTime(provincialInTransitAt, ''),
+      'ProvincialInTransitLocation': provincialInTransitLocation,
+      'ProvincialDeliveredEndAt':
+          _serializeDateTime(provincialDeliveredEndAt, ''),
+      'ProvincialDeliveredLocation': provincialDeliveredLocation,
+      'ProvincialReceiverName': provincialReceiverName,
+      'ProvincialDeliveredTo': provincialDeliveredLocation,
+      'ProvincialDeliveredAt': _serializeDateTime(provincialDeliveredEndAt, ''),
       'Status': status,
       'Remarks': remarks,
       'CreatedBy': createdBy,
@@ -238,162 +268,127 @@ class AirSeaModel {
 
   /// Parse from API JSON
   factory AirSeaModel.fromJson(Map<String, dynamic> json) {
-    String firstPresent(Map<String, dynamic> m, List<String> keys,
-        {String fallback = ''}) {
-      for (final k in keys) {
-        if (m.containsKey(k) && m[k] != null) return m[k].toString();
-      }
-      return fallback;
-    }
+    final provincialReceiverNameValue = _firstPresent(json, [
+      'ProvincialReceiverName',
+      'provincialReceiverName',
+      'provincial_receiver_name',
+      'ProvincialDeliveredReceiverName',
+      'provincialDeliveredReceiverName',
+      'provincial_delivered_receiver_name',
+    ]);
 
-    int? parseIntOrNull(dynamic value) {
-      if (value == null) return null;
-      if (value is int) return value;
-      if (value is String) return int.tryParse(value);
-      return null;
-    }
-
-    // DateTime parsing for DB values is done inline below to avoid helper scope issues
-
-    DateTime? parseDateTimeOrNull(dynamic value) {
-      if (value == null) return null;
-      if (value is DateTime) return value;
-      if (value is String && value.isNotEmpty) {
-        try {
-          return DateTime.tryParse(value);
-        } catch (_) {
-          return null;
-        }
-      }
-      return null;
-    }
-
-    // (parseDateTimeOrNull defined above)
+    final provincialPickUpAtValue = _firstPresent(json, [
+      'ProvincialPickUpAt',
+      'provincialPickUpAt',
+      'provincial_pick_up_at',
+    ]);
+    final provincialDeliveredEndAtValue = _firstPresent(json, [
+      'ProvincialDeliveredEndAt',
+      'provincialDeliveredEndAt',
+      'provincial_delivered_end_at',
+      'ProvincialDeliveredAt',
+      'provincialDeliveredAt',
+      'provincial_delivered_at',
+    ]);
+    final provincialDeliveredLocationValue = _firstPresent(json, [
+      'ProvincialDeliveredLocation',
+      'provincialDeliveredLocation',
+      'provincial_delivered_location',
+      'ProvincialDeliveredTo',
+      'provincialDeliveredTo',
+      'provincial_delivered_to',
+    ]);
 
     return AirSeaModel(
-      id: firstPresent(json,
+      id: _firstPresent(json,
           ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
-      clientId: firstPresent(
-          json, ['ClientID', 'clientID', 'clientId', 'ClientId']),
-      itemCategoryId: firstPresent(json, [
+      clientId:
+          _firstPresent(json, ['ClientID', 'clientID', 'clientId', 'ClientId']),
+      itemCategoryId: _firstPresent(json, [
         'ItemCategoryID',
         'itemCategoryID',
         'ItemCategoryId',
         'itemCategoryId'
       ]),
-      mobileId: parseIntOrNull(
+      mobileId: _parseIntOrNull(
           json['MobileID'] ?? json['mobileID'] ?? json['mobileId']),
-      datePickUp: firstPresent(json, [
-        'DatePickUp',
-        'datePickUp',
-        'Datepickup',
-        'datepickup'
-      ]),
-      itemPreparedAt: firstPresent(json, [
+      datePickUp: _firstPresent(
+          json, ['DatePickUp', 'datePickUp', 'Datepickup', 'datepickup']),
+      itemPreparedAt: _firstPresent(json, [
         'ItemPreparedAt',
         'itemPreparedAt',
         'Itempreparedat',
         'itempreparedat'
       ]),
-      itemPreparedEndAt: firstPresent(json, [
+      itemPreparedEndAt: _firstPresent(json, [
         'ItemPreparedEndAt',
         'itemPreparedEndAt',
         'Itempreparedendat',
         'itempreparedendat'
       ]),
-      preparedBy: firstPresent(
+      preparedBy: _firstPresent(
           json, ['PreparedBy', 'preparedBy', 'Preparedby', 'preparedby']),
-      receivedBy: firstPresent(
+      receivedBy: _firstPresent(
           json, ['ReceivedBy', 'receivedBy', 'Receivedby', 'receivedby']),
-      waybillNumber: firstPresent(json, [
-        'WaybillNumber',
-        'waybillNumber',
-        'Waybillnumber',
-        'waybillnumber'
-      ]),
-      receivedAt: firstPresent(
+      waybillNumber: _firstPresent(json,
+          ['WaybillNumber', 'waybillNumber', 'Waybillnumber', 'waybillnumber']),
+      receivedAt: _firstPresent(
           json, ['ReceivedAt', 'receivedAt', 'Receivedat', 'receivedat']),
-      tripTicketNumber: firstPresent(json, [
+      tripTicketNumber: _firstPresent(json, [
         'TripTicketNumber',
         'tripTicketNumber',
         'Tripticketnumber',
         'tripticketnumber'
       ]),
-      driver: firstPresent(json, ['Driver', 'driver']),
-      helper: firstPresent(json, ['Helper', 'helper']),
-      dispatchedAt: firstPresent(json, [
-        'DispatchedAt',
-        'dispatchedAt',
-        'Dispatchedat',
-        'dispatchedat'
-      ]),
-      dropOffAt: firstPresent(json, [
-        'DropOffAt',
-        'dropOffAt',
-        'Dropoffat',
-        'dropoffat'
-      ]),
-      provincialReceiverName: firstPresent(json, [
-        'ProvincialReceiverName',
-        'provincialReceiverName',
-      ]),
-      provincialPickUpAt: firstPresent(json, [
-        'ProvincialPickUpAt',
-        'provincialPickUpAt',
-      ]),
-      provincialPickUpAtDateTime: parseDateTimeOrNull(firstPresent(json, [
-        'ProvincialPickUpAt',
-        'provincialPickUpAt',
-        'provincial_pick_up_at',
-      ])),
-      provincialInTransitAt: parseDateTimeOrNull(firstPresent(json, [
-        'ProvincialInTransitAt',
-        'provincialInTransitAt',
-        'provincial_in_transit_at',
-      ])),
-      provincialDeliveredTo: firstPresent(json, [
-        'ProvincialDeliveredTo',
-        'provincialDeliveredTo',
-      ]),
-      provincialDeliveredAt: firstPresent(json, [
-        'ProvincialDeliveredAt',
-        'provincialDeliveredAt',
-      ]),
-      provincialRemarks: firstPresent(json, [
-        'ProvincialRemarks',
-        'provincialRemarks',
-      ]),
-      provincialProofImagePath: firstPresent(json, [
-        'ProvincialProofImagePath',
-        'provincialProofImagePath',
-      ]),
-      // Image/signature local paths are not parsed into model; uploads handled separately
-      provincialPickUpBy: firstPresent(json, [
+      driver: _firstPresent(json, ['Driver', 'driver']),
+      helper: _firstPresent(json, ['Helper', 'helper']),
+      dispatchedAt: _firstPresent(json,
+          ['DispatchedAt', 'dispatchedAt', 'Dispatchedat', 'dispatchedat']),
+      dropOffAt: _firstPresent(
+          json, ['DropOffAt', 'dropOffAt', 'Dropoffat', 'dropoffat']),
+      provincialPickUpBy: _firstPresent(json, [
         'ProvincialPickUpBy',
         'provincialPickUpBy',
         'provincial_pick_up_by'
       ]),
-      provincialDeliveredReceiverName: firstPresent(json, [
-        'ProvincialDeliveredReceiverName',
-        'provincialDeliveredReceiverName',
-        'provincial_delivered_receiver_name'
+      provincialPickUpAt:_parseDateTimeOrNull(_firstPresent(json, [
+        'ProvincialPickUpAt',
+        'provincialPickUpAt',
+        'provincial_pick_up_at',
+      ])),
+      provincialInTransitAt: _parseDateTimeOrNull(_firstPresent(json, [
+        'ProvincialInTransitAt',
+        'provincialInTransitAt',
+        'provincial_in_transit_at',
+      ])),
+      provincialInTransitLocation: _firstPresent(json, [
+        'ProvincialInTransitLocation',
+        'provincialInTransitLocation',
+        'provincial_in_transit_location',
       ]),
-      status: firstPresent(json, ['Status', 'status']),
-      remarks: firstPresent(json, ['Remarks', 'remarks']),
-      createdBy: firstPresent(
+      provincialDeliveredEndAt:
+          _parseDateTimeOrNull(provincialDeliveredEndAtValue),
+      provincialDeliveredLocation: provincialDeliveredLocationValue,
+      provincialReceiverName: provincialReceiverNameValue,
+      status: _firstPresent(json, ['Status', 'status']),
+      remarks: _firstPresent(json, ['Remarks', 'remarks']),
+      createdBy: _firstPresent(
           json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
-      createdAt: firstPresent(
+      createdAt: _firstPresent(
           json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
-      updatedAt: firstPresent(
+      updatedAt: _firstPresent(
           json, ['UpdatedAt', 'updatedAt', 'Updatedat', 'updatedat']),
       client: json['Client'] != null
           ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
           : ClientModel.empty(),
-      documentReference:
-          json['documentReference'] != null && json['documentReference'] is List
-              ? List<String>.from((json['documentReference'] as List)
+      documentReference: (json['DocumentReference'] ??
+                      json['documentReference']) !=
+                  null &&
+              (json['DocumentReference'] ?? json['documentReference']) is List
+          ? List<String>.from(
+              ((json['DocumentReference'] ?? json['documentReference']) as List)
                   .map((e) => e?.toString() ?? ''))
-              : <String>[],
+          : <String>[],
       cancelRemarks: json['CancelRemarks'] != null
           ? CancelRemarksModel.fromJson(
               Map<String, dynamic>.from(json['CancelRemarks']))
@@ -409,20 +404,28 @@ class AirSeaModel {
       lower[k.toString().toLowerCase()] = v;
     });
 
-    String idValue = (lower['requestid'] ?? lower['id'] ?? '').toString();
+    final idValue = (lower['requestid'] ?? lower['id'] ?? '').toString();
+    final provincialReceiverNameValue = _firstPresent(lower, [
+      'provincialreceivername',
+      'provincialdeliveredreceivername',
+    ]);
 
-    int? parseIntOrNull(dynamic value) {
-      if (value == null) return null;
-      if (value is int) return value;
-      if (value is String) return int.tryParse(value);
-      return null;
-    }
+    final provincialPickUpAtValue =
+        (lower['provincialpickupat'] ?? '').toString();
+    final provincialDeliveredEndAtValue = _firstPresent(lower, [
+      'provincialdeliveredendat',
+      'provincialdeliveredat',
+    ]);
+    final provincialDeliveredLocationValue = _firstPresent(lower, [
+      'provincialdeliveredlocation',
+      'provincialdeliveredto',
+    ]);
 
     return AirSeaModel(
       id: idValue,
       clientId: (lower['clientid'] ?? '').toString(),
       itemCategoryId: (lower['itemcategoryid'] ?? '').toString(),
-      mobileId: parseIntOrNull(lower['mobileid']),
+      mobileId: _parseIntOrNull(lower['mobileid']),
       datePickUp: (lower['datepickup'] ?? '').toString(),
       itemPreparedAt: (lower['itempreparedat'] ?? '').toString(),
       itemPreparedEndAt: (lower['itempreparedendat'] ?? '').toString(),
@@ -436,24 +439,18 @@ class AirSeaModel {
       helper: (lower['helper'] ?? '').toString(),
       dispatchedAt: (lower['dispatchedat'] ?? '').toString(),
       dropOffAt: (lower['dropoffat'] ?? '').toString(),
-      provincialReceiverName: (lower['provincialreceivername'] ?? '').toString(),
-      provincialPickUpAt: (lower['provincialpickupat'] ?? '').toString(),
-      provincialDeliveredTo: (lower['provincialdeliveredto'] ?? '').toString(),
-      provincialDeliveredAt: (lower['provincialdeliveredat'] ?? '').toString(),
-      provincialRemarks: (lower['provincialremarks'] ?? '').toString(),
-      provincialProofImagePath: (lower['provincialproofimagepath'] ?? '').toString(),
-      provincialPickUpAtDateTime: (lower['provincialpickupat'] ?? '').toString().isNotEmpty
-          ? DateTime.tryParse((lower['provincialpickupat'] ?? '').toString())
-          : null,
-      provincialInTransitAt: (lower['provincialintransitat'] ?? '').toString().isNotEmpty
-          ? DateTime.tryParse((lower['provincialintransitat'] ?? '').toString())
-          : null,
-      provincialDeliveredAtDateTime: (lower['provincialdeliveredat'] ?? '').toString().isNotEmpty
-          ? DateTime.tryParse((lower['provincialdeliveredat'] ?? '').toString())
-          : null,
       provincialPickUpBy: (lower['provincialpickupby'] ?? '').toString(),
-      provincialDeliveredReceiverName: (lower['provincialdeliveredreceivername'] ?? '').toString(),
-      // Local image/signature paths omitted here; repository handles uploads separately
+      provincialPickUpAt: _parseDateTimeOrNull(lower['provincialpickupat']),
+      provincialInTransitAt:
+          _parseDateTimeOrNull(lower['provincialintransitat']),
+      provincialInTransitLocation:
+          (lower['provincialintransitlocation'] ?? '').toString(),
+      provincialDeliveredEndAt:
+          _parseDateTimeOrNull(provincialDeliveredEndAtValue),
+      provincialDeliveredLocation: provincialDeliveredLocationValue,
+      provincialReceiverName: provincialReceiverNameValue.isNotEmpty
+          ? provincialReceiverNameValue
+          : '',
       status: (lower['status'] ?? '').toString(),
       remarks: (lower['remarks'] ?? '').toString(),
       createdBy: (lower['createdby'] ?? '').toString(),
@@ -463,4 +460,3 @@ class AirSeaModel {
     );
   }
 }
-

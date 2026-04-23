@@ -53,14 +53,8 @@ class BSignatureCaptureDialog {
                 children: [
                   SignaturePadWidget(
                     onSave: (Uint8List? bytes) {
-                      // Delegate to caller for handling.
                       onSave(bytes);
                       Navigator.of(dialogContext).pop();
-                      if (bytes != null) {
-                        BHelperFunctions.showSnackBar("Signature saved!");
-                      } else {
-                        BHelperFunctions.showSnackBar("Signature pad was empty.");
-                      }
                     },
                   ),
                 ],

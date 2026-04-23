@@ -1,8 +1,8 @@
-
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
@@ -21,6 +21,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
 
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
+import '../../../data/models/realtime_location_model.dart';
 import '../../../data/repositories/image/image_repository.dart';
 
 /// Manages Air/Sea request data operations and orchestrates business logic.
@@ -247,8 +248,18 @@ class AirSeaDataManager {
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
+      final now = DateTime.now();
       final nowString = DateTime.now().toString();
       final userInitial = controller.userController.user.value.initial;
+
+      final box = GetStorage();
+
+      final dynamic latestRaw = box.read('realtime_location_saver_latest');
+
+      final RealtimeLocationModel? latestRealtimeLocation = latestRaw != null
+          ? RealtimeLocationModel.fromJson(
+              Map<String, dynamic>.from(latestRaw as Map))
+          : null;
 
       final updated = request.copyWith(
         status: newStatus,
@@ -263,9 +274,9 @@ class AirSeaDataManager {
                 request.itemPreparedEndAt.isEmpty
             ? nowString
             : request.itemPreparedEndAt,
-        receivedBy: newStatus == BTexts.statusReceived ||
-                newStatus == BTexts.statusEndorsedToGuard &&
-                    formState.receivedByController.text.isNotEmpty
+        receivedBy: ((newStatus == BTexts.statusReceived ||
+                    newStatus == BTexts.statusEndorsedToGuard) &&
+                formState.receivedByController.text.isNotEmpty)
             ? formState.receivedByController.text
             : (request.receivedBy.isEmpty ? userInitial : request.receivedBy),
         waybillNumber: newStatus == BTexts.statusReceived &&
@@ -300,29 +311,37 @@ class AirSeaDataManager {
             newStatus == BTexts.statusDropOff && request.dropOffAt.isEmpty
                 ? nowString
                 : request.dropOffAt,
-        // Provincial delivery phase
-        provincialReceiverName: newStatus == BTexts.statusProvincialPickUp
-            ? userInitial
-            : request.provincialReceiverName,
-        provincialPickUpAt: newStatus == BTexts.statusProvincialPickUp &&
-                request.provincialPickUpAt.isEmpty
-            ? nowString
-            : request.provincialPickUpAt,
-        provincialDeliveredTo: newStatus == BTexts.statusProvincialDelivered &&
+        provincialReceiverName: newStatus == BTexts.statusProvincialDelivered &&
                 formState.provincialDeliveredToController.text.isNotEmpty
-            ? formState.provincialDeliveredToController.text
-            : request.provincialDeliveredTo,
-        provincialDeliveredAt: newStatus == BTexts.statusProvincialDelivered &&
-                request.provincialDeliveredAt.isEmpty
-            ? nowString
-            : request.provincialDeliveredAt,
-        provincialRemarks: newStatus == BTexts.statusProvincialDelivered &&
-                formState.provincialRemarksController.text.isNotEmpty
-            ? formState.provincialRemarksController.text
-            : request.provincialRemarks,
+            ? formState.provincialDeliveredToController.text.trim()
+            : request.provincialReceiverName,
+        provincialPickUpBy: newStatus == BTexts.statusProvincialPickUp
+            ? userInitial
+            : request.provincialPickUpBy,
+        provincialPickUpAt: newStatus == BTexts.statusProvincialPickUp
+            ? now
+            : request.provincialPickUpAt,
+        provincialInTransitAt: newStatus == BTexts.statusProvincialInTransit
+            ? now
+            : request.provincialInTransitAt,
+        provincialInTransitLocation: newStatus ==
+                BTexts.statusProvincialInTransit
+            ? (latestRealtimeLocation != null
+                ? '${latestRealtimeLocation.latitude},${latestRealtimeLocation.longitude}'
+                : request.provincialInTransitLocation)
+            : request.provincialInTransitLocation,
+        provincialDeliveredAtDateTime:
+            newStatus == BTexts.statusProvincialDelivered
+                ? now
+                : request.provincialDeliveredEndAt,
+        provincialDeliveredLocation: newStatus ==
+                BTexts.statusProvincialDelivered
+            ? (latestRealtimeLocation != null
+                ? '${latestRealtimeLocation.latitude},${latestRealtimeLocation.longitude}'
+                : request.provincialDeliveredLocation)
+            : request.provincialDeliveredLocation,
       );
 
-      // Handle signature upload for both "Endorsed to Guard" and "Received" statuses
       final bool signatureWasAdded =
           (newStatus == BTexts.statusEndorsedToGuard ||
                   newStatus == BTexts.statusReceived ||
@@ -346,9 +365,6 @@ class AirSeaDataManager {
         }
       }
 
-      // Handle proof image upload for "Endorsed to Guard" or "Received" status
-      // Upload only once: either during endorsement OR when going directly to received
-      // Skip if transitioning from "Endorsed to Guard" → "Received" (already uploaded)
       final shouldUploadProof = newStatus == BTexts.statusEndorsedToGuard ||
           (newStatus == BTexts.statusReceived ||
               newStatus == BTexts.statusDropOff &&

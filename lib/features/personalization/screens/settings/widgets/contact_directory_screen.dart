@@ -22,7 +22,8 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _initialController = TextEditingController();
   final TextEditingController _departmentController = TextEditingController();
-  final TextEditingController _contactNumberController = TextEditingController();
+  final TextEditingController _contactNumberController =
+      TextEditingController();
 
   @override
   void dispose() {
@@ -44,6 +45,8 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
     _departmentController.clear();
     _contactNumberController.clear();
     CNTMSTModel? selectedDirectoryContact;
+    List<CNTMSTModel> filteredDirectoryOptions =
+        controller.directoryOptions.toList();
 
     await showModalBottomSheet<void>(
       context: context,
@@ -71,34 +74,63 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
                         style: Theme.of(dialogContext).textTheme.titleLarge,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
-                      DropdownButtonFormField<CNTMSTModel>(
-                        value: selectedDirectoryContact,
-                        isExpanded: true,
+                      TextField(
                         decoration: const InputDecoration(
-                          labelText: 'Select Contact from Directory',
+                          labelText: 'Search Directory',
+                          prefixIcon: Icon(Iconsax.search_normal),
                         ),
-                        items: controller.directoryOptions
-                            .map(
-                              (item) => DropdownMenuItem<CNTMSTModel>(
-                                value: item,
-                                child: Text(
-                                  '${item.cntmnn ?? '-'} - ${item.cntdpt ?? '-'}',
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
+                        onChanged: (query) {
+                          final q = query.trim().toLowerCase();
                           setModalState(() {
-                            selectedDirectoryContact = value;
+                            if (q.isEmpty) {
+                              filteredDirectoryOptions =
+                                  controller.directoryOptions.toList();
+                            } else {
+                              filteredDirectoryOptions = controller.directoryOptions
+                                  .where((item) {
+                                final initial = (item.cntmnn ?? '').toLowerCase();
+                                final dept = (item.cntdpt ?? '').toLowerCase();
+                                final num = (item.cntnum ?? '').toLowerCase();
+                                final name = (item.cntmcn ??'').toLowerCase();
+                                return initial.contains(q) || dept.contains(q) || num.contains(q) || name.contains(q);
+                              }).toList();
+                            }
                           });
-
-                          if (value != null) {
-                            _initialController.text = value.cntmnn ?? '';
-                            _departmentController.text = value.cntdpt ?? '';
-                            _contactNumberController.text = value.cntnum ?? '';
-                          }
                         },
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwInputFields),
+                      SizedBox(
+                        height: 180,
+                        child: filteredDirectoryOptions.isEmpty
+                            ? Center(
+                                child: Text(
+                                  'No results',
+                                  style: Theme.of(dialogContext).textTheme.bodyMedium,
+                                ),
+                              )
+                            : ListView.separated(
+                                itemCount: filteredDirectoryOptions.length,
+                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                itemBuilder: (context, i) {
+                                  final item = filteredDirectoryOptions[i];
+                                  return ListTile(
+                                    title: Text(
+                                      '${item.cntmnn ?? '-'} - ${item.cntdpt ?? '-'}',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(item.cntnum ?? ''),
+                                    onTap: () {
+                                      setModalState(() {
+                                        selectedDirectoryContact = item;
+                                      });
+
+                                      _initialController.text = item.cntmnn ?? '';
+                                      _departmentController.text = item.cntdpt ?? '';
+                                      _contactNumberController.text = item.cntnum ?? '';
+                                    },
+                                  );
+                                },
+                              ),
                       ),
                       const SizedBox(height: BSizes.spaceBtwInputFields),
                       TextFormField(

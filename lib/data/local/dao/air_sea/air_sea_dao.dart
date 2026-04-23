@@ -9,6 +9,11 @@ class AirSeaDao {
 
   AirSeaDao(this.db);
 
+  String _serializeDateTime(DateTime? value) {
+    if (value == null) return '';
+    return value.toUtc().toIso8601String();
+  }
+
   // Local status map for status progression validation
   static const Map<String, int> _statusStringToInt = {
     'New Request': 1,
@@ -116,12 +121,15 @@ class AirSeaDao {
       'Helper': airSeaModel.helper,
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
+      'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
+      'ProvincialPickUpAt': _serializeDateTime(airSeaModel.provincialPickUpAt),
+      'ProvincialInTransitAt':
+          _serializeDateTime(airSeaModel.provincialInTransitAt),
+      'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
+      'ProvincialDeliveredEndAt':
+          _serializeDateTime(airSeaModel.provincialDeliveredEndAt),
+      'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
       'ProvincialReceiverName': airSeaModel.provincialReceiverName,
-      'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
-      'ProvincialDeliveredTo': airSeaModel.provincialDeliveredTo,
-      'ProvincialDeliveredAt': airSeaModel.provincialDeliveredAt,
-      'ProvincialRemarks': airSeaModel.provincialRemarks,
-      'ProvincialProofImagePath': airSeaModel.provincialProofImagePath,
       'Status': airSeaModel.status,
       'Remarks': airSeaModel.remarks,
       'CreatedBy': airSeaModel.createdBy,
@@ -198,12 +206,15 @@ class AirSeaDao {
         'Helper': airSeaModel.helper,
         'DispatchedAt': airSeaModel.dispatchedAt,
         'DropOffAt': airSeaModel.dropOffAt,
+        'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
+        'ProvincialPickUpAt': _serializeDateTime(airSeaModel.provincialPickUpAt),
+        'ProvincialInTransitAt':
+            _serializeDateTime(airSeaModel.provincialInTransitAt),
+        'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
+        'ProvincialDeliveredEndAt':
+            _serializeDateTime(airSeaModel.provincialDeliveredEndAt),
+        'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
         'ProvincialReceiverName': airSeaModel.provincialReceiverName,
-        'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
-        'ProvincialDeliveredTo': airSeaModel.provincialDeliveredTo,
-        'ProvincialDeliveredAt': airSeaModel.provincialDeliveredAt,
-        'ProvincialRemarks': airSeaModel.provincialRemarks,
-        'ProvincialProofImagePath': airSeaModel.provincialProofImagePath,
         'Status': airSeaModel.status,
         'Remarks': airSeaModel.remarks,
         'CreatedBy': airSeaModel.createdBy,
@@ -301,12 +312,15 @@ class AirSeaDao {
       'Helper': airSeaModel.helper,
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
+      'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
+      'ProvincialPickUpAt': _serializeDateTime(airSeaModel.provincialPickUpAt),
+      'ProvincialInTransitAt':
+          _serializeDateTime(airSeaModel.provincialInTransitAt),
+      'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
+      'ProvincialDeliveredEndAt':
+          _serializeDateTime(airSeaModel.provincialDeliveredEndAt),
+      'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
       'ProvincialReceiverName': airSeaModel.provincialReceiverName,
-      'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
-      'ProvincialDeliveredTo': airSeaModel.provincialDeliveredTo,
-      'ProvincialDeliveredAt': airSeaModel.provincialDeliveredAt,
-      'ProvincialRemarks': airSeaModel.provincialRemarks,
-      'ProvincialProofImagePath': airSeaModel.provincialProofImagePath,
       'Status': airSeaModel.status,
       'Remarks': airSeaModel.remarks,
       'CreatedBy': airSeaModel.createdBy,

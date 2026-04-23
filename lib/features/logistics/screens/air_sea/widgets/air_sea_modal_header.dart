@@ -21,9 +21,11 @@ class AirSeaRequestModalHeader extends StatelessWidget {
   const AirSeaRequestModalHeader({
     super.key,
     required this.requestModel,
+    required this.role,
   });
 
   final AirSeaModel requestModel;
+  final String role;
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +95,8 @@ class AirSeaRequestModalHeader extends StatelessWidget {
           ],
 
           // Guard Endorsement section (only shown when status is 'Endorsed to Guard')
-          if (requestModel.status == BTexts.statusEndorsedToGuard) ...[
+          if (requestModel.status == BTexts.statusEndorsedToGuard &&
+              role != BTexts.roleProvincial) ...[
             const SizedBox(height: BSizes.xs),
             const BTextDivider(text: 'Guard Endorsement'),
             if (hasReceivedBy) ...[
@@ -122,7 +125,8 @@ class AirSeaRequestModalHeader extends StatelessWidget {
             ],
           ],
 
-          if (requestModel.status == BTexts.statusEndorsedToGuard) ...[
+          if (requestModel.status == BTexts.statusEndorsedToGuard &&
+              role != BTexts.roleProvincial) ...[
             // Display captured guard signature image
             CapturedSignatureImage(requestId: requestModel.id),
             // Button to view guard receipt proof image
@@ -143,7 +147,8 @@ class AirSeaRequestModalHeader extends StatelessWidget {
           ],
 
           // Drop Off details section (only shown when status is 'Drop Off')
-          if (requestModel.status == 'Drop Off') ...[
+          if (requestModel.status == BTexts.statusDropOff &&
+              role != BTexts.roleProvincial) ...[
             const SizedBox(height: BSizes.xs),
             const BTextDivider(text: 'Drop Off Details'),
             if (hasReceivedBy) ...[

@@ -15,6 +15,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal_header.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_waybill_input_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_in_transit_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_pick_up_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_delivery_section.dart';
 
@@ -44,7 +45,10 @@ class AirSeaModal extends StatelessWidget {
     }
 
     return RequestModalScaffold(
-      header: AirSeaRequestModalHeader(requestModel: requestModel),
+      header: AirSeaRequestModalHeader(
+        requestModel: requestModel,
+        role: config.role,
+      ),
       documentReferences: requestModel.documentReference,
       bottomAction: StatusActionButton(
         status: requestModel.status,
@@ -97,40 +101,7 @@ class AirSeaModal extends StatelessWidget {
           AirSeaDispatchInfoSection(requestModel: requestModel),
         ],
 
-        // Provincial Pick Up Section (Provincial role, status is Received or Drop Off)
-        if ((requestModel.status == BTexts.statusReceived ||
-                requestModel.status == BTexts.statusDropOff) &&
-            config.role == BTexts.roleProvincial) ...[
-          const AirSeaProvincialPickUpSection(),
-        ],
-
-        // Provincial Delivery Section (Provincial role, status is Provincial In Transit)
-        if (requestModel.status == BTexts.statusProvincialInTransit &&
-            config.role == BTexts.roleProvincial) ...[
-          const AirSeaProvincialDeliverySection(),
-        ],
-
-        // Show provincial info (read-only) when already filled
-        if (requestModel.provincialReceiverName.isNotEmpty) ...[
-          BLabelValueText(
-            label: 'Provincial Receiver',
-            value: requestModel.provincialReceiverName,
-            showLabel: true,
-            icon: Iconsax.user,
-            padding: EdgeInsets.zero,
-            mainAlignment: MainAxisAlignment.start,
-          ),
-        ],
-        if (requestModel.provincialDeliveredTo.isNotEmpty) ...[
-          BLabelValueText(
-            label: 'Delivered To',
-            value: requestModel.provincialDeliveredTo,
-            showLabel: true,
-            icon: Iconsax.user,
-            padding: EdgeInsets.zero,
-            mainAlignment: MainAxisAlignment.start,
-          ),
-        ],
+        ..._buildProvincialSections(),
 
         if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
         Obx(
@@ -162,5 +133,46 @@ class AirSeaModal extends StatelessWidget {
     if (selected == 'Received') return BTexts.statusReceived;
     if (selected == BTexts.statusForDispatch) return BTexts.statusForDispatch;
     return null;
+  }
+
+  List<Widget> _buildProvincialSections() {
+    final status = requestModel.status;
+    final bool canEditProvincial = config.role == BTexts.roleProvincial;
+    final bool showPickUpSection =
+        ((status == BTexts.statusReceived || status == BTexts.statusDropOff) &&
+                canEditProvincial) ||
+            status == BTexts.statusProvincialPickUp ||
+            status == BTexts.statusProvincialInTransit ||
+            status == BTexts.statusProvincialDelivered;
+
+    final bool showInTransitSection = status == BTexts.statusProvincialPickUp ||
+        status == BTexts.statusProvincialInTransit ||
+        status == BTexts.statusProvincialDelivered;
+
+    final bool showDeliverySection =
+        status == BTexts.statusProvincialInTransit ||
+            status == BTexts.statusProvincialDelivered;
+
+    return [
+      if (showPickUpSection)
+        AirSeaProvincialPickUpSection(
+          requestModel: requestModel,
+          isEditable: canEditProvincial &&
+              (status == BTexts.statusReceived ||
+                  status == BTexts.statusDropOff),
+        ),
+      if (showInTransitSection)
+        AirSeaProvincialInTransitSection(
+          requestModel: requestModel,
+          isActive:
+              canEditProvincial && status == BTexts.statusProvincialPickUp,
+        ),
+      if (showDeliverySection)
+        AirSeaProvincialDeliverySection(
+          requestModel: requestModel,
+          isEditable:
+              canEditProvincial && status == BTexts.statusProvincialInTransit,
+        ),
+    ];
   }
 }
