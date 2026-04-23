@@ -379,8 +379,22 @@ class CollectionActivityController extends GetxController {
         final id = 'INV-${client.id}-${100 + i}';
         
         // Generate sample dates
-        final postingDate = '2026-02-${10 + random.nextInt(15)}';
-        final dueDate = '2026-03-${5 + random.nextInt(20)}';
+        final postingDate = '2026-01-${10 + random.nextInt(15)}';
+        
+        // Generate diverse Due Dates for monitoring
+        String dueDate;
+        final dateType = random.nextInt(10); 
+        if (dateType < 3) {
+          // 30% Overdue (Past)
+          dueDate = '2026-02-${10 + random.nextInt(15)}';
+        } else if (dateType < 8) {
+          // 50% On Schedule (Next 3-4 months)
+          final month = 4 + random.nextInt(3); // April to June
+          dueDate = '2026-0$month-${10 + random.nextInt(15)}';
+        } else {
+          // 20% Long Term (Next Year)
+          dueDate = '2027-0${1 + random.nextInt(3)}-${10 + random.nextInt(15)}';
+        }
 
         generatedItems.add(CollectionItemModel(
           id: id,
