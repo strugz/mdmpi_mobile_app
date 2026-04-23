@@ -4,7 +4,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'collection_account_screen.dart';
+import 'collection_account_invoices_screen.dart';
+import 'collection_account_information_screen.dart';
 import 'widgets/account_item_card.dart';
 import 'widgets/bucket_filter_modal.dart';
 
@@ -131,7 +132,8 @@ class CollectionBucketScreen extends StatelessWidget {
                           client: client,
                           invoiceCount: controller.getAccountInvoiceCount(client.id),
                           totalAmount: controller.getAccountTotalDue(client.id),
-                          onTap: () => Get.to(() => CollectionAccountScreen(client: client)),
+                          onTap: () => Get.to(() => CollectionAccountInvoicesScreen(client: client)),
+                          onInfoTap: () => Get.to(() => CollectionAccountInformationScreen(client: client)),
                         );
                       },
                     ),

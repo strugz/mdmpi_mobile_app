@@ -355,14 +355,14 @@ class CollectionActivityController extends GetxController {
 
   void _loadSampleBucketItems() {
     final List<ClientModel> clients = [
-      ClientModel(id: 'C001', name: 'ABC Corporation', address: '123 Main St, Makati', contact: '09171234567', emailAddress: 'abc@corp.com'),
-      ClientModel(id: 'C002', name: 'XYZ Trading', address: '456 Rizal Ave, Quezon City', contact: '09189876543', emailAddress: 'xyz@trading.ph'),
-      ClientModel(id: 'C003', name: 'LMN Enterprises', address: '789 EDSA, Mandaluyong', contact: '09201112233', emailAddress: 'lmn@ent.com'),
-      ClientModel(id: 'C004', name: 'PQR Industries', address: '321 Ayala Blvd, Makati', contact: '09334455667', emailAddress: 'pqr@ind.com'),
-      ClientModel(id: 'C005', name: 'STU Holdings', address: '654 Shaw Blvd, Pasig', contact: '09557788990', emailAddress: 'stu@hold.com'),
-      ClientModel(id: 'C006', name: 'VWX Solutions', address: '987 Aurora Blvd, Cubao', contact: '09664433221', emailAddress: 'vwx@sol.com'),
-      ClientModel(id: 'C007', name: 'Global Logistics Inc.', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
-      ClientModel(id: 'C008', name: 'Prime Manufacturing', address: '222 Industrial Ave, Cavite', contact: '09885551234', emailAddress: 'prime@mfg.com'),
+      ClientModel(id: 'C001', code: 'MD-C001', name: 'ABC Corporation', address: '123 Main St, Makati', contact: '09171234567', emailAddress: 'abc@corp.com'),
+      ClientModel(id: 'C002', code: 'MD-C002', name: 'XYZ Trading', address: '456 Rizal Ave, Quezon City', contact: '09189876543', emailAddress: 'xyz@trading.ph'),
+      ClientModel(id: 'C003', code: 'MD-C003', name: 'LMN Enterprises', address: '789 EDSA, Mandaluyong', contact: '09201112233', emailAddress: 'lmn@ent.com'),
+      ClientModel(id: 'C004', code: 'MD-C004', name: 'PQR Industries', address: '321 Ayala Blvd, Makati', contact: '09334455667', emailAddress: 'pqr@ind.com'),
+      ClientModel(id: 'C005', code: 'MD-C005', name: 'STU Holdings', address: '654 Shaw Blvd, Pasig', contact: '09557788990', emailAddress: 'stu@hold.com'),
+      ClientModel(id: 'C006', code: 'MD-C006', name: 'VWX Solutions', address: '987 Aurora Blvd, Cubao', contact: '09664433221', emailAddress: 'vwx@sol.com'),
+      ClientModel(id: 'C007', code: 'MD-C007', name: 'Global Logistics Inc.', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
+      ClientModel(id: 'C008', code: 'MD-C008', name: 'Prime Manufacturing', address: '222 Industrial Ave, Cavite', contact: '09885551234', emailAddress: 'prime@mfg.com'),
     ];
 
     masterAccountList.assignAll(clients);
@@ -378,14 +378,21 @@ class CollectionActivityController extends GetxController {
         final amount = 1000.0 + random.nextInt(49001); // 1,000 to 50,000
         final id = 'INV-${client.id}-${100 + i}';
         
+        // Generate sample dates
+        final postingDate = '2026-02-${10 + random.nextInt(15)}';
+        final dueDate = '2026-03-${5 + random.nextInt(20)}';
+
         generatedItems.add(CollectionItemModel(
           id: id,
           client: client,
+          bpCode: client.code,
+          postingDate: postingDate,
+          dueDate: dueDate,
           documentReferences: ['REF-$id'],
           bankName: ['BDO', 'BPI', 'Metrobank', 'RCBC', 'Landbank'][random.nextInt(5)],
           toBeCollected: amount,
           totalCollected: 0,
-          documentDate: '2026-03-${10 + random.nextInt(20)}',
+          documentDate: postingDate, // Using posting date as document date for consistency
           remarks: [
             'Post-dated cheque', 
             'Regular collection', 
@@ -417,6 +424,9 @@ class CollectionActivityController extends GetxController {
       CollectionItemModel(
         id: 'COL-ACT-001',
         client: clients[0],
+        bpCode: clients[0].code,
+        postingDate: '2026-02-15',
+        dueDate: '2026-03-10',
         documentReferences: ['CHQ-PREV-1'],
         bankName: 'BDO',
         toBeCollected: 5000,

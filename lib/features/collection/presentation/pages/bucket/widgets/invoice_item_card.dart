@@ -55,11 +55,23 @@ class InvoiceItemCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Invoice #${item.id}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Invoice #${item.id}',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          Text(
+                            'BP: ${item.bpCode}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: BColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
                       ),
                       Text(
                         currencyFormat.format(item.toBeCollected),
@@ -67,6 +79,37 @@ class InvoiceItemCard extends StatelessWidget {
                               color: BColors.primary,
                               fontWeight: FontWeight.bold,
                             ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: BSizes.xs),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Posted: ${item.postingDate}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: BColors.darkGrey,
+                                ),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Iconsax.timer, size: 14, color: BColors.error),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Due: ${item.dueDate}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: BColors.error,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ],
                       ),
                     ],
                   ),

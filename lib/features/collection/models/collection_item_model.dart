@@ -32,6 +32,15 @@ class CollectionItemModel {
   /// Date the document was created / issued.
   final String documentDate;
 
+  /// Business Partner Code (Customer Code).
+  final String bpCode;
+
+  /// Date the invoice was filed.
+  final String postingDate;
+
+  /// Due date of the invoice.
+  final String dueDate;
+
   /// Current statuses of the item across 4 categories.
   final String coreStatus;
   final String delayStatus;
@@ -56,6 +65,9 @@ class CollectionItemModel {
     this.totalCollected = 0,
     this.remarks = 'No remarks',
     this.documentDate = 'N/A',
+    this.bpCode = 'N/A',
+    this.postingDate = 'N/A',
+    this.dueDate = 'N/A',
     this.coreStatus = CollectionStatusColors.statusUnassigned,
     this.delayStatus = CollectionStatusColors.statusOnSchedule,
     this.outcomeStatus = CollectionStatusColors.statusNone,
@@ -81,6 +93,9 @@ class CollectionItemModel {
     double? totalCollected,
     String? remarks,
     String? documentDate,
+    String? bpCode,
+    String? postingDate,
+    String? dueDate,
     String? coreStatus,
     String? delayStatus,
     String? outcomeStatus,
@@ -98,6 +113,9 @@ class CollectionItemModel {
       totalCollected: totalCollected ?? this.totalCollected,
       remarks: remarks ?? this.remarks,
       documentDate: documentDate ?? this.documentDate,
+      bpCode: bpCode ?? this.bpCode,
+      postingDate: postingDate ?? this.postingDate,
+      dueDate: dueDate ?? this.dueDate,
       coreStatus: coreStatus ?? this.coreStatus,
       delayStatus: delayStatus ?? this.delayStatus,
       outcomeStatus: outcomeStatus ?? this.outcomeStatus,
@@ -131,6 +149,9 @@ class CollectionItemModel {
           : double.tryParse(json['TotalCollected']?.toString() ?? '') ?? 0,
       remarks: (json['Remarks'] ?? 'No remarks').toString(),
       documentDate: (json['DocumentDate'] ?? 'N/A').toString(),
+      bpCode: (json['BPCode'] ?? json['CustomerCode'] ?? 'N/A').toString(),
+      postingDate: (json['PostingDate'] ?? 'N/A').toString(),
+      dueDate: (json['DueDate'] ?? 'N/A').toString(),
       coreStatus: (json['CoreStatus'] ?? json['Status'] ?? CollectionStatusColors.statusUnassigned).toString(),
       delayStatus: (json['DelayStatus'] ?? CollectionStatusColors.statusOnSchedule).toString(),
       outcomeStatus: (json['OutcomeStatus'] ?? CollectionStatusColors.statusNone).toString(),
@@ -155,6 +176,9 @@ class CollectionItemModel {
       'TotalCollected': totalCollected,
       'Remarks': remarks,
       'DocumentDate': documentDate,
+      'BPCode': bpCode,
+      'PostingDate': postingDate,
+      'DueDate': dueDate,
       'CoreStatus': coreStatus,
       'DelayStatus': delayStatus,
       'OutcomeStatus': outcomeStatus,

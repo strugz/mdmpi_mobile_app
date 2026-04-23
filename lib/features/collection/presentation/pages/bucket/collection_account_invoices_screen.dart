@@ -7,16 +7,16 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'widgets/invoice_item_card.dart';
 
-class CollectionAccountScreen extends StatefulWidget {
+class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
 
-  const CollectionAccountScreen({super.key, required this.client});
+  const CollectionAccountInvoicesScreen({super.key, required this.client});
 
   @override
-  State<CollectionAccountScreen> createState() => _CollectionAccountScreenState();
+  State<CollectionAccountInvoicesScreen> createState() => _CollectionAccountInvoicesScreenState();
 }
 
-class _CollectionAccountScreenState extends State<CollectionAccountScreen> {
+class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoicesScreen> {
   final controller = Get.find<CollectionActivityController>();
   final RxSet<String> localSelectedIds = <String>{}.obs;
 

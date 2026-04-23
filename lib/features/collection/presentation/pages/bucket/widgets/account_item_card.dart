@@ -10,6 +10,7 @@ class AccountItemCard extends StatelessWidget {
   final int invoiceCount;
   final double totalAmount;
   final VoidCallback onTap;
+  final VoidCallback onInfoTap;
 
   const AccountItemCard({
     super.key,
@@ -17,6 +18,7 @@ class AccountItemCard extends StatelessWidget {
     required this.invoiceCount,
     required this.totalAmount,
     required this.onTap,
+    required this.onInfoTap,
   });
 
   @override
@@ -46,16 +48,33 @@ class AccountItemCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
-                  child: Text(
-                    client.name,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        client.name,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Code: ${client.code}',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: BColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ],
                   ),
                 ),
-                const Icon(Iconsax.arrow_right_3, size: 18, color: BColors.darkGrey),
+                IconButton(
+                  onPressed: onInfoTap,
+                  icon: const Icon(Iconsax.info_circle, size: 22, color: BColors.primary),
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                ),
               ],
             ),
             const SizedBox(height: BSizes.xs),
