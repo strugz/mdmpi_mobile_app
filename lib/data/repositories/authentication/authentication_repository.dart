@@ -33,8 +33,8 @@ class AuthenticationRepository extends GetxController implements IAuthentication
   void onReady() {
     // Remove the native splash screen
     FlutterNativeSplash.remove();
-    // Redirect to the appropriate screen
-    screenRedirect();
+    // Redirect to the appropriate screen - Handled by splash_screen.dart now
+    // screenRedirect();
     super.onReady();
   }
 

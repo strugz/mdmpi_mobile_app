@@ -22,7 +22,7 @@ class AuthHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (showLogo)
           Image(

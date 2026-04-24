@@ -158,6 +158,7 @@ flutter:
     # Explicit assets used by the collection bucket button
     - assets/images/bucket-list.png
     - assets/images/animations/bucket-list.gif
+    - assets/logos/mdmpi-logo-animation.gif
     - .env
   fonts:
     - family: Roboto
