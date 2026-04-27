@@ -37,10 +37,15 @@ class DashboardItem extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: labelStyle ?? Theme.of(context).textTheme.bodyLarge,
+          Expanded(
+            child: Text(
+              label,
+              style: labelStyle ?? Theme.of(context).textTheme.bodyLarge,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          const SizedBox(width: BSizes.sm),
           Text(
             value,
             style: valueStyle ?? Theme.of(context).textTheme.titleMedium,

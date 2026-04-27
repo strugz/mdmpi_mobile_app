@@ -45,6 +45,9 @@ class CollectionActivityController extends GetxController {
   final RxInt bucketMinInvoices = 0.obs;
   final RxInt bucketMaxInvoices = 0.obs;
 
+  /// Search query for the specific account invoices screen.
+  final RxString invoiceSearchQuery = ''.obs;
+
   // ========================================================================
   // Lifecycle
   // ========================================================================
@@ -139,7 +142,16 @@ class CollectionActivityController extends GetxController {
 
   /// Get all bucket items for a specific client.
   List<CollectionItemModel> getInvoicesByAccount(String clientId) {
-    return bucketItems.where((item) => item.client.id == clientId).toList();
+    final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
+
+    if (invoiceSearchQuery.value.isEmpty) return invoices;
+    
+    final query = invoiceSearchQuery.value.toLowerCase();
+    return invoices.where((item) {
+      return item.id.toLowerCase().contains(query) ||
+             item.documentReferences.any((ref) => ref.toLowerCase().contains(query)) ||
+             item.bankName.toLowerCase().contains(query);
+    }).toList();
   }
 
   /// Get total amount due for a specific client in the bucket.
@@ -152,6 +164,58 @@ class CollectionActivityController extends GetxController {
   /// Get total number of invoices for a specific client in the bucket.
   int getAccountInvoiceCount(String clientId) {
     return bucketItems.where((item) => item.client.id == clientId).length;
+  }
+
+  // ========================================================================
+  // Account Information Details
+  // ========================================================================
+
+  /// Returns detailed financial stats for an account
+  Map<String, dynamic> getAccountFinancialStats(String clientId) {
+    final now = DateTime.now();
+    final firstDayOfCurrentMonth = DateTime(now.year, now.month, 1);
+    
+    final accountInvoices = bucketItems.where((item) => item.client.id == clientId).toList();
+    
+    double totalPastDue = 0;
+    int pastDueCount = 0;
+    double totalCurrentDue = 0;
+    int currentDueCount = 0;
+
+    for (final inv in accountInvoices) {
+      try {
+        final dueDate = DateTime.parse(inv.dueDate);
+        if (dueDate.isBefore(firstDayOfCurrentMonth)) {
+          totalPastDue += inv.toBeCollected;
+          pastDueCount++;
+        } else if (dueDate.year == now.year && dueDate.month == now.month) {
+          totalCurrentDue += inv.toBeCollected;
+          currentDueCount++;
+        }
+      } catch (e) {
+        // Fallback or ignore unparseable dates
+      }
+    }
+
+    return {
+      'totalPastDue': totalPastDue,
+      'pastDueCount': pastDueCount,
+      'totalCurrentDue': totalCurrentDue,
+      'currentDueCount': currentDueCount,
+    };
+  }
+
+  /// Returns combined history for all invoices of a specific account (both bucket and activity)
+  List<CollectionHistoryModel> getAccountHistory(String clientId) {
+    final allItems = [...bucketItems, ...activityItems];
+    final accountItems = allItems.where((item) => item.client.id == clientId).toList();
+
+    final allHistory = accountItems.expand((item) => item.history).toList();
+
+    // Sort newest first
+    allHistory.sort((a, b) => b.date.compareTo(a.date));
+
+    return allHistory;
   }
 
   /// Claims items by a list of IDs.
@@ -174,10 +238,10 @@ class CollectionActivityController extends GetxController {
       activityItems.add(item);
       bucketItems.removeAt(index);
     }
-    
+
     // Clear selection if any of these were in the global selectedBucketIds
     selectedBucketIds.removeWhere((id) => ids.contains(id));
-    
+
     logDebug('[CollectionActivityController] Claimed ${ids.length} items');
   }
 
@@ -320,7 +384,7 @@ class CollectionActivityController extends GetxController {
         switch (categoryFilter.value) {
           case 'Core Status':
             // Show all items since everything in activity has a Core Status
-            return true; 
+            return true;
           case 'Delays':
             // Only show if it has an active delay (not "On Schedule")
             return e.delayStatus != CollectionStatusColors.statusOnSchedule;
@@ -328,7 +392,7 @@ class CollectionActivityController extends GetxController {
             // Only show if it has an outcome (not "None")
             return e.outcomeStatus != CollectionStatusColors.statusNone;
           case 'Administrative':
-            // For Administrative, we show all since they all have an admin status 
+            // For Administrative, we show all since they all have an admin status
             // (default "For Verification")
             return true;
           default:
@@ -373,17 +437,17 @@ class CollectionActivityController extends GetxController {
     for (var client in clients) {
       // Generate 5-15 invoices per account
       final invoiceCount = 5 + random.nextInt(11);
-      
+
       for (int i = 1; i <= invoiceCount; i++) {
         final amount = 1000.0 + random.nextInt(49001); // 1,000 to 50,000
         final id = 'INV-${client.id}-${100 + i}';
-        
+
         // Generate sample dates
         final postingDate = '2026-01-${10 + random.nextInt(15)}';
-        
+
         // Generate diverse Due Dates for monitoring
         String dueDate;
-        final dateType = random.nextInt(10); 
+        final dateType = random.nextInt(10);
         if (dateType < 3) {
           // 30% Overdue (Past)
           dueDate = '2026-02-${10 + random.nextInt(15)}';
@@ -408,10 +472,10 @@ class CollectionActivityController extends GetxController {
           totalCollected: 0,
           documentDate: postingDate, // Using posting date as document date for consistency
           remarks: [
-            'Post-dated cheque', 
-            'Regular collection', 
-            'Urgent collection', 
-            'Partial payment pending', 
+            'Post-dated cheque',
+            'Regular collection',
+            'Urgent collection',
+            'Partial payment pending',
             'Verification needed'
           ][random.nextInt(5)],
           coreStatus: CollectionStatusColors.statusUnassigned,
@@ -432,7 +496,7 @@ class CollectionActivityController extends GetxController {
     }
 
     bucketItems.assignAll(generatedItems);
-    
+
     // Original sample activity items for other screens
     activityItems.assignAll([
       CollectionItemModel(

@@ -4,10 +4,11 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_filter_modal.dart';
 import 'collection_account_invoices_screen.dart';
 import 'collection_account_information_screen.dart';
-import 'widgets/account_item_card.dart';
-import 'widgets/bucket_filter_modal.dart';
+import 'widgets/collection_search_filter_bar.dart';
 
 /// Collection Bucket Screen (Account-Centric)
 ///
@@ -33,57 +34,27 @@ class CollectionBucketScreen extends StatelessWidget {
         return Column(
           children: [
             /// Search and Filter Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: BSizes.defaultSpace,
-                vertical: BSizes.md,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      onChanged: (value) => controller.bucketSearchQuery.value = value,
-                      decoration: const InputDecoration(
-                        hintText: 'Search by account name...',
-                        prefixIcon: Icon(Iconsax.search_normal),
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(vertical: 0),
-                      ),
-                    ),
+            Obx(() {
+              final hasFilter = controller.bucketMinAmount.value > 0 || 
+                               controller.bucketMaxAmount.value > 0 ||
+                               controller.bucketMinInvoices.value > 0 ||
+                               controller.bucketMaxInvoices.value > 0;
+              
+              return CollectionSearchFilterBar(
+                searchHint: 'Search by account name...',
+                initialValue: controller.bucketSearchQuery.value,
+                onSearchChanged: (value) => controller.bucketSearchQuery.value = value,
+                hasActiveFilter: hasFilter,
+                onFilterTap: () => Get.bottomSheet(
+                  const BucketFilterModal(),
+                  backgroundColor: BColors.white,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
                   ),
-                  const SizedBox(width: BSizes.sm),
-                  
-                  // Filter Button
-                  Obx(() {
-                    final hasFilter = controller.bucketMinAmount.value > 0 || 
-                                     controller.bucketMaxAmount.value > 0 ||
-                                     controller.bucketMinInvoices.value > 0 ||
-                                     controller.bucketMaxInvoices.value > 0;
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: hasFilter ? BColors.primary.withOpacity(0.1) : Colors.transparent,
-                        borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                        border: Border.all(color: hasFilter ? BColors.primary : BColors.grey),
-                      ),
-                      child: IconButton(
-                        onPressed: () => Get.bottomSheet(
-                          const BucketFilterModal(),
-                          backgroundColor: BColors.white,
-                          isScrollControlled: true,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
-                          ),
-                        ),
-                        icon: Icon(
-                          Iconsax.filter_edit,
-                          color: hasFilter ? BColors.primary : BColors.darkerGrey,
-                        ),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
+                ),
+              );
+            }),
 
             Expanded(
               child: accounts.isEmpty

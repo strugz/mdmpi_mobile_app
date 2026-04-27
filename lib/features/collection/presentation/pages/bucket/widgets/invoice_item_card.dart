@@ -55,24 +55,31 @@ class InvoiceItemCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Invoice #${item.id}',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          Text(
-                            'BP: ${item.bpCode}',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: BColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Invoice #${item.id}',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              'BP: ${item.bpCode}',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: BColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: BSizes.sm),
                       Text(
                         currencyFormat.format(item.toBeCollected),
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -86,30 +93,44 @@ class InvoiceItemCard extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Posted: ${item.postingDate}',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: BColors.darkGrey,
-                                ),
-                          ),
-                        ],
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Posted: ${item.postingDate}',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: BColors.darkGrey,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      Row(
-                        children: [
-                          const Icon(Iconsax.timer, size: 14, color: BColors.error),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Due: ${item.dueDate}',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: BColors.error,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ],
+                      const SizedBox(width: BSizes.sm),
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const Icon(Iconsax.timer, size: 14, color: BColors.error),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Due: ${item.dueDate}',
+                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                      color: BColors.error,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

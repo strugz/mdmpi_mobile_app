@@ -5,7 +5,9 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'widgets/collection_search_filter_bar.dart';
 import 'widgets/invoice_item_card.dart';
+import 'widgets/bucket_filter_modal.dart';
 
 class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -19,6 +21,12 @@ class CollectionAccountInvoicesScreen extends StatefulWidget {
 class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoicesScreen> {
   final controller = Get.find<CollectionActivityController>();
   final RxSet<String> localSelectedIds = <String>{}.obs;
+
+  @override
+  void dispose() {
+    controller.invoiceSearchQuery.value = ''; // Reset search on leave
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,30 +94,61 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
       body: Obx(() {
         final invoices = controller.getInvoicesByAccount(widget.client.id);
 
-        if (invoices.isEmpty) {
-          return const Center(
-            child: Text('No pending invoices for this account.'),
-          );
-        }
+        return Column(
+          children: [
+            /// Search and Filter Bar
+            Obx(() {
+              final hasFilter = controller.bucketMinAmount.value > 0 || 
+                               controller.bucketMaxAmount.value > 0 ||
+                               controller.bucketMinInvoices.value > 0 ||
+                               controller.bucketMaxInvoices.value > 0;
+              
+              return CollectionSearchFilterBar(
+                searchHint: 'Search invoice ID or bank...',
+                initialValue: controller.invoiceSearchQuery.value,
+                onSearchChanged: (value) => controller.invoiceSearchQuery.value = value,
+                hasActiveFilter: hasFilter,
+                onFilterTap: () => Get.bottomSheet(
+                  const BucketFilterModal(),
+                  backgroundColor: BColors.white,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
+                  ),
+                ),
+              );
+            }),
 
-        return ListView.separated(
-          padding: const EdgeInsets.all(BSizes.defaultSpace),
-          itemCount: invoices.length,
-          separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
-          itemBuilder: (context, index) {
-            final item = invoices[index];
-            return Obx(() => InvoiceItemCard(
-                  item: item,
-                  isSelected: localSelectedIds.contains(item.id),
-                  onTap: () {
-                    if (localSelectedIds.contains(item.id)) {
-                      localSelectedIds.remove(item.id);
-                    } else {
-                      localSelectedIds.add(item.id);
-                    }
-                  },
-                ));
-          },
+            Expanded(
+              child: invoices.isEmpty
+                  ? Center(
+                      child: Text(
+                        controller.invoiceSearchQuery.value.isEmpty 
+                            ? 'No pending invoices for this account.'
+                            : 'No invoices match your search.',
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(BSizes.defaultSpace),
+                      itemCount: invoices.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
+                      itemBuilder: (context, index) {
+                        final item = invoices[index];
+                        return Obx(() => InvoiceItemCard(
+                              item: item,
+                              isSelected: localSelectedIds.contains(item.id),
+                              onTap: () {
+                                if (localSelectedIds.contains(item.id)) {
+                                  localSelectedIds.remove(item.id);
+                                } else {
+                                  localSelectedIds.add(item.id);
+                                }
+                              },
+                            ));
+                      },
+                    ),
+            ),
+          ],
         );
       }),
     );

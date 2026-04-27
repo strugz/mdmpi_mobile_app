@@ -24,19 +24,18 @@ class CollectionHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          // Top: Dashboard Area (Fixed height based on content)
-          SingleChildScrollView(
-            physics: const NeverScrollableScrollPhysics(),
-            child: Column(
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Top: Dashboard Area
+            Column(
               children: [
                 // Header
-                BPrimaryHeaderContainer(
+                const BPrimaryHeaderContainer(
                   child: Column(
                     children: [
-                      const BHomeAppBar(),
-                      const SizedBox(height: BSizes.spaceBtwSections),
+                      BHomeAppBar(),
+                      SizedBox(height: BSizes.spaceBtwSections),
                     ],
                   ),
                 ),
@@ -164,11 +163,9 @@ class CollectionHomeScreen extends StatelessWidget {
                 const SizedBox(height: BSizes.spaceBtwSections),
               ],
             ),
-          ),
 
-          // Bottom: Recent Activities (Takes remaining space)
-          Expanded(
-            child: Container(
+            // Bottom: Recent Activities
+            Container(
               decoration: BoxDecoration(
                 color: BColors.white,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
@@ -184,11 +181,11 @@ class CollectionHomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
                 child: Column(
                   children: [
-                    // Recent Activities Header with Show All button (Fixed at top of white panel)
+                    // Recent Activities Header with Show All button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        BSectionSubHeading(
+                        const BSectionSubHeading(
                           title: BTexts.collectionHomeSubTitle1,
                           showActionButton: false,
                         ),
@@ -203,42 +200,50 @@ class CollectionHomeScreen extends StatelessWidget {
                       ],
                     ),
 
-                    Expanded(
-                      child: Obx(() {
-                        final controller = CollectionActivityController.instance;
+                    Obx(() {
+                      final controller = CollectionActivityController.instance;
 
-                        // Combine history from the items to show a unified "Recent Activities" log
-                        final allHistory = controller.activityItems
-                            .expand((item) => item.history)
-                            .toList();
+                      // Combine history from the items to show a unified "Recent Activities" log
+                      final allHistory = controller.activityItems
+                          .expand((item) => item.history)
+                          .toList();
 
-                        if (allHistory.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Iconsax.clock, size: 48, color: BColors.darkGrey),
-                                const SizedBox(height: BSizes.sm),
-                                Text(
-                                  'No recent activities yet',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return SingleChildScrollView(
-                          child: ActivityHistoryList(history: allHistory),
+                      if (allHistory.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: BSizes.lg),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Iconsax.clock, size: 48, color: BColors.darkGrey),
+                              const SizedBox(height: BSizes.sm),
+                              Text(
+                                'No recent activities yet',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+                              ),
+                            ],
+                          ),
                         );
-                      }),
-                    ),
+                      }
+
+                      // Sort all history chronologically first
+                      allHistory.sort((a, b) => a.date.compareTo(b.date));
+
+                      // Limit to the most recent 3 entries
+                      final recentThree = allHistory.length > 3 
+                          ? allHistory.sublist(allHistory.length - 3) 
+                          : allHistory;
+
+                      return ActivityHistoryList(history: recentThree);
+                    }),
+                    
+                    // Add extra space at the bottom for scrolling comfort
+                    const SizedBox(height: BSizes.spaceBtwSections * 2),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

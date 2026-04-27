@@ -90,6 +90,15 @@ class CategoryDetailScreen extends StatelessWidget {
               // Flatten history from the items in this category
               final allHistory = items.expand((item) => item.history).toList();
 
+              if (allHistory.isEmpty) {
+                return const Center(
+                  child: Text('No history found for these items.'),
+                );
+              }
+
+              // Sort all history chronologically first to ensure a unified timeline
+              allHistory.sort((a, b) => a.date.compareTo(b.date));
+
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
                 child: ActivityHistoryList(history: allHistory),

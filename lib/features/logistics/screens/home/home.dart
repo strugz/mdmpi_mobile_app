@@ -41,70 +41,70 @@ class HomeScreen extends StatelessWidget {
             ),
 
             /// Body
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-              child: BSectionHeading(
-                title: BTexts.homeSubTitle3,
-                showActionButton: false,
-              ),
-            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+              child: Column(
+                children: [
+                  const BSectionHeading(
+                    title: BTexts.homeSubTitle3,
+                    showActionButton: false,
+                  ),
 
-            /// Request Form Shortcuts
-            BRequestForm(
-              labels: BTexts.requestFormLabels,
-              pages: AppRoutes.requestFormPages,
-              iconPaths: BImages.requestFormIconPaths,
-            ),
+                  /// Request Form Shortcuts
+                  BRequestForm(
+                    labels: BTexts.requestFormLabels,
+                    pages: AppRoutes.requestFormPages,
+                    iconPaths: BImages.requestFormIconPaths,
+                  ),
 
-            const SizedBox(height: BSizes.spaceBtwItemsLight),
-            const Divider(),
-            const SizedBox(height: BSizes.spaceBtwItemsLight),
+                  const SizedBox(height: BSizes.spaceBtwItemsLight),
+                  const Divider(),
+                  const SizedBox(height: BSizes.spaceBtwItemsLight),
 
-            /// Activity Dashboard Section
-            Obx(
-              () => Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: BSizes.spaceBtwItems,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Dashboard Header
-                    const BSectionHeading(
-                      title: BTexts.dashboardTitle,
-                      showActionButton: false,
-                    ),
-                    BSectionHeading(
-                      title: controller.currentYear,
-                      showActionButton: false,
-                    ),
-                    const SizedBox(height: BSizes.spaceBtwItems),
+                  /// Activity Dashboard Section
+                  Obx(
+                    () => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Dashboard Header
+                        const BSectionHeading(
+                          title: BTexts.dashboardTitle,
+                          showActionButton: false,
+                        ),
+                        BSectionHeading(
+                          title: controller.currentYear,
+                          showActionButton: false,
+                        ),
+                        const SizedBox(height: BSizes.spaceBtwItems),
 
-                    // Dashboard Statistics
-                    DashboardItem(
-                      label: BTexts.dashboardTotalRequests,
-                      value: controller.totalRequest.toString(),
+                        // Dashboard Statistics
+                        DashboardItem(
+                          label: BTexts.dashboardTotalRequests,
+                          value: controller.totalRequest.toString(),
+                        ),
+                        DashboardItem(
+                          label: BTexts.dashboardGettingSuppliesReady,
+                          value: controller.gettingSuppliesReady.toString(),
+                        ),
+                        DashboardItem(
+                          label: BTexts.dashboardItemsPrepared,
+                          value: controller.itemPrepared.toString(),
+                        ),
+                        DashboardItem(
+                          label: BTexts.dashboardForDelivery,
+                          value: controller.forDelivery.toString(),
+                        ),
+                        DashboardItem(
+                          label: BTexts.dashboardDelivered,
+                          value: controller.delivered.toString(),
+                        ),
+                      ],
                     ),
-                    DashboardItem(
-                      label: BTexts.dashboardGettingSuppliesReady,
-                      value: controller.gettingSuppliesReady.toString(),
-                    ),
-                    DashboardItem(
-                      label: BTexts.dashboardItemsPrepared,
-                      value: controller.itemPrepared.toString(),
-                    ),
-                    DashboardItem(
-                      label: BTexts.dashboardForDelivery,
-                      value: controller.forDelivery.toString(),
-                    ),
-                    DashboardItem(
-                      label: BTexts.dashboardDelivered,
-                      value: controller.delivered.toString(),
-                    ),
-
-                    const SizedBox(height: BSizes.spaceBtwSections),
-                  ],
-                ),
+                  ),
+                  
+                  // Extra space at the bottom to ensure visibility on all devices
+                  const SizedBox(height: BSizes.spaceBtwSections * 2),
+                ],
               ),
             ),
           ],
