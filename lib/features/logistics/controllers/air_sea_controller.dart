@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_status_stages_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
@@ -49,6 +53,15 @@ class AirSeaController extends GetxController {
   /// Cancellation remarks data for the currently viewed Air/Sea request.
   /// Contains remarks and cancellation date when a request is cancelled.
   final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
+
+  /// Status/history stages for the currently selected request.
+  final RxList<AirSeaStatusStagesModel> historyStages = <AirSeaStatusStagesModel>[].obs;
+
+  /// Statuses for the currently selected request, extracted from history stages for display.
+  final RxList<String> stagesStatus = <String>[].obs;
+
+  /// Indicates whether history fetch is in progress.
+  final RxBool isHistoryLoading = false.obs;
 
   /// Identity of the user who created the current request.
   /// Automatically populated from logged-in user's initials.
@@ -149,9 +162,27 @@ class AirSeaController extends GetxController {
     }
   }
 
-  // ========================================================================
-  // FILTERING OPERATIONS
-  // ========================================================================
+  /// Loads status/history stages for a specific request and updates [historyStages].
+  /// [requestId] The Air/Sea request ID to fetch history for.
+  Future<void> loadHistory(String requestId, {bool silent = false}) async {
+    try {
+
+      isHistoryLoading.value = true;
+
+      final results = await dataManager.fetchHistory(requestId, silent: silent);
+
+      historyStages.clear();
+
+      historyStages.addAll(results);
+
+      stagesStatus.value = results.map((stage) => stage.status ?? '').toList();
+
+    } catch (e) {
+      logDebug('AirSeaController.loadHistory error: $e');
+    } finally {
+      isHistoryLoading.value = false;
+    }
+  }
 
   /// Updates the active status filter and reapplies filtering to the Air/Sea list.
   ///

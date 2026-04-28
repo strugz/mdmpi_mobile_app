@@ -122,12 +122,10 @@ class AirSeaDao {
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
       'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
-      'ProvincialPickUpAt': _serializeDateTime(airSeaModel.provincialPickUpAt),
-      'ProvincialInTransitAt':
-          _serializeDateTime(airSeaModel.provincialInTransitAt),
+      'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
+      'ProvincialInTransitAt': airSeaModel.provincialInTransitAt,
       'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
-      'ProvincialDeliveredEndAt':
-          _serializeDateTime(airSeaModel.provincialDeliveredEndAt),
+      'ProvincialDeliveredEndAt':airSeaModel.provincialDeliveredEndAt,
       'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
       'ProvincialReceiverName': airSeaModel.provincialReceiverName,
       'Status': airSeaModel.status,
@@ -207,12 +205,11 @@ class AirSeaDao {
         'DispatchedAt': airSeaModel.dispatchedAt,
         'DropOffAt': airSeaModel.dropOffAt,
         'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
-        'ProvincialPickUpAt': _serializeDateTime(airSeaModel.provincialPickUpAt),
+        'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
         'ProvincialInTransitAt':
-            _serializeDateTime(airSeaModel.provincialInTransitAt),
+        airSeaModel.provincialInTransitAt,
         'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
-        'ProvincialDeliveredEndAt':
-            _serializeDateTime(airSeaModel.provincialDeliveredEndAt),
+        'ProvincialDeliveredEndAt':airSeaModel.provincialDeliveredEndAt,
         'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
         'ProvincialReceiverName': airSeaModel.provincialReceiverName,
         'Status': airSeaModel.status,
@@ -313,12 +310,10 @@ class AirSeaDao {
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
       'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
-      'ProvincialPickUpAt': _serializeDateTime(airSeaModel.provincialPickUpAt),
-      'ProvincialInTransitAt':
-          _serializeDateTime(airSeaModel.provincialInTransitAt),
+      'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
+      'ProvincialInTransitAt':airSeaModel.provincialInTransitAt,
       'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
-      'ProvincialDeliveredEndAt':
-          _serializeDateTime(airSeaModel.provincialDeliveredEndAt),
+      'ProvincialDeliveredEndAt':airSeaModel.provincialDeliveredEndAt,
       'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
       'ProvincialReceiverName': airSeaModel.provincialReceiverName,
       'Status': airSeaModel.status,

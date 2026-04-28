@@ -1,4 +1,4 @@
-import 'dart:convert';
+// ...existing code...
 
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controll
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_status_stages_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
@@ -28,6 +29,9 @@ import '../../../data/repositories/image/image_repository.dart';
 /// Handles CRUD operations, status updates, form validation, and data synchronization
 /// between API and local storage for Air/Sea requests.
 class AirSeaDataManager {
+  static const String _latestRealtimeLocationKey =
+      'realtime_location_saver_latest';
+
   final AirSeaRepository _repository = Get.find<AirSeaRepository>();
   final CancelRemarksRepository _cancelRemarksRepository =
       Get.find<CancelRemarksRepository>();
@@ -73,14 +77,10 @@ class AirSeaDataManager {
     try {
       List<AirSeaModel> results;
       if (!useLocalStorage) {
-        logDebug(
-            'AirSeaDataManager: Fetching from API (useLocalStorage=$useLocalStorage,  forcing refresh)');
         results = await _repository.getAll(forceRefresh: true);
       } else {
-        logDebug('AirSeaDataManager: Fetching from local DB first');
         results = await _repository.getLocalAirSeaRequests();
         if (results.isEmpty) {
-          logDebug('AirSeaDataManager: Local DB empty, fetching from API');
           results = await _repository.getAll();
         } else {
           logDebug(
@@ -248,18 +248,22 @@ class AirSeaDataManager {
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
-      final now = DateTime.now();
       final nowString = DateTime.now().toString();
       final userInitial = controller.userController.user.value.initial;
 
-      final box = GetStorage();
+      final RealtimeLocationModel? latestRealtimeLocation =
+          _readLatestRealtimeLocation();
 
-      final dynamic latestRaw = box.read('realtime_location_saver_latest');
-
-      final RealtimeLocationModel? latestRealtimeLocation = latestRaw != null
-          ? RealtimeLocationModel.fromJson(
-              Map<String, dynamic>.from(latestRaw as Map))
-          : null;
+      if (newStatus == BTexts.statusProvincialInTransit &&
+          latestRealtimeLocation == null) {
+        controller.errorMessage.value =
+            'No realtime location found. Please enable realtime location saver and wait for a location update before starting transit.';
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: controller.errorMessage.value!,
+        );
+        return;
+      }
 
       final updated = request.copyWith(
         status: newStatus,
@@ -319,10 +323,10 @@ class AirSeaDataManager {
             ? userInitial
             : request.provincialPickUpBy,
         provincialPickUpAt: newStatus == BTexts.statusProvincialPickUp
-            ? now
+            ? nowString
             : request.provincialPickUpAt,
         provincialInTransitAt: newStatus == BTexts.statusProvincialInTransit
-            ? now
+            ? nowString
             : request.provincialInTransitAt,
         provincialInTransitLocation: newStatus ==
                 BTexts.statusProvincialInTransit
@@ -330,10 +334,9 @@ class AirSeaDataManager {
                 ? '${latestRealtimeLocation.latitude},${latestRealtimeLocation.longitude}'
                 : request.provincialInTransitLocation)
             : request.provincialInTransitLocation,
-        provincialDeliveredAtDateTime:
-            newStatus == BTexts.statusProvincialDelivered
-                ? now
-                : request.provincialDeliveredEndAt,
+        provincialDeliveredEndAt: newStatus == BTexts.statusProvincialDelivered
+            ? nowString
+            : request.provincialDeliveredEndAt,
         provincialDeliveredLocation: newStatus ==
                 BTexts.statusProvincialDelivered
             ? (latestRealtimeLocation != null
@@ -386,10 +389,7 @@ class AirSeaDataManager {
                 base64Image: finalImageBase64,
                 type: 'Proof',
               );
-              logDebug(
-                  'AirSeaDataManager: Proof image uploaded successfully for status: $newStatus (previous: ${request.status})');
             } catch (e) {
-              logDebug('AirSeaDataManager: Image upload failed: $e');
               BLoaders.warningSnackBar(
                 title: 'Upload Failed',
                 message:
@@ -409,6 +409,81 @@ class AirSeaDataManager {
       } else {
         logDebug(
             'AirSeaDataManager: Skipping proof image upload - already uploaded during previous status transition (current: ${request.status} → new: $newStatus)');
+      }
+
+      if (newStatus == BTexts.statusProvincialPickUp) {
+        String? finalImageBase64 =
+            await BImageHelperFunctions.getDeliveryImageAsBase64(
+                newStatus, '${request.id}_provincial_pick_up');
+
+        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
+          final isConnectedForUpload =
+              await NetworkManager.instance.isConnected();
+
+          if (isConnectedForUpload) {
+            try {
+              await ImageRepository.instance.uploadFile(
+                requestId: request.id,
+                base64Image: finalImageBase64,
+                type: 'Provincial_PickUp_Proof',
+              );
+            } catch (e) {
+              BLoaders.warningSnackBar(
+                title: 'Upload Failed',
+                message:
+                    'Provincial pick-up proof image could not be uploaded. It will be synced when connection is available.',
+              );
+            }
+          }
+        }
+      }
+
+      if (newStatus == BTexts.statusProvincialDelivered) {
+        String? finalImageBase64 =
+            await BImageHelperFunctions.getDeliveryImageAsBase64(
+                newStatus, '${request.id}_provincial_delivery');
+
+        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
+          final isConnectedForUpload =
+              await NetworkManager.instance.isConnected();
+
+          if (isConnectedForUpload) {
+            try {
+              await ImageRepository.instance.uploadFile(
+                requestId: request.id,
+                base64Image: finalImageBase64,
+                type: 'Provincial_Delivery_Proof',
+              );
+            } catch (e) {
+              BLoaders.warningSnackBar(
+                title: 'Upload Failed',
+                message:
+                    'Provincial delivery proof image could not be uploaded. It will be synced when connection is available.',
+              );
+            }
+          }
+        }
+      }
+
+      final bool provincialSignatureWasAdded =
+          (newStatus == BTexts.statusProvincialDelivered) &&
+              formState.receiverSignatureBase64.value.isNotEmpty;
+
+      if (provincialSignatureWasAdded) {
+        final isConnectedForUpload =
+        await NetworkManager.instance.isConnected();
+        if (isConnectedForUpload) {
+          await ImageRepository.instance.uploadFile(
+            requestId: request.id,
+            base64Image: formState.receiverSignatureBase64.value,
+            type: 'Provincial_Signature',
+          );
+        } else {
+          BLoaders.warningSnackBar(
+              title: 'No Internet',
+              message:
+              'Signature saved locally. It will be uploaded when internet connection is available.');
+        }
       }
 
       final payload = AirSeaMapper.toUpdateDto(updated, userInitial);
@@ -517,5 +592,58 @@ class AirSeaDataManager {
           '💡 Tip: Check if GET /api4/RequestAirSea/cancel/$requestId endpoint exists');
       return CancelRemarksModel.empty;
     }
+  }
+
+  /// Fetches status/history stages for a specific Air/Sea request.
+  /// Returns an empty list on error and logs warnings. This method delegates
+  /// to `AirSeaRepository.fetchHistoryByRequestId` and keeps behavior consistent
+  /// with other fetch helpers in this manager.
+  Future<List<AirSeaStatusStagesModel>> fetchHistory(String requestId,
+      {bool silent = false}) async {
+    try {
+      logDebug('🔍 AirSeaDataManager: Fetching history for: $requestId');
+      final result =
+          await _repository.fetchHistoryByRequestId(requestId, silent: silent);
+      logDebug(
+          '✅ AirSeaDataManager: Retrieved ${result.length} history items for $requestId');
+      return result;
+    } catch (e) {
+      logDebug('❌ AirSeaDataManager.fetchHistory FAILED: $e');
+      return <AirSeaStatusStagesModel>[];
+    }
+  }
+
+  /// Reads and validates the latest realtime location sample from local storage.
+  RealtimeLocationModel? _readLatestRealtimeLocation() {
+    final dynamic latestRaw = GetStorage().read(_latestRealtimeLocationKey);
+    if (latestRaw is! Map) {
+      return null;
+    }
+
+    final latestMap = Map<String, dynamic>.from(latestRaw);
+    final latitude = _tryParseCoordinate(latestMap['latitude']);
+    final longitude = _tryParseCoordinate(latestMap['longitude']);
+
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
+    if (latitude < -90 || latitude > 90) {
+      return null;
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      return null;
+    }
+
+    return RealtimeLocationModel.fromJson(latestMap);
+  }
+
+  /// Safely parses a coordinate value from dynamic storage data.
+  double? _tryParseCoordinate(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 }

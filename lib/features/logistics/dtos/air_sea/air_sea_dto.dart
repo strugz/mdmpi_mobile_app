@@ -78,6 +78,10 @@ class AirSeaDto {
       if (value != null) data[key] = value;
     }
 
+    void putNullable(String key, dynamic value) {
+      data[key] = value;
+    }
+
     data['RequestID'] = requestID;
     put('ItemCategoryID', itemCategoryID);
     put('ClientID', clientID);
@@ -96,13 +100,13 @@ class AirSeaDto {
     put('Helper', helper);
     put('DispatchedAt', dispatchedAt);
     put('DropOffAt', dropOffAt);
-    put('provincial_receiver_name', provincialReceiverName);
-    put('provincial_pick_up_by', provincialPickUpBy);
-    put('provincial_pick_up_at', provincialPickUpAt);
-    put('provincial_in_transit_at', provincialInTransitAt);
-    put('provincial_in_transit_location', provincialInTransitLocation);
-    put('provincial_delivered_end_at', provincialDeliveredEndAt);
-    put('provincial_delivered_location', provincialDeliveredLocation);
+    putNullable('provincialReceiverName', provincialReceiverName);
+    putNullable('provincialPickUpBy', provincialPickUpBy);
+    putNullable('provincialPickUpAt', provincialPickUpAt);
+    putNullable('provincialInTransitAt', provincialInTransitAt);
+    putNullable('provincialInTransitLocation', provincialInTransitLocation);
+    putNullable('provincialDeliveredEndAt', provincialDeliveredEndAt);
+    putNullable('provincialDeliveredLocation', provincialDeliveredLocation);
     put('Status', status);
     put('Remarks', remarks);
     put('CreatedAt', createdAt);
@@ -115,12 +119,19 @@ class AirSeaDto {
   }
 
   factory AirSeaDto.fromJson(Map<String, dynamic> json) {
-    String firstPresent(Map<String, dynamic> m, List<String> keys,
+    String firstRequired(Map<String, dynamic> m, List<String> keys,
         {String fallback = ''}) {
       for (final k in keys) {
         if (m.containsKey(k) && m[k] != null) return m[k].toString();
       }
       return fallback;
+    }
+
+    String? firstPresent(Map<String, dynamic> m, List<String> keys) {
+      for (final k in keys) {
+        if (m.containsKey(k) && m[k] != null) return m[k].toString();
+      }
+      return null;
     }
 
     int? parseIntOrNull(dynamic value) {
@@ -131,7 +142,7 @@ class AirSeaDto {
     }
 
     return AirSeaDto(
-      requestID: firstPresent(json,
+      requestID: firstRequired(json,
           ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
       itemCategoryID: json['ItemCategoryID'] ??
           json['itemCategoryID'] ??

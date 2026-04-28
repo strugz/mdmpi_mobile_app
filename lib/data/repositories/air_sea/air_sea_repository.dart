@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_status_stages_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/air_sea_mapper.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/air_sea/air_sea_dao.dart';
@@ -103,29 +104,24 @@ class AirSeaRepository extends GetxController {
 
       // If offline, return local data only
       if (!isConnected) {
-        logDebug('AirSeaRepository: Offline, returning local data');
         return await dao.getAirSeaRequests();
       }
 
-      // If online and not forcing refresh, check if local DB has data
       if (!forceRefresh) {
         final hasLocalData = await dao.isAirSeaTableNotEmpty();
         if (hasLocalData) {
           final localData = await dao.getAirSeaRequests();
-          // Trigger background sync without blocking
           _syncFromApi();
           return localData;
         }
       }
-
-      // Otherwise, fetch from API and cache
-      logDebug('AirSeaRepository: Fetching from API');
       final url = _uri(_resource);
 
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         final items = _decodeRootToList(decoded);
+
         final airSeaRequests = items
             .whereType<dynamic>()
             .map((e) => e is Map<String, dynamic>
@@ -133,13 +129,12 @@ class AirSeaRepository extends GetxController {
                 : AirSeaModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
 
-        print(jsonEncode(airSeaRequests));
-
         // Cache to local DB
         try {
           await dao.deleteAll();
           await dao.insertAirSeaRequests(airSeaRequests);
-          logDebug('AirSeaRepository: Cached ${airSeaRequests.length} Air/Sea requests to local DB');
+          logDebug(
+              'AirSeaRepository: Cached ${airSeaRequests.length} Air/Sea requests to local DB');
         } catch (dbError) {
           logDebug('AirSeaRepository: Failed to cache to local DB: $dbError');
         }
@@ -156,7 +151,8 @@ class AirSeaRepository extends GetxController {
         final dao = await _dao;
         final localData = await dao.getAirSeaRequests();
         if (localData.isNotEmpty) {
-          logDebug('AirSeaRepository: API failed, returning ${localData.length} items from local DB');
+          logDebug(
+              'AirSeaRepository: API failed, returning ${localData.length} items from local DB');
           return localData;
         }
       } catch (dbError) {
@@ -186,7 +182,8 @@ class AirSeaRepository extends GetxController {
           final dao = await _dao;
           await dao.deleteAll();
           await dao.insertAirSeaRequests(airSeaRequests);
-          logDebug('AirSeaRepository: Background sync completed, ${airSeaRequests.length} records');
+          logDebug(
+              'AirSeaRepository: Background sync completed, ${airSeaRequests.length} records');
         }
       }
     } catch (e) {
@@ -210,17 +207,20 @@ class AirSeaRepository extends GetxController {
           final decoded = jsonDecode(response.body);
           if (decoded is Map && decoded.containsKey('RequestID')) {
             updatedData = data.copyWith(id: decoded['RequestID'].toString());
-            logDebug('AirSeaRepository: Got RequestID from server: ${updatedData.id}');
+            logDebug(
+                'AirSeaRepository: Got RequestID from server: ${updatedData.id}');
           }
         } catch (parseError) {
-          logDebug('AirSeaRepository: Could not parse RequestID from response: $parseError');
+          logDebug(
+              'AirSeaRepository: Could not parse RequestID from response: $parseError');
         }
 
         // Save to local DB with the correct ID
         try {
           final dao = await _dao;
           await dao.insertAirSea(updatedData);
-          logDebug('AirSeaRepository: Saved to local DB with ID: ${updatedData.id}');
+          logDebug(
+              'AirSeaRepository: Saved to local DB with ID: ${updatedData.id}');
         } catch (dbError) {
           logDebug('AirSeaRepository: Failed to save to local DB: $dbError');
           // Don't fail the whole operation if local DB save fails
@@ -330,9 +330,11 @@ class AirSeaRepository extends GetxController {
           final model = AirSeaModel.fromJson(payload);
           final dao = await _dao;
           await dao.updateAirSea(airSeaModel: model);
-          logDebug('AirSeaRepository: Payload update successful, saved to local DB');
+          logDebug(
+              'AirSeaRepository: Payload update successful, saved to local DB');
         } catch (e) {
-          logDebug('AirSeaRepository: Could not update local DB from payload: $e');
+          logDebug(
+              'AirSeaRepository: Could not update local DB from payload: $e');
         }
 
         dynamic decoded;
@@ -385,8 +387,8 @@ class AirSeaRepository extends GetxController {
   Future<void> cancelAirSeaAPI(String requestID, String remarks, String user,
       {bool silent = false}) async {
     try {
-      final url =
-          Uri.parse("${dotenv.env['API_URL']!}$_resource/cancel/$requestID/$user");
+      final url = Uri.parse(
+          "${dotenv.env['API_URL']!}$_resource/cancel/$requestID/$user");
       final response = await http
           .patch(url,
               headers: const {
@@ -403,7 +405,8 @@ class AirSeaRepository extends GetxController {
           await getAll(forceRefresh: true);
           logDebug('AirSeaRepository: Cancel successful, refreshed local DB');
         } catch (e) {
-          logDebug('AirSeaRepository: Could not update local DB after cancel: $e');
+          logDebug(
+              'AirSeaRepository: Could not update local DB after cancel: $e');
         }
 
         _showSuccess('Success saving...', silent: silent);
@@ -435,6 +438,53 @@ class AirSeaRepository extends GetxController {
   Future<List<AirSeaModel>> getLocalAirSeaRequests() async {
     final dao = await _dao;
     return await dao.getAirSeaRequests();
+  }
+
+  /// Fetch status/history stages for a request from the remote API.
+  ///
+  /// Uses the inventory endpoint: https://inventory.mdmpi.com.ph/api4/requestairsea/history/{requestId}
+  /// Returns an empty list on failure or when offline (and shows a user-visible
+  /// message unless [silent] is true).
+  Future<List<AirSeaStatusStagesModel>> fetchHistoryByRequestId(
+      String requestId,
+      {bool silent = false}) async {
+    try {
+      final isConnected = await NetworkManager.instance.isConnected();
+      if (!isConnected) {
+        _showWarning('Offline: cannot fetch request history', silent: silent);
+        return <AirSeaStatusStagesModel>[];
+      }
+
+      final url = Uri.parse(
+          'https://inventory.mdmpi.com.ph/api4/requestairsea/history/$requestId');
+
+      final response = await _safeGet(url);
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final items = _decodeRootToList(decoded);
+
+        final history = items
+            .whereType<dynamic>()
+            .map((e) => e is Map<String, dynamic>
+                ? AirSeaStatusStagesModel.fromJson(e)
+                : AirSeaStatusStagesModel.fromJson(
+                    Map<String, dynamic>.from(e)))
+            .toList();
+
+        logDebug(
+            'AirSeaRepository: Fetched ${history.length} history items for $requestId');
+        return history;
+      }
+
+      final msg = 'Failed to fetch request history (${response.statusCode})';
+      if (!silent) _showError(msg);
+      logDebug('AirSeaRepository.fetchHistoryByRequestId: $msg');
+      return <AirSeaStatusStagesModel>[];
+    } catch (e, st) {
+      logDebug('AirSeaRepository.fetchHistoryByRequestId error: $e\n$st');
+      if (!silent) _showError('Failed to fetch request history');
+      return <AirSeaStatusStagesModel>[];
+    }
   }
 
   /// Get a single Air/Sea request by ID from local DB.
@@ -646,7 +696,8 @@ class AirSeaRepository extends GetxController {
         final response = await _safePatch(url, payload);
 
         if (response.statusCode != 200) {
-          final msg = 'Failed to mark as received. Status: ${response.statusCode}';
+          final msg =
+              'Failed to mark as received. Status: ${response.statusCode}';
           if (!silent) _showError(msg);
           return false;
         }
@@ -692,4 +743,3 @@ class AirSeaRepository extends GetxController {
     }
   }
 }
-

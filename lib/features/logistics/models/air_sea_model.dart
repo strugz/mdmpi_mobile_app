@@ -30,10 +30,10 @@ class AirSeaModel {
   String dropOffAt;
 
   String provincialPickUpBy;
-  DateTime? provincialPickUpAt;
-  DateTime? provincialInTransitAt;
+  String provincialPickUpAt;
+  String provincialInTransitAt;
   String provincialInTransitLocation;
-  DateTime? provincialDeliveredEndAt;
+  String provincialDeliveredEndAt;
   String provincialDeliveredLocation;
   String provincialReceiverName;
 
@@ -67,10 +67,10 @@ class AirSeaModel {
     this.dispatchedAt = '',
     this.dropOffAt = '',
     this.provincialPickUpBy = '',
-    this.provincialPickUpAt,
-    this.provincialInTransitAt,
+    this.provincialPickUpAt = '',
+    this.provincialInTransitAt = '',
     this.provincialInTransitLocation = '',
-    this.provincialDeliveredEndAt,
+    this.provincialDeliveredEndAt = '',
     this.provincialDeliveredLocation = '',
     this.provincialReceiverName = '',
     this.status = '',
@@ -106,6 +106,24 @@ class AirSeaModel {
     return fallback;
   }
 
+  static dynamic _firstPresentValue(
+    Map<String, dynamic> map,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      if (!map.containsKey(key)) continue;
+
+      final value = map[key];
+      if (value == null) continue;
+
+      if (value is String && value.trim().isEmpty) continue;
+
+      return value;
+    }
+
+    return null;
+  }
+
   static int? _parseIntOrNull(dynamic value) {
     if (value == null) return null;
     if (value is int) return value;
@@ -127,27 +145,34 @@ class AirSeaModel {
     }
   }
 
-  static String _serializeDateTime(DateTime? value, String fallback) {
-    if (value != null) {
-      return value.toUtc().toIso8601String();
+  static String _normalizeDateTimeString(
+    dynamic value, {
+    String fallback = '',
+  }) {
+    if (value == null) return fallback;
+    if (value is DateTime) return value.toUtc().toIso8601String();
+
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty || normalized.toLowerCase() == 'null') {
+      return fallback;
     }
 
-    return fallback;
+    return normalized;
   }
 
   /// Legacy compatibility alias. Prefer using [provincialDeliveredEndAt].
-  String get provincialDeliveredAt =>
-      _serializeDateTime(provincialDeliveredEndAt, '');
+  String get provincialDeliveredAt => provincialDeliveredEndAt;
 
   set provincialDeliveredAt(String value) {
-    provincialDeliveredEndAt = _parseDateTimeOrNull(value);
+    provincialDeliveredEndAt = _normalizeDateTimeString(value);
   }
 
   /// Legacy compatibility alias. Prefer using [provincialDeliveredEndAt].
-  DateTime? get provincialDeliveredAtDateTime => provincialDeliveredEndAt;
+  DateTime? get provincialDeliveredAtDateTime =>
+      _parseDateTimeOrNull(provincialDeliveredEndAt);
 
   set provincialDeliveredAtDateTime(DateTime? value) {
-    provincialDeliveredEndAt = value;
+    provincialDeliveredEndAt = _normalizeDateTimeString(value);
   }
 
   AirSeaModel copyWith({
@@ -170,10 +195,10 @@ class AirSeaModel {
     String? dropOffAt,
 
     String? provincialPickUpBy,
-    DateTime? provincialPickUpAt,
-    DateTime? provincialInTransitAt,
+    String? provincialPickUpAt,
+    String? provincialInTransitAt,
     String? provincialInTransitLocation,
-    DateTime? provincialDeliveredAtDateTime,
+    String? provincialDeliveredEndAt,
     String? provincialDeliveredLocation,
     String? provincialReceiverName,
 
@@ -211,7 +236,7 @@ class AirSeaModel {
       provincialInTransitLocation:
           provincialInTransitLocation ?? this.provincialInTransitLocation,
       provincialDeliveredEndAt:
-          provincialDeliveredAtDateTime ?? provincialDeliveredEndAt,
+          provincialDeliveredEndAt ?? this.provincialDeliveredEndAt,
       provincialDeliveredLocation:
           provincialDeliveredLocation ?? this.provincialDeliveredLocation,
       provincialReceiverName:
@@ -248,14 +273,13 @@ class AirSeaModel {
       'DropOffAt': dropOffAt,
       'ProvincialPickUpBy': provincialPickUpBy,
       'ProvincialPickUpAt': provincialPickUpAt,
-      'ProvincialInTransitAt': _serializeDateTime(provincialInTransitAt, ''),
+      'ProvincialInTransitAt': provincialInTransitAt,
       'ProvincialInTransitLocation': provincialInTransitLocation,
-      'ProvincialDeliveredEndAt':
-          _serializeDateTime(provincialDeliveredEndAt, ''),
+      'ProvincialDeliveredEndAt': provincialDeliveredEndAt,
       'ProvincialDeliveredLocation': provincialDeliveredLocation,
       'ProvincialReceiverName': provincialReceiverName,
       'ProvincialDeliveredTo': provincialDeliveredLocation,
-      'ProvincialDeliveredAt': _serializeDateTime(provincialDeliveredEndAt, ''),
+      'ProvincialDeliveredAt': provincialDeliveredEndAt,
       'Status': status,
       'Remarks': remarks,
       'CreatedBy': createdBy,
@@ -277,12 +301,17 @@ class AirSeaModel {
       'provincial_delivered_receiver_name',
     ]);
 
-    final provincialPickUpAtValue = _firstPresent(json, [
+    final provincialPickUpAtValue = _firstPresentValue(json, [
       'ProvincialPickUpAt',
       'provincialPickUpAt',
       'provincial_pick_up_at',
     ]);
-    final provincialDeliveredEndAtValue = _firstPresent(json, [
+    final provincialInTransitAtValue = _firstPresentValue(json, [
+      'ProvincialInTransitAt',
+      'provincialInTransitAt',
+      'provincial_in_transit_at',
+    ]);
+    final provincialDeliveredEndAtValue = _firstPresentValue(json, [
       'ProvincialDeliveredEndAt',
       'provincialDeliveredEndAt',
       'provincial_delivered_end_at',
@@ -351,23 +380,16 @@ class AirSeaModel {
         'provincialPickUpBy',
         'provincial_pick_up_by'
       ]),
-      provincialPickUpAt:_parseDateTimeOrNull(_firstPresent(json, [
-        'ProvincialPickUpAt',
-        'provincialPickUpAt',
-        'provincial_pick_up_at',
-      ])),
-      provincialInTransitAt: _parseDateTimeOrNull(_firstPresent(json, [
-        'ProvincialInTransitAt',
-        'provincialInTransitAt',
-        'provincial_in_transit_at',
-      ])),
+      provincialPickUpAt: _normalizeDateTimeString(provincialPickUpAtValue),
+      provincialInTransitAt:
+          _normalizeDateTimeString(provincialInTransitAtValue),
       provincialInTransitLocation: _firstPresent(json, [
         'ProvincialInTransitLocation',
         'provincialInTransitLocation',
         'provincial_in_transit_location',
       ]),
       provincialDeliveredEndAt:
-          _parseDateTimeOrNull(provincialDeliveredEndAtValue),
+          _normalizeDateTimeString(provincialDeliveredEndAtValue),
       provincialDeliveredLocation: provincialDeliveredLocationValue,
       provincialReceiverName: provincialReceiverNameValue,
       status: _firstPresent(json, ['Status', 'status']),
@@ -410,9 +432,10 @@ class AirSeaModel {
       'provincialdeliveredreceivername',
     ]);
 
-    final provincialPickUpAtValue =
-        (lower['provincialpickupat'] ?? '').toString();
-    final provincialDeliveredEndAtValue = _firstPresent(lower, [
+    final provincialPickUpAtValue = lower['provincialpickupat'];
+
+    final provincialInTransitAtValue = lower['provincialintransitat'];
+    final provincialDeliveredEndAtValue = _firstPresentValue(lower, [
       'provincialdeliveredendat',
       'provincialdeliveredat',
     ]);
@@ -440,13 +463,13 @@ class AirSeaModel {
       dispatchedAt: (lower['dispatchedat'] ?? '').toString(),
       dropOffAt: (lower['dropoffat'] ?? '').toString(),
       provincialPickUpBy: (lower['provincialpickupby'] ?? '').toString(),
-      provincialPickUpAt: _parseDateTimeOrNull(lower['provincialpickupat']),
+      provincialPickUpAt: _normalizeDateTimeString(provincialPickUpAtValue),
       provincialInTransitAt:
-          _parseDateTimeOrNull(lower['provincialintransitat']),
+          _normalizeDateTimeString(provincialInTransitAtValue),
       provincialInTransitLocation:
           (lower['provincialintransitlocation'] ?? '').toString(),
       provincialDeliveredEndAt:
-          _parseDateTimeOrNull(provincialDeliveredEndAtValue),
+          _normalizeDateTimeString(provincialDeliveredEndAtValue),
       provincialDeliveredLocation: provincialDeliveredLocationValue,
       provincialReceiverName: provincialReceiverNameValue.isNotEmpty
           ? provincialReceiverNameValue

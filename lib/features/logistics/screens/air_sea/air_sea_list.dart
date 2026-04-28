@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controll
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/air_sea/air_sea_page.dart';
+import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/air_sea/air_sea_page_stages.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
@@ -169,7 +170,7 @@ void _handleAirSeaTap(
         request: request, role: BTexts.roleCourier, controller: controller);
     BHelperFunctions.navigateWithSlide(
       context,
-      AirSeaPage(requestModel: request, config: config),
+      AirSeaPageStages(requestModel: request, config: config),
       duration: const Duration(milliseconds: 350),
     );
     return;
@@ -179,7 +180,8 @@ void _handleAirSeaTap(
   if ((request.status == BTexts.statusReceived ||
           request.status == BTexts.statusDropOff ||
           request.status == BTexts.statusProvincialPickUp ||
-          request.status == BTexts.statusProvincialInTransit) &&
+          request.status == BTexts.statusProvincialInTransit ||
+          request.status == BTexts.statusProvincialDelivered) &&
       roles.contains(BTexts.roleProvincial)) {
     final config = AirSeaModalConfig.resolve(
       request: request,
@@ -188,7 +190,7 @@ void _handleAirSeaTap(
     );
     BHelperFunctions.navigateWithSlide(
       context,
-      AirSeaPage(requestModel: request, config: config),
+      AirSeaPageStages(requestModel: request, config: config),
       duration: const Duration(milliseconds: 350),
     );
     return;
@@ -213,9 +215,7 @@ void _handleAirSeaTap(
   );
   BHelperFunctions.navigateWithSlide(
     context,
-    AirSeaPage(requestModel: request, config: config),
+    AirSeaPageStages(requestModel: request, config: config),
     duration: const Duration(milliseconds: 350),
   );
 }
-
-

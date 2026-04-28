@@ -11,12 +11,8 @@ class AirSeaMapper {
     return trimmed.isEmpty ? null : trimmed;
   }
 
-  static String? _normalizeDateTimeValue(DateTime? dateTime, String? fallback) {
-    if (dateTime != null) {
-      return dateTime.toUtc().toIso8601String();
-    }
-
-    return BFormatter.normalizeToIsoDatetime(fallback, toUtc: true);
+  static String? _normalizeDateTimeValue(String? value) {
+    return BFormatter.normalizeToIsoDatetime(value, toUtc: true);
   }
 
   /// Maps AirSeaModel to AirSeaInsertDto for API insert operations
@@ -58,12 +54,12 @@ class AirSeaMapper {
       dropOffAt: BFormatter.normalizeToIsoDatetime(m.dropOffAt),
       provincialReceiverName: _nonEmptyOrNull(m.provincialReceiverName),
       provincialPickUpBy: _nonEmptyOrNull(m.provincialPickUpBy),
-      provincialPickUpAt: _normalizeDateTimeValue(m.provincialPickUpAt, null),
-      provincialInTransitAt:
-          _normalizeDateTimeValue(m.provincialInTransitAt, null),
+      provincialPickUpAt: _normalizeDateTimeValue(m.provincialPickUpAt),
+      provincialInTransitAt: _normalizeDateTimeValue(m.provincialInTransitAt),
       provincialInTransitLocation: _nonEmptyOrNull(m.provincialInTransitLocation),
-      provincialDeliveredEndAt:
-          _normalizeDateTimeValue(m.provincialDeliveredEndAt, null),
+      provincialDeliveredEndAt: _normalizeDateTimeValue(
+        m.provincialDeliveredEndAt,
+      ),
       provincialDeliveredLocation:
           _nonEmptyOrNull(m.provincialDeliveredLocation),
       updatedBy: _nonEmptyOrNull(updatedBy),
@@ -93,16 +89,19 @@ class AirSeaMapper {
     put('Helper', m.helper);
     put('DispatchedAt', BFormatter.normalizeToIsoDatetime(m.dispatchedAt));
     put('DropOffAt', BFormatter.normalizeToIsoDatetime(m.dropOffAt));
-    put('provincial_receiver_name', m.provincialReceiverName);
-    put('provincial_pick_up_by', m.provincialPickUpBy);
-    put('provincial_pick_up_at',
-        _normalizeDateTimeValue(m.provincialPickUpAt, null));
-    put('provincial_in_transit_at',
-        _normalizeDateTimeValue(m.provincialInTransitAt, null));
-    put('provincial_in_transit_location', m.provincialInTransitLocation);
-    put('provincial_delivered_end_at',
-        _normalizeDateTimeValue(m.provincialDeliveredEndAt, null));
-    put('provincial_delivered_location', m.provincialDeliveredLocation);
+    put('ProvincialReceiverName', m.provincialReceiverName);
+    put('ProvincialPickUpBy', m.provincialPickUpBy);
+    put('ProvincialPickUpAt', _normalizeDateTimeValue(m.provincialPickUpAt));
+    put(
+      'ProvincialInTransitAt',
+      _normalizeDateTimeValue(m.provincialInTransitAt),
+    );
+    put('ProvincialInTransitLocation', m.provincialInTransitLocation);
+    put(
+      'ProvincialDeliveredEndAt',
+      _normalizeDateTimeValue(m.provincialDeliveredEndAt),
+    );
+    put('ProvincialDeliveredLocation', m.provincialDeliveredLocation);
     put('Remarks', m.remarks);
     put('Status', m.status);
 

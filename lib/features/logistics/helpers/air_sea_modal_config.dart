@@ -1,5 +1,7 @@
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/data/models/realtime_location_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
@@ -10,6 +12,9 @@ import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 /// Carries everything the modal needs: role context, action visibility,
 /// button label, next status, and an optional validator.
 class AirSeaModalConfig {
+  static const String _latestRealtimeLocationKey =
+      'realtime_location_saver_latest';
+
   /// The resolved user role driving this modal instance.
   final String role;
 
@@ -280,6 +285,7 @@ class AirSeaModalConfig {
         nextStatus: BTexts.statusProvincialInTransit,
         isActionVisible: true,
         buttonLabel: 'Start Transit',
+        validate: _validateProvincialInTransitLocation,
       );
     }
     if (status == BTexts.statusProvincialInTransit) {
@@ -307,17 +313,54 @@ class AirSeaModalConfig {
     return true;
   }
 
-  /// Validates start transit: requires pick-up proof image exists before starting transit.
-  static Future<bool> _validateProvincialStartTransit(
-      AirSeaFormState formState) async {
-    if (formState.cameraPickUpPicture.value.trim().isEmpty) {
+  /// Validates that a latest realtime location sample exists before starting transit.
+  static Future<bool> _validateProvincialInTransitLocation() async {
+    final latestRealtimeLocation = _readLatestRealtimeLocation();
+
+    if (latestRealtimeLocation == null) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
-        message: 'Cannot start transit without pick-up proof image',
+        message:
+            'No realtime location found. Please enable realtime location saver and wait for a location update before starting transit.',
       );
       return false;
     }
+
     return true;
+  }
+
+  /// Reads and validates the latest realtime location payload from local storage.
+  static RealtimeLocationModel? _readLatestRealtimeLocation() {
+    final dynamic latestRaw = GetStorage().read(_latestRealtimeLocationKey);
+    if (latestRaw is! Map) {
+      return null;
+    }
+
+    final latestMap = Map<String, dynamic>.from(latestRaw);
+    final latitude = _tryParseCoordinate(latestMap['latitude']);
+    final longitude = _tryParseCoordinate(latestMap['longitude']);
+
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
+    if (latitude < -90 || latitude > 90) {
+      return null;
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      return null;
+    }
+
+    return RealtimeLocationModel.fromJson(latestMap);
+  }
+
+  /// Safely parses a coordinate value from dynamic storage data.
+  static double? _tryParseCoordinate(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   /// Validates provincial delivery: delivered-to is required, signature and proof image required.

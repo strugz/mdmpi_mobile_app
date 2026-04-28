@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -9,14 +7,16 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
+import 'package:mdmpi_mobile_app/common/widgets/popups/image_preview_dialog.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 
-import '../../../../../common/widgets/dialogs/request_image_dialog.dart';
+import '../../../../../base/utils/constants/text_string.dart';
+import '../../../../../base/utils/helpers/helper_functions.dart';
+import '../../../../../common/widgets/texts/product_title_text.dart';
 
 /// Provincial delivery section for the Air/Sea staged provincial flow.
 ///
@@ -37,7 +37,8 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.find<AirSeaController>();
     final formState = controller.formState;
-
+    final dark = BHelperFunctions.isDarkMode(context);
+    final textColor = dark ? BColors.light : BColors.black;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -59,8 +60,7 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
               final hasSignature = sig != null && sig.isNotEmpty;
 
               return TextButton.icon(
-                onPressed: () =>
-                    BFullScreenLoader.showSignatureDialogForAirSea(
+                onPressed: () => BFullScreenLoader.showSignatureDialogForAirSea(
                   context,
                   controller,
                 ),
@@ -101,7 +101,8 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
                 () => BDropOffCapture(
                   title: 'Provincial Delivery Proof',
                   onCapture: (camera) async {
-                    await camera.takePictureWithAnimation('${requestModel.id}_provincial_delivery');
+                    await camera.takePictureWithAnimation(
+                        '${requestModel.id}_provincial_delivery');
                     formState.cameraDropOffPicture.value =
                         camera.imageProofPath.value;
                   },
@@ -111,14 +112,37 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
               label: const Text('Capture Delivery Proof'),
             ),
           ),
-          Obx(
-            () => _ProofPreview(
-              localPath: formState.cameraDropOffPicture.value,
-              emptyMessage: 'No delivery proof captured yet',
-            ),
-          ),
-        ]
-        else ...[
+          Obx(() {
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: BProductTitleText(
+                    title: formState.cameraDropOffPicture.value,
+                    maxLines: 1,
+                    smallSize: true,
+                    fontColor: textColor,
+                  ),
+                ),
+                if (formState.cameraDropOffPicture.value.isNotEmpty)
+                  Listener(
+                    onPointerDown: (_) {
+                      if (formState.cameraDropOffPicture.value.isNotEmpty) {
+                        ImagePreviewDialog.show(
+                            context, formState.cameraDropOffPicture.value);
+                      }
+                    },
+                    onPointerUp: (_) {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    child: Icon(Iconsax.eye, color: textColor, size: 20),
+                  )
+              ],
+            );
+          }),
+        ] else ...[
           if (requestModel.provincialReceiverName.isNotEmpty)
             BLabelValueText(
               label: 'Recipient Name',
@@ -128,112 +152,41 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
               padding: EdgeInsets.zero,
               mainAlignment: MainAxisAlignment.start,
             ),
-          if (requestModel.provincialDeliveredEndAt != null)
+          if (requestModel.provincialDeliveredEndAt.isNotEmpty)
             BLabelValueText(
               label: 'Delivered At',
               value: BFormatter.formatDateWithAmPm(
-                requestModel.provincialDeliveredEndAt!.toIso8601String(),
+                requestModel.provincialDeliveredEndAt,
               ),
               showLabel: true,
               icon: Iconsax.calendar_1,
               padding: EdgeInsets.zero,
               mainAlignment: MainAxisAlignment.start,
             ),
-          if (requestModel.provincialDeliveredLocation.isNotEmpty)
-            BLabelValueText(
-              label: 'Delivered Location',
-              value: requestModel.provincialDeliveredLocation,
-              showLabel: true,
-              icon: Iconsax.location,
-              padding: EdgeInsets.zero,
-              mainAlignment: MainAxisAlignment.start,
-            ),
-          const SizedBox(height: BSizes.sm),
-          Text(
-            'Recipient Signature',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
           const SizedBox(height: BSizes.xs),
-          CapturedSignatureImage(requestId: '${requestModel.id}_provincial_delivery'),
-          const SizedBox(height: BSizes.sm),
-          Obx(() {
-            final localPath = formState.cameraDropOffPicture.value;
-            if (localPath.isNotEmpty) {
-              return _ProofPreview(
-                localPath: localPath,
-                emptyMessage: 'Delivery proof unavailable',
-              );
-            }
+          BDeliveryDetailsSection(
+            driver: requestModel.provincialPickUpBy,
+            receivedBy: requestModel.provincialReceiverName,
+            receivedByLabel: 'Recipient Name',
+            completedAt: BFormatter.formatDateWithAmPm(
+              requestModel.provincialDeliveredEndAt,
+            ),
+            completedAtLabel: 'Delivered At',
+            requestId: requestModel.id,
+            apiController: 'RequestAirSea',
+            viewItemButtonLabel: 'View Delivery Proof',
+            dialogTitle: 'Provincial Delivery Proof',
+            showViewItemButton:
+                requestModel.status == BTexts.statusProvincialDelivered,
+            imageProofType: 'Provincial_Delivery_Proof',
+            signatureType: 'Provincial_Signature',
+            signatureHeight: 40,
+            location: requestModel.provincialDeliveredLocation,
+            locationLabel: 'Delivered Location',
+          ),
 
-            return ViewDeliveredItemButton(
-              textColor: Theme.of(context).textTheme.bodyLarge?.color ??
-                  Theme.of(context).colorScheme.onSurface,
-              labelTitle: 'View Delivery Proof',
-              onPressed: () {
-                showRequestImageDialog(
-                  context,
-                  requestId: requestModel.id,
-                  fetchIfMissing: true,
-                  semanticsLabel:
-                      'Provincial delivery proof image for request ${'${requestModel.id}_provincial_delivery'}',
-                  apiController: 'RequestAirSea',
-                  title: 'Provincial Delivery Proof',
-                );
-              },
-            );
-          }),
         ],
       ],
     );
   }
 }
-
-class _ProofPreview extends StatelessWidget {
-  const _ProofPreview({
-    required this.localPath,
-    required this.emptyMessage,
-  });
-
-  final String localPath;
-  final String emptyMessage;
-
-  @override
-  Widget build(BuildContext context) {
-    if (localPath.trim().isEmpty) {
-      return Text(
-        emptyMessage,
-        style: Theme.of(context).textTheme.bodySmall,
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(BSizes.sm),
-          child: Image.file(
-            File(localPath),
-            height: 140,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              height: 100,
-              width: double.infinity,
-              alignment: Alignment.center,
-              color: Theme.of(context).colorScheme.surfaceContainerHighest,
-              child: const Icon(Iconsax.gallery_slash),
-            ),
-          ),
-        ),
-        const SizedBox(height: BSizes.xs),
-        Text(
-          localPath,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-

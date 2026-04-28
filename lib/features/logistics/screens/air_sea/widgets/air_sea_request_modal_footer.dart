@@ -36,13 +36,6 @@ class AirSeaRequestModalFooter extends StatelessWidget {
             role == BTexts.roleRelease) ...[
           AirSeaItemPackedSection(requestModel: requestModel),
         ],
-
-        /// -- Drop Off Status Section (Courier role only) --
-        if (requestModel.status == BTexts.statusDispatch &&
-            role == BTexts.roleCourier) ...[
-          AirSeaDropOffSection(requestModel: requestModel),
-        ],
-
         /// -- Remarks --
         if (requestModel.remarks.isNotEmpty) ...[
           const SizedBox(height: BSizes.sm),
@@ -74,7 +67,6 @@ class AirSeaRequestModalFooter extends StatelessWidget {
             viewItemButtonLabel: BTexts.requestModalViewItemReceivedText,
             dialogTitle: 'Air/Sea Item',
             showViewItemButton: true,
-            // Use AM/PM formatter
             completedAtFormatter: (s) => BFormatter.formatDateTimeCustomizable(
               s,
               "yyyy-MM-ddTHH:mm:ss.SSSSSS",

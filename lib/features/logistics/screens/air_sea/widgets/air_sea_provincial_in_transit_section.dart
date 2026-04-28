@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/b_map_location_link.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 
@@ -29,11 +30,11 @@ class AirSeaProvincialInTransitSection extends StatelessWidget {
           const SizedBox(height: BSizes.spaceBtwItems),
           const BTextDivider(text: 'Provincial In Transit'),
           const SizedBox(height: BSizes.sm),
-          if (requestModel.provincialInTransitAt != null)
+          if (requestModel.provincialInTransitAt.isNotEmpty)
             BLabelValueText(
               label: 'Transit Started At',
               value: BFormatter.formatDateWithAmPm(
-                requestModel.provincialInTransitAt!.toIso8601String(),
+                requestModel.provincialInTransitAt,
               ),
               showLabel: true,
               icon: Iconsax.calendar_1,
@@ -41,15 +42,16 @@ class AirSeaProvincialInTransitSection extends StatelessWidget {
               mainAlignment: MainAxisAlignment.start,
             ),
           if (requestModel.provincialInTransitLocation.isNotEmpty)
-            BLabelValueText(
+            BMapLocationLink(
               label: 'Transit Location',
-              value: requestModel.provincialInTransitLocation,
+              location: requestModel.provincialInTransitLocation,
               showLabel: true,
               icon: Iconsax.location,
               padding: EdgeInsets.zero,
               mainAlignment: MainAxisAlignment.start,
+              iconOnly: true,
             ),
-          if (requestModel.provincialInTransitAt == null &&
+          if (requestModel.provincialInTransitAt.isEmpty &&
               requestModel.provincialInTransitLocation.isEmpty)
             Text(
               'Transit has been recorded for this request.',
