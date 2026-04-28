@@ -58,7 +58,9 @@ class BImageHelperFunctions {
         newStatus == BTexts.statusTakenOut ||
         newStatus == BTexts.statusReceived ||
         newStatus == BTexts.statusEndorsedToGuard ||
-        newStatus == BTexts.statusDropOff) {
+        newStatus == BTexts.statusDropOff ||
+        newStatus == BTexts.statusProvincialPickUp ||
+        newStatus == BTexts.statusProvincialDelivered) {
       const deliveryShotsDirPath = BPaths.deliveryShots;
 
       await Directory(deliveryShotsDirPath).create(recursive: true);

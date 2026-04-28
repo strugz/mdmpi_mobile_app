@@ -6,10 +6,11 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/signature/captured_signature_image.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/b_map_location_link.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 
 /// Displays delivery details section with driver, helper, receiver info,
 /// timestamps, signature watermark, and view item button.
@@ -36,6 +37,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
     this.apiController = 'Request',
     this.showViewItemButton = true,
     this.completedAtFormatter,
+    this.location = '',
+    this.locationLabel = 'Delivered Location',
     this.signatureBelowReceivedBy = false,
     // Signature sizing options (new): if null, default behavior preserved
     this.signatureWidth,
@@ -47,6 +50,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
     this.signatureLeft = false,
     // If null, the receivedBy placement follows signatureLeft; otherwise explicit
     this.receivedByLeft,
+    this.imageProofType = 'Proof',
+    this.signatureType = 'Signature',
   });
 
   /// Section header text displayed at the top
@@ -100,6 +105,12 @@ class BDeliveryDetailsSection extends StatelessWidget {
   /// Optional custom formatter for completedAt (returns formatted string)
   final String Function(String)? completedAtFormatter;
 
+  /// Optional location coordinates/text to show as a map link row.
+  final String location;
+
+  /// Label for the optional location row.
+  final String locationLabel;
+
   /// If true, display signature below the Received By value instead of a watermark
   final bool signatureBelowReceivedBy;
 
@@ -125,6 +136,10 @@ class BDeliveryDetailsSection extends StatelessWidget {
   /// or on the right when false. When null, it follows [signatureLeft].
   final bool? receivedByLeft;
 
+  final String imageProofType;
+
+  final String signatureType;
+
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
@@ -136,6 +151,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
     final hasReceivedBy = receivedBy.isNotEmpty;
     final hasDeparted = departedAt != null && departedAt!.isNotEmpty;
     final hasCompleted = completedAt != null && completedAt!.isNotEmpty;
+    final hasLocation = location.trim().isNotEmpty;
 
     // Decide which side shows the Received By block. If receivedByLeft is null,
     // follow signatureLeft; otherwise use the explicit value. Also ensure there
@@ -148,7 +164,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
         !hasHelper &&
         !hasReceivedBy &&
         !hasDeparted &&
-        !hasCompleted) {
+        !hasCompleted &&
+        !hasLocation) {
       return const SizedBox.shrink();
     }
 
@@ -189,7 +206,6 @@ class BDeliveryDetailsSection extends StatelessWidget {
               computedSignatureHeight =
                   (computedSignatureWidth * 0.5).clamp(40.0, 130.0);
             }
-
             return Stack(
               children: [
                 // Signature watermark - right aligned and faded (only when not using below-received placement)
@@ -208,6 +224,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
                         height: computedSignatureHeight,
                         child: CapturedSignatureImage(
                           requestId: requestId,
+                          type: signatureType,
                         ),
                       ),
                     ),
@@ -260,6 +277,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
                                       height: computedSignatureHeight,
                                       child: CapturedSignatureImage(
                                         requestId: requestId,
+                                        type: signatureType,
                                       ),
                                     ),
                                   ),
@@ -269,7 +287,6 @@ class BDeliveryDetailsSection extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: BSizes.sm),
-
                         // Right column: show Received By if it's not placed on the left
                         Expanded(
                           child: Column(
@@ -293,6 +310,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
                                       height: computedSignatureHeight,
                                       child: CapturedSignatureImage(
                                         requestId: requestId,
+                                        type: signatureType,
                                       ),
                                     ),
                                   ),
@@ -332,6 +350,18 @@ class BDeliveryDetailsSection extends StatelessWidget {
                         padding: EdgeInsets.zero,
                       ),
                     ],
+                    if (hasLocation) ...[
+                      const SizedBox(height: BSizes.sm),
+                      BMapLocationLink(
+                        label: locationLabel,
+                        location: location,
+                        showLabel: true,
+                        icon: Iconsax.location,
+                        padding: EdgeInsets.zero,
+                        mainAlignment: MainAxisAlignment.start,
+                        iconOnly: true,
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -350,11 +380,11 @@ class BDeliveryDetailsSection extends StatelessWidget {
                   showRequestImageDialog(
                     context,
                     requestId: requestId,
-                    fetchIfMissing: true,
                     semanticsLabel:
                         'Delivered item image for request $requestId',
                     apiController: apiController,
                     title: dialogTitle,
+                    type: imageProofType
                   );
                 },
           ),

@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_deliver
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/back_load/backload_transaction_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/request_transport.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_card_horizontal.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -186,14 +187,12 @@ void _handleRequestTap(
   if ((request.status == BTexts.statusItemPrepared ||
           request.status == BTexts.statusForDelivery) &&
       roles.contains(BTexts.roleCourier)) {
-    final config = StandardDeliveryModalConfig.resolve(
-      request: request,
-      role: BTexts.roleCourier,
-      controller: controller,
-    );
     BHelperFunctions.navigateWithSlide(
       context,
-      StandardDeliveryPage(requestModel: request, config: config),
+      RequestTransport(
+        request: request,
+        requestController: controller,
+      ),
       duration: const Duration(milliseconds: 350),
     );
     return;

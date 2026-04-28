@@ -4,12 +4,15 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'dart:typed_data';
 
-import '../../../../../../base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
+/// Displays a saved or remotely fetched signature image for a request.
 class CapturedSignatureImage extends StatelessWidget {
   final String requestId;
+  final String type;
 
-  const CapturedSignatureImage({super.key, required this.requestId});
+  const CapturedSignatureImage(
+      {super.key, required this.requestId, this.type = 'Signature'});
 
   @override
   Widget build(BuildContext context) {
@@ -21,10 +24,10 @@ class CapturedSignatureImage extends StatelessWidget {
     }
     final uri = Uri.parse(base).replace(
       path: '/api4/Request/image',
-      queryParameters: {'requestid': requestId, 'type': 'Signature'},
+      queryParameters: {'requestid': requestId, 'type': type},
     );
-    final imageRequestUrl = uri.toString();
 
+    final imageRequestUrl = uri.toString();
     // First try to load saved signature bytes from local DB. If found, show it directly.
     return FutureBuilder<Uint8List?>(
       future: DatabaseHelper.instance.loadSavedSignatureBytes(requestId),
@@ -96,3 +99,4 @@ class CapturedSignatureImage extends StatelessWidget {
     );
   }
 }
+

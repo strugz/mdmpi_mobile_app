@@ -138,7 +138,7 @@ class StandardDeliveryModalConfig {
                 request.helper == userInitial)) {
           return StandardDeliveryModalConfig(
             role: role,
-            isActionVisible: false,
+            isActionVisible: true,
             navigateTo: (context) => Get.to(
               () => RequestTransport(
                 request: request,

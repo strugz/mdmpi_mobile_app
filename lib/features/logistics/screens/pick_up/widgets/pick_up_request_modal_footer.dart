@@ -13,9 +13,9 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
+import 'package:mdmpi_mobile_app/common/widgets/signature/captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/details/b_label_value.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
@@ -154,7 +154,6 @@ class PickUpRequestModalFooter extends StatelessWidget {
               showRequestImageDialog(
                 context,
                 requestId: requestModel.id,
-                fetchIfMissing: true,
                 semanticsLabel:
                     'Pick Up item image for request ${requestModel.id}',
                 apiController: 'RequestPickUp',

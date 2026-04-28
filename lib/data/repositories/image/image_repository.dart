@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import "package:http_parser/http_parser.dart" show MediaType;
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../../base/utils/exceptions/format_exceptions.dart';
 import '../../../base/utils/exceptions/platform_exceptions.dart';
@@ -92,6 +93,7 @@ class ImageRepository extends GetxController {
   Future<Uint8List> getFileFromApi({
     required String endpoint,
     Map<String, String>? queryParameters,
+    bool showErrorSnackbar = true,
   }) async {
     try {
       final base = dotenv.env['API_URL'] ?? '';
@@ -100,7 +102,7 @@ class ImageRepository extends GetxController {
       if (queryParameters != null && queryParameters.isNotEmpty) {
         uri = uri.replace(queryParameters: queryParameters);
       }
-      print(uri);
+      logDebug('ImageRepository.getFileFromApi: $uri');
       final response = await http.get(uri).timeout(const Duration(seconds: 60));
       if (response.statusCode == 200) {
         return response.bodyBytes;
@@ -111,8 +113,10 @@ class ImageRepository extends GetxController {
     } on PlatformException catch (e) {
       throw TPlatformException(e.code).message;
     } catch (e) {
-      BLoaders.errorSnackBar(
-          title: 'Download Error', message: 'An error occurred: $e');
+      if (showErrorSnackbar) {
+        BLoaders.errorSnackBar(
+            title: 'Download Error', message: 'An error occurred: $e');
+      }
       rethrow;
     }
   }

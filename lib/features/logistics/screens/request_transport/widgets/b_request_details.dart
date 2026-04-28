@@ -22,6 +22,7 @@ import '../../../../../common/controllers/camera_controller.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import '../../../../personalization/controller/user_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
+import 'package:mdmpi_mobile_app/common/widgets/popups/image_preview_dialog.dart';
 
 /// Details content for the Request Transport draggable bottom sheet.
 ///
@@ -257,9 +258,9 @@ class BRequestDetails extends StatelessWidget {
                             if (displayPath.isNotEmpty)
                               Listener(
                                 onPointerDown: (_) {
-                                  if (displayPath.isNotEmpty) {
-                                    _showImagePreview(context, displayPath);
-                                  }
+                                        if (displayPath.isNotEmpty) {
+                                                ImagePreviewDialog.show(context, displayPath);
+                                              }
                                 },
                                 onPointerUp: (_) {
                                   if (Navigator.canPop(context)) {
@@ -355,66 +356,5 @@ class BRequestDetails extends StatelessWidget {
     );
   }
 
-  /// Show image preview overlay for the captured proof image.
-  /// Displays while holding and closes when you release your finger.
-  void _showImagePreview(BuildContext context, String imagePath) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return PopScope(
-          canPop: false,
-          child: Listener(
-            onPointerUp: (_) {
-              Navigator.pop(dialogContext);
-            },
-            child: Dialog(
-              insetPadding: const EdgeInsets.all(0),
-              backgroundColor: Colors.transparent,
-              child: Column(
-                mainAxisSize: MainAxisSize.max,
-                children: [
-                  AppBar(
-                    automaticallyImplyLeading: false,
-                    centerTitle: true,
-                  ),
-                  Expanded(
-                    child: InteractiveViewer(
-                      panEnabled: true,
-                      boundaryMargin: const EdgeInsets.all(20.0),
-                      minScale: 0.5,
-                      maxScale: 4.0,
-                      child: Image.file(
-                        File(imagePath),
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.image_not_supported,
-                                    size: 50, color: BColors.grey),
-                                const SizedBox(height: BSizes.sm),
-                                const Text('Failed to load image'),
-                                const SizedBox(height: BSizes.xs),
-                                Text(
-                                  imagePath,
-                                  style: const TextStyle(fontSize: 10),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  // Replaced by reusable widget: use `ImagePreviewDialog.show(context, path)`
 }

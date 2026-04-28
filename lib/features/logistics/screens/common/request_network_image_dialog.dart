@@ -2,11 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_proof_image.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/b_proof_image.dart';
 
 class RequestNetworkImageDialog extends StatelessWidget {
   final String requestId;
-  const RequestNetworkImageDialog({super.key, required this.requestId});
+  final String apiController;
+  final String type;
+  final String title;
+
+  const RequestNetworkImageDialog({
+    super.key,
+    required this.requestId,
+    required this.apiController,
+    this.type = 'Proof',
+    this.title = BTexts.requestModalDeliveryShotTitle,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +32,8 @@ class RequestNetworkImageDialog extends StatelessWidget {
 
     final apiBase = Uri.parse(base);
     final imageUri = apiBase.replace(
-      path: '/api4/Request/image',
-      queryParameters: {'requestid': requestId, 'type': 'Proof'},
+      path: '/api4/$apiController/image',
+      queryParameters: {'requestid': requestId, 'type': type},
     );
     final imageUrl = imageUri.toString();
 
@@ -43,8 +53,7 @@ class RequestNetworkImageDialog extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(BTexts.requestModalDeliveryShotTitle,
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
                   IconButton(
                     tooltip: BTexts.requestModalCloseButtonText,
                     icon: const Icon(Icons.close),
@@ -87,8 +96,15 @@ class RequestNetworkImageDialog extends StatelessWidget {
                                 onPressed: () async {
                                   // Attempt to fetch raw bytes and show them
                                   final bytes = await BProofImage.instance
-                                      .loadRequestImageBytes(requestId,'Request',
-                                          fetchIfMissing: true);
+                                      .loadRequestImageBytes(
+                                    requestId,
+                                    apiController,
+                                    fetchIfMissing: true,
+                                    type: type,
+                                  );
+                                  if (!context.mounted) {
+                                    return;
+                                  }
                                   if (bytes != null) {
                                     Navigator.of(context).pop();
                                     await showDialog(
@@ -120,8 +136,7 @@ class RequestNetworkImageDialog extends StatelessWidget {
                                                           .spaceBetween,
                                                   children: [
                                                     Text(
-                                                        BTexts
-                                                            .requestModalDeliveryShotTitle,
+                                                        title,
                                                         style: Theme.of(context)
                                                             .textTheme
                                                             .titleMedium),
