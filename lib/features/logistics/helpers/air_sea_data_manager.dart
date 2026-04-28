@@ -345,146 +345,11 @@ class AirSeaDataManager {
             : request.provincialDeliveredLocation,
       );
 
-      final bool signatureWasAdded =
-          (newStatus == BTexts.statusEndorsedToGuard ||
-                  newStatus == BTexts.statusReceived ||
-                  newStatus == BTexts.statusDropOff) &&
-              formState.receiverSignatureBase64.value.isNotEmpty;
-
-      if (signatureWasAdded) {
-        final isConnectedForUpload =
-            await NetworkManager.instance.isConnected();
-        if (isConnectedForUpload) {
-          await ImageRepository.instance.uploadFile(
-            requestId: request.id,
-            base64Image: formState.receiverSignatureBase64.value,
-            type: 'Signature',
-          );
-        } else {
-          BLoaders.warningSnackBar(
-              title: 'No Internet',
-              message:
-                  'Signature saved locally. It will be uploaded when internet connection is available.');
-        }
-      }
-
-      final shouldUploadProof = newStatus == BTexts.statusEndorsedToGuard ||
-          (newStatus == BTexts.statusReceived ||
-              newStatus == BTexts.statusDropOff &&
-                  request.status != BTexts.statusEndorsedToGuard);
-
-      if (shouldUploadProof) {
-        String? finalImageBase64 =
-            await BImageHelperFunctions.getDeliveryImageAsBase64(
-                newStatus, request.id);
-
-        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
-          final isConnectedForUpload =
-              await NetworkManager.instance.isConnected();
-
-          if (isConnectedForUpload) {
-            try {
-              await ImageRepository.instance.uploadFile(
-                requestId: request.id,
-                base64Image: finalImageBase64,
-                type: 'Proof',
-              );
-            } catch (e) {
-              BLoaders.warningSnackBar(
-                title: 'Upload Failed',
-                message:
-                    'Image proof could not be uploaded. It will be synced when connection is available.',
-              );
-            }
-          } else {
-            BLoaders.warningSnackBar(
-                title: 'No Internet',
-                message:
-                    'Image saved locally. It will be uploaded when internet connection is available.');
-          }
-        } else {
-          logDebug(
-              'AirSeaDataManager: No image to upload (finalImageBase64 is null or empty) for status: $newStatus');
-        }
-      } else {
-        logDebug(
-            'AirSeaDataManager: Skipping proof image upload - already uploaded during previous status transition (current: ${request.status} → new: $newStatus)');
-      }
-
-      if (newStatus == BTexts.statusProvincialPickUp) {
-        String? finalImageBase64 =
-            await BImageHelperFunctions.getDeliveryImageAsBase64(
-                newStatus, '${request.id}_provincial_pick_up');
-
-        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
-          final isConnectedForUpload =
-              await NetworkManager.instance.isConnected();
-
-          if (isConnectedForUpload) {
-            try {
-              await ImageRepository.instance.uploadFile(
-                requestId: request.id,
-                base64Image: finalImageBase64,
-                type: 'Provincial_PickUp_Proof',
-              );
-            } catch (e) {
-              BLoaders.warningSnackBar(
-                title: 'Upload Failed',
-                message:
-                    'Provincial pick-up proof image could not be uploaded. It will be synced when connection is available.',
-              );
-            }
-          }
-        }
-      }
-
-      if (newStatus == BTexts.statusProvincialDelivered) {
-        String? finalImageBase64 =
-            await BImageHelperFunctions.getDeliveryImageAsBase64(
-                newStatus, '${request.id}_provincial_delivery');
-
-        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
-          final isConnectedForUpload =
-              await NetworkManager.instance.isConnected();
-
-          if (isConnectedForUpload) {
-            try {
-              await ImageRepository.instance.uploadFile(
-                requestId: request.id,
-                base64Image: finalImageBase64,
-                type: 'Provincial_Delivery_Proof',
-              );
-            } catch (e) {
-              BLoaders.warningSnackBar(
-                title: 'Upload Failed',
-                message:
-                    'Provincial delivery proof image could not be uploaded. It will be synced when connection is available.',
-              );
-            }
-          }
-        }
-      }
-
-      final bool provincialSignatureWasAdded =
-          (newStatus == BTexts.statusProvincialDelivered) &&
-              formState.receiverSignatureBase64.value.isNotEmpty;
-
-      if (provincialSignatureWasAdded) {
-        final isConnectedForUpload =
-        await NetworkManager.instance.isConnected();
-        if (isConnectedForUpload) {
-          await ImageRepository.instance.uploadFile(
-            requestId: request.id,
-            base64Image: formState.receiverSignatureBase64.value,
-            type: 'Provincial_Signature',
-          );
-        } else {
-          BLoaders.warningSnackBar(
-              title: 'No Internet',
-              message:
-              'Signature saved locally. It will be uploaded when internet connection is available.');
-        }
-      }
+      await _handleStatusUploads(
+        request: request,
+        newStatus: newStatus,
+        formState: formState,
+      );
 
       final payload = AirSeaMapper.toUpdateDto(updated, userInitial);
 
@@ -501,6 +366,186 @@ class AirSeaDataManager {
     } finally {
       formState.reset();
       controller.isSaving.value = false;
+    }
+  }
+
+  Future<void> _handleStatusUploads({
+    required AirSeaModel request,
+    required String newStatus,
+    required AirSeaFormState formState,
+  }) async {
+    final signatureBase64 = formState.receiverSignatureBase64.value;
+
+    await _uploadSignatureIfNeeded(
+      shouldUpload: _shouldUploadStandardSignature(
+        newStatus: newStatus,
+        signatureBase64: signatureBase64,
+      ),
+      requestId: request.id,
+      signatureBase64: signatureBase64,
+      type: 'Signature',
+    );
+
+    final shouldUploadProof = _shouldUploadStandardProof(
+      currentStatus: request.status,
+      newStatus: newStatus,
+    );
+
+    if (shouldUploadProof) {
+      await _uploadProofImageIfNeeded(
+        requestId: request.id,
+        newStatus: newStatus,
+        imageLookupKey: request.id,
+        type: 'Proof',
+        uploadFailureMessage:
+            'Image proof could not be uploaded. It will be synced when connection is available.',
+        offlineMessage:
+            'Image saved locally. It will be uploaded when internet connection is available.',
+        emptyImageLogMessage:
+            'AirSeaDataManager: No image to upload (finalImageBase64 is null or empty) for status: $newStatus',
+      );
+    } else {
+      logDebug(
+          'AirSeaDataManager: Skipping proof image upload - already uploaded during previous status transition (current: ${request.status} → new: $newStatus)');
+    }
+
+    await _uploadProvincialProofIfNeeded(
+      requestId: request.id,
+      newStatus: newStatus,
+    );
+
+    await _uploadSignatureIfNeeded(
+      shouldUpload: newStatus == BTexts.statusProvincialDelivered &&
+          signatureBase64.isNotEmpty,
+      requestId: request.id,
+      signatureBase64: signatureBase64,
+      type: 'Provincial_Signature',
+    );
+  }
+
+  bool _shouldUploadStandardSignature({
+    required String newStatus,
+    required String signatureBase64,
+  }) {
+    if (signatureBase64.isEmpty) {
+      return false;
+    }
+
+    return newStatus == BTexts.statusEndorsedToGuard ||
+        newStatus == BTexts.statusReceived ||
+        newStatus == BTexts.statusDropOff;
+  }
+
+  bool _shouldUploadStandardProof({
+    required String currentStatus,
+    required String newStatus,
+  }) {
+    return newStatus == BTexts.statusEndorsedToGuard ||
+        newStatus == BTexts.statusReceived ||
+        (newStatus == BTexts.statusDropOff &&
+            currentStatus != BTexts.statusEndorsedToGuard);
+  }
+
+  Future<void> _uploadProvincialProofIfNeeded({
+    required String requestId,
+    required String newStatus,
+  }) async {
+    if (newStatus == BTexts.statusProvincialPickUp) {
+      await _uploadProofImageIfNeeded(
+        requestId: requestId,
+        newStatus: newStatus,
+        imageLookupKey: '${requestId}_provincial_pick_up',
+        type: 'Provincial_PickUp_Proof',
+        uploadFailureMessage:
+            'Provincial pick-up proof image could not be uploaded. It will be synced when connection is available.',
+        showOfflineWarning: false,
+      );
+    }
+
+    if (newStatus == BTexts.statusProvincialDelivered) {
+      await _uploadProofImageIfNeeded(
+        requestId: requestId,
+        newStatus: newStatus,
+        imageLookupKey: '${requestId}_provincial_delivery',
+        type: 'Provincial_Delivery_Proof',
+        uploadFailureMessage:
+            'Provincial delivery proof image could not be uploaded. It will be synced when connection is available.',
+        showOfflineWarning: false,
+      );
+    }
+  }
+
+  Future<void> _uploadSignatureIfNeeded({
+    required bool shouldUpload,
+    required String requestId,
+    required String signatureBase64,
+    required String type,
+  }) async {
+    if (!shouldUpload) {
+      return;
+    }
+
+    final isConnectedForUpload = await NetworkManager.instance.isConnected();
+    if (isConnectedForUpload) {
+      await ImageRepository.instance.uploadFile(
+        requestId: requestId,
+        base64Image: signatureBase64,
+        type: type,
+      );
+      return;
+    }
+
+    BLoaders.warningSnackBar(
+      title: 'No Internet',
+      message:
+          'Signature saved locally. It will be uploaded when internet connection is available.',
+    );
+  }
+
+  Future<void> _uploadProofImageIfNeeded({
+    required String requestId,
+    required String newStatus,
+    required String imageLookupKey,
+    required String type,
+    required String uploadFailureMessage,
+    String? offlineMessage,
+    String? emptyImageLogMessage,
+    bool showOfflineWarning = true,
+  }) async {
+    final imageBase64 = await BImageHelperFunctions.getDeliveryImageAsBase64(
+      newStatus,
+      imageLookupKey,
+    );
+
+    if (imageBase64 == null || imageBase64.isEmpty) {
+      if (emptyImageLogMessage != null) {
+        logDebug(emptyImageLogMessage);
+      }
+      return;
+    }
+
+    final isConnectedForUpload = await NetworkManager.instance.isConnected();
+    if (!isConnectedForUpload) {
+      if (showOfflineWarning && offlineMessage != null) {
+        BLoaders.warningSnackBar(
+          title: 'No Internet',
+          message: offlineMessage,
+        );
+      }
+      return;
+    }
+
+    try {
+      await ImageRepository.instance.uploadFile(
+        requestId: requestId,
+        base64Image: imageBase64,
+        type: type,
+      );
+    } catch (e) {
+      BLoaders.warningSnackBar(
+        title: 'Upload Failed',
+        message: uploadFailureMessage,
+      );
     }
   }
 

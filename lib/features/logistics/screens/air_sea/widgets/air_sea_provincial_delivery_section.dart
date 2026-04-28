@@ -42,18 +42,10 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: BSizes.spaceBtwItems),
-        const BTextDivider(text: 'Provincial Delivered'),
-        const SizedBox(height: BSizes.sm),
         if (isEditable) ...[
-          BTextFormField(
-            controller: formState.provincialDeliveredToController,
-            label: 'Recipient Name',
-            prefixIcon: Iconsax.user,
-            keyboardType: TextInputType.name,
-            textCapitalization: TextCapitalization.words,
-          ),
           const SizedBox(height: BSizes.spaceBtwItems),
+          const BTextDivider(text: 'Provincial Delivery'),
+          const SizedBox(height: BSizes.sm),
           Center(
             child: Obx(() {
               final sig = formState.receiverSignatureBytes.value;
@@ -144,33 +136,16 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
           }),
         ] else ...[
           if (requestModel.provincialReceiverName.isNotEmpty)
-            BLabelValueText(
-              label: 'Recipient Name',
-              value: requestModel.provincialReceiverName,
-              showLabel: true,
-              icon: Iconsax.user,
-              padding: EdgeInsets.zero,
-              mainAlignment: MainAxisAlignment.start,
-            ),
-          if (requestModel.provincialDeliveredEndAt.isNotEmpty)
-            BLabelValueText(
-              label: 'Delivered At',
-              value: BFormatter.formatDateWithAmPm(
-                requestModel.provincialDeliveredEndAt,
-              ),
-              showLabel: true,
-              icon: Iconsax.calendar_1,
-              padding: EdgeInsets.zero,
-              mainAlignment: MainAxisAlignment.start,
-            ),
-          const SizedBox(height: BSizes.xs),
+            const SizedBox(height: BSizes.xs),
           BDeliveryDetailsSection(
             driver: requestModel.provincialPickUpBy,
+            driverLabel: 'Delivered By',
             receivedBy: requestModel.provincialReceiverName,
             receivedByLabel: 'Recipient Name',
             completedAt: BFormatter.formatDateWithAmPm(
               requestModel.provincialDeliveredEndAt,
             ),
+            sectionTitle: 'Provincial Delivery Details',
             completedAtLabel: 'Delivered At',
             requestId: requestModel.id,
             apiController: 'RequestAirSea',
@@ -184,7 +159,6 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
             location: requestModel.provincialDeliveredLocation,
             locationLabel: 'Delivered Location',
           ),
-
         ],
       ],
     );

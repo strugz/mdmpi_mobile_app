@@ -22,6 +22,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
     super.key,
     this.sectionTitle = 'Delivery Details',
     this.driver = '',
+    this.driverLabel = 'Driver',
     this.helper = '',
     this.receivedBy = '',
     this.receivedByLabel = 'Released By',
@@ -59,6 +60,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
 
   /// Driver name to display
   final String driver;
+
+  final String driverLabel;
 
   /// Helper name to display
   final String helper;
@@ -244,7 +247,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
                             children: [
                               if (hasDriver)
                                 BProductTitleText(
-                                  title: 'Driver: $driver',
+                                  title: '$driverLabel: $driver',
                                   maxLines: 3,
                                   smallSize: true,
                                   fontColor: textColor,
