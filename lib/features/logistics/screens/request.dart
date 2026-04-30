@@ -174,19 +174,19 @@ class _RequestScreenState extends State<RequestScreen>
       barrierLabel: 'Custom Filter',
       barrierColor: Colors.black54,
       pageBuilder: (_, __, ___) {
-        final categoryOptions = categoryController.allPendingRequests
-            .map((item) => item.itemCategoryID)
-            .where((id) => id.isNotEmpty)
-            .toSet()
+        final categoryOptions = categoryController.formState.itemCategories
+            .map((item) => MapEntry(item.id, item.name))
+            .where((item) => item.key.isNotEmpty)
             .toList()
-          ..sort();
+          ..sort((a, b) => a.value.compareTo(b.value));
 
         return CustomFilterPanel(
           title: 'Standard Delivery Filters',
           onReset: () {
             categoryController.selectFilter(RequestFilter.today);
             categoryController.selectStatusFilter(StandardDeliveryStatusFilter.all);
-            categoryController.selectSpecificDate(null);
+            categoryController.selectDateFrom(null);
+            categoryController.selectDateTo(null);
             categoryController.selectItemCategoryId('');
             categoryController.setClientNameQuery('');
           },
@@ -201,22 +201,41 @@ class _RequestScreenState extends State<RequestScreen>
               onFilterChanged: categoryController.selectFilter,
             ),
             const SizedBox(height: BSizes.spaceBtwItems),
-            Text('Specific Date', style: Theme.of(context).textTheme.titleMedium),
+            Text('Date From', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Obx(() {
-              final date = categoryController.filterManager.selectedSpecificDate.value;
+              final dateFrom = categoryController.filterManager.selectedDateFrom.value;
               return OutlinedButton.icon(
                 onPressed: () async {
                   final picked = await showDatePicker(
                     context: context,
-                    initialDate: date ?? DateTime.now(),
+                    initialDate: dateFrom ?? DateTime.now(),
                     firstDate: DateTime(2000),
                     lastDate: DateTime(2100),
                   );
-                  categoryController.selectSpecificDate(picked);
+                  categoryController.selectDateFrom(picked);
                 },
                 icon: const Icon(Icons.calendar_today),
-                label: Text(date == null ? 'Pick date' : date.toIso8601String().split('T').first),
+                label: Text(dateFrom == null ? 'Pick start date' : dateFrom.toIso8601String().split('T').first),
+              );
+            }),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            Text('Date To', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Obx(() {
+              final dateTo = categoryController.filterManager.selectedDateTo.value;
+              return OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: dateTo ?? DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  categoryController.selectDateTo(picked);
+                },
+                icon: const Icon(Icons.event),
+                label: Text(dateTo == null ? 'Pick end date' : dateTo.toIso8601String().split('T').first),
               );
             }),
             const SizedBox(height: BSizes.spaceBtwItems),
@@ -237,7 +256,7 @@ class _RequestScreenState extends State<RequestScreen>
                       : categoryController.filterManager.selectedItemCategoryId.value,
                   items: [
                     const DropdownMenuItem(value: '', child: Text('All Categories')),
-                    ...categoryOptions.map((id) => DropdownMenuItem(value: id, child: Text(id))),
+                    ...categoryOptions.map((item) => DropdownMenuItem(value: item.key, child: Text(item.value))),
                   ],
                   onChanged: (value) => categoryController.selectItemCategoryId(value ?? ''),
                   decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),

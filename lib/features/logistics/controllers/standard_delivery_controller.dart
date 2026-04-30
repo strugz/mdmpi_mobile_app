@@ -275,8 +275,12 @@ class StandardDeliveryController extends GetxController
     filterManager.selectFilter(filter, allPendingRequests);
   }
 
-  void selectSpecificDate(DateTime? date) {
-    filterManager.selectSpecificDate(date, allPendingRequests);
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, allPendingRequests);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, allPendingRequests);
   }
 
   void selectItemCategoryId(String categoryId) {

@@ -42,7 +42,8 @@ enum StandardDeliveryStatusFilter {
 class StandardDeliveryFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
   final Rx<StandardDeliveryStatusFilter> selectedStatusFilter = StandardDeliveryStatusFilter.all.obs;
-  final Rxn<DateTime> selectedSpecificDate = Rxn<DateTime>();
+  final Rxn<DateTime> selectedDateFrom = Rxn<DateTime>();
+  final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
   final RxString selectedItemCategoryId = ''.obs;
   final RxString clientNameQuery = ''.obs;
   final RxList<StandardDeliveryModel> filteredRequests = <StandardDeliveryModel>[].obs;
@@ -54,7 +55,8 @@ class StandardDeliveryFilterManager {
   void reset([List<StandardDeliveryModel>? allRequests]) {
     selectedFilter.value = RequestFilter.today;
     selectedStatusFilter.value = StandardDeliveryStatusFilter.all;
-    selectedSpecificDate.value = null;
+    selectedDateFrom.value = null;
+    selectedDateTo.value = null;
     selectedItemCategoryId.value = '';
     clientNameQuery.value = '';
     filteredRequests.clear();
@@ -75,7 +77,8 @@ class StandardDeliveryFilterManager {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
-    final specificDate = selectedSpecificDate.value;
+    final dateFrom = selectedDateFrom.value;
+    final dateTo = selectedDateTo.value;
     final itemCategoryId = selectedItemCategoryId.value;
     final clientQuery = clientNameQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
@@ -127,11 +130,10 @@ class StandardDeliveryFilterManager {
         }
       }
 
-      final specificDateMatches = specificDate == null ||
-          (deliveryDate != null &&
-              deliveryDate.year == specificDate.year &&
-              deliveryDate.month == specificDate.month &&
-              deliveryDate.day == specificDate.day);
+      final dateFromMatches = dateFrom == null ||
+          (deliveryDate != null && !deliveryDate.isBefore(DateTime(dateFrom.year, dateFrom.month, dateFrom.day)));
+      final dateToMatches = dateTo == null ||
+          (deliveryDate != null && !deliveryDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
 
       final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryID == itemCategoryId;
 
@@ -139,7 +141,8 @@ class StandardDeliveryFilterManager {
       final clientNameMatches = clientQuery.isEmpty || clientName.contains(clientQuery);
 
       return dateMatches &&
-          specificDateMatches &&
+          dateFromMatches &&
+          dateToMatches &&
           statusMatches &&
           itemCategoryMatches &&
           clientNameMatches &&
@@ -172,8 +175,13 @@ class StandardDeliveryFilterManager {
     applyFilter(allRequests.toList());
   }
 
-  void selectSpecificDate(DateTime? date, RxList<StandardDeliveryModel> allRequests) {
-    selectedSpecificDate.value = date;
+  void selectDateFrom(DateTime? date, RxList<StandardDeliveryModel> allRequests) {
+    selectedDateFrom.value = date;
+    applyFilter(allRequests.toList());
+  }
+
+  void selectDateTo(DateTime? date, RxList<StandardDeliveryModel> allRequests) {
+    selectedDateTo.value = date;
     applyFilter(allRequests.toList());
   }
 
