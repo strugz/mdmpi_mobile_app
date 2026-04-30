@@ -4,6 +4,8 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
@@ -95,6 +97,91 @@ class _RequestScreenState extends State<RequestScreen>
     controller.updateTabIndex(index);
   }
 
+
+  void _openCustomFilterPanel() {
+    if (_tabController == null) return;
+
+    final currentIndex = _tabController!.index;
+    if (currentIndex >= controller.formCategories.length) return;
+
+    final category = controller.formCategories[currentIndex];
+    final categoryController = controller.getControllerForCategory(category.name);
+    final lowerName = category.name.toLowerCase();
+
+    if (categoryController is! StandardDeliveryController ||
+        !(lowerName.contains('standard') || lowerName.contains('delivery'))) {
+      Get.snackbar('Custom Filter', 'Custom filters are available for Standard Delivery only (for now).');
+      return;
+    }
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Custom Filter',
+      barrierColor: Colors.black54,
+      pageBuilder: (_, __, ___) {
+        return SafeArea(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Material(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.82,
+                padding: const EdgeInsets.all(BSizes.defaultSpace),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Standard Delivery Filters',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: BSizes.spaceBtwItems),
+                    Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Obx(() => FilterDropdown<RequestFilter>(
+                      selectedFilter: categoryController.filterManager.selectedFilter,
+                      filterValues: RequestFilter.values,
+                      getDisplayName: (f) => f.displayName,
+                      onFilterChanged: categoryController.selectFilter,
+                    )),
+                    const SizedBox(height: BSizes.spaceBtwItems),
+                    Text('Status', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Obx(() => FilterDropdown<StandardDeliveryStatusFilter>(
+                      selectedFilter: categoryController.filterManager.selectedStatusFilter,
+                      filterValues: StandardDeliveryStatusFilter.values,
+                      getDisplayName: (f) => f.displayName,
+                      onFilterChanged: categoryController.selectStatusFilter,
+                    )),
+                    const Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          categoryController.selectFilter(RequestFilter.today);
+                          categoryController.selectStatusFilter(StandardDeliveryStatusFilter.all);
+                        },
+                        icon: const Icon(Icons.restart_alt),
+                        label: const Text('Reset to Default'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userController = Get.find<UserController>();
@@ -147,6 +234,12 @@ class _RequestScreenState extends State<RequestScreen>
         appBar: BAppBar(
           title: Text('Request', style: Theme.of(context).textTheme.headlineMedium),
           actions: [
+            if (_tabController != null)
+              IconButton(
+                icon: const Icon(Icons.tune),
+                tooltip: 'Custom Filter',
+                onPressed: _openCustomFilterPanel,
+              ),
             if (_tabController != null)
               AnimatedBuilder(
                 animation: _tabController!,
