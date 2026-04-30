@@ -81,6 +81,22 @@ class PullOutController extends GetxController {
     filterManager.selectFilter(filter, pullOuts);
   }
 
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, pullOuts);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, pullOuts);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, pullOuts);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, pullOuts);
+  }
+
   /// Fetch all pull-out requests from repository.
   Future<void> loadPullOuts() async {
     await dataManager.fetchPullOuts(this, useLocalStorage.value);
