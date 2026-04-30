@@ -294,10 +294,7 @@ class RequestDao {
   }
 
   /// Return all receiver signature rows (RequestID, RequestReceiverSignature)
-  Future<List<Map<String, dynamic>>> getAllReceiverSignatures() async {
-    final List<Map<String, dynamic>> maps = await db.query('a_tblRequestReceiverSignature');
-    return maps;
-  }
+  // getAllReceiverSignatures moved to SignatureDao
 
   /// Return all request image rows (RequestID, RequestImage)
   Future<List<Map<String, dynamic>>> getAllRequestImages() async {
@@ -325,6 +322,8 @@ class RequestDao {
       );
     }
   }
+
+  // insertReceiverSignature and deleteReceiverSignatureByRequestId moved to SignatureDao
 
   // Remarks helpers
   Future<int> _insertRemark(String requestID, String remarks, String date) async {

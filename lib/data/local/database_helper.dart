@@ -16,6 +16,7 @@ import 'dao/pick_up/pick_up_dao.dart';
 import 'dao/air_sea/air_sea_dao.dart';
 import 'dao/pull_out/pull_out_dao.dart';
 import 'dao/common/document_reference_dao.dart';
+import 'dao/common/signature_dao.dart';
 import 'dao/common/backload_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
@@ -38,6 +39,7 @@ class DatabaseHelper {
 
   // Cached DAO instances
   RequestDao? _requestDao;
+  SignatureDao? _signatureDao;
   PickUpDao? _pickUpDao;
   AirSeaDao? _airSeaDao;
   PullOutDao? _pullOutDao;
@@ -95,6 +97,12 @@ class DatabaseHelper {
       // path by excluding it in _recreateAllTables.
       await _recreateAllTables(db);
     }
+
+    // Ensure ApiStatus column exists on the signature table for older DBs.
+    // This is safe and idempotent: on fresh installs the canonical schema
+    // already includes the column; on upgrade we ALTER only if missing.
+    await _addColumnIfNotExists(db, 'a_tblRequestReceiverSignature',
+        'ApiStatus', "TEXT DEFAULT 'Pending'");
   }
 
   /// Drop cache-backed tables and recreate from the canonical schema.
@@ -138,12 +146,36 @@ class DatabaseHelper {
     ''');
   }
 
+  /// Adds a column to a table if it does not already exist. This is idempotent
+  /// and safe to call during upgrades to avoid destructive migrations.
+  Future<void> _addColumnIfNotExists(
+      Database db, String table, String columnName, String definition) async {
+    try {
+      final List<Map<String, Object?>> info =
+          await db.rawQuery('PRAGMA table_info($table)');
+      final exists = info.any((row) => (row['name'] as String?) == columnName);
+      if (!exists) {
+        await db
+            .execute('ALTER TABLE $table ADD COLUMN $columnName $definition');
+      }
+    } catch (e) {
+      // Swallow errors to avoid blocking upgrades; callers should log if needed.
+    }
+  }
+
   // --- DAO getters ---
   Future<RequestDao> get requestDao async {
     if (_requestDao != null) return _requestDao!;
     final db = await database;
     _requestDao = RequestDao(db);
     return _requestDao!;
+  }
+
+  Future<SignatureDao> get signatureDao async {
+    if (_signatureDao != null) return _signatureDao!;
+    final db = await database;
+    _signatureDao = SignatureDao(db);
+    return _signatureDao!;
   }
 
   Future<DocumentReferenceDao> get documentReferenceDao async {
@@ -307,7 +339,7 @@ class DatabaseHelper {
 
   // --- Signature/image helpers delegated to RequestDao ---
   Future<String?> getReceiverSignatureByRequestId(dynamic requestID) async {
-    final dao = await requestDao;
+    final dao = await signatureDao;
     return await dao.getReceiverSignatureByRequestId(requestID);
   }
 
@@ -350,6 +382,26 @@ class DatabaseHelper {
     } catch (e) {
       return null;
     }
+  }
+
+  /// Insert (or replace) a receiver signature row with optional ApiStatus.
+  /// Use `apiStatus = 'Pending'` for initial local saves and
+  /// `apiStatus = 'Failed'` when creating an outbox entry after a transaction
+  /// succeeded but signature upload failed.
+  Future<void> insertReceiverSignature(
+      {required dynamic requestID,
+      required String signature,
+      String apiStatus = 'Pending'}) async {
+    final dao = await signatureDao;
+    return await dao.insertReceiverSignature(
+        requestID: requestID, signature: signature, apiStatus: apiStatus);
+  }
+
+  /// Delete a receiver signature row by request ID. This is used to clear
+  /// outbox entries after a successful upload via the Signature Outbox UI.
+  Future<int> deleteReceiverSignatureByRequestId(dynamic requestID) async {
+    final dao = await signatureDao;
+    return await dao.deleteReceiverSignatureByRequestId(requestID);
   }
 
   // --- CNTMST helpers (delegated) ---

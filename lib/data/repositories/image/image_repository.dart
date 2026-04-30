@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../../base/utils/exceptions/format_exceptions.dart';
 import '../../../base/utils/exceptions/platform_exceptions.dart';
+import '../../../base/utils/result.dart';
 import '../../../base/utils/popups/loaders.dart';
 
 /// Repository responsible for image upload/download operations.
@@ -17,10 +18,11 @@ class ImageRepository extends GetxController {
 
   /// Upload a file (Signature or Image proof) for a request using multipart/form-data.
   /// Sends form fields: `Image` (file), `RequestID`, `Type`.
-  Future<void> uploadFile({
+  Future<Result<void>> uploadFile({
     required String requestId,
     required String base64Image,
     required String type,
+    bool showFeedback = true,
   }) async {
     try {
 
@@ -50,21 +52,37 @@ class ImageRepository extends GetxController {
       final response = await http.Response.fromStream(streamed);
 
       if (response.statusCode == 200) {
-        BLoaders.successSnackBar(
-            title: 'Information', message: 'File uploaded');
+        if (showFeedback) {
+          BLoaders.successSnackBar(
+              title: 'Information', message: 'File uploaded');
+        }
+        return Result.success(null);
       } else {
-        BLoaders.errorSnackBar(
-            title: 'Upload Failed',
-            message:
-                'Failed to upload file. Status: ${response.statusCode}. Body: ${response.body}');
+        final msg =
+            'Failed to upload file. Status: ${response.statusCode}. Body: ${response.body}';
+        if (showFeedback) {
+          BLoaders.errorSnackBar(title: 'Upload Failed', message: msg);
+        }
+        return Result.failure(msg);
       }
-    } on TFormatException catch (_) {
-      throw TFormatException();
+    } on TFormatException catch (e) {
+      final msg = e.formattedMessage;
+      if (showFeedback) {
+        BLoaders.errorSnackBar(title: 'Upload Error', message: msg);
+      }
+      return Result.failure(msg);
     } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+      final msg = TPlatformException(e.code).message;
+      if (showFeedback) {
+        BLoaders.errorSnackBar(title: 'Upload Error', message: msg);
+      }
+      return Result.failure(msg);
     } catch (e) {
-      BLoaders.errorSnackBar(
-          title: 'Upload Error', message: 'An error occurred: $e');
+      final msg = 'An error occurred: $e';
+      if (showFeedback) {
+        BLoaders.errorSnackBar(title: 'Upload Error', message: msg);
+      }
+      return Result.failure(msg);
     }
   }
 

@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
@@ -208,17 +210,26 @@ class SettingsScreen extends StatelessWidget {
                     onTap: () => Get.to(() => ContactDirectoryScreen()),
                   ),
 
-                  const BSectionHeading(
-                      title: 'Developer Tools', showActionButton: false),
-                  const SizedBox(height: BSizes.spaceBtwItems),
-                  BSettingsMenuTile(
-                    icon: Iconsax.data,
-                    title: 'Local Storage Viewer',
-                    subTitle: 'View and manage local database tables',
-                    onTap: () {
-                      Get.to(() => const LocalStorageDataViewer());
-                    },
-                  ),
+                  if (kDebugMode) ...[
+                    const BSectionHeading(
+                        title: 'Developer Tools', showActionButton: false),
+                    const SizedBox(height: BSizes.spaceBtwItems),
+                    BSettingsMenuTile(
+                      icon: Iconsax.data,
+                      title: 'Local Storage Viewer',
+                      subTitle: 'View and manage local database tables',
+                      onTap: () {
+                        Get.to(() => const LocalStorageDataViewer());
+                      },
+                    ),
+                    BSettingsMenuTile(
+                      icon: Iconsax.pen_add,
+                      title: 'Signature Outbox',
+                      subTitle:
+                          'Review pending or failed receiver signature uploads',
+                      onTap: () => Get.toNamed(BRoutes.signatureOutbox),
+                    ),
+                  ],
 
                   /// --  Logout Button
                   const SizedBox(height: BSizes.spaceBtwSections),

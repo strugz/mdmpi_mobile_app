@@ -284,11 +284,18 @@ class StandardDeliveryDataManager {
         final isConnectedForUpload =
             await NetworkManager.instance.isConnected();
         if (isConnectedForUpload) {
-          await ImageRepository.instance.uploadFile(
+          final validation = await ImageRepository.instance.uploadFile(
             requestId: request.id,
             base64Image: formState.receiverSignatureBase64.string,
             type: 'Signature',
           );
+
+          if (validation.isFailure) {
+            _dbHelper.insertReceiverSignature(
+                requestID: request.id,
+                signature: formState.receiverSignatureBase64.string,
+                apiStatus: 'Uploaded');
+          }
         } else {
           BLoaders.warningSnackBar(
               title: 'No Internet',
@@ -296,7 +303,6 @@ class StandardDeliveryDataManager {
                   'Signature saved locally. It will be uploaded when internet connection is available.');
         }
       }
-
       // Handle image proof upload
       final bool imageProofWasAdded = newStatus == BTexts.statusDoneDelivery &&
           request.image.isEmpty &&

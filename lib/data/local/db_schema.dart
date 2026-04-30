@@ -64,6 +64,7 @@ Future<void> createAllTables(Database db) async {
     CREATE TABLE a_tblRequestReceiverSignature (
       RequestID INTEGER UNIQUE,
       RequestReceiverSignature TEXT,
+      ApiStatus TEXT DEFAULT 'Failed',
       FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
     )
   ''');

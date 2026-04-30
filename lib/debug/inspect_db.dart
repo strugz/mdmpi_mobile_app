@@ -18,16 +18,7 @@ Future<void> main() async {
 
     final dao = await helper.requestDao;
 
-    final sigs = await dao.getAllReceiverSignatures();
     final imgs = await dao.getAllRequestImages();
-
-    print('=== DB inspection start ===');
-    print('Receiver signatures count: ${sigs.length}');
-    for (var row in sigs) {
-      final id = row['RequestID'];
-      final val = row['RequestReceiverSignature'] as String?;
-      print('sig row: RequestID=$id, bytesLength=${val?.length ?? 0}');
-    }
 
     print('Request images count: ${imgs.length}');
     for (var row in imgs) {

@@ -26,6 +26,7 @@ class CameraHandlerController extends GetxController
       Get.find<StandardDeliveryController>();
   late AnimationController _flashAnimController;
   late Animation<double> flashOpacity;
+  Future<void>? _cameraInitializationFuture;
 
   final imageProofPath = RxString('');
   final recognizedText = Rx<String>('');
@@ -44,7 +45,6 @@ class CameraHandlerController extends GetxController
   @override
   void onInit() {
     super.onInit();
-    _initializeAndPreparePreview();
     _flashAnimController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -62,26 +62,54 @@ class CameraHandlerController extends GetxController
 
   @override
   void onClose() {
+    _flashAnimController.dispose();
     _cameraService.dispose();
     _textRecognitionService.close();
     super.onClose();
   }
 
-  /// --- Initialize the camera and prepare the preview ---
-  Future<void> _initializeAndPreparePreview() async {
+  /// Initializes the camera only when a preview/capture flow actually needs it.
+  Future<void> ensureCameraReady() async {
+    if (_cameraService.isInitialized) {
+      isCameraLoading.value = false;
+      return;
+    }
+
+    if (_cameraInitializationFuture != null) {
+      await _cameraInitializationFuture;
+      return;
+    }
+
     isCameraLoading.value = true;
+    _cameraInitializationFuture = _initializeCamera();
+
+    try {
+      await _cameraInitializationFuture;
+    } finally {
+      _cameraInitializationFuture = null;
+    }
+  }
+
+  Future<void> _initializeCamera() async {
     try {
       await _cameraService.initialize();
       logDebug('Camera initialized successfully (via service in controller)');
     } catch (e) {
       logDebug('Error initializing camera (via service in controller): $e');
+    } finally {
+      isCameraLoading.value = false;
     }
-    isCameraLoading.value = false;
   }
 
   /// --- Scan text from the camera preview and update the recognizedText variable ---
   Future<void> scanText(TextEditingController controller) async {
-    if (!_cameraService.isInitialized || isProcessing.value) {
+    if (isProcessing.value) {
+      return;
+    }
+
+    await ensureCameraReady();
+
+    if (!_cameraService.isInitialized) {
       return;
     }
     isProcessing.value = true;
@@ -120,7 +148,13 @@ class CameraHandlerController extends GetxController
   /// Scans text and populates a single field with the first matched pattern.
   /// Used for single-field scenarios like waybill numbers, tracking codes, etc.
   Future<void> scanSingleField(TextEditingController controller) async {
-    if (!_cameraService.isInitialized || isProcessing.value) {
+    if (isProcessing.value) {
+      return;
+    }
+
+    await ensureCameraReady();
+
+    if (!_cameraService.isInitialized) {
       return;
     }
     isProcessing.value = true;
@@ -191,7 +225,13 @@ class CameraHandlerController extends GetxController
 
   /// --- Take Picture and Save to the device ---
   Future<void> takePicture(String pictureName) async {
-    if (!_cameraService.isInitialized || isProcessing.value) {
+    if (isProcessing.value) {
+      return;
+    }
+
+    await ensureCameraReady();
+
+    if (!_cameraService.isInitialized) {
       return;
     }
 
@@ -219,7 +259,13 @@ class CameraHandlerController extends GetxController
   /// --- Take Picture and Return Path (without saving) ---
   /// Used for photo review screens where user can confirm/retake
   Future<String?> takePictureForReview() async {
-    if (!_cameraService.isInitialized || isProcessing.value) {
+    if (isProcessing.value) {
+      return null;
+    }
+
+    await ensureCameraReady();
+
+    if (!_cameraService.isInitialized) {
       return null;
     }
 
@@ -255,6 +301,10 @@ class CameraHandlerController extends GetxController
 
   /// --- Resume the camera preview ---
   Future<void> resumePreview() async {
+    if (!_cameraService.isInitialized) {
+      await ensureCameraReady();
+    }
+
     await _cameraService.resumePreview();
   }
 

@@ -19,6 +19,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_mod
 import 'package:mdmpi_mobile_app/features/personalization/screens/address/add_new_address.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/signature_outbox_page.dart';
 
 import '../../../features/logistics/screens/request.dart';
 import '../../../features/logistics/screens/data_test/local_storage_data_viewer.dart';
@@ -38,6 +39,7 @@ class AppRoutes {
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
     GetPage(name: BRoutes.pullOutForm, page: () => const PullOutForm()),
     GetPage(name: BRoutes.localStorageViewer, page: () => const LocalStorageDataViewer()),
+    GetPage(name: BRoutes.signatureOutbox, page: () => const SignatureOutboxPage()),
     // BackLoad receives the StandardDeliveryModel via Get.arguments
     GetPage(
       name: BRoutes.backLoad,

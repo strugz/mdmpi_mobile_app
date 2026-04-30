@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -46,7 +44,6 @@ class BRequestDetails extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final textColor = dark ? BColors.light : BColors.black;
     final iconColor = dark ? BColors.light : BColors.black;
-    final cameraController = Get.find<CameraHandlerController>();
     final textStorage = TextStorageService();
 
     return Obx(
@@ -224,6 +221,8 @@ class BRequestDetails extends StatelessWidget {
               const SizedBox(height: BSizes.sm),
               Obx(
                 () {
+                  final cameraController = Get.find<CameraHandlerController>();
+
                   // Read both sources so GetX registers the reactive dependency
                   final String? storedPath = textStorage.getText('proofImagePath');
                   final String cameraPath = cameraController.imageProofPath.value;

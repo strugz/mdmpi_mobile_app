@@ -4,8 +4,15 @@ import '../../services/abstracts/i_permission_service.dart';
 class PermissionService implements IPermissionService {
   @override
   Future<bool> ensure(PermissionType type) async {
-    final status = await _toPermission(type).request();
-    return status.isGranted;
+    final permission = _toPermission(type);
+    final currentStatus = await permission.status;
+
+    if (currentStatus.isGranted || currentStatus.isLimited) {
+      return true;
+    }
+
+    final status = await permission.request();
+    return status.isGranted || status.isLimited;
   }
 
   @override

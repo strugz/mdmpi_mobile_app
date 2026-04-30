@@ -13,6 +13,7 @@ docs/
     air-sea/README.md                # Air & Sea logistics module
     air-sea/AIR_SEA_PROVINCIAL_DELIVERY_PLAN.md  # Provincial delivery extension plan
     standard-delivery/README.md      # Standard Delivery logistics module
+    standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md # Standard Delivery signature sync plan
     pick-up/README.md                # Pick Up logistics module
     pull-out/README.md               # Pull Out / Return logistics module
     hotline-direct/README.md         # Hotline Direct logistics module
@@ -30,6 +31,7 @@ docs/
 |---|---|---|---|
 | Air & Sea | Logistics | Active | [modules/air-sea/](modules/air-sea/) |
 | Standard Delivery | Logistics | Active | [modules/standard-delivery/](modules/standard-delivery/) |
+| Standard Delivery Signature API Status Plan | Logistics | Planned | [modules/standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md](modules/standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md) |
 | Pick Up | Logistics | Active | [modules/pick-up/](modules/pick-up/) |
 | Pull Out | Logistics | Active | [modules/pull-out/](modules/pull-out/) |
 | Hotline Direct | Logistics | Active | [modules/hotline-direct/](modules/hotline-direct/) |

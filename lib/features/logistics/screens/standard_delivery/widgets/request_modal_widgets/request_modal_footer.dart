@@ -39,8 +39,6 @@ class RequestModalFooter extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final textColor = dark ? BColors.light : BColors.black;
     final iconColor = dark ? BColors.light : BColors.black;
-
-    final cameraController = Get.find<CameraHandlerController>();
     final userController = Get.find<UserInitialController>();
 
     // Determine request ID for database lookups
@@ -109,8 +107,10 @@ class RequestModalFooter extends StatelessWidget {
           const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Proof of Delivery'),
           const SizedBox(height: BSizes.sm),
-          Obx(
-            () => Center(
+          Obx(() {
+            final cameraController = Get.find<CameraHandlerController>();
+
+            return Center(
               child: Column(
                 children: [
                   IconButton(
@@ -134,8 +134,8 @@ class RequestModalFooter extends StatelessWidget {
                     ),
                 ],
               ),
-            ),
-          ),
+            );
+          }),
           const SizedBox(height: BSizes.spaceBtwItems),
           BTextFormField(
             controller: requestController.formState.receiver,
