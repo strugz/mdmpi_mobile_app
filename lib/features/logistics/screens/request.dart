@@ -110,9 +110,12 @@ class _RequestScreenState extends State<RequestScreen>
         controller.getControllerForCategory(category.name);
     final lowerName = category.name.toLowerCase();
 
+
+
     final isStandardDelivery =
         categoryController is StandardDeliveryController &&
             (lowerName.contains('standard') || lowerName.contains('delivery'));
+
     final isPullOut =
         categoryController is PullOutController && lowerName.contains('pull');
 
@@ -129,7 +132,7 @@ class _RequestScreenState extends State<RequestScreen>
       barrierColor: Colors.black54,
       pageBuilder: (_, __, ___) {
         if (isPullOut) {
-          final pullOutController = categoryController as PullOutController;
+          final pullOutController = categoryController;
           final categoryOptions = pullOutController.formState.itemCategories
               .map((item) => MapEntry(item.id, item.name))
               .where((item) => item.key.isNotEmpty)
@@ -247,41 +250,46 @@ class _RequestScreenState extends State<RequestScreen>
               ),
             ],
           );
+
         }
 
-        final categoryOptions = categoryController.formState.itemCategories
+
+
+        final standardDeliveryController = categoryController as StandardDeliveryController;
+        final categoryOptions = standardDeliveryController.formState.itemCategories
             .map((item) => MapEntry(item.id, item.name))
             .where((item) => item.key.isNotEmpty)
             .toList()
           ..sort((a, b) => a.value.compareTo(b.value));
 
+
         return CustomFilterPanel(
           title: 'Standard Delivery Filters',
           onReset: () {
-            categoryController.selectFilter(RequestFilter.today);
-            categoryController
+            standardDeliveryController.selectFilter(RequestFilter.today);
+            standardDeliveryController
                 .selectStatusFilter(StandardDeliveryStatusFilter.all);
-            categoryController.selectDateFrom(null);
-            categoryController.selectDateTo(null);
-            categoryController.selectItemCategoryId('');
-            categoryController.setClientNameQuery('');
+            standardDeliveryController.selectDateFrom(null);
+            standardDeliveryController.selectDateTo(null);
+            standardDeliveryController.selectItemCategoryId('');
+            standardDeliveryController.setClientNameQuery('');
           },
           children: [
             const SizedBox(height: BSizes.spaceBtwItems),
             Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             FilterDropdown<RequestFilter>(
-              selectedFilter: categoryController.filterManager.selectedFilter,
+              selectedFilter: standardDeliveryController.filterManager.selectedFilter,
               filterValues: RequestFilter.values,
               getDisplayName: (f) => f.displayName,
-              onFilterChanged: categoryController.selectFilter,
+              onFilterChanged: standardDeliveryController.selectFilter,
             ),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text('Date From', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Obx(() {
               final dateFrom =
-                  categoryController.filterManager.selectedDateFrom.value;
+                  standardDeliveryController.filterManager.selectedDateFrom.value;
               return OutlinedButton.icon(
                 onPressed: () async {
                   final picked = await showDatePicker(
@@ -290,7 +298,7 @@ class _RequestScreenState extends State<RequestScreen>
                     firstDate: DateTime(2000),
                     lastDate: DateTime(2100),
                   );
-                  categoryController.selectDateFrom(picked);
+                  standardDeliveryController.selectDateFrom(picked);
                 },
                 icon: const Icon(Icons.calendar_today),
                 label: Text(dateFrom == null
@@ -303,7 +311,7 @@ class _RequestScreenState extends State<RequestScreen>
             const SizedBox(height: 8),
             Obx(() {
               final dateTo =
-                  categoryController.filterManager.selectedDateTo.value;
+                  standardDeliveryController.filterManager.selectedDateTo.value;
               return OutlinedButton.icon(
                 onPressed: () async {
                   final picked = await showDatePicker(
@@ -312,7 +320,7 @@ class _RequestScreenState extends State<RequestScreen>
                     firstDate: DateTime(2000),
                     lastDate: DateTime(2100),
                   );
-                  categoryController.selectDateTo(picked);
+                  standardDeliveryController.selectDateTo(picked);
                 },
                 icon: const Icon(Icons.event),
                 label: Text(dateTo == null
@@ -325,20 +333,20 @@ class _RequestScreenState extends State<RequestScreen>
             const SizedBox(height: 8),
             FilterDropdown<StandardDeliveryStatusFilter>(
               selectedFilter:
-                  categoryController.filterManager.selectedStatusFilter,
+              standardDeliveryController.filterManager.selectedStatusFilter,
               filterValues: StandardDeliveryStatusFilter.values,
               getDisplayName: (f) => f.displayName,
-              onFilterChanged: categoryController.selectStatusFilter,
+              onFilterChanged: standardDeliveryController.selectStatusFilter,
             ),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text('Item Category',
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Obx(() => DropdownButtonFormField<String>(
-                  value: categoryController
+                  value: standardDeliveryController
                           .filterManager.selectedItemCategoryId.value.isEmpty
                       ? ''
-                      : categoryController
+                      : standardDeliveryController
                           .filterManager.selectedItemCategoryId.value,
                   items: [
                     const DropdownMenuItem(
@@ -347,7 +355,7 @@ class _RequestScreenState extends State<RequestScreen>
                         value: item.key, child: Text(item.value))),
                   ],
                   onChanged: (value) =>
-                      categoryController.selectItemCategoryId(value ?? ''),
+                      standardDeliveryController.selectItemCategoryId(value ?? ''),
                   decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.category_outlined)),
                 )),
@@ -356,12 +364,12 @@ class _RequestScreenState extends State<RequestScreen>
             const SizedBox(height: 8),
             TextFormField(
               initialValue:
-                  categoryController.filterManager.clientNameQuery.value,
+              standardDeliveryController.filterManager.clientNameQuery.value,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: 'Search client name',
               ),
-              onChanged: categoryController.setClientNameQuery,
+              onChanged: standardDeliveryController.setClientNameQuery,
             ),
           ],
         );

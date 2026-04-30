@@ -37,8 +37,20 @@ class CustomFilterPanel extends StatelessWidget {
                     ),
                   ],
                 ),
-                ...children,
-                const Spacer(),
+                const SizedBox(height: BSizes.spaceBtwItems),
+
+                // Make the dynamic content scrollable so long lists won't overflow
+                // Keep header and action button pinned using Expanded.
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: children,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: BSizes.spaceBtwItems),
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
