@@ -109,9 +109,14 @@ class _RequestScreenState extends State<RequestScreen>
     final categoryController = controller.getControllerForCategory(category.name);
     final lowerName = category.name.toLowerCase();
 
-    if (categoryController is! StandardDeliveryController ||
-        !(lowerName.contains('standard') || lowerName.contains('delivery'))) {
-      Get.snackbar('Custom Filter', 'Custom filters are available for Standard Delivery only (for now).');
+    final isStandardDelivery =
+        categoryController is StandardDeliveryController &&
+            (lowerName.contains('standard') || lowerName.contains('delivery'));
+    final isPullOut =
+        categoryController is PullOutController && lowerName.contains('pull');
+
+    if (!isStandardDelivery && !isPullOut) {
+      Get.snackbar('Custom Filter', 'Custom filters are available for Standard Delivery and Pull Out / Return only (for now).');
       return;
     }
 
@@ -121,6 +126,110 @@ class _RequestScreenState extends State<RequestScreen>
       barrierLabel: 'Custom Filter',
       barrierColor: Colors.black54,
       pageBuilder: (_, __, ___) {
+        if (isPullOut) {
+          final pullOutController = categoryController as PullOutController;
+          final categoryOptions = pullOutController.formState.itemCategories
+              .map((item) => MapEntry(item.id, item.name))
+              .where((item) => item.key.isNotEmpty)
+              .toList()
+            ..sort((a, b) => a.value.compareTo(b.value));
+
+          return CustomFilterPanel(
+            title: 'Pull Out / Return Filters',
+            onReset: () {
+              pullOutController.selectDateFilter(RequestFilter.today);
+              pullOutController.selectStatusFilter(PullOutStatusFilter.all);
+              pullOutController.selectDateFrom(null);
+              pullOutController.selectDateTo(null);
+              pullOutController.selectItemCategoryId('');
+              pullOutController.setClientNameQuery('');
+            },
+            children: [
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<RequestFilter>(
+                selectedFilter: pullOutController.filterManager.selectedFilter,
+                filterValues: RequestFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: pullOutController.selectDateFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date From', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateFrom = pullOutController.filterManager.selectedDateFrom.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateFrom ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    pullOutController.selectDateFrom(picked);
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(dateFrom == null ? 'Pick start date' : dateFrom.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date To', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateTo = pullOutController.filterManager.selectedDateTo.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateTo ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    pullOutController.selectDateTo(picked);
+                  },
+                  icon: const Icon(Icons.event),
+                  label: Text(dateTo == null ? 'Pick end date' : dateTo.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Status', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<PullOutStatusFilter>(
+                selectedFilter: pullOutController.filterManager.selectedStatusFilter,
+                filterValues: PullOutStatusFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: pullOutController.selectStatusFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() => DropdownButtonFormField<String>(
+                    value: pullOutController.filterManager.selectedItemCategoryId.value.isEmpty
+                        ? ''
+                        : pullOutController.filterManager.selectedItemCategoryId.value,
+                    items: [
+                      const DropdownMenuItem(value: '', child: Text('All Categories')),
+                      ...categoryOptions.map((item) => DropdownMenuItem(value: item.key, child: Text(item.value))),
+                    ],
+                    onChanged: (value) => pullOutController.selectItemCategoryId(value ?? ''),
+                    decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+                  )),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: pullOutController.filterManager.clientNameQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Search client name',
+                ),
+                onChanged: pullOutController.setClientNameQuery,
+              ),
+            ],
+          );
+        }
+
         final categoryOptions = categoryController.formState.itemCategories
             .map((item) => MapEntry(item.id, item.name))
             .where((item) => item.key.isNotEmpty)

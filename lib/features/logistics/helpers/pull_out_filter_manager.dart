@@ -20,6 +20,10 @@ class PullOutFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
 
   final Rx<PullOutStatusFilter> selectedStatusFilter = PullOutStatusFilter.all.obs;
+  final Rxn<DateTime> selectedDateFrom = Rxn<DateTime>();
+  final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
+  final RxString selectedItemCategoryId = ''.obs;
+  final RxString clientNameQuery = ''.obs;
 
   final RxList<PullOutModel> filteredPullOuts = <PullOutModel>[].obs;
 
@@ -30,6 +34,10 @@ class PullOutFilterManager {
   void reset([List<PullOutModel>? allPullOuts]) {
     selectedFilter.value = RequestFilter.today;
     selectedStatusFilter.value = PullOutStatusFilter.all;
+    selectedDateFrom.value = null;
+    selectedDateTo.value = null;
+    selectedItemCategoryId.value = '';
+    clientNameQuery.value = '';
     filteredPullOuts.clear();
     if (allPullOuts != null) {
       applyFilter(allPullOuts);
@@ -40,6 +48,10 @@ class PullOutFilterManager {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
+    final dateFrom = selectedDateFrom.value;
+    final dateTo = selectedDateTo.value;
+    final itemCategoryId = selectedItemCategoryId.value;
+    final clientQuery = clientNameQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allPullOuts.where((item) {
@@ -90,7 +102,20 @@ class PullOutFilterManager {
         }
       }
 
-      return dateMatches && statusMatches && userMatches;
+      final dateFromMatches = dateFrom == null ||
+          (targetDate != null && !targetDate.isBefore(DateTime(dateFrom.year, dateFrom.month, dateFrom.day)));
+      final dateToMatches = dateTo == null ||
+          (targetDate != null && !targetDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
+      final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
+      final clientNameMatches = clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+
+      return dateMatches &&
+          statusMatches &&
+          dateFromMatches &&
+          dateToMatches &&
+          itemCategoryMatches &&
+          clientNameMatches &&
+          userMatches;
     }).toList();
 
     tempList.sort((a, b) {
@@ -113,6 +138,26 @@ class PullOutFilterManager {
 
   void selectStatusFilter(PullOutStatusFilter statusFilter, RxList<PullOutModel> allPullOuts) {
     selectedStatusFilter.value = statusFilter;
+    applyFilter(allPullOuts.toList());
+  }
+
+  void selectDateFrom(DateTime? date, RxList<PullOutModel> allPullOuts) {
+    selectedDateFrom.value = date;
+    applyFilter(allPullOuts.toList());
+  }
+
+  void selectDateTo(DateTime? date, RxList<PullOutModel> allPullOuts) {
+    selectedDateTo.value = date;
+    applyFilter(allPullOuts.toList());
+  }
+
+  void selectItemCategoryId(String categoryId, RxList<PullOutModel> allPullOuts) {
+    selectedItemCategoryId.value = categoryId;
+    applyFilter(allPullOuts.toList());
+  }
+
+  void setClientNameQuery(String query, RxList<PullOutModel> allPullOuts) {
+    clientNameQuery.value = query;
     applyFilter(allPullOuts.toList());
   }
 }
