@@ -137,7 +137,7 @@ class StandardDeliveryFilterManager {
 
       final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryID == itemCategoryId;
 
-      final clientName = item.client.clientName.toLowerCase();
+      final clientName = item.client.name.toLowerCase();
       final clientNameMatches = clientQuery.isEmpty || clientName.contains(clientQuery);
 
       return dateMatches &&
