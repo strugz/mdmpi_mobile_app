@@ -204,147 +204,30 @@ class StandardDeliveryDataManager {
       controller.errorMessage.value = null;
       final formState = controller.formState;
       final nowString = DateTime.now().toString();
-
-      // Resolve mobileID
-      int? resolvedMobileID;
-      if (newStatus == BTexts.statusItemPrepared) {
-        if (request.mobileID == null || request.mobileID == 0) {
-          resolvedMobileID =
-              int.tryParse(formState.mobile.text) ?? request.mobileID;
-        } else {
-          resolvedMobileID = request.mobileID;
-        }
-      } else {
-        resolvedMobileID = request.mobileID;
-      }
-
-      // Get delivery image if needed
-      String finalImageBase64 = request.image;
-      if (newStatus == BTexts.statusDoneDelivery && request.image.isEmpty) {
-        finalImageBase64 = await BImageHelperFunctions.getDeliveryImageAsBase64(
-                newStatus, request.id) ??
-            formState.cameraPickUpPicture.value;
-      }
-
-      // Update request with new status and status-specific fields
-      final updatedRequest = request.copyWith(
-        status: newStatus,
-        itemPreparedBy: newStatus == BTexts.statusGettingSuppliesReady &&
-                request.itemPreparedBy.isEmpty
-            ? userInitial
-            : request.itemPreparedBy,
-        deliveredBy: newStatus == BTexts.statusItemPrepared &&
-                request.deliveredBy.isEmpty
-            ? formState.selectedDriver.text
-            : request.deliveredBy,
-        itemPreparedAt: newStatus == BTexts.statusGettingSuppliesReady &&
-                request.itemPreparedAt.isEmpty
-            ? nowString
-            : request.itemPreparedAt,
-        itemPreparedEndAt: newStatus == BTexts.statusItemPrepared &&
-                request.itemPreparedEndAt.isEmpty
-            ? nowString
-            : request.itemPreparedEndAt,
-        deliveredAt:
-            newStatus == BTexts.statusForDelivery && request.deliveredAt.isEmpty
-                ? nowString
-                : request.deliveredAt,
-        deliveredEndAt: newStatus == BTexts.statusDoneDelivery &&
-                request.deliveredEndAt.isEmpty
-            ? nowString
-            : request.deliveredEndAt,
-        locationStartedAt: newStatus == BTexts.statusForDelivery &&
-                request.locationStartedAt.isEmpty
-            ? nowString
-            : request.locationStartedAt,
-        locationEndAt: newStatus == BTexts.statusDoneDelivery &&
-                request.locationEndAt.isEmpty
-            ? nowString
-            : request.locationEndAt,
-        helper: newStatus == BTexts.statusItemPrepared && request.helper.isEmpty
-            ? formState.selectedHelper.text
-            : request.helper,
-        receiver:
-            newStatus == BTexts.statusDoneDelivery && request.receiver.isEmpty
-                ? formState.receiver.text
-                : request.receiver,
-        mobileID: resolvedMobileID,
-        tripTicketNumber: newStatus == BTexts.statusItemPrepared &&
-                request.tripTicketNumber.isEmpty
-            ? formState.tripTicketNumber.text
-            : request.tripTicketNumber,
+      final resolvedMobileID =
+          _resolveMobileId(request, newStatus, formState.mobile.text);
+      final finalImageBase64 =
+          await _resolveDeliveryProofImage(request, newStatus, formState);
+      final updatedRequest = _buildUpdatedRequest(
+        request: request,
+        newStatus: newStatus,
+        userInitial: userInitial,
+        formState: formState,
+        nowString: nowString,
+        resolvedMobileID: resolvedMobileID,
       );
 
-      // Handle signature upload
-      final bool signatureWasAdded = newStatus == BTexts.statusDoneDelivery &&
-          request.signature.isEmpty &&
-          formState.receiverSignatureBase64.value.isNotEmpty;
-
-      if (signatureWasAdded) {
-        final isConnectedForUpload =
-            await NetworkManager.instance.isConnected();
-        if (isConnectedForUpload) {
-          final validation = await ImageRepository.instance.uploadFile(
-            requestId: request.id,
-            base64Image: formState.receiverSignatureBase64.string,
-            type: 'Signature',
-          );
-
-          if (validation.isFailure) {
-            _dbHelper.insertReceiverSignature(
-                requestID: request.id,
-                signature: formState.receiverSignatureBase64.string,
-                apiStatus: 'Uploaded');
-          }
-        } else {
-          BLoaders.warningSnackBar(
-              title: 'No Internet',
-              message:
-                  'Signature saved locally. It will be uploaded when internet connection is available.');
-        }
-      }
-      // Handle image proof upload
-      final bool imageProofWasAdded = newStatus == BTexts.statusDoneDelivery &&
-          request.image.isEmpty &&
-          finalImageBase64.isNotEmpty;
-
-      if (imageProofWasAdded) {
-        final isConnectedForUpload =
-            await NetworkManager.instance.isConnected();
-        if (isConnectedForUpload) {
-          try {
-            await ImageRepository.instance.uploadFile(
-              requestId: request.id,
-              base64Image: finalImageBase64,
-              type: 'Proof',
-            );
-          } catch (e) {
-            BLoaders.warningSnackBar(
-              title: 'Upload Failed',
-              message:
-                  'Image proof could not be uploaded. It will be synced when connection is available.',
-            );
-          }
-        }
-      }
-
-      if (controller.useLocalStorage.value) {
-        await _dbHelper.updateRequest(requestModel: updatedRequest);
-      } else {
-        final isConnected = await validateConnectivity();
-        if (isConnected) {
-          await _repository.updateDelivery(updatedRequest, userInitial);
-
-          await _dbHelper.updateRequest(requestModel: updatedRequest);
-        } else {
-          await _dbHelper.updateRequest(requestModel: updatedRequest);
-          BLoaders.warningSnackBar(
-            title: 'No Internet',
-            message:
-                'Request updated locally. Sync with server when connection returns.',
-          );
-        }
-      }
+      await _handleStatusMediaUploads(
+        request: request,
+        newStatus: newStatus,
+        formState: formState,
+        finalImageBase64: finalImageBase64,
+      );
+      await _persistUpdatedRequest(
+        request: updatedRequest,
+        userInitial: userInitial,
+        useLocalStorage: controller.useLocalStorage.value,
+      );
 
       // Save media to local DB
       await _dbHelper.saveRequestMedia(
@@ -361,32 +244,7 @@ class StandardDeliveryDataManager {
       );
 
       await _messageController.sendSmsMessage(newStatus, updatedRequest);
-
-      // Force reactive update by nullifying first, then setting the new value
-      // This ensures GetX Obx widgets detect the change
-      controller.currentSelectedRequest.value = null;
-
-      // Small delay to ensure the null is registered
-      await Future.delayed(const Duration(milliseconds: 10));
-
-      // Now set the updated request - this will trigger Obx rebuild
-      controller.currentSelectedRequest.value = updatedRequest;
-
-      // Update the request in the allPendingRequests list so it reflects the new status
-      final index = controller.allPendingRequests
-          .indexWhere((req) => req.id == updatedRequest.id);
-
-      if (index != -1) {
-        controller.allPendingRequests[index] = updatedRequest;
-        // Trigger update notification for RxList
-        controller.allPendingRequests.refresh();
-      }
-
-      // Reapply filter to update the filtered list that the UI observes
-      if (controller is StandardDeliveryController) {
-        controller.filterManager
-            .applyFilter(controller.allPendingRequests.toList());
-      }
+      _applyReactiveRequestUpdate(controller, updatedRequest);
 
       formState.reset();
 
@@ -401,6 +259,188 @@ class StandardDeliveryDataManager {
       if (newStatus != BTexts.statusForDelivery) {
         BFullScreenLoader.stopLoading();
       }
+    }
+  }
+
+  int? _resolveMobileId(
+    StandardDeliveryModel request,
+    String newStatus,
+    String mobileText,
+  ) {
+    if (newStatus != BTexts.statusItemPrepared) {
+      return request.mobileID;
+    }
+    if (request.mobileID == null || request.mobileID == 0) {
+      return int.tryParse(mobileText) ?? request.mobileID;
+    }
+    return request.mobileID;
+  }
+
+  Future<String> _resolveDeliveryProofImage(
+    StandardDeliveryModel request,
+    String newStatus,
+    StandardDeliveryFormState formState,
+  ) async {
+    if (newStatus == BTexts.statusDoneDelivery && request.image.isEmpty) {
+      return await BImageHelperFunctions.getDeliveryImageAsBase64(
+              newStatus, request.id) ??
+          formState.cameraPickUpPicture.value;
+    }
+    return request.image;
+  }
+
+  StandardDeliveryModel _buildUpdatedRequest({
+    required StandardDeliveryModel request,
+    required String newStatus,
+    required String userInitial,
+    required StandardDeliveryFormState formState,
+    required String nowString,
+    required int? resolvedMobileID,
+  }) {
+    return request.copyWith(
+      status: newStatus,
+      itemPreparedBy: newStatus == BTexts.statusGettingSuppliesReady &&
+              request.itemPreparedBy.isEmpty
+          ? userInitial
+          : request.itemPreparedBy,
+      deliveredBy:
+          newStatus == BTexts.statusItemPrepared && request.deliveredBy.isEmpty
+              ? formState.selectedDriver.text
+              : request.deliveredBy,
+      itemPreparedAt: newStatus == BTexts.statusGettingSuppliesReady &&
+              request.itemPreparedAt.isEmpty
+          ? nowString
+          : request.itemPreparedAt,
+      itemPreparedEndAt: newStatus == BTexts.statusItemPrepared &&
+              request.itemPreparedEndAt.isEmpty
+          ? nowString
+          : request.itemPreparedEndAt,
+      deliveredAt:
+          newStatus == BTexts.statusForDelivery && request.deliveredAt.isEmpty
+              ? nowString
+              : request.deliveredAt,
+      deliveredEndAt:
+          newStatus == BTexts.statusDoneDelivery && request.deliveredEndAt.isEmpty
+              ? nowString
+              : request.deliveredEndAt,
+      locationStartedAt: newStatus == BTexts.statusForDelivery &&
+              request.locationStartedAt.isEmpty
+          ? nowString
+          : request.locationStartedAt,
+      locationEndAt:
+          newStatus == BTexts.statusDoneDelivery && request.locationEndAt.isEmpty
+              ? nowString
+              : request.locationEndAt,
+      helper: newStatus == BTexts.statusItemPrepared && request.helper.isEmpty
+          ? formState.selectedHelper.text
+          : request.helper,
+      receiver: newStatus == BTexts.statusDoneDelivery && request.receiver.isEmpty
+          ? formState.receiver.text
+          : request.receiver,
+      mobileID: resolvedMobileID,
+      tripTicketNumber:
+          newStatus == BTexts.statusItemPrepared && request.tripTicketNumber.isEmpty
+              ? formState.tripTicketNumber.text
+              : request.tripTicketNumber,
+    );
+  }
+
+  Future<void> _handleStatusMediaUploads({
+    required StandardDeliveryModel request,
+    required String newStatus,
+    required StandardDeliveryFormState formState,
+    required String finalImageBase64,
+  }) async {
+    final bool signatureWasAdded = newStatus == BTexts.statusDoneDelivery &&
+        request.signature.isEmpty &&
+        formState.receiverSignatureBase64.value.isNotEmpty;
+    final bool imageProofWasAdded = newStatus == BTexts.statusDoneDelivery &&
+        request.image.isEmpty &&
+        finalImageBase64.isNotEmpty;
+
+    if (!signatureWasAdded && !imageProofWasAdded) return;
+
+    final isConnectedForUpload = await NetworkManager.instance.isConnected();
+    if (!isConnectedForUpload) {
+      BLoaders.warningSnackBar(
+        title: 'No Internet',
+        message:
+            'Media saved locally. It will be uploaded when internet connection is available.',
+      );
+      return;
+    }
+
+    if (signatureWasAdded) {
+      final validation = await ImageRepository.instance.uploadFile(
+        requestId: request.id,
+        base64Image: formState.receiverSignatureBase64.string,
+        type: 'Signature',
+      );
+
+      if (validation.isFailure) {
+        await _dbHelper.insertReceiverSignature(
+          requestID: request.id,
+          signature: formState.receiverSignatureBase64.string,
+          apiStatus: 'Pending',
+        );
+      }
+    }
+
+    if (imageProofWasAdded) {
+      try {
+        await ImageRepository.instance.uploadFile(
+          requestId: request.id,
+          base64Image: finalImageBase64,
+          type: 'Proof',
+        );
+      } catch (e) {
+        BLoaders.warningSnackBar(
+          title: 'Upload Failed',
+          message:
+              'Image proof could not be uploaded. It will be synced when connection is available.',
+        );
+      }
+    }
+  }
+
+  Future<void> _persistUpdatedRequest({
+    required StandardDeliveryModel request,
+    required String userInitial,
+    required bool useLocalStorage,
+  }) async {
+    if (useLocalStorage) {
+      await _dbHelper.updateRequest(requestModel: request);
+      return;
+    }
+
+    final isConnected = await validateConnectivity();
+    if (isConnected) {
+      await _repository.updateDelivery(request, userInitial);
+      await _dbHelper.updateRequest(requestModel: request);
+      return;
+    }
+
+    await _dbHelper.updateRequest(requestModel: request);
+    BLoaders.warningSnackBar(
+      title: 'No Internet',
+      message: 'Request updated locally. Sync with server when connection returns.',
+    );
+  }
+
+  void _applyReactiveRequestUpdate(
+    IDeliveryRequestController controller,
+    StandardDeliveryModel updatedRequest,
+  ) {
+    controller.currentSelectedRequest.value = updatedRequest;
+    final index =
+        controller.allPendingRequests.indexWhere((req) => req.id == updatedRequest.id);
+    if (index != -1) {
+      controller.allPendingRequests[index] = updatedRequest;
+      controller.allPendingRequests.refresh();
+    }
+
+    if (controller is StandardDeliveryController) {
+      controller.filterManager.applyFilter(controller.allPendingRequests.toList());
     }
   }
 
