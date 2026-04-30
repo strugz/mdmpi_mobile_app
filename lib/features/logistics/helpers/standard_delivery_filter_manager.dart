@@ -42,6 +42,9 @@ enum StandardDeliveryStatusFilter {
 class StandardDeliveryFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
   final Rx<StandardDeliveryStatusFilter> selectedStatusFilter = StandardDeliveryStatusFilter.all.obs;
+  final Rxn<DateTime> selectedSpecificDate = Rxn<DateTime>();
+  final RxString selectedItemCategoryId = ''.obs;
+  final RxString clientNameQuery = ''.obs;
   final RxList<StandardDeliveryModel> filteredRequests = <StandardDeliveryModel>[].obs;
 
   /// Reset filter manager to default state.
@@ -51,6 +54,9 @@ class StandardDeliveryFilterManager {
   void reset([List<StandardDeliveryModel>? allRequests]) {
     selectedFilter.value = RequestFilter.today;
     selectedStatusFilter.value = StandardDeliveryStatusFilter.all;
+    selectedSpecificDate.value = null;
+    selectedItemCategoryId.value = '';
+    clientNameQuery.value = '';
     filteredRequests.clear();
     if (allRequests != null) {
       applyFilter(allRequests);
@@ -69,6 +75,9 @@ class StandardDeliveryFilterManager {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
+    final specificDate = selectedSpecificDate.value;
+    final itemCategoryId = selectedItemCategoryId.value;
+    final clientQuery = clientNameQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allRequests.where((item) {
@@ -118,7 +127,23 @@ class StandardDeliveryFilterManager {
         }
       }
 
-      return dateMatches && statusMatches && userMatches;
+      final specificDateMatches = specificDate == null ||
+          (deliveryDate != null &&
+              deliveryDate.year == specificDate.year &&
+              deliveryDate.month == specificDate.month &&
+              deliveryDate.day == specificDate.day);
+
+      final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryID == itemCategoryId;
+
+      final clientName = item.client.clientName.toLowerCase();
+      final clientNameMatches = clientQuery.isEmpty || clientName.contains(clientQuery);
+
+      return dateMatches &&
+          specificDateMatches &&
+          statusMatches &&
+          itemCategoryMatches &&
+          clientNameMatches &&
+          userMatches;
     }).toList();
 
     // Sort by delivery date (newest first)
@@ -146,5 +171,19 @@ class StandardDeliveryFilterManager {
     selectedStatusFilter.value = statusFilter;
     applyFilter(allRequests.toList());
   }
-}
 
+  void selectSpecificDate(DateTime? date, RxList<StandardDeliveryModel> allRequests) {
+    selectedSpecificDate.value = date;
+    applyFilter(allRequests.toList());
+  }
+
+  void selectItemCategoryId(String categoryId, RxList<StandardDeliveryModel> allRequests) {
+    selectedItemCategoryId.value = categoryId;
+    applyFilter(allRequests.toList());
+  }
+
+  void setClientNameQuery(String query, RxList<StandardDeliveryModel> allRequests) {
+    clientNameQuery.value = query;
+    applyFilter(allRequests.toList());
+  }
+}

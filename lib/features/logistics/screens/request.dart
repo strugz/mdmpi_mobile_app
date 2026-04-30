@@ -16,6 +16,60 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_co
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
+class CustomFilterPanel extends StatelessWidget {
+  const CustomFilterPanel({
+    super.key,
+    required this.title,
+    required this.children,
+    required this.onReset,
+  });
+
+  final String title;
+  final List<Widget> children;
+  final VoidCallback onReset;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Material(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.82,
+            padding: const EdgeInsets.all(BSizes.defaultSpace),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                ...children,
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: onReset,
+                    icon: const Icon(Icons.restart_alt),
+                    label: const Text('Reset to Default'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Request screen displaying different request form categories in a tabbed carousel interface.
 /// Uses RequestController for all business logic and state management.
 class RequestScreen extends StatefulWidget {
@@ -120,63 +174,86 @@ class _RequestScreenState extends State<RequestScreen>
       barrierLabel: 'Custom Filter',
       barrierColor: Colors.black54,
       pageBuilder: (_, __, ___) {
-        return SafeArea(
-          child: Align(
-            alignment: Alignment.centerRight,
-            child: Material(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.82,
-                padding: const EdgeInsets.all(BSizes.defaultSpace),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('Standard Delivery Filters',
-                            style: Theme.of(context).textTheme.titleLarge),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: BSizes.spaceBtwItems),
-                    Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    FilterDropdown<RequestFilter>(
-                      selectedFilter: categoryController.filterManager.selectedFilter,
-                      filterValues: RequestFilter.values,
-                      getDisplayName: (f) => f.displayName,
-                      onFilterChanged: categoryController.selectFilter,
-                    ),
-                    const SizedBox(height: BSizes.spaceBtwItems),
-                    Text('Status', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    FilterDropdown<StandardDeliveryStatusFilter>(
-                      selectedFilter: categoryController.filterManager.selectedStatusFilter,
-                      filterValues: StandardDeliveryStatusFilter.values,
-                      getDisplayName: (f) => f.displayName,
-                      onFilterChanged: categoryController.selectStatusFilter,
-                    ),
-                    const Spacer(),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          categoryController.selectFilter(RequestFilter.today);
-                          categoryController.selectStatusFilter(StandardDeliveryStatusFilter.all);
-                        },
-                        icon: const Icon(Icons.restart_alt),
-                        label: const Text('Reset to Default'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        final categoryOptions = categoryController.allPendingRequests
+            .map((item) => item.itemCategoryID)
+            .where((id) => id.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+
+        return CustomFilterPanel(
+          title: 'Standard Delivery Filters',
+          onReset: () {
+            categoryController.selectFilter(RequestFilter.today);
+            categoryController.selectStatusFilter(StandardDeliveryStatusFilter.all);
+            categoryController.selectSpecificDate(null);
+            categoryController.selectItemCategoryId('');
+            categoryController.setClientNameQuery('');
+          },
+          children: [
+            const SizedBox(height: BSizes.spaceBtwItems),
+            Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            FilterDropdown<RequestFilter>(
+              selectedFilter: categoryController.filterManager.selectedFilter,
+              filterValues: RequestFilter.values,
+              getDisplayName: (f) => f.displayName,
+              onFilterChanged: categoryController.selectFilter,
             ),
-          ),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            Text('Specific Date', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Obx(() {
+              final date = categoryController.filterManager.selectedSpecificDate.value;
+              return OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: date ?? DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  categoryController.selectSpecificDate(picked);
+                },
+                icon: const Icon(Icons.calendar_today),
+                label: Text(date == null ? 'Pick date' : date.toIso8601String().split('T').first),
+              );
+            }),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            Text('Status', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            FilterDropdown<StandardDeliveryStatusFilter>(
+              selectedFilter: categoryController.filterManager.selectedStatusFilter,
+              filterValues: StandardDeliveryStatusFilter.values,
+              getDisplayName: (f) => f.displayName,
+              onFilterChanged: categoryController.selectStatusFilter,
+            ),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Obx(() => DropdownButtonFormField<String>(
+                  value: categoryController.filterManager.selectedItemCategoryId.value.isEmpty
+                      ? ''
+                      : categoryController.filterManager.selectedItemCategoryId.value,
+                  items: [
+                    const DropdownMenuItem(value: '', child: Text('All Categories')),
+                    ...categoryOptions.map((id) => DropdownMenuItem(value: id, child: Text(id))),
+                  ],
+                  onChanged: (value) => categoryController.selectItemCategoryId(value ?? ''),
+                  decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+                )),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            TextFormField(
+              initialValue: categoryController.filterManager.clientNameQuery.value,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Search client name',
+              ),
+              onChanged: categoryController.setClientNameQuery,
+            ),
+          ],
         );
       },
     );
@@ -378,5 +455,4 @@ class _RequestScreenState extends State<RequestScreen>
     });
   }
 }
-
 
