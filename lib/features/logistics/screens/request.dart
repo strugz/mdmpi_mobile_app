@@ -145,21 +145,21 @@ class _RequestScreenState extends State<RequestScreen>
                     const SizedBox(height: BSizes.spaceBtwItems),
                     Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    Obx(() => FilterDropdown<RequestFilter>(
+                    FilterDropdown<RequestFilter>(
                       selectedFilter: categoryController.filterManager.selectedFilter,
                       filterValues: RequestFilter.values,
                       getDisplayName: (f) => f.displayName,
                       onFilterChanged: categoryController.selectFilter,
-                    )),
+                    ),
                     const SizedBox(height: BSizes.spaceBtwItems),
                     Text('Status', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
-                    Obx(() => FilterDropdown<StandardDeliveryStatusFilter>(
+                    FilterDropdown<StandardDeliveryStatusFilter>(
                       selectedFilter: categoryController.filterManager.selectedStatusFilter,
                       filterValues: StandardDeliveryStatusFilter.values,
                       getDisplayName: (f) => f.displayName,
                       onFilterChanged: categoryController.selectStatusFilter,
-                    )),
+                    ),
                     const Spacer(),
                     SizedBox(
                       width: double.infinity,
