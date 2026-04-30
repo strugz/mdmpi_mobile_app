@@ -17,6 +17,8 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_co
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
+import '../helpers/pull_out_filter_manager.dart';
+
 /// Request screen displaying different request form categories in a tabbed carousel interface.
 /// Uses RequestController for all business logic and state management.
 class RequestScreen extends StatefulWidget {
@@ -28,7 +30,6 @@ class RequestScreen extends StatefulWidget {
 
 class _RequestScreenState extends State<RequestScreen>
     with SingleTickerProviderStateMixin {
-
   late final RequestController controller;
   TabController? _tabController;
   CarouselSliderController? _carouselController;
@@ -98,7 +99,6 @@ class _RequestScreenState extends State<RequestScreen>
     controller.updateTabIndex(index);
   }
 
-
   void _openCustomFilterPanel() {
     if (_tabController == null) return;
 
@@ -106,7 +106,8 @@ class _RequestScreenState extends State<RequestScreen>
     if (currentIndex >= controller.formCategories.length) return;
 
     final category = controller.formCategories[currentIndex];
-    final categoryController = controller.getControllerForCategory(category.name);
+    final categoryController =
+        controller.getControllerForCategory(category.name);
     final lowerName = category.name.toLowerCase();
 
     final isStandardDelivery =
@@ -116,7 +117,8 @@ class _RequestScreenState extends State<RequestScreen>
         categoryController is PullOutController && lowerName.contains('pull');
 
     if (!isStandardDelivery && !isPullOut) {
-      Get.snackbar('Custom Filter', 'Custom filters are available for Standard Delivery and Pull Out / Return only (for now).');
+      Get.snackbar('Custom Filter',
+          'Custom filters are available for Standard Delivery and Pull Out / Return only (for now).');
       return;
     }
 
@@ -146,7 +148,8 @@ class _RequestScreenState extends State<RequestScreen>
             },
             children: [
               const SizedBox(height: BSizes.spaceBtwItems),
-              Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
+              Text('Date Range',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               FilterDropdown<RequestFilter>(
                 selectedFilter: pullOutController.filterManager.selectedFilter,
@@ -158,7 +161,8 @@ class _RequestScreenState extends State<RequestScreen>
               Text('Date From', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Obx(() {
-                final dateFrom = pullOutController.filterManager.selectedDateFrom.value;
+                final dateFrom =
+                    pullOutController.filterManager.selectedDateFrom.value;
                 return OutlinedButton.icon(
                   onPressed: () async {
                     final picked = await showDatePicker(
@@ -170,14 +174,17 @@ class _RequestScreenState extends State<RequestScreen>
                     pullOutController.selectDateFrom(picked);
                   },
                   icon: const Icon(Icons.calendar_today),
-                  label: Text(dateFrom == null ? 'Pick start date' : dateFrom.toIso8601String().split('T').first),
+                  label: Text(dateFrom == null
+                      ? 'Pick start date'
+                      : dateFrom.toIso8601String().split('T').first),
                 );
               }),
               const SizedBox(height: BSizes.spaceBtwItems),
               Text('Date To', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Obx(() {
-                final dateTo = pullOutController.filterManager.selectedDateTo.value;
+                final dateTo =
+                    pullOutController.filterManager.selectedDateTo.value;
                 return OutlinedButton.icon(
                   onPressed: () async {
                     final picked = await showDatePicker(
@@ -189,37 +196,49 @@ class _RequestScreenState extends State<RequestScreen>
                     pullOutController.selectDateTo(picked);
                   },
                   icon: const Icon(Icons.event),
-                  label: Text(dateTo == null ? 'Pick end date' : dateTo.toIso8601String().split('T').first),
+                  label: Text(dateTo == null
+                      ? 'Pick end date'
+                      : dateTo.toIso8601String().split('T').first),
                 );
               }),
               const SizedBox(height: BSizes.spaceBtwItems),
               Text('Status', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               FilterDropdown<PullOutStatusFilter>(
-                selectedFilter: pullOutController.filterManager.selectedStatusFilter,
+                selectedFilter:
+                    pullOutController.filterManager.selectedStatusFilter,
                 filterValues: PullOutStatusFilter.values,
                 getDisplayName: (f) => f.displayName,
                 onFilterChanged: pullOutController.selectStatusFilter,
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
-              Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+              Text('Item Category',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               Obx(() => DropdownButtonFormField<String>(
-                    value: pullOutController.filterManager.selectedItemCategoryId.value.isEmpty
+                    value: pullOutController
+                            .filterManager.selectedItemCategoryId.value.isEmpty
                         ? ''
-                        : pullOutController.filterManager.selectedItemCategoryId.value,
+                        : pullOutController
+                            .filterManager.selectedItemCategoryId.value,
                     items: [
-                      const DropdownMenuItem(value: '', child: Text('All Categories')),
-                      ...categoryOptions.map((item) => DropdownMenuItem(value: item.key, child: Text(item.value))),
+                      const DropdownMenuItem(
+                          value: '', child: Text('All Categories')),
+                      ...categoryOptions.map((item) => DropdownMenuItem(
+                          value: item.key, child: Text(item.value))),
                     ],
-                    onChanged: (value) => pullOutController.selectItemCategoryId(value ?? ''),
-                    decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+                    onChanged: (value) =>
+                        pullOutController.selectItemCategoryId(value ?? ''),
+                    decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.category_outlined)),
                   )),
               const SizedBox(height: BSizes.spaceBtwItems),
-              Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
+              Text('Client Name',
+                  style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               TextFormField(
-                initialValue: pullOutController.filterManager.clientNameQuery.value,
+                initialValue:
+                    pullOutController.filterManager.clientNameQuery.value,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search),
                   hintText: 'Search client name',
@@ -240,7 +259,8 @@ class _RequestScreenState extends State<RequestScreen>
           title: 'Standard Delivery Filters',
           onReset: () {
             categoryController.selectFilter(RequestFilter.today);
-            categoryController.selectStatusFilter(StandardDeliveryStatusFilter.all);
+            categoryController
+                .selectStatusFilter(StandardDeliveryStatusFilter.all);
             categoryController.selectDateFrom(null);
             categoryController.selectDateTo(null);
             categoryController.selectItemCategoryId('');
@@ -260,7 +280,8 @@ class _RequestScreenState extends State<RequestScreen>
             Text('Date From', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Obx(() {
-              final dateFrom = categoryController.filterManager.selectedDateFrom.value;
+              final dateFrom =
+                  categoryController.filterManager.selectedDateFrom.value;
               return OutlinedButton.icon(
                 onPressed: () async {
                   final picked = await showDatePicker(
@@ -272,14 +293,17 @@ class _RequestScreenState extends State<RequestScreen>
                   categoryController.selectDateFrom(picked);
                 },
                 icon: const Icon(Icons.calendar_today),
-                label: Text(dateFrom == null ? 'Pick start date' : dateFrom.toIso8601String().split('T').first),
+                label: Text(dateFrom == null
+                    ? 'Pick start date'
+                    : dateFrom.toIso8601String().split('T').first),
               );
             }),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text('Date To', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Obx(() {
-              final dateTo = categoryController.filterManager.selectedDateTo.value;
+              final dateTo =
+                  categoryController.filterManager.selectedDateTo.value;
               return OutlinedButton.icon(
                 onPressed: () async {
                   final picked = await showDatePicker(
@@ -291,37 +315,48 @@ class _RequestScreenState extends State<RequestScreen>
                   categoryController.selectDateTo(picked);
                 },
                 icon: const Icon(Icons.event),
-                label: Text(dateTo == null ? 'Pick end date' : dateTo.toIso8601String().split('T').first),
+                label: Text(dateTo == null
+                    ? 'Pick end date'
+                    : dateTo.toIso8601String().split('T').first),
               );
             }),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text('Status', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             FilterDropdown<StandardDeliveryStatusFilter>(
-              selectedFilter: categoryController.filterManager.selectedStatusFilter,
+              selectedFilter:
+                  categoryController.filterManager.selectedStatusFilter,
               filterValues: StandardDeliveryStatusFilter.values,
               getDisplayName: (f) => f.displayName,
               onFilterChanged: categoryController.selectStatusFilter,
             ),
             const SizedBox(height: BSizes.spaceBtwItems),
-            Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+            Text('Item Category',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Obx(() => DropdownButtonFormField<String>(
-                  value: categoryController.filterManager.selectedItemCategoryId.value.isEmpty
+                  value: categoryController
+                          .filterManager.selectedItemCategoryId.value.isEmpty
                       ? ''
-                      : categoryController.filterManager.selectedItemCategoryId.value,
+                      : categoryController
+                          .filterManager.selectedItemCategoryId.value,
                   items: [
-                    const DropdownMenuItem(value: '', child: Text('All Categories')),
-                    ...categoryOptions.map((item) => DropdownMenuItem(value: item.key, child: Text(item.value))),
+                    const DropdownMenuItem(
+                        value: '', child: Text('All Categories')),
+                    ...categoryOptions.map((item) => DropdownMenuItem(
+                        value: item.key, child: Text(item.value))),
                   ],
-                  onChanged: (value) => categoryController.selectItemCategoryId(value ?? ''),
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+                  onChanged: (value) =>
+                      categoryController.selectItemCategoryId(value ?? ''),
+                  decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.category_outlined)),
                 )),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             TextFormField(
-              initialValue: categoryController.filterManager.clientNameQuery.value,
+              initialValue:
+                  categoryController.filterManager.clientNameQuery.value,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
                 hintText: 'Search client name',
@@ -361,10 +396,12 @@ class _RequestScreenState extends State<RequestScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.category_outlined, size: 64, color: Colors.grey),
+                const Icon(Icons.category_outlined,
+                    size: 64, color: Colors.grey),
                 const SizedBox(height: 16),
                 Text(
-                  controller.errorMessage.value ?? 'No form categories available',
+                  controller.errorMessage.value ??
+                      'No form categories available',
                   style: const TextStyle(fontSize: 16, color: Colors.grey),
                   textAlign: TextAlign.center,
                 ),
@@ -384,7 +421,8 @@ class _RequestScreenState extends State<RequestScreen>
       // Main content
       return Scaffold(
         appBar: BAppBar(
-          title: Text('Request', style: Theme.of(context).textTheme.headlineMedium),
+          title: Text('Request',
+              style: Theme.of(context).textTheme.headlineMedium),
           actions: [
             if (_tabController != null)
               IconButton(
@@ -402,7 +440,8 @@ class _RequestScreenState extends State<RequestScreen>
                   }
                   return Obx(() {
                     final category = controller.formCategories[currentIndex];
-                    final categoryController = controller.getControllerForCategory(category.name);
+                    final categoryController =
+                        controller.getControllerForCategory(category.name);
 
                     if (categoryController == null) {
                       return const SizedBox.shrink();
@@ -410,17 +449,23 @@ class _RequestScreenState extends State<RequestScreen>
 
                     bool useLocalStorageValue = false;
                     if (categoryController is StandardDeliveryController) {
-                      useLocalStorageValue = categoryController.useLocalStorage.value;
+                      useLocalStorageValue =
+                          categoryController.useLocalStorage.value;
                     } else if (categoryController is PullOutController) {
-                      useLocalStorageValue = categoryController.useLocalStorage.value;
+                      useLocalStorageValue =
+                          categoryController.useLocalStorage.value;
                     } else if (categoryController is PickUpController) {
-                      useLocalStorageValue = categoryController.useLocalStorage.value;
+                      useLocalStorageValue =
+                          categoryController.useLocalStorage.value;
                     } else if (categoryController is AirSeaController) {
-                      useLocalStorageValue = categoryController.useLocalStorage.value;
+                      useLocalStorageValue =
+                          categoryController.useLocalStorage.value;
                     } else if (categoryController is HotlineDirectController) {
-                      useLocalStorageValue = categoryController.useLocalStorage.value;
+                      useLocalStorageValue =
+                          categoryController.useLocalStorage.value;
                     } else if (categoryController is StockReceiveController) {
-                      useLocalStorageValue = categoryController.useLocalStorage.value;
+                      useLocalStorageValue =
+                          categoryController.useLocalStorage.value;
                     }
 
                     final switchValue = !useLocalStorageValue;
@@ -461,7 +506,8 @@ class _RequestScreenState extends State<RequestScreen>
                   animation: _tabController!,
                   builder: (context, _) {
                     final currentIndex = _tabController!.index;
-                    return Obx(() => controller.buildFilterForCategory(currentIndex));
+                    return Obx(
+                        () => controller.buildFilterForCategory(currentIndex));
                   },
                 ),
               ),
@@ -530,4 +576,3 @@ class _RequestScreenState extends State<RequestScreen>
     });
   }
 }
-
