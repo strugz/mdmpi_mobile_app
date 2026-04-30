@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pick_up/pick_up_repository.dart';
+import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -28,6 +29,8 @@ class PickUpDataManager {
   final PickUpRepository _repository = Get.find<PickUpRepository>();
   final CancelRemarksRepository _cancelRemarksRepository =
       Get.find<CancelRemarksRepository>();
+  final MessagingController _messageController =
+      Get.find<MessagingController>();
 
   // ========================================================================
   // VALIDATION METHODS
@@ -180,6 +183,7 @@ class PickUpDataManager {
 
       // Insert via API (also saves to local DB)
       await _repository.insert(model, silent: true);
+      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model);
 
       // Force refresh from API to ensure we have the latest data with proper IDs
       final refreshedList = await _repository.refreshFromApi();
@@ -328,6 +332,7 @@ class PickUpDataManager {
       final payload = PickUpMapper.toUpdateDto(updated);
 
       await _repository.updateWithPayload(payload.toJson(), silent: true);
+      await _messageController.sendSmsMessage(newStatus, updated);
 
       await controller.loadPickUps();
 
@@ -365,6 +370,11 @@ class PickUpDataManager {
     try {
       await _repository.cancelPickUpAPI(request.id, remarks, user,
           silent: true);
+      await _messageController.sendSmsMessage(
+        BTexts.statusCancelled,
+        request,
+        overrideCancelRemarks: remarks,
+      );
       await fetchPickUps(controller, controller.useLocalStorage.value);
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');

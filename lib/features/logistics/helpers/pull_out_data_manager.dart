@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.dart';
+import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -26,6 +27,8 @@ class PullOutDataManager {
   final PullOutRepository _repository = Get.find<PullOutRepository>();
   final CancelRemarksRepository _cancelRemarksRepository =
       Get.find<CancelRemarksRepository>();
+  final MessagingController _messageController =
+      Get.find<MessagingController>();
 
   Future<bool> validateConnectivity() async {
     final isConnected = await NetworkManager.instance.isConnected();
@@ -125,6 +128,7 @@ class PullOutDataManager {
         documentReference: docRefs,
       );
       await _repository.insert(model, silent: true);
+      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model);
 
       await controller.loadPullOuts();
 
@@ -238,6 +242,7 @@ class PullOutDataManager {
       final payload = PullOutMapper.toUpdateDto(updated);
 
       await _repository.updateWithPayload(payload, silent: true);
+      await _messageController.sendSmsMessage(newStatus, updated);
 
       await controller.loadPullOuts();
 
@@ -268,6 +273,11 @@ class PullOutDataManager {
     try {
       await _repository.cancelPullOutAPI(request.id, remarks, user,
           silent: true);
+      await _messageController.sendSmsMessage(
+        BTexts.statusCancelled,
+        request,
+        overrideCancelRemarks: remarks,
+      );
       await fetchPullOuts(controller);
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');

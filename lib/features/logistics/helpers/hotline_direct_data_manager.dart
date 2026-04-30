@@ -147,32 +147,12 @@ class HotlineDirectDataManager {
             title: 'New', body: 'New Hotline Direct Request Received!'),
       );
 
-      final managersPhoneNumber = await _dbHelper
-          .getUserAndManagerPhoneNumbers(formState.requestedBy.text);
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (newRequest.createdBy == 'MEO') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('LNA'));
-      }
-
-      if (newRequest.createdBy == 'AVS') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('RPT'));
-      }
-
-      if (newRequest.createdBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
       await _messageController.sendSmsMessage(
-          managersPhoneNumber, BTexts.statusNewRequest, newRequest);
+          BTexts.statusNewRequest, newRequest);
 
       // Save to repository - include scanned items from form state
-      await _repository.insertDelivery(newRequest, formState.scannedInventoryItems.toList());
+      await _repository.insertDelivery(
+          newRequest, formState.scannedInventoryItems.toList());
 
       // Reload requests
       await fetchHotlineDirectRequests(
@@ -368,26 +348,7 @@ class HotlineDirectDataManager {
             title: 'Hotline Direct Update', body: updatedRequest.status),
       );
 
-      final managersPhoneNumber = await _dbHelper
-          .getUserAndManagerPhoneNumbers(updatedRequest.requestBy);
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (newStatus == BTexts.statusItemPrepared &&
-          request.itemPreparedBy == 'LNA') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('MEO'));
-      }
-
-      if (newStatus == BTexts.statusItemPrepared &&
-          request.itemPreparedBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
-      await _messageController.sendSmsMessage(
-          managersPhoneNumber, newStatus, updatedRequest);
+      await _messageController.sendSmsMessage(newStatus, updatedRequest);
 
       // Force reactive update by nullifying first, then setting the new value
       // This ensures GetX Obx widgets detect the change
@@ -477,23 +438,7 @@ class HotlineDirectDataManager {
             title: 'Hotline Direct Cancelled!', body: 'Reason: $remarks'),
       );
 
-      List<String> managersPhoneNumber = [];
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (request.itemPreparedBy == 'LNA') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('MEO'));
-      }
-
-      if (request.itemPreparedBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
-      await _messageController.sendSmsMessage(
-          managersPhoneNumber, BTexts.statusCancelled, request);
+      await _messageController.sendSmsMessage(BTexts.statusCancelled, request);
 
       await fetchHotlineDirectRequests(
           controller, controller.useLocalStorage.value);
@@ -672,7 +617,8 @@ class HotlineDirectDataManager {
 
       for (var request in hotlineDirectRequests) {
         if (request.status != BTexts.statusNewRequest) {
-          await _repository.updateDelivery(request,userCtrl.user.value.initial);
+          await _repository.updateDelivery(
+              request, userCtrl.user.value.initial);
         }
       }
       BLoaders.successSnackBar(

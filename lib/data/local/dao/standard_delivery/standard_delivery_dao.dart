@@ -288,12 +288,6 @@ class RequestDao {
     return value == null || value.isEmpty ? null : value;
   }
 
-  /// Convenience checks
-  Future<bool> hasReceiverSignature(dynamic requestID) async {
-    final sig = await getReceiverSignatureByRequestId(requestID);
-    return sig != null;
-  }
-
   Future<bool> hasRequestImage(dynamic requestID) async {
     final img = await getRequestImageByRequestId(requestID);
     return img != null;

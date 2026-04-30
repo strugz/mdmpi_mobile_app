@@ -19,6 +19,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_dispatch_info_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_drop_off_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_item_packed_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal_header.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_delivery_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_in_transit_section.dart';
@@ -219,6 +220,11 @@ class AirSeaPageStages extends StatelessWidget {
 
             // Footer section with request summary / quick actions that
             // are common to Air/Sea requests.
+
+            if (requestModel.status == BTexts.statusItemPacked && config.role == BTexts.roleRelease) ...[
+              AirSeaItemPackedSection(requestModel: requestModel),
+            ],
+
             Obx(() {
               if (controller.stagesStatus.contains(BTexts.statusNewRequest) &&
                   controller.stagesStatus

@@ -244,6 +244,11 @@ class DatabaseHelper {
     return _contactDao!;
   }
 
+  Future<List<String>> getContactPhoneNumbers() async {
+    final dao = await contactDao;
+    return await dao.getAllPhoneNumbers();
+  }
+
   // --- Request operations (delegated to RequestDao) ---
   Future<List<StandardDeliveryModel>> getRequests() async {
     final dao = await requestDao;
@@ -309,11 +314,6 @@ class DatabaseHelper {
   Future<String?> getRequestImageByRequestId(dynamic requestID) async {
     final dao = await requestDao;
     return await dao.getRequestImageByRequestId(requestID);
-  }
-
-  Future<bool> hasReceiverSignature(dynamic requestID) async {
-    final dao = await requestDao;
-    return await dao.hasReceiverSignature(requestID);
   }
 
   Future<bool> hasRequestImage(dynamic requestID) async {

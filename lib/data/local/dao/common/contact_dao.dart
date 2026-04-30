@@ -24,6 +24,19 @@ class ContactDao {
     return rows.map(ContactModel.fromJson).toList();
   }
 
+  Future<List<String>> getAllPhoneNumbers() async {
+    final rows = await db.query(
+      'contacts',
+      columns: ['contact_number'],
+      orderBy: 'created_at DESC',
+    );
+
+    return rows
+        .map((row) => (row['contact_number'] ?? '').toString().trim())
+        .where((phoneNumber) => phoneNumber.isNotEmpty)
+        .toList();
+  }
+
   Future<int> deleteById(int id) async {
     return db.delete(
       'contacts',

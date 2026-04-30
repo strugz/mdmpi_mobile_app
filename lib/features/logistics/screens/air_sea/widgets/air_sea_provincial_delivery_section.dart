@@ -46,6 +46,13 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
           const SizedBox(height: BSizes.spaceBtwItems),
           const BTextDivider(text: 'Provincial Delivery'),
           const SizedBox(height: BSizes.sm),
+          BTextFormField(
+            controller: formState.provincialDeliveredToController,
+            label: 'Recipient Name',
+            prefixIcon: Iconsax.user,
+            keyboardType: TextInputType.name,
+            textCapitalization: TextCapitalization.words,
+          ),
           Center(
             child: Obx(() {
               final sig = formState.receiverSignatureBytes.value;

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -133,29 +135,8 @@ class StandardDeliveryDataManager {
         NotificationModel(title: 'New', body: 'New Request Received!'),
       );
 
-      final managersPhoneNumber = await _dbHelper
-          .getUserAndManagerPhoneNumbers(formState.requestedBy.text);
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (newRequest.createdBy == 'MEO') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('LNA'));
-      }
-
-      if (newRequest.createdBy == 'AVS') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('RPT'));
-      }
-
-      if (newRequest.createdBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
       await _messageController.sendSmsMessage(
-          managersPhoneNumber, BTexts.statusNewRequest, newRequest);
+          BTexts.statusNewRequest, newRequest);
 
       // Save to repository - include scanned items from form state
       await _repository.insertDelivery(
@@ -373,26 +354,7 @@ class StandardDeliveryDataManager {
         NotificationModel(title: 'Update', body: updatedRequest.status),
       );
 
-      final managersPhoneNumber = await _dbHelper
-          .getUserAndManagerPhoneNumbers(updatedRequest.requestBy);
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (newStatus == BTexts.statusItemPrepared &&
-          request.itemPreparedBy == 'LNA') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('MEO'));
-      }
-
-      if (newStatus == BTexts.statusItemPrepared &&
-          request.itemPreparedBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
-      await _messageController.sendSmsMessage(
-          managersPhoneNumber, newStatus, updatedRequest);
+      await _messageController.sendSmsMessage(newStatus, updatedRequest);
 
       // Force reactive update by nullifying first, then setting the new value
       // This ensures GetX Obx widgets detect the change
@@ -486,23 +448,7 @@ class StandardDeliveryDataManager {
             title: 'Request Cancelled!', body: 'Reason: $remarks'),
       );
 
-      List<String> managersPhoneNumber = [];
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (request.itemPreparedBy == 'LNA') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('MEO'));
-      }
-
-      if (request.itemPreparedBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
-      await _messageController.sendSmsMessage(
-          managersPhoneNumber, BTexts.statusCancelled, request);
+      await _messageController.sendSmsMessage(BTexts.statusCancelled, request);
 
       await fetchStandardDeliveryRequests(
           controller, controller.useLocalStorage.value);

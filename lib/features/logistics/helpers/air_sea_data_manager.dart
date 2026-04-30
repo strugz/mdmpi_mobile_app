@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/air_sea/air_sea_repository.dart';
+import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -35,6 +36,8 @@ class AirSeaDataManager {
   final AirSeaRepository _repository = Get.find<AirSeaRepository>();
   final CancelRemarksRepository _cancelRemarksRepository =
       Get.find<CancelRemarksRepository>();
+  final MessagingController _messageController =
+      Get.find<MessagingController>();
 
   /// Public getter for repository access (used by controller for direct operations)
   AirSeaRepository get airSeaRepo => _repository;
@@ -185,6 +188,7 @@ class AirSeaDataManager {
 
       // Insert via API (also saves to local DB)
       await _repository.insert(model, silent: true);
+      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model);
 
       // Force refresh from API to ensure we have the latest data with proper IDs
       final refreshedList = await _repository.refreshFromApi();
@@ -354,6 +358,7 @@ class AirSeaDataManager {
       final payload = AirSeaMapper.toUpdateDto(updated, userInitial);
 
       await _repository.updateWithPayload(payload.toJson(), silent: true);
+      await _messageController.sendSmsMessage(newStatus, updated);
 
       await controller.loadAirSeaRequests();
 
@@ -570,6 +575,11 @@ class AirSeaDataManager {
     try {
       await _repository.cancelAirSeaAPI(request.id, remarks, user,
           silent: true);
+      await _messageController.sendSmsMessage(
+        BTexts.statusCancelled,
+        request,
+        overrideCancelRemarks: remarks,
+      );
       await fetchAirSeaRequests(controller, controller.useLocalStorage.value);
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');

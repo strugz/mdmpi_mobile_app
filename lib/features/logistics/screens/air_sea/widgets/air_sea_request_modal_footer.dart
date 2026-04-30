@@ -31,23 +31,6 @@ class AirSeaRequestModalFooter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// -- Item Packed Status Transition (Release role only) --
-        if (requestModel.status == BTexts.statusItemPacked &&
-            role == BTexts.roleRelease) ...[
-          AirSeaItemPackedSection(requestModel: requestModel),
-        ],
-        /// -- Remarks --
-        if (requestModel.remarks.isNotEmpty) ...[
-          const SizedBox(height: BSizes.sm),
-          const BTextDivider(text: 'Remarks'),
-          BProductTitleText(
-            title: requestModel.remarks,
-            maxLines: 3,
-            smallSize: true,
-            fontColor: textColor,
-          ),
-        ],
-
         /// -- Receipt Details (use reusable delivery details section) --
         if (requestModel.status == BTexts.statusReceived ||
             requestModel.status == BTexts.statusProvincialPickUp ||
