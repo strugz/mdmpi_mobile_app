@@ -110,8 +110,6 @@ class _RequestScreenState extends State<RequestScreen>
         controller.getControllerForCategory(category.name);
     final lowerName = category.name.toLowerCase();
 
-
-
     final isStandardDelivery =
         categoryController is StandardDeliveryController &&
             (lowerName.contains('standard') || lowerName.contains('delivery'));
@@ -119,9 +117,19 @@ class _RequestScreenState extends State<RequestScreen>
     final isPullOut =
         categoryController is PullOutController && lowerName.contains('pull');
 
-    if (!isStandardDelivery && !isPullOut) {
-      Get.snackbar('Custom Filter',
-          'Custom filters are available for Standard Delivery and Pull Out / Return only (for now).');
+    final isPickUp = categoryController is PickUpController &&
+        lowerName.contains('pick') &&
+        lowerName.contains('up');
+
+    final isAirSea =
+        categoryController is AirSeaController &&
+            (lowerName.contains('air') || lowerName.contains('sea'));
+
+    if (!isStandardDelivery && !isPullOut && !isPickUp && !isAirSea) {
+      Get.snackbar(
+        'Custom Filter',
+        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, and Air / Sea only.',
+      );
       return;
     }
 
@@ -132,7 +140,7 @@ class _RequestScreenState extends State<RequestScreen>
       barrierColor: Colors.black54,
       pageBuilder: (_, __, ___) {
         if (isPullOut) {
-          final pullOutController = categoryController;
+          final pullOutController = categoryController as PullOutController;
           final categoryOptions = pullOutController.formState.itemCategories
               .map((item) => MapEntry(item.id, item.name))
               .where((item) => item.key.isNotEmpty)
@@ -251,11 +259,74 @@ class _RequestScreenState extends State<RequestScreen>
             ],
           );
 
+        } else if (isPickUp) {
+          final pickUpController = categoryController as PickUpController;
+
+          return CustomFilterPanel(
+            title: 'Pick Up Filters',
+            onReset: () {
+              pickUpController.selectDateFilter(RequestFilter.today);
+              pickUpController.selectStatusFilter(PickUpStatusFilter.all);
+            },
+            children: [
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date Range',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<RequestFilter>(
+                selectedFilter: pickUpController.filterManager.selectedFilter,
+                filterValues: RequestFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: pickUpController.selectDateFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Status', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<PickUpStatusFilter>(
+                selectedFilter:
+                    pickUpController.filterManager.selectedStatusFilter,
+                filterValues: PickUpStatusFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: pickUpController.selectStatusFilter,
+              ),
+            ],
+          );
+        } else if (isAirSea) {
+          final airSeaController = categoryController as AirSeaController;
+
+          return CustomFilterPanel(
+            title: 'Air / Sea Filters',
+            onReset: () {
+              airSeaController.selectDateFilter(RequestFilter.today);
+              airSeaController.selectStatusFilter(AirSeaStatusFilter.all);
+            },
+            children: [
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date Range',
+                  style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<RequestFilter>(
+                selectedFilter: airSeaController.filterManager.selectedFilter,
+                filterValues: RequestFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: airSeaController.selectDateFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Status', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<AirSeaStatusFilter>(
+                selectedFilter:
+                    airSeaController.filterManager.selectedStatusFilter,
+                filterValues: AirSeaStatusFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: airSeaController.selectStatusFilter,
+              ),
+            ],
+          );
         }
 
-
-
-        final standardDeliveryController = categoryController as StandardDeliveryController;
+        final standardDeliveryController =
+            categoryController as StandardDeliveryController;
         final categoryOptions = standardDeliveryController.formState.itemCategories
             .map((item) => MapEntry(item.id, item.name))
             .where((item) => item.key.isNotEmpty)
