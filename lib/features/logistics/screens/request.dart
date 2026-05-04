@@ -769,6 +769,19 @@ class _RequestScreenState extends State<RequestScreen>
               ),
               onChanged: standardDeliveryController.setClientNameQuery,
             ),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            Text('Document Reference',
+                style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            TextFormField(
+              initialValue: standardDeliveryController
+                  .filterManager.documentReferenceQuery.value,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.description_outlined),
+                hintText: 'Search document reference',
+              ),
+              onChanged: standardDeliveryController.setDocumentReferenceQuery,
+            ),
           ],
         );
       },
