@@ -654,8 +654,6 @@ class _RequestScreenState extends State<RequestScreen>
               ),
             ],
           );
-        }
-
         } else if (isStockReceive) {
           final stockReceiveController = categoryController as StockReceiveController;
           final categoryOptions = stockReceiveController.formState.itemCategories
@@ -741,6 +739,7 @@ class _RequestScreenState extends State<RequestScreen>
               ),
             ],
           );
+        }
 
         final standardDeliveryController =
             categoryController as StandardDeliveryController;
