@@ -179,6 +179,24 @@ class PickUpController extends GetxController {
     filterManager.selectFilter(filter, pickUps);
   }
 
+
+
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, pickUps);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, pickUps);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, pickUps);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, pickUps);
+  }
+
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================

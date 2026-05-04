@@ -1,11 +1,10 @@
-
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart'; // For RequestFilter enum reuse
 
 enum PickUpStatusFilter {
   statusNewRequest('New Request'),
@@ -21,19 +20,22 @@ enum PickUpStatusFilter {
 
 class PickUpFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
-
   final Rx<PickUpStatusFilter> selectedStatusFilter =
       PickUpStatusFilter.all.obs;
+  final Rxn<DateTime> selectedDateFrom = Rxn<DateTime>();
+  final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
+  final RxString selectedItemCategoryId = ''.obs;
+  final RxString clientNameQuery = ''.obs;
 
   final RxList<PickUpModel> filteredPickUps = <PickUpModel>[].obs;
 
-  /// Reset filter manager to default state.
-  ///
-  /// If [allPickUps] is provided the default filter is immediately applied
-  /// to repopulate `filteredPickUps`.
   void reset([List<PickUpModel>? allPickUps]) {
     selectedFilter.value = RequestFilter.today;
     selectedStatusFilter.value = PickUpStatusFilter.all;
+    selectedDateFrom.value = null;
+    selectedDateTo.value = null;
+    selectedItemCategoryId.value = '';
+    clientNameQuery.value = '';
     filteredPickUps.clear();
     if (allPickUps != null) {
       applyFilter(allPickUps);
@@ -44,6 +46,10 @@ class PickUpFilterManager {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
+    final dateFrom = selectedDateFrom.value;
+    final dateTo = selectedDateTo.value;
+    final itemCategoryId = selectedItemCategoryId.value;
+    final clientQuery = clientNameQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allPickUps.where((item) {
@@ -62,8 +68,7 @@ class PickUpFilterManager {
           dateMatches = targetDate != null && BFormatter.isToday(targetDate);
           break;
         case RequestFilter.yesterday:
-          dateMatches =
-              targetDate != null && BFormatter.isYesterday(targetDate);
+          dateMatches = targetDate != null && BFormatter.isYesterday(targetDate);
           break;
         case RequestFilter.tomorrow:
           dateMatches = targetDate != null && BFormatter.isTomorrow(targetDate);
@@ -86,16 +91,34 @@ class PickUpFilterManager {
               item.status == statusFilter.displayName;
 
       bool userMatches = true;
-      if (!currentUser.role.contains(',')) {
-        if (currentUser.role.contains(BTexts.roleCourier)) {
-          userMatches = item.receivedBy == currentUser.initial ||
-              item.releasedBy == currentUser.initial;
-          logDebug(
-              'PickUpFilter: receivedBy=${item.receivedBy}, releasedBy=${item.releasedBy}');
-        }
+      if (!currentUser.role.contains(',') &&
+          currentUser.role.contains(BTexts.roleCourier)) {
+        userMatches = item.receivedBy == currentUser.initial ||
+            item.releasedBy == currentUser.initial;
+        logDebug(
+            'PickUpFilter: receivedBy=${item.receivedBy}, releasedBy=${item.releasedBy}');
       }
 
-      return dateMatches && statusMatches && userMatches;
+      final dateFromMatches = dateFrom == null ||
+          (targetDate != null &&
+              !targetDate.isBefore(
+                  DateTime(dateFrom.year, dateFrom.month, dateFrom.day)));
+      final dateToMatches = dateTo == null ||
+          (targetDate != null &&
+              !targetDate.isAfter(DateTime(
+                  dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
+      final itemCategoryMatches =
+          itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
+      final clientNameMatches =
+          clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+
+      return dateMatches &&
+          statusMatches &&
+          dateFromMatches &&
+          dateToMatches &&
+          itemCategoryMatches &&
+          clientNameMatches &&
+          userMatches;
     }).toList();
 
     tempList.sort((a, b) {
@@ -108,7 +131,6 @@ class PickUpFilterManager {
       }
     });
 
-    /// tempList is null here please check
     filteredPickUps.assignAll(tempList);
   }
 
@@ -120,6 +142,26 @@ class PickUpFilterManager {
   void selectStatusFilter(
       PickUpStatusFilter statusFilter, RxList<PickUpModel> allPickUps) {
     selectedStatusFilter.value = statusFilter;
+    applyFilter(allPickUps.toList());
+  }
+
+  void selectDateFrom(DateTime? date, RxList<PickUpModel> allPickUps) {
+    selectedDateFrom.value = date;
+    applyFilter(allPickUps.toList());
+  }
+
+  void selectDateTo(DateTime? date, RxList<PickUpModel> allPickUps) {
+    selectedDateTo.value = date;
+    applyFilter(allPickUps.toList());
+  }
+
+  void selectItemCategoryId(String categoryId, RxList<PickUpModel> allPickUps) {
+    selectedItemCategoryId.value = categoryId;
+    applyFilter(allPickUps.toList());
+  }
+
+  void setClientNameQuery(String query, RxList<PickUpModel> allPickUps) {
+    clientNameQuery.value = query;
     applyFilter(allPickUps.toList());
   }
 }

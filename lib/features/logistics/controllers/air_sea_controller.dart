@@ -211,6 +211,24 @@ class AirSeaController extends GetxController {
     filterManager.selectFilter(filter, airSeaRequests);
   }
 
+
+
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, airSeaRequests);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, airSeaRequests);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, airSeaRequests);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, airSeaRequests);
+  }
+
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================

@@ -263,17 +263,25 @@ class _RequestScreenState extends State<RequestScreen>
 
         } else if (isPickUp) {
           final pickUpController = categoryController as PickUpController;
+          final categoryOptions = pickUpController.formState.itemCategories
+              .map((item) => MapEntry(item.id, item.name))
+              .where((item) => item.key.isNotEmpty)
+              .toList()
+            ..sort((a, b) => a.value.compareTo(b.value));
 
           return CustomFilterPanel(
             title: 'Pick Up Filters',
             onReset: () {
               pickUpController.selectDateFilter(RequestFilter.today);
               pickUpController.selectStatusFilter(PickUpStatusFilter.all);
+              pickUpController.selectDateFrom(null);
+              pickUpController.selectDateTo(null);
+              pickUpController.selectItemCategoryId('');
+              pickUpController.setClientNameQuery('');
             },
             children: [
               const SizedBox(height: BSizes.spaceBtwItems),
-              Text('Date Range',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               FilterDropdown<RequestFilter>(
                 selectedFilter: pickUpController.filterManager.selectedFilter,
@@ -282,30 +290,107 @@ class _RequestScreenState extends State<RequestScreen>
                 onFilterChanged: pickUpController.selectDateFilter,
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date From', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateFrom = pickUpController.filterManager.selectedDateFrom.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateFrom ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    pickUpController.selectDateFrom(picked);
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(dateFrom == null
+                      ? 'Pick start date'
+                      : dateFrom.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date To', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateTo = pickUpController.filterManager.selectedDateTo.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateTo ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    pickUpController.selectDateTo(picked);
+                  },
+                  icon: const Icon(Icons.event),
+                  label: Text(dateTo == null
+                      ? 'Pick end date'
+                      : dateTo.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
               Text('Status', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               FilterDropdown<PickUpStatusFilter>(
-                selectedFilter:
-                    pickUpController.filterManager.selectedStatusFilter,
+                selectedFilter: pickUpController.filterManager.selectedStatusFilter,
                 filterValues: PickUpStatusFilter.values,
                 getDisplayName: (f) => f.displayName,
                 onFilterChanged: pickUpController.selectStatusFilter,
               ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() => DropdownButtonFormField<String>(
+                    value: pickUpController.filterManager.selectedItemCategoryId.value.isEmpty
+                        ? ''
+                        : pickUpController.filterManager.selectedItemCategoryId.value,
+                    items: [
+                      const DropdownMenuItem(value: '', child: Text('All Categories')),
+                      ...categoryOptions.map((item) => DropdownMenuItem(
+                          value: item.key, child: Text(item.value))),
+                    ],
+                    onChanged: (value) => pickUpController.selectItemCategoryId(value ?? ''),
+                    decoration:
+                        const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+                  )),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: pickUpController.filterManager.clientNameQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Search client name',
+                ),
+                onChanged: pickUpController.setClientNameQuery,
+              ),
             ],
           );
+
         } else if (isAirSea) {
           final airSeaController = categoryController as AirSeaController;
+          final categoryOptions = airSeaController.formState.itemCategories
+              .map((item) => MapEntry(item.id, item.name))
+              .where((item) => item.key.isNotEmpty)
+              .toList()
+            ..sort((a, b) => a.value.compareTo(b.value));
 
           return CustomFilterPanel(
             title: 'Air / Sea Filters',
             onReset: () {
               airSeaController.selectDateFilter(RequestFilter.today);
               airSeaController.selectStatusFilter(AirSeaStatusFilter.all);
+              airSeaController.selectDateFrom(null);
+              airSeaController.selectDateTo(null);
+              airSeaController.selectItemCategoryId('');
+              airSeaController.setClientNameQuery('');
             },
             children: [
               const SizedBox(height: BSizes.spaceBtwItems),
-              Text('Date Range',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               FilterDropdown<RequestFilter>(
                 selectedFilter: airSeaController.filterManager.selectedFilter,
@@ -314,14 +399,82 @@ class _RequestScreenState extends State<RequestScreen>
                 onFilterChanged: airSeaController.selectDateFilter,
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date From', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateFrom = airSeaController.filterManager.selectedDateFrom.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateFrom ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    airSeaController.selectDateFrom(picked);
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(dateFrom == null
+                      ? 'Pick start date'
+                      : dateFrom.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date To', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateTo = airSeaController.filterManager.selectedDateTo.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateTo ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    airSeaController.selectDateTo(picked);
+                  },
+                  icon: const Icon(Icons.event),
+                  label: Text(dateTo == null
+                      ? 'Pick end date'
+                      : dateTo.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
               Text('Status', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               FilterDropdown<AirSeaStatusFilter>(
-                selectedFilter:
-                    airSeaController.filterManager.selectedStatusFilter,
+                selectedFilter: airSeaController.filterManager.selectedStatusFilter,
                 filterValues: AirSeaStatusFilter.values,
                 getDisplayName: (f) => f.displayName,
                 onFilterChanged: airSeaController.selectStatusFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() => DropdownButtonFormField<String>(
+                    value: airSeaController.filterManager.selectedItemCategoryId.value.isEmpty
+                        ? ''
+                        : airSeaController.filterManager.selectedItemCategoryId.value,
+                    items: [
+                      const DropdownMenuItem(value: '', child: Text('All Categories')),
+                      ...categoryOptions.map((item) => DropdownMenuItem(
+                          value: item.key, child: Text(item.value))),
+                    ],
+                    onChanged: (value) => airSeaController.selectItemCategoryId(value ?? ''),
+                    decoration:
+                        const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+                  )),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: airSeaController.filterManager.clientNameQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Search client name',
+                ),
+                onChanged: airSeaController.setClientNameQuery,
               ),
             ],
           );
