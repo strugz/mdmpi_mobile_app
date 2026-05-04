@@ -601,6 +601,7 @@ class _RequestScreenState extends State<RequestScreen>
               ),
             ],
           );
+        }
 
         final standardDeliveryController =
             categoryController as StandardDeliveryController;
