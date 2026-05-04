@@ -482,9 +482,6 @@ class _RequestScreenState extends State<RequestScreen>
               ),
             ],
           );
-        }
-
-
         } else if (isHotlineDirect) {
           final hotlineDirectController =
               categoryController as HotlineDirectController;
