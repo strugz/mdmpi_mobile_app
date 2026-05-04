@@ -291,6 +291,10 @@ class StandardDeliveryController extends GetxController
     filterManager.setClientNameQuery(query, allPendingRequests);
   }
 
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query,allPendingRequests);
+  }
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================

@@ -33,6 +33,11 @@ class AirSeaFilterManager {
 
   final Rx<AirSeaStatusFilter> selectedStatusFilter =
       AirSeaStatusFilter.all.obs;
+  final Rxn<DateTime> selectedDateFrom = Rxn<DateTime>();
+  final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
+  final RxString selectedItemCategoryId = ''.obs;
+  final RxString clientNameQuery = ''.obs;
+  final RxString documentReferenceQuery = ''.obs;
 
   final RxList<AirSeaModel> filteredAirSeaRequests = <AirSeaModel>[].obs;
 
@@ -43,6 +48,11 @@ class AirSeaFilterManager {
   void reset([List<AirSeaModel>? allRequests]) {
     selectedFilter.value = RequestFilter.today;
     selectedStatusFilter.value = AirSeaStatusFilter.all;
+    selectedDateFrom.value = null;
+    selectedDateTo.value = null;
+    selectedItemCategoryId.value = '';
+    clientNameQuery.value = '';
+    documentReferenceQuery.value = '';
     filteredAirSeaRequests.clear();
     if (allRequests != null) {
       applyFilter(allRequests);
@@ -55,6 +65,11 @@ class AirSeaFilterManager {
   void applyFilter(List<AirSeaModel> allRequests) {
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
+    final dateFrom = selectedDateFrom.value;
+    final dateTo = selectedDateTo.value;
+    final itemCategoryId = selectedItemCategoryId.value;
+    final clientQuery = clientNameQuery.value.trim().toLowerCase();
+    final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
 
     logDebug('AirSeaFilterManager.applyFilter: ${jsonEncode(allRequests)}');
 
@@ -102,7 +117,23 @@ class AirSeaFilterManager {
       // Users with courier role will see all Air/Sea requests they have access to.
       bool userMatches = true;
 
-      return dateMatches && statusMatches && userMatches;
+      final dateFromMatches = dateFrom == null ||
+          (targetDate != null && !targetDate.isBefore(DateTime(dateFrom.year, dateFrom.month, dateFrom.day)));
+      final dateToMatches = dateTo == null ||
+          (targetDate != null && !targetDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
+      final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
+      final clientNameMatches = clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+      final documentReferenceMatches = documentQuery.isEmpty ||
+          item.documentReference.any((ref) => ref.toLowerCase().contains(documentQuery));
+
+      return dateMatches &&
+          statusMatches &&
+          dateFromMatches &&
+          dateToMatches &&
+          itemCategoryMatches &&
+          clientNameMatches &&
+          documentReferenceMatches &&
+          userMatches;
     }).toList();
 
     logDebug('AirSeaFilterManager.applyFilter filtered: ${jsonEncode(tempList)}');
@@ -136,6 +167,31 @@ class AirSeaFilterManager {
   /// [allRequests] The complete list of Air/Sea requests
   void selectFilter(RequestFilter filter, List<AirSeaModel> allRequests) {
     selectedFilter.value = filter;
+    applyFilter(allRequests);
+  }
+
+  void selectDateFrom(DateTime? date, List<AirSeaModel> allRequests) {
+    selectedDateFrom.value = date;
+    applyFilter(allRequests);
+  }
+
+  void selectDateTo(DateTime? date, List<AirSeaModel> allRequests) {
+    selectedDateTo.value = date;
+    applyFilter(allRequests);
+  }
+
+  void selectItemCategoryId(String categoryId, List<AirSeaModel> allRequests) {
+    selectedItemCategoryId.value = categoryId;
+    applyFilter(allRequests);
+  }
+
+  void setClientNameQuery(String query, List<AirSeaModel> allRequests) {
+    clientNameQuery.value = query;
+    applyFilter(allRequests);
+  }
+
+  void setDocumentReferenceQuery(String query, List<AirSeaModel> allRequests) {
+    documentReferenceQuery.value = query;
     applyFilter(allRequests);
   }
 }

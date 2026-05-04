@@ -90,6 +90,28 @@ class StockReceiveController extends GetxController {
     filterManager.selectFilter(filter, stockReceives);
   }
 
+
+
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, stockReceives);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, stockReceives);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, stockReceives);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, stockReceives);
+  }
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query, stockReceives);
+  }
+
   /// Fetch all Stock Receive requests from repository.
   Future<void> loadStockReceives() async {
     await dataManager.fetchStockReceives(this, useLocalStorage.value);
