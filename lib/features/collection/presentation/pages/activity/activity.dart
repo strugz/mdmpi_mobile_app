@@ -3,18 +3,16 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
-import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-
-import 'activity_detail_screen.dart';
-import 'widgets/activity_filter_chips.dart';
-import 'widgets/activity_list_tile.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
+import 'activity_account_invoices_screen.dart';
+import 'widgets/activity_filter_modal.dart';
 
 /// Collection Activity Screen
 ///
-/// Shows collection items the user has claimed from the Collection Bucket.
+/// Shows accounts that have invoices claimed by the user.
 /// Items appear here after being selected in the bucket screen.
 class CollectionActivityScreen extends StatelessWidget {
   const CollectionActivityScreen({super.key});
@@ -30,79 +28,107 @@ class CollectionActivityScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.headlineMedium,
         ),
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: () {
-              // TODO: Implement search
-            },
-            icon: const Icon(Iconsax.search_normal),
-          ),
-        ],
       ),
-      body: Column(
-        children: [
-          /// Filter chips
-          ActivityFilterChips(
-            onFilterChanged: (filter) => controller.setActivityFilter(filter),
-          ),
+      body: Obx(() {
+        final accounts = controller.activityAccounts;
 
-          const SizedBox(height: BSizes.spaceBtwItems),
-
-          /// Activity list — driven by controller
-          Expanded(
-            child: Obx(() {
-              final items = controller.filteredActivityItems;
-
-              if (items.isEmpty) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Iconsax.activity,
-                          size: 64, color: BColors.darkGrey),
-                      const SizedBox(height: BSizes.spaceBtwItems),
-                      Text(
-                        'No activities yet',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyLarge
-                            ?.copyWith(color: BColors.darkGrey),
-                      ),
-                      const SizedBox(height: BSizes.xs),
-                      Text(
-                        'Select items from the Collection Bucket\nto start your activity.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: BColors.darkGrey),
-                      ),
-                    ],
+        return Column(
+          children: [
+            /// Search and Filter Bar
+            Obx(() {
+              final hasFilter = controller.activityMinAmount.value > 0 || 
+                               controller.activityMaxAmount.value > 0 ||
+                               controller.activityMinInvoices.value > 0 ||
+                               controller.activityMaxInvoices.value > 0;
+              
+              return CollectionSearchFilterBar(
+                searchHint: 'Search by account name...',
+                initialValue: controller.activitySearchQuery.value,
+                onSearchChanged: (value) => controller.activitySearchQuery.value = value,
+                hasActiveFilter: hasFilter,
+                onFilterTap: () => Get.bottomSheet(
+                  const ActivityFilterModal(),
+                  backgroundColor: BColors.white,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
                   ),
-                );
-              }
-
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: BSizes.defaultSpace),
-                itemCount: items.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: BSizes.sm),
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return ActivityListTile(
-                    item: item,
-                    onTap: () => Get.to(() => ActivityDetailScreen(item: item)),
-                  );
-                },
+                ),
               );
             }),
-          ),
-        ],
-      ),
+
+            Expanded(
+              child: accounts.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            (controller.activitySearchQuery.value.isEmpty && 
+                             controller.activityMinAmount.value == 0 && 
+                             controller.activityMinInvoices.value == 0)
+                                ? Iconsax.activity
+                                : Iconsax.search_status,
+                            size: 64,
+                            color: BColors.darkGrey,
+                          ),
+                          const SizedBox(height: BSizes.spaceBtwItems),
+                          Text(
+                            controller.activitySearchQuery.value.isEmpty && 
+                             controller.activityMinAmount.value == 0 && 
+                             controller.activityMinInvoices.value == 0
+                                ? 'No activities yet'
+                                : 'No accounts match your criteria',
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  color: BColors.darkGrey,
+                                ),
+                          ),
+                          const SizedBox(height: BSizes.xs),
+                          if (controller.activitySearchQuery.value.isNotEmpty || 
+                              controller.activityMinAmount.value > 0 || 
+                              controller.activityMinInvoices.value > 0)
+                            TextButton(
+                              onPressed: () {
+                                controller.activityMinAmount.value = 0;
+                                controller.activityMaxAmount.value = 0;
+                                controller.activityMinInvoices.value = 0;
+                                controller.activityMaxInvoices.value = 0;
+                                controller.activitySearchQuery.value = '';
+                              },
+                              child: const Text('Clear all filters'),
+                            )
+                          else
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: BSizes.lg),
+                              child: Text(
+                                'Select items from the Collection Bucket\nto start your activity.',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(BSizes.defaultSpace),
+                      itemCount: accounts.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: BSizes.spaceBtwItems),
+                      itemBuilder: (context, index) {
+                        final client = accounts[index];
+                        return AccountItemCard(
+                          client: client,
+                          invoiceCount: controller.getActivityAccountInvoiceCount(client.id),
+                          totalAmount: controller.getActivityAccountTotalDue(client.id),
+                          onTap: () => Get.to(() => CollectionActivityAccountInvoicesScreen(client: client)),
+                          onInfoTap: () => Get.to(() => CollectionAccountInformationScreen(client: client)),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      }),
     );
   }
 }
-
-
-

@@ -45,6 +45,13 @@ class CollectionActivityController extends GetxController {
   final RxInt bucketMinInvoices = 0.obs;
   final RxInt bucketMaxInvoices = 0.obs;
 
+  /// Search query and filters for the activity screen.
+  final RxString activitySearchQuery = ''.obs;
+  final RxDouble activityMinAmount = 0.0.obs;
+  final RxDouble activityMaxAmount = 0.0.obs;
+  final RxInt activityMinInvoices = 0.obs;
+  final RxInt activityMaxInvoices = 0.obs;
+
   /// Search query for the specific account invoices screen.
   final RxString invoiceSearchQuery = ''.obs;
 
@@ -164,6 +171,67 @@ class CollectionActivityController extends GetxController {
   /// Get total number of invoices for a specific client in the bucket.
   int getAccountInvoiceCount(String clientId) {
     return bucketItems.where((item) => item.client.id == clientId).length;
+  }
+
+  // ========================================================================
+  // Account Grouping Helpers (Activity)
+  // ========================================================================
+
+  /// Returns a list of clients (Accounts) currently in activity, filtered by UI criteria.
+  List<ClientModel> get activityAccounts {
+    // Get unique client IDs from activity items
+    final activeClientIds = activityItems.map((e) => e.client.id).toSet();
+    
+    return masterAccountList.where((client) {
+      // 1. Must have items in activity
+      if (!activeClientIds.contains(client.id)) return false;
+
+      // 2. Filter by Search Query (Account Name)
+      if (activitySearchQuery.value.isNotEmpty &&
+          !client.name.toLowerCase().contains(activitySearchQuery.value.toLowerCase())) {
+        return false;
+      }
+
+      // 3. Calculate thresholds
+      final totalAmount = getActivityAccountTotalDue(client.id);
+      final invoiceCount = getActivityAccountInvoiceCount(client.id);
+
+      // 4. Filter by Amount Range
+      if (activityMinAmount.value > 0 && totalAmount < activityMinAmount.value) return false;
+      if (activityMaxAmount.value > 0 && totalAmount > activityMaxAmount.value) return false;
+
+      // 5. Filter by Invoice Count Range
+      if (activityMinInvoices.value > 0 && invoiceCount < activityMinInvoices.value) return false;
+      if (activityMaxInvoices.value > 0 && invoiceCount > activityMaxInvoices.value) return false;
+
+      return true;
+    }).toList();
+  }
+
+  /// Get total amount due for a specific client in activity.
+  double getActivityAccountTotalDue(String clientId) {
+    return activityItems
+        .where((item) => item.client.id == clientId)
+        .fold(0.0, (sum, item) => sum + item.toBeCollected);
+  }
+
+  /// Get total number of invoices for a specific client in activity.
+  int getActivityAccountInvoiceCount(String clientId) {
+    return activityItems.where((item) => item.client.id == clientId).length;
+  }
+
+  /// Get all activity items for a specific client.
+  List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) {
+    final invoices = activityItems.where((item) => item.client.id == clientId).toList();
+
+    if (invoiceSearchQuery.value.isEmpty) return invoices;
+
+    final query = invoiceSearchQuery.value.toLowerCase();
+    return invoices.where((item) {
+      return item.id.toLowerCase().contains(query) ||
+          item.documentReferences.any((ref) => ref.toLowerCase().contains(query)) ||
+          item.bankName.toLowerCase().contains(query);
+    }).toList();
   }
 
   // ========================================================================

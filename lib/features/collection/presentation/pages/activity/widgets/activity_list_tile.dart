@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
@@ -8,7 +9,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 
 /// A single activity entry tile used in the Activity list.
 ///
-/// Displays an icon, title, subtitle, time, and four status badges.
+/// Displays invoice details, amounts, dates, and status badges.
 class ActivityListTile extends StatelessWidget {
   const ActivityListTile({
     super.key,
@@ -23,10 +24,6 @@ class ActivityListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     
-    // Use coreStatus for primary theme
-    final primaryColor = CollectionStatusColors.colorFor(item.coreStatus);
-    final primaryIcon = CollectionStatusColors.iconFor(item.coreStatus);
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -49,40 +46,29 @@ class ActivityListTile extends StatelessWidget {
                 ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// 1. Invoice # and Amount
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                /// Leading icon
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                  ),
-                  child: Icon(primaryIcon, color: primaryColor, size: BSizes.iconMd),
-                ),
-
-                const SizedBox(width: BSizes.spaceBtwItemsLight),
-
-                /// Title + subtitle
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item.client.name,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
+                        'Invoice #${item.id}',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: BSizes.xxs),
                       Text(
-                        '${item.bankName} • ${item.documentReferences.isNotEmpty ? item.documentReferences.first : '—'}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: BColors.darkGrey,
+                        'BP: ${item.bpCode}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: BColors.primary,
+                              fontWeight: FontWeight.bold,
                             ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -90,45 +76,86 @@ class ActivityListTile extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 const SizedBox(width: BSizes.sm),
-
-                /// Time + Amount
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      item.assignedAt,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: BColors.darkGrey,
-                          ),
-                    ),
-                    const SizedBox(height: BSizes.xs),
-                    Text(
-                      BFormatter.formatPesoCurrency(item.toBeCollected),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: BColors.primary,
-                          ),
-                    ),
-                  ],
+                Text(
+                  BFormatter.formatPesoCurrency(item.toBeCollected),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: BColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ],
             ),
             
-            const SizedBox(height: BSizes.spaceBtwItems),
-            
-            /// Four Status Badges
+            const SizedBox(height: BSizes.sm),
+
+            /// 2. Dates (Posted & Due)
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatusBadge(context, item.coreStatus),
-                const SizedBox(width: BSizes.xs),
-                _buildStatusBadge(context, item.delayStatus),
-                const SizedBox(width: BSizes.xs),
-                _buildStatusBadge(context, item.outcomeStatus),
-                const SizedBox(width: BSizes.xs),
-                _buildStatusBadge(context, item.administrativeStatus),
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Posted: ${item.postingDate}',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: BColors.darkGrey,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: BSizes.sm),
+                Expanded(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Icon(Iconsax.timer, size: 14, color: BColors.error),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Due: ${item.dueDate}',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: BColors.error,
+                                fontWeight: FontWeight.bold,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
+            ),
+
+            const SizedBox(height: BSizes.xs),
+            
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: BSizes.sm),
+              child: Divider(height: 1),
+            ),
+            
+            /// 4. Status Badges
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildStatusBadge(context, item.coreStatus),
+                  const SizedBox(width: BSizes.xs),
+                  _buildStatusBadge(context, item.delayStatus),
+                  const SizedBox(width: BSizes.xs),
+                  _buildStatusBadge(context, item.outcomeStatus),
+                  const SizedBox(width: BSizes.xs),
+                  _buildStatusBadge(context, item.administrativeStatus),
+                ],
+              ),
             ),
           ],
         ),

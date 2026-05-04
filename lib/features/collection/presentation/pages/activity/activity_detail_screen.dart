@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'widgets/activity_history_list.dart';
-import 'widgets/activity_info_card.dart';
-import 'widgets/activity_section_header.dart';
-import 'widgets/activity_update_status_card.dart';
-import 'widgets/receipt_photo_card.dart';
 
 class ActivityDetailScreen extends StatefulWidget {
   const ActivityDetailScreen({super.key, required this.item});
@@ -20,25 +18,19 @@ class ActivityDetailScreen extends StatefulWidget {
 }
 
 class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
-  late String selectedDelayStatus;
-  late String selectedOutcomeStatus;
-  late String selectedAdministrativeStatus;
-  late TextEditingController remarksController;
+  late String selectedRemark;
   late TextEditingController totalCollectedController;
 
   @override
   void initState() {
     super.initState();
-    selectedDelayStatus = widget.item.delayStatus;
-    selectedOutcomeStatus = widget.item.outcomeStatus;
-    selectedAdministrativeStatus = widget.item.administrativeStatus;
-    remarksController = TextEditingController(text: widget.item.remarks);
+    // Use existing outcome status as the initial remark selection
+    selectedRemark = widget.item.outcomeStatus;
     totalCollectedController = TextEditingController(text: widget.item.totalCollected.toString());
   }
 
   @override
   void dispose() {
-    remarksController.dispose();
     totalCollectedController.dispose();
     super.dispose();
   }
@@ -47,10 +39,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     final controller = CollectionActivityController.instance;
     controller.saveActivity(
       id: widget.item.id,
-      delayStatus: selectedDelayStatus,
-      outcomeStatus: selectedOutcomeStatus,
-      administrativeStatus: selectedAdministrativeStatus,
-      remarks: remarksController.text,
+      delayStatus: widget.item.delayStatus,
+      outcomeStatus: selectedRemark, // Map dropdown to outcome status
+      administrativeStatus: widget.item.administrativeStatus,
+      remarks: selectedRemark, // Also use it as the text remark
       totalCollected: double.tryParse(totalCollectedController.text) ?? 0,
     );
 
@@ -75,53 +67,170 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// Section 1: Collection Info
-            const ActivitySectionHeader(title: 'Collection Information'),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            ActivityInfoCard(item: widget.item),
+            /// 1. Invoice Header (No Section Text)
+            // Invoice # and Total Amount Due
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Invoice #${widget.item.id}',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Text(
+                  BFormatter.formatPesoCurrency(widget.item.toBeCollected),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: BColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: BSizes.xs),
 
-            const SizedBox(height: BSizes.spaceBtwSections),
+            // Due Date
+            Row(
+              children: [
+                const Icon(Iconsax.timer, size: 18, color: BColors.error),
+                const SizedBox(width: BSizes.xs),
+                Text(
+                  'Due Date: ',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+                ),
+                Text(
+                  widget.item.dueDate,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: BColors.error,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: BSizes.xs),
 
-            /// Section 2: Photos & Documentation
-            const ActivitySectionHeader(title: 'Documentation'),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            const ReceiptPhotoCard(),
+            // Invoice Date and BP
+            Row(
+              children: [
+                const Icon(Iconsax.calendar, size: 16, color: BColors.darkGrey),
+                const SizedBox(width: BSizes.xs),
+                Text(
+                  'Invoice Date: ${widget.item.postingDate}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                ),
+                const SizedBox(width: BSizes.md),
+                const Icon(Iconsax.user, size: 16, color: BColors.darkGrey),
+                const SizedBox(width: BSizes.xs),
+                Text(
+                  'BP: ${widget.item.bpCode}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: BColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: BSizes.sm),
 
-            const SizedBox(height: BSizes.spaceBtwSections),
-
-            /// Section 3: Update Status
-            const ActivitySectionHeader(title: 'Update Status'),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            ActivityUpdateStatusCard(
-              selectedDelayStatus: selectedDelayStatus,
-              selectedOutcomeStatus: selectedOutcomeStatus,
-              selectedAdministrativeStatus: selectedAdministrativeStatus,
-              remarksController: remarksController,
-              totalCollectedController: totalCollectedController,
-              onDelayChanged: (val) => setState(() => selectedDelayStatus = val!),
-              onOutcomeChanged: (val) => setState(() => selectedOutcomeStatus = val!),
-              onAdministrativeChanged: (val) => setState(() => selectedAdministrativeStatus = val!),
+            // Statuses
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildStatusBadge(context, widget.item.coreStatus),
+                  const SizedBox(width: BSizes.xs),
+                  _buildStatusBadge(context, widget.item.delayStatus),
+                  const SizedBox(width: BSizes.xs),
+                  _buildStatusBadge(context, widget.item.outcomeStatus),
+                  const SizedBox(width: BSizes.xs),
+                  _buildStatusBadge(context, widget.item.administrativeStatus),
+                ],
+              ),
             ),
 
-            const SizedBox(height: BSizes.spaceBtwSections),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: BSizes.spaceBtwSections),
+              child: Divider(),
+            ),
 
-            /// Save Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saveActivity,
-                child: const Text('Save & Move to Bucket'),
+            /// 2. Paid to invoice
+            Text('Paid to invoice', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            TextField(
+              controller: totalCollectedController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                hintText: 'Enter amount collected...',
+                prefixText: '₱ ',
               ),
             ),
 
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            /// Section 3: Account History
-            const ActivitySectionHeader(title: 'Account History'),
+            /// 3. Remarks (Dropdown)
+            Text('Remarks', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
-            ActivityHistoryList(history: widget.item.history),
+            DropdownButtonFormField<String>(
+              value: selectedRemark,
+              decoration: const InputDecoration(
+                hintText: 'Select remark...',
+              ),
+              items: [
+                CollectionStatusColors.statusNone,
+                ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryOutcomes)
+              ].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  selectedRemark = newValue!;
+                });
+              },
+            ),
+
+            const SizedBox(height: BSizes.spaceBtwSections * 1.5),
+
+            /// 4. Save Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _saveActivity,
+                child: const Text('Save'),
+              ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(BuildContext context, String status) {
+    if (status == CollectionStatusColors.statusOnSchedule || status == CollectionStatusColors.statusNone) {
+      return const SizedBox.shrink();
+    }
+    
+    final (bg, fg) = CollectionStatusColors.colorsForAuto(context, status);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: BSizes.sm,
+        vertical: BSizes.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+      ),
+      child: Text(
+        status,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: fg == BColors.white ? bg : fg,
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
+            ),
       ),
     );
   }

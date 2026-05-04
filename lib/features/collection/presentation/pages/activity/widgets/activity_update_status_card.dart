@@ -5,24 +5,16 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 class ActivityUpdateStatusCard extends StatelessWidget {
   const ActivityUpdateStatusCard({
     super.key,
-    required this.selectedDelayStatus,
     required this.selectedOutcomeStatus,
-    required this.selectedAdministrativeStatus,
     required this.remarksController,
     required this.totalCollectedController,
-    required this.onDelayChanged,
     required this.onOutcomeChanged,
-    required this.onAdministrativeChanged,
   });
 
-  final String selectedDelayStatus;
   final String selectedOutcomeStatus;
-  final String selectedAdministrativeStatus;
   final TextEditingController remarksController;
   final TextEditingController totalCollectedController;
-  final ValueChanged<String?> onDelayChanged;
   final ValueChanged<String?> onOutcomeChanged;
-  final ValueChanged<String?> onAdministrativeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -34,30 +26,13 @@ class ActivityUpdateStatusCard extends StatelessWidget {
         child: Column(
           children: [
             _ActivityStatusDropdown(
-              label: 'Delay Status',
-              value: selectedDelayStatus,
-              items: [
-                CollectionStatusColors.statusOnSchedule,
-                ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryDelays)
-              ],
-              onChanged: onDelayChanged,
-            ),
-            const SizedBox(height: BSizes.spaceBtwInputFields),
-            _ActivityStatusDropdown(
-              label: 'Outcome Status',
+              label: 'Type of Payment',
               value: selectedOutcomeStatus,
               items: [
                 CollectionStatusColors.statusNone,
                 ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryOutcomes)
               ],
               onChanged: onOutcomeChanged,
-            ),
-            const SizedBox(height: BSizes.spaceBtwInputFields),
-            _ActivityStatusDropdown(
-              label: 'Administrative Status',
-              value: selectedAdministrativeStatus,
-              items: CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryAdministrative),
-              onChanged: onAdministrativeChanged,
             ),
             const SizedBox(height: BSizes.spaceBtwInputFields),
             TextField(
