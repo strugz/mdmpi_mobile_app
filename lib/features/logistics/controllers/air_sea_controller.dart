@@ -229,6 +229,10 @@ class AirSeaController extends GetxController {
     filterManager.setClientNameQuery(query, airSeaRequests);
   }
 
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query,airSeaRequests);
+  }
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================

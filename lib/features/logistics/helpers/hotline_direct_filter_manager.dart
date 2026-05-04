@@ -22,6 +22,7 @@ class HotlineDirectFilterManager {
   final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
   final RxString selectedItemCategoryId = ''.obs;
   final RxString clientNameQuery = ''.obs;
+  final RxString documentReferenceQuery = ''.obs;
   final RxList<StandardDeliveryModel> filteredRequests = <StandardDeliveryModel>[].obs;
 
   /// Reset filter manager to default state.
@@ -35,6 +36,7 @@ class HotlineDirectFilterManager {
     selectedDateTo.value = null;
     selectedItemCategoryId.value = '';
     clientNameQuery.value = '';
+    documentReferenceQuery.value = '';
     filteredRequests.clear();
     if (allRequests != null) {
       applyFilter(allRequests);
@@ -57,6 +59,7 @@ class HotlineDirectFilterManager {
     final dateTo = selectedDateTo.value;
     final itemCategoryId = selectedItemCategoryId.value;
     final clientQuery = clientNameQuery.value.trim().toLowerCase();
+    final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allRequests.where((item) {
@@ -112,8 +115,10 @@ class HotlineDirectFilterManager {
           (deliveryDate != null && !deliveryDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
       final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryID == itemCategoryId;
       final clientNameMatches = clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+      final documentReferenceMatches = documentQuery.isEmpty ||
+          item.documentReference.any((ref) => ref.toLowerCase().contains(documentQuery));
 
-      return dateMatches && statusMatches && dateFromMatches && dateToMatches && itemCategoryMatches && clientNameMatches && userMatches;
+      return dateMatches && statusMatches && dateFromMatches && dateToMatches && itemCategoryMatches && clientNameMatches && documentReferenceMatches && userMatches;
     }).toList();
 
     // Sort by delivery date (newest first)
@@ -159,6 +164,11 @@ class HotlineDirectFilterManager {
 
   void setClientNameQuery(String query, RxList<StandardDeliveryModel> allRequests) {
     clientNameQuery.value = query;
+    applyFilter(allRequests.toList());
+  }
+
+  void setDocumentReferenceQuery(String query, RxList<StandardDeliveryModel> allRequests) {
+    documentReferenceQuery.value = query;
     applyFilter(allRequests.toList());
   }
 }

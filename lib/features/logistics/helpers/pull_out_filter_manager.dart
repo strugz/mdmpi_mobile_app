@@ -24,6 +24,7 @@ class PullOutFilterManager {
   final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
   final RxString selectedItemCategoryId = ''.obs;
   final RxString clientNameQuery = ''.obs;
+  final RxString documentReferenceQuery = ''.obs;
 
   final RxList<PullOutModel> filteredPullOuts = <PullOutModel>[].obs;
 
@@ -38,6 +39,7 @@ class PullOutFilterManager {
     selectedDateTo.value = null;
     selectedItemCategoryId.value = '';
     clientNameQuery.value = '';
+    documentReferenceQuery.value = '';
     filteredPullOuts.clear();
     if (allPullOuts != null) {
       applyFilter(allPullOuts);
@@ -52,6 +54,7 @@ class PullOutFilterManager {
     final dateTo = selectedDateTo.value;
     final itemCategoryId = selectedItemCategoryId.value;
     final clientQuery = clientNameQuery.value.trim().toLowerCase();
+    final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allPullOuts.where((item) {
@@ -108,6 +111,8 @@ class PullOutFilterManager {
           (targetDate != null && !targetDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
       final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
       final clientNameMatches = clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+      final documentReferenceMatches = documentQuery.isEmpty ||
+          item.documentReference.any((ref) => ref.toLowerCase().contains(documentQuery));
 
       return dateMatches &&
           statusMatches &&
@@ -115,6 +120,7 @@ class PullOutFilterManager {
           dateToMatches &&
           itemCategoryMatches &&
           clientNameMatches &&
+          documentReferenceMatches &&
           userMatches;
     }).toList();
 
@@ -158,6 +164,11 @@ class PullOutFilterManager {
 
   void setClientNameQuery(String query, RxList<PullOutModel> allPullOuts) {
     clientNameQuery.value = query;
+    applyFilter(allPullOuts.toList());
+  }
+
+  void setDocumentReferenceQuery(String query, RxList<PullOutModel> allPullOuts) {
+    documentReferenceQuery.value = query;
     applyFilter(allPullOuts.toList());
   }
 }

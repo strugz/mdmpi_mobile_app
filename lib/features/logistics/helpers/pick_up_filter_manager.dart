@@ -26,6 +26,7 @@ class PickUpFilterManager {
   final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
   final RxString selectedItemCategoryId = ''.obs;
   final RxString clientNameQuery = ''.obs;
+  final RxString documentReferenceQuery = ''.obs;
 
   final RxList<PickUpModel> filteredPickUps = <PickUpModel>[].obs;
 
@@ -36,6 +37,7 @@ class PickUpFilterManager {
     selectedDateTo.value = null;
     selectedItemCategoryId.value = '';
     clientNameQuery.value = '';
+    documentReferenceQuery.value = '';
     filteredPickUps.clear();
     if (allPickUps != null) {
       applyFilter(allPickUps);
@@ -50,6 +52,7 @@ class PickUpFilterManager {
     final dateTo = selectedDateTo.value;
     final itemCategoryId = selectedItemCategoryId.value;
     final clientQuery = clientNameQuery.value.trim().toLowerCase();
+    final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allPickUps.where((item) {
@@ -111,6 +114,8 @@ class PickUpFilterManager {
           itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
       final clientNameMatches =
           clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+      final documentReferenceMatches = documentQuery.isEmpty ||
+          item.documentReference.any((ref) => ref.toLowerCase().contains(documentQuery));
 
       return dateMatches &&
           statusMatches &&
@@ -118,6 +123,7 @@ class PickUpFilterManager {
           dateToMatches &&
           itemCategoryMatches &&
           clientNameMatches &&
+          documentReferenceMatches &&
           userMatches;
     }).toList();
 
@@ -162,6 +168,11 @@ class PickUpFilterManager {
 
   void setClientNameQuery(String query, RxList<PickUpModel> allPickUps) {
     clientNameQuery.value = query;
+    applyFilter(allPickUps.toList());
+  }
+
+  void setDocumentReferenceQuery(String query, RxList<PickUpModel> allPickUps) {
+    documentReferenceQuery.value = query;
     applyFilter(allPickUps.toList());
   }
 }

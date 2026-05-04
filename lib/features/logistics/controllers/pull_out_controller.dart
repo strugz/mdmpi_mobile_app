@@ -97,6 +97,10 @@ class PullOutController extends GetxController {
     filterManager.setClientNameQuery(query, pullOuts);
   }
 
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query,pullOuts);
+  }
   /// Fetch all pull-out requests from repository.
   Future<void> loadPullOuts() async {
     await dataManager.fetchPullOuts(this, useLocalStorage.value);

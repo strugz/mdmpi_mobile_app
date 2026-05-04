@@ -162,6 +162,7 @@ class _RequestScreenState extends State<RequestScreen>
               pullOutController.selectDateTo(null);
               pullOutController.selectItemCategoryId('');
               pullOutController.setClientNameQuery('');
+              pullOutController.setDocumentReferenceQuery('');
             },
             children: [
               const SizedBox(height: BSizes.spaceBtwItems),
@@ -262,6 +263,17 @@ class _RequestScreenState extends State<RequestScreen>
                 ),
                 onChanged: pullOutController.setClientNameQuery,
               ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Document Reference', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: pullOutController.filterManager.documentReferenceQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.description_outlined),
+                  hintText: 'Search document reference',
+                ),
+                onChanged: pullOutController.setDocumentReferenceQuery,
+              ),
             ],
           );
 
@@ -282,6 +294,7 @@ class _RequestScreenState extends State<RequestScreen>
               pickUpController.selectDateTo(null);
               pickUpController.selectItemCategoryId('');
               pickUpController.setClientNameQuery('');
+              pickUpController.setDocumentReferenceQuery('');
             },
             children: [
               const SizedBox(height: BSizes.spaceBtwItems),
@@ -371,6 +384,17 @@ class _RequestScreenState extends State<RequestScreen>
                 ),
                 onChanged: pickUpController.setClientNameQuery,
               ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Document Reference', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: pickUpController.filterManager.documentReferenceQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.description_outlined),
+                  hintText: 'Search document reference',
+                ),
+                onChanged: pickUpController.setDocumentReferenceQuery,
+              ),
             ],
           );
 
@@ -391,6 +415,7 @@ class _RequestScreenState extends State<RequestScreen>
               airSeaController.selectDateTo(null);
               airSeaController.selectItemCategoryId('');
               airSeaController.setClientNameQuery('');
+              airSeaController.setDocumentReferenceQuery('');
             },
             children: [
               const SizedBox(height: BSizes.spaceBtwItems),
@@ -480,6 +505,17 @@ class _RequestScreenState extends State<RequestScreen>
                 ),
                 onChanged: airSeaController.setClientNameQuery,
               ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Document Reference', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: airSeaController.filterManager.documentReferenceQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.description_outlined),
+                  hintText: 'Search document reference',
+                ),
+                onChanged: airSeaController.setDocumentReferenceQuery,
+              ),
             ],
           );
         } else if (isHotlineDirect) {
@@ -501,6 +537,7 @@ class _RequestScreenState extends State<RequestScreen>
               hotlineDirectController.selectDateTo(null);
               hotlineDirectController.selectItemCategoryId('');
               hotlineDirectController.setClientNameQuery('');
+              hotlineDirectController.setDocumentReferenceQuery('');
             },
             children: [
               const SizedBox(height: BSizes.spaceBtwItems),
@@ -599,6 +636,17 @@ class _RequestScreenState extends State<RequestScreen>
                 ),
                 onChanged: hotlineDirectController.setClientNameQuery,
               ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Document Reference', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: hotlineDirectController.filterManager.documentReferenceQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.description_outlined),
+                  hintText: 'Search document reference',
+                ),
+                onChanged: hotlineDirectController.setDocumentReferenceQuery,
+              ),
             ],
           );
         }
@@ -622,6 +670,7 @@ class _RequestScreenState extends State<RequestScreen>
             standardDeliveryController.selectDateTo(null);
             standardDeliveryController.selectItemCategoryId('');
             standardDeliveryController.setClientNameQuery('');
+            standardDeliveryController.setDocumentReferenceQuery('');
           },
           children: [
             const SizedBox(height: BSizes.spaceBtwItems),

@@ -37,6 +37,7 @@ class AirSeaFilterManager {
   final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
   final RxString selectedItemCategoryId = ''.obs;
   final RxString clientNameQuery = ''.obs;
+  final RxString documentReferenceQuery = ''.obs;
 
   final RxList<AirSeaModel> filteredAirSeaRequests = <AirSeaModel>[].obs;
 
@@ -51,6 +52,7 @@ class AirSeaFilterManager {
     selectedDateTo.value = null;
     selectedItemCategoryId.value = '';
     clientNameQuery.value = '';
+    documentReferenceQuery.value = '';
     filteredAirSeaRequests.clear();
     if (allRequests != null) {
       applyFilter(allRequests);
@@ -67,6 +69,7 @@ class AirSeaFilterManager {
     final dateTo = selectedDateTo.value;
     final itemCategoryId = selectedItemCategoryId.value;
     final clientQuery = clientNameQuery.value.trim().toLowerCase();
+    final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
 
     logDebug('AirSeaFilterManager.applyFilter: ${jsonEncode(allRequests)}');
 
@@ -120,6 +123,8 @@ class AirSeaFilterManager {
           (targetDate != null && !targetDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
       final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
       final clientNameMatches = clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+      final documentReferenceMatches = documentQuery.isEmpty ||
+          item.documentReference.any((ref) => ref.toLowerCase().contains(documentQuery));
 
       return dateMatches &&
           statusMatches &&
@@ -127,6 +132,7 @@ class AirSeaFilterManager {
           dateToMatches &&
           itemCategoryMatches &&
           clientNameMatches &&
+          documentReferenceMatches &&
           userMatches;
     }).toList();
 
@@ -181,6 +187,11 @@ class AirSeaFilterManager {
 
   void setClientNameQuery(String query, List<AirSeaModel> allRequests) {
     clientNameQuery.value = query;
+    applyFilter(allRequests);
+  }
+
+  void setDocumentReferenceQuery(String query, List<AirSeaModel> allRequests) {
+    documentReferenceQuery.value = query;
     applyFilter(allRequests);
   }
 }

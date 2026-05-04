@@ -197,6 +197,10 @@ class PickUpController extends GetxController {
     filterManager.setClientNameQuery(query, pickUps);
   }
 
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query,pickUps);
+  }
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================
