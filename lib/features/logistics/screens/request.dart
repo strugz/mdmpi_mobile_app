@@ -14,6 +14,8 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controll
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_filter_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
