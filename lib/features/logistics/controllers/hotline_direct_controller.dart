@@ -265,6 +265,24 @@ class HotlineDirectController extends GetxController
     filterManager.selectFilter(filter, allPendingRequests);
   }
 
+
+
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, allPendingRequests);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, allPendingRequests);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, allPendingRequests);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, allPendingRequests);
+  }
+
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================

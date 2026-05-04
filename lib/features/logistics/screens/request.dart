@@ -127,10 +127,14 @@ class _RequestScreenState extends State<RequestScreen>
         categoryController is AirSeaController &&
             (lowerName.contains('air') || lowerName.contains('sea'));
 
-    if (!isStandardDelivery && !isPullOut && !isPickUp && !isAirSea) {
+    final isHotlineDirect =
+        categoryController is HotlineDirectController &&
+            (lowerName.contains('hotline') || lowerName.contains('direct'));
+
+    if (!isStandardDelivery && !isPullOut && !isPickUp && !isAirSea && !isHotlineDirect) {
       Get.snackbar(
         'Custom Filter',
-        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, and Air / Sea only.',
+        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, Air / Sea, and Hotline Direct only.',
       );
       return;
     }
@@ -479,6 +483,127 @@ class _RequestScreenState extends State<RequestScreen>
             ],
           );
         }
+
+
+        } else if (isHotlineDirect) {
+          final hotlineDirectController =
+              categoryController as HotlineDirectController;
+          final categoryOptions = hotlineDirectController.formState.itemCategories
+              .map((item) => MapEntry(item.id, item.name))
+              .where((item) => item.key.isNotEmpty)
+              .toList()
+            ..sort((a, b) => a.value.compareTo(b.value));
+
+          return CustomFilterPanel(
+            title: 'Hotline Direct Filters',
+            onReset: () {
+              hotlineDirectController.selectFilter(RequestFilter.today);
+              hotlineDirectController
+                  .selectStatusFilter(StandardDeliveryStatusFilter.all);
+              hotlineDirectController.selectDateFrom(null);
+              hotlineDirectController.selectDateTo(null);
+              hotlineDirectController.selectItemCategoryId('');
+              hotlineDirectController.setClientNameQuery('');
+            },
+            children: [
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<RequestFilter>(
+                selectedFilter:
+                    hotlineDirectController.filterManager.selectedFilter,
+                filterValues: RequestFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: hotlineDirectController.selectFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date From', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateFrom =
+                    hotlineDirectController.filterManager.selectedDateFrom.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateFrom ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    hotlineDirectController.selectDateFrom(picked);
+                  },
+                  icon: const Icon(Icons.calendar_today),
+                  label: Text(dateFrom == null
+                      ? 'Pick start date'
+                      : dateFrom.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date To', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateTo =
+                    hotlineDirectController.filterManager.selectedDateTo.value;
+                return OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: dateTo ?? DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    hotlineDirectController.selectDateTo(picked);
+                  },
+                  icon: const Icon(Icons.event),
+                  label: Text(dateTo == null
+                      ? 'Pick end date'
+                      : dateTo.toIso8601String().split('T').first),
+                );
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Status', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<StandardDeliveryStatusFilter>(
+                selectedFilter: hotlineDirectController
+                    .filterManager.selectedStatusFilter,
+                filterValues: StandardDeliveryStatusFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: hotlineDirectController.selectStatusFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() => DropdownButtonFormField<String>(
+                    value: hotlineDirectController
+                            .filterManager.selectedItemCategoryId.value.isEmpty
+                        ? ''
+                        : hotlineDirectController
+                            .filterManager.selectedItemCategoryId.value,
+                    items: [
+                      const DropdownMenuItem(
+                          value: '', child: Text('All Categories')),
+                      ...categoryOptions.map((item) => DropdownMenuItem(
+                          value: item.key, child: Text(item.value))),
+                    ],
+                    onChanged: (value) => hotlineDirectController
+                        .selectItemCategoryId(value ?? ''),
+                    decoration: const InputDecoration(
+                        prefixIcon: Icon(Icons.category_outlined)),
+                  )),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue:
+                    hotlineDirectController.filterManager.clientNameQuery.value,
+                decoration: const InputDecoration(
+                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Search client name',
+                ),
+                onChanged: hotlineDirectController.setClientNameQuery,
+              ),
+            ],
+          );
 
         final standardDeliveryController =
             categoryController as StandardDeliveryController;
