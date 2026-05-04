@@ -131,10 +131,15 @@ class _RequestScreenState extends State<RequestScreen>
         categoryController is HotlineDirectController &&
             (lowerName.contains('hotline') || lowerName.contains('direct'));
 
-    if (!isStandardDelivery && !isPullOut && !isPickUp && !isAirSea && !isHotlineDirect) {
+    final isStockReceive =
+        categoryController is StockReceiveController &&
+            lowerName.contains('stock') &&
+            lowerName.contains('receive');
+
+    if (!isStandardDelivery && !isPullOut && !isPickUp && !isAirSea && !isHotlineDirect && !isStockReceive) {
       Get.snackbar(
         'Custom Filter',
-        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, Air / Sea, and Hotline Direct only.',
+        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, Air / Sea, Hotline Direct, and Stock Receive only.',
       );
       return;
     }
@@ -650,6 +655,92 @@ class _RequestScreenState extends State<RequestScreen>
             ],
           );
         }
+
+        } else if (isStockReceive) {
+          final stockReceiveController = categoryController as StockReceiveController;
+          final categoryOptions = stockReceiveController.formState.itemCategories
+              .map((item) => MapEntry(item.id, item.name))
+              .where((item) => item.key.isNotEmpty)
+              .toList()
+            ..sort((a, b) => a.value.compareTo(b.value));
+
+          return CustomFilterPanel(
+            title: 'Stock Receive Filters',
+            onReset: () {
+              stockReceiveController.selectDateFilter(RequestFilter.today);
+              stockReceiveController.selectStatusFilter(PullOutStatusFilter.all);
+              stockReceiveController.selectDateFrom(null);
+              stockReceiveController.selectDateTo(null);
+              stockReceiveController.selectItemCategoryId('');
+              stockReceiveController.setClientNameQuery('');
+              stockReceiveController.setDocumentReferenceQuery('');
+            },
+            children: [
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date Range', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<RequestFilter>(
+                selectedFilter: stockReceiveController.filterManager.selectedFilter,
+                filterValues: RequestFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: stockReceiveController.selectDateFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date From', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateFrom = stockReceiveController.filterManager.selectedDateFrom.value;
+                return OutlinedButton.icon(onPressed: () async {
+                  final picked = await showDatePicker(context: context, initialDate: dateFrom ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2100));
+                  stockReceiveController.selectDateFrom(picked);
+                }, icon: const Icon(Icons.calendar_today), label: Text(dateFrom == null ? 'Pick start date' : dateFrom.toIso8601String().split('T').first));
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Date To', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() {
+                final dateTo = stockReceiveController.filterManager.selectedDateTo.value;
+                return OutlinedButton.icon(onPressed: () async {
+                  final picked = await showDatePicker(context: context, initialDate: dateTo ?? DateTime.now(), firstDate: DateTime(2000), lastDate: DateTime(2100));
+                  stockReceiveController.selectDateTo(picked);
+                }, icon: const Icon(Icons.event), label: Text(dateTo == null ? 'Pick end date' : dateTo.toIso8601String().split('T').first));
+              }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Status', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              FilterDropdown<PullOutStatusFilter>(
+                selectedFilter: stockReceiveController.filterManager.selectedStatusFilter,
+                filterValues: PullOutStatusFilter.values,
+                getDisplayName: (f) => f.displayName,
+                onFilterChanged: stockReceiveController.selectStatusFilter,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Item Category', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Obx(() => DropdownButtonFormField<String>(
+                    value: stockReceiveController.filterManager.selectedItemCategoryId.value.isEmpty ? '' : stockReceiveController.filterManager.selectedItemCategoryId.value,
+                    items: [const DropdownMenuItem(value: '', child: Text('All Categories')), ...categoryOptions.map((item) => DropdownMenuItem(value: item.key, child: Text(item.value)))],
+                    onChanged: (value) => stockReceiveController.selectItemCategoryId(value ?? ''),
+                    decoration: const InputDecoration(prefixIcon: Icon(Icons.category_outlined)),
+                  )),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Client Name', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: stockReceiveController.filterManager.clientNameQuery.value,
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search client name'),
+                onChanged: stockReceiveController.setClientNameQuery,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Text('Document Reference', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextFormField(
+                initialValue: stockReceiveController.filterManager.documentReferenceQuery.value,
+                decoration: const InputDecoration(prefixIcon: Icon(Icons.description_outlined), hintText: 'Search document reference'),
+                onChanged: stockReceiveController.setDocumentReferenceQuery,
+              ),
+            ],
+          );
 
         final standardDeliveryController =
             categoryController as StandardDeliveryController;
