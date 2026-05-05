@@ -128,9 +128,12 @@ class StandardDeliveryDataManager {
         createdBy: userCtrl.user.value.initial,
         itemCategoryID: normalizedItemCategory,
         formCategoryID: normalizedFormCategory,
+        recipientContactDetails: formState.recipientContactDetails.text.trim(),
       );
 
-      // Send notifications
+      print(jsonEncode(newRequest));
+
+/*      // Send notifications
       _webSocketController.sendNotificationMessage(
         NotificationModel(title: 'New', body: 'New Request Received!'),
       );
@@ -166,7 +169,7 @@ class StandardDeliveryDataManager {
       formState.reset();
 
       controller.errorMessage.value = null;
-      BLoaders.successSnackBar(title: 'Success', message: 'Request created');
+      BLoaders.successSnackBar(title: 'Success', message: 'Request created');*/
     } catch (e) {
       controller.errorMessage.value = 'An error occurred: $e';
       BLoaders.errorSnackBar(

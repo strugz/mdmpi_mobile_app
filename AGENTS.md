@@ -125,6 +125,7 @@ Integration & external deps to be aware of
 ----------------------------------------
 - Firebase (core/auth/firestore/storage) — initialized in `lib/main.dart` using `firebase_options.dart`.
 - Permissions & platform services: `permission_handler`, `location`, `google_maps_flutter`, `google_mlkit_text_recognition` — wrappers live under `lib/common/services/`.
+  - Note: a small backward-compatible helper exists at `lib/notification.dart` (`ShowLocalNotification`) which delegates to `INotificationService`. Prefer resolving `INotificationService` directly via `Get.find<INotificationService>()` in new code; use the wrapper only when updating legacy callers.
 - WebSockets: uses `web_socket_channel` and controllers such as `WebSocketNotificationController` registered early in bindings.
 - Environment variables are loaded from `.env` in `main.dart`; never commit secrets or API keys.
 - Inventory OCR / AI is no longer just placeholder scaffolding: `lib/data/repositories/inventory/inventory_item_repository.dart` provides both backend OCR (`analyzeFile()` → `/api4/Gemini/analyze-file`) and direct Gemini calls (`analyzeFileWithGemini()`). The direct path reads `.env` keys `AI_TOOLKIT_MODEL`, `AI_TOOLKIT_API_KEY`, and optional `AI_PROMPT` (with fallbacks to `AI_MODEL` / `API_KEY`), and `StandardDeliveryController` invokes both repository methods for scanned inventory intake.

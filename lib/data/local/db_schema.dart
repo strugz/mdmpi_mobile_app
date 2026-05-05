@@ -42,6 +42,7 @@ Future<void> createAllTables(Database db) async {
       MobileID INTEGER DEFAULT 0,
       RequestDriverHelper TEXT,
       Receiver TEXT,
+      RecipientContactDetails TEXT,
       TripTicketNumber TEXT,
       ItemCategoryID TEXT,
       FormCategoryID TEXT

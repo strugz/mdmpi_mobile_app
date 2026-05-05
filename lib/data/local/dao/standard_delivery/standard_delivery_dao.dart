@@ -83,6 +83,7 @@ class RequestDao {
       'MobileID': requestModel.mobileID ?? 0,
       'RequestDriverHelper': requestModel.helper,
       'Receiver': requestModel.receiver,
+      'RecipientContactDetails': requestModel.recipientContactDetails,
       'TripTicketNumber': requestModel.tripTicketNumber,
       'ItemCategoryID': requestModel.itemCategoryID,
       'FormCategoryID': requestModel.formCategoryID,
@@ -146,17 +147,18 @@ class RequestDao {
         'RequestItemPreparedEndAt': requestModel.itemPreparedEndAt,
         'RequestDeliveredAt': requestModel.deliveredAt,
         'RequestDeliveredEndAt': requestModel.deliveredEndAt,
-        'LocationStartedAt': requestModel.locationStartedAt,
-        'LocationEndAt': requestModel.locationEndAt,
-        'MobileID': requestModel.mobileID ?? 0,
-        'RequestDriverHelper': requestModel.helper,
-        'Receiver': requestModel.receiver,
-        'TripTicketNumber': requestModel.tripTicketNumber,
-        'ItemCategoryID': requestModel.itemCategoryID,
-        'FormCategoryID': requestModel.formCategoryID,
-      };
+       'LocationStartedAt': requestModel.locationStartedAt,
+       'LocationEndAt': requestModel.locationEndAt,
+       'MobileID': requestModel.mobileID ?? 0,
+       'RequestDriverHelper': requestModel.helper,
+       'Receiver': requestModel.receiver,
+       'RecipientContactDetails': requestModel.recipientContactDetails,
+       'TripTicketNumber': requestModel.tripTicketNumber,
+       'ItemCategoryID': requestModel.itemCategoryID,
+       'FormCategoryID': requestModel.formCategoryID,
+       };
 
-      batch.insert('a_tblRequest', requestData, conflictAlgorithm: ConflictAlgorithm.replace);
+       batch.insert('a_tblRequest', requestData, conflictAlgorithm: ConflictAlgorithm.replace);
 
       // Also insert document references into their table
       if (requestModel.documentReference.isNotEmpty) {

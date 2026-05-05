@@ -94,9 +94,11 @@ class StandardDelivery extends StatelessWidget {
                                     .formState.scannedInventoryItems);
 
                             return TextButton.icon(
-                              onPressed: () => Get.to(() => ScannedItemsScreen(controller: stdDeliveryController)),
+                              onPressed: () => Get.to(() => ScannedItemsScreen(
+                                  controller: stdDeliveryController)),
                               icon: const Icon(Iconsax.add, size: 16),
-                              label: Text(count > 0 ? 'Add Item ($count)' : 'Add Item'),
+                              label: Text(
+                                  count > 0 ? 'Add Item ($count)' : 'Add Item'),
                             );
                           }),
                         ),
@@ -224,6 +226,23 @@ class StandardDelivery extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(height: BSizes.spaceBtwItems),
+
+                    /// Recipient Contact Details
+                    TextFormField(
+                      controller: stdDeliveryController
+                          .formState.recipientContactDetails,
+                      decoration: InputDecoration(
+                        labelText: 'Recipient Contact Details',
+                        prefixIcon: const Icon(Iconsax.call),
+                        hintText:
+                            'Enter recipient phone number or contact info',
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Please enter recipient contact details'
+                          : null,
+                    ),
+                    const SizedBox(height: BSizes.spaceBtwItems),
                   ],
                 ),
               ),

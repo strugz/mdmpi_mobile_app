@@ -27,6 +27,7 @@ class StandardDeliveryFormState {
   final TextEditingController selectedDriver = TextEditingController();
   final TextEditingController selectedHelper = TextEditingController();
   final TextEditingController receiver = TextEditingController();
+  final TextEditingController recipientContactDetails = TextEditingController();
   final TextEditingController mobile = TextEditingController();
   final TextEditingController tripTicketNumber = TextEditingController();
   final TextEditingController remarks = TextEditingController();
@@ -80,6 +81,7 @@ class StandardDeliveryFormState {
     selectedDriver.clear();
     selectedHelper.clear();
     receiver.clear();
+    recipientContactDetails.clear();
     mobile.clear();
     tripTicketNumber.clear();
     remarks.clear();
@@ -117,6 +119,7 @@ class StandardDeliveryFormState {
     selectedDriver.dispose();
     selectedHelper.dispose();
     receiver.dispose();
+    recipientContactDetails.dispose();
     mobile.dispose();
     tripTicketNumber.dispose();
     remarks.dispose();
