@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
@@ -17,6 +18,7 @@ import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
   const CollectionHomeScreen({super.key});
@@ -52,7 +54,7 @@ class CollectionHomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: BSizes.spaceBtwItems),
+                const SizedBox(height: BSizes.sm),
 
                 // Collection bucket button
                 Padding(
@@ -82,15 +84,16 @@ class CollectionHomeScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: CollectionSummaryCard(
-                              title: 'Core Status',
-                              value: '12',
-                              icon: Icons.pending_actions,
-                              color: Colors.blue,
+                              title: 'On-going',
+                              value: '—',
+                              icon: Iconsax.timer_1,
+                              color: Colors.orange,
                               expand: false,
                               onTap: () {
-                                CollectionActivityController.instance.setCategoryFilter('Core Status');
+                                final controller = CollectionActivityController.instance;
+                                controller.setActivityFilter(CollectionStatusColors.statusOngoing);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Core Status', color: Colors.blue),
+                                  () => const CategoryDetailScreen(title: 'On-going Activities', color: Colors.orange),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
@@ -100,15 +103,16 @@ class CollectionHomeScreen extends StatelessWidget {
                           const SizedBox(width: BSizes.spaceBtwItems),
                           Expanded(
                             child: CollectionSummaryCard(
-                              title: 'Delays',
-                              value: '3',
-                              icon: Icons.error,
-                              color: Colors.red,
+                              title: 'Pending',
+                              value: '—',
+                              icon: Iconsax.clock,
+                              color: BColors.darkGrey,
                               expand: false,
                               onTap: () {
-                                CollectionActivityController.instance.setCategoryFilter('Delays');
+                                final controller = CollectionActivityController.instance;
+                                controller.setActivityFilter(CollectionStatusColors.statusPending);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Delays', color: Colors.red),
+                                  () => const CategoryDetailScreen(title: 'Pending Items', color: BColors.darkGrey),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
@@ -122,14 +126,15 @@ class CollectionHomeScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: CollectionSummaryCard(
-                              title: 'Completed',
-                              value: '128',
-                              icon: Icons.check_circle,
-                              color: Colors.green,
+                              title: 'Collected',
+                              value: '—',
+                              icon: Iconsax.tick_circle,
+                              color: BColors.success,
                               onTap: () {
-                                CollectionActivityController.instance.setCategoryFilter('Completed');
+                                final controller = CollectionActivityController.instance;
+                                controller.setActivityFilter(CollectionStatusColors.statusCollected);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Completed', color: Colors.green),
+                                  () => const CategoryDetailScreen(title: 'Collected Items', color: BColors.success),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
@@ -139,15 +144,16 @@ class CollectionHomeScreen extends StatelessWidget {
                           const SizedBox(width: BSizes.spaceBtwItems),
                           Expanded(
                             child: CollectionSummaryCard(
-                              title: 'Administrative',
-                              value: '3',
-                              icon: Icons.verified_user,
-                              color: Colors.orange,
+                              title: 'Failed',
+                              value: '—',
+                              icon: Iconsax.warning_2,
+                              color: BColors.error,
                               expand: false,
                               onTap: () {
-                                CollectionActivityController.instance.setCategoryFilter('Administrative');
+                                final controller = CollectionActivityController.instance;
+                                controller.setActivityFilter(CollectionStatusColors.statusFailed);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Administrative', color: Colors.orange),
+                                  () => const CategoryDetailScreen(title: 'Failed Collections', color: BColors.error),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
@@ -171,7 +177,7 @@ class CollectionHomeScreen extends StatelessWidget {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
                 boxShadow: [
                   BoxShadow(
-                    color: BColors.black.withOpacity(0.05),
+                    color: BColors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -5),
                   ),
@@ -202,13 +208,9 @@ class CollectionHomeScreen extends StatelessWidget {
 
                     Obx(() {
                       final controller = CollectionActivityController.instance;
+                      final recentItems = controller.allRecentHistory;
 
-                      // Combine history from the items to show a unified "Recent Activities" log
-                      final allHistory = controller.activityItems
-                          .expand((item) => item.history)
-                          .toList();
-
-                      if (allHistory.isEmpty) {
+                      if (recentItems.isEmpty) {
                         return Padding(
                           padding: const EdgeInsets.symmetric(vertical: BSizes.lg),
                           child: Column(
@@ -225,15 +227,18 @@ class CollectionHomeScreen extends StatelessWidget {
                         );
                       }
 
-                      // Sort all history chronologically first
-                      allHistory.sort((a, b) => a.date.compareTo(b.date));
-
                       // Limit to the most recent 3 entries
-                      final recentThree = allHistory.length > 3 
-                          ? allHistory.sublist(allHistory.length - 3) 
-                          : allHistory;
+                      final recentThree = recentItems.take(3).toList();
+                      
+                      final historyList = recentThree.map((e) => e['history'] as CollectionHistoryModel).toList();
+                      final accountNames = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['accountName'].toString() };
+                      final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId'].toString() };
 
-                      return ActivityHistoryList(history: recentThree);
+                      return ActivityHistoryList(
+                        history: historyList,
+                        accountNames: accountNames,
+                        invoiceIds: invoiceIds,
+                      );
                     }),
                     
                     // Add extra space at the bottom for scrolling comfort

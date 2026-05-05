@@ -3,6 +3,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 
 class InvoiceItemCard extends StatelessWidget {
@@ -79,17 +80,10 @@ class InvoiceItemCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(width: BSizes.sm),
-                      Text(
-                        currencyFormat.format(item.toBeCollected),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: BColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
+                      _buildStatusBadge(context, item.status),
                     ],
                   ),
-                  const SizedBox(height: BSizes.xs),
+                  const SizedBox(height: BSizes.sm),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -112,9 +106,21 @@ class InvoiceItemCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: BSizes.sm),
+                      Text(
+                        currencyFormat.format(item.toBeCollected),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: BColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: BSizes.xs),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Expanded(
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             const Icon(Iconsax.timer, size: 14, color: BColors.error),
                             const SizedBox(width: 4),
@@ -132,22 +138,10 @@ class InvoiceItemCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: BSizes.xs),
-                  Row(
-                    children: [
-                      const Icon(Iconsax.note, size: 16, color: BColors.darkGrey),
-                      const SizedBox(width: BSizes.xs),
-                      Expanded(
-                        child: Text(
-                          item.remarks.isEmpty ? 'No remarks' : item.remarks,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: BColors.darkGrey,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      const SizedBox(width: BSizes.sm),
+                      Text(
+                        item.bankName,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BColors.darkGrey),
                       ),
                     ],
                   ),
@@ -156,6 +150,29 @@ class InvoiceItemCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(BuildContext context, String status) {
+    final (bg, fg) = CollectionStatusColors.colorsForAuto(context, status);
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: BSizes.sm,
+        vertical: BSizes.xxs,
+      ),
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+      ),
+      child: Text(
+        status,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: fg == BColors.white ? bg : fg,
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
+            ),
       ),
     );
   }

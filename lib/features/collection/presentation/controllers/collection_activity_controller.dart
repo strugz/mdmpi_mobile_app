@@ -8,11 +8,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_history_m
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
-/// Manages the Collection Bucket → Activity flow.
-///
-/// **Bucket items** have no assigned personnel — they only carry client
-/// details and document details. When the user selects items from the bucket
-/// they are moved into the **activity list** and assigned to the current user.
+/// Manages the Collection Bucket → Activity flow with a simplified status model.
 class CollectionActivityController extends GetxController {
   static CollectionActivityController get instance => Get.find();
 
@@ -20,40 +16,29 @@ class CollectionActivityController extends GetxController {
   // Observable state
   // ========================================================================
 
-  /// Items available in the collection bucket (unassigned).
   final RxList<CollectionItemModel> bucketItems = <CollectionItemModel>[].obs;
-
-  /// Items the user has claimed / is working on.
   final RxList<CollectionItemModel> activityItems = <CollectionItemModel>[].obs;
-
-  /// IDs currently selected (multi-select) inside the bucket screen.
   final RxSet<String> selectedBucketIds = <String>{}.obs;
-
-  /// Loading flag.
   final RxBool isLoading = false.obs;
 
-  /// Active filter on the activity screen.
-  final RxString activityFilter = 'All'.obs;
-
-  /// Active category filter (e.g. 'Core Status', 'Delays').
-  final RxString categoryFilter = 'All'.obs;
-
-  /// Search query for the bucket screen.
+  /// Search and Filter state
   final RxString bucketSearchQuery = ''.obs;
   final RxDouble bucketMinAmount = 0.0.obs;
   final RxDouble bucketMaxAmount = 0.0.obs;
   final RxInt bucketMinInvoices = 0.obs;
   final RxInt bucketMaxInvoices = 0.obs;
 
-  /// Search query and filters for the activity screen.
   final RxString activitySearchQuery = ''.obs;
   final RxDouble activityMinAmount = 0.0.obs;
   final RxDouble activityMaxAmount = 0.0.obs;
   final RxInt activityMinInvoices = 0.obs;
   final RxInt activityMaxInvoices = 0.obs;
 
-  /// Search query for the specific account invoices screen.
+  final RxString activityFilter = 'All'.obs;
+
   final RxString invoiceSearchQuery = ''.obs;
+
+  final RxList<ClientModel> masterAccountList = <ClientModel>[].obs;
 
   // ========================================================================
   // Lifecycle
@@ -66,10 +51,9 @@ class CollectionActivityController extends GetxController {
   }
 
   // ========================================================================
-  // Bucket selection
+  // Bucket helpers
   // ========================================================================
 
-  /// Toggle selection state for a single bucket item.
   void toggleBucketSelection(String id) {
     if (selectedBucketIds.contains(id)) {
       selectedBucketIds.remove(id);
@@ -78,7 +62,6 @@ class CollectionActivityController extends GetxController {
     }
   }
 
-  /// Select / deselect all bucket items.
   void toggleSelectAll() {
     if (selectedBucketIds.length == bucketItems.length) {
       selectedBucketIds.clear();
@@ -89,57 +72,23 @@ class CollectionActivityController extends GetxController {
     }
   }
 
-  /// Whether a specific item is currently selected.
   bool isSelected(String id) => selectedBucketIds.contains(id);
 
-  /// True when every bucket item is selected.
   bool get allSelected =>
       bucketItems.isNotEmpty &&
       selectedBucketIds.length == bucketItems.length;
 
-  /// Filtered view of bucket items based on [bucketSearchQuery].
-  List<CollectionItemModel> get filteredBucketItems {
-    if (bucketSearchQuery.value.isEmpty) return bucketItems;
-
-    final query = bucketSearchQuery.value.toLowerCase();
-    return bucketItems.where((item) {
-      return item.client.name.toLowerCase().contains(query) ||
-          item.id.toLowerCase().contains(query) ||
-          item.bankName.toLowerCase().contains(query) ||
-          item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
-    }).toList();
-  }
-
-  // ========================================================================
-  // Move selected bucket items → activity
-  // ========================================================================
-
-  // ========================================================================
-  // Account Grouping Helpers (Bucket)
-  // ========================================================================
-
-  /// List of all unique clients (Accounts) that we want to track in the bucket.
-  /// This is used as the master list so accounts stay visible even with 0 items.
-  final RxList<ClientModel> masterAccountList = <ClientModel>[].obs;
-
-  /// Returns a list of clients (Accounts) currently in the bucket, filtered by UI criteria.
   List<ClientModel> get bucketAccounts {
     return masterAccountList.where((client) {
-      // 1. Filter by Search Query (Account Name)
       if (bucketSearchQuery.value.isNotEmpty &&
           !client.name.toLowerCase().contains(bucketSearchQuery.value.toLowerCase())) {
         return false;
       }
-
-      // 2. Calculate thresholds
       final totalAmount = getAccountTotalDue(client.id);
       final invoiceCount = getAccountInvoiceCount(client.id);
 
-      // 3. Filter by Amount Range
       if (bucketMinAmount.value > 0 && totalAmount < bucketMinAmount.value) return false;
       if (bucketMaxAmount.value > 0 && totalAmount > bucketMaxAmount.value) return false;
-
-      // 4. Filter by Invoice Count Range
       if (bucketMinInvoices.value > 0 && invoiceCount < bucketMinInvoices.value) return false;
       if (bucketMaxInvoices.value > 0 && invoiceCount > bucketMaxInvoices.value) return false;
 
@@ -147,12 +96,9 @@ class CollectionActivityController extends GetxController {
     }).toList();
   }
 
-  /// Get all bucket items for a specific client.
   List<CollectionItemModel> getInvoicesByAccount(String clientId) {
     final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
-
     if (invoiceSearchQuery.value.isEmpty) return invoices;
-    
     final query = invoiceSearchQuery.value.toLowerCase();
     return invoices.where((item) {
       return item.id.toLowerCase().contains(query) ||
@@ -161,46 +107,30 @@ class CollectionActivityController extends GetxController {
     }).toList();
   }
 
-  /// Get total amount due for a specific client in the bucket.
-  double getAccountTotalDue(String clientId) {
-    return bucketItems
-        .where((item) => item.client.id == clientId)
-        .fold(0.0, (sum, item) => sum + item.toBeCollected);
-  }
+  double getAccountTotalDue(String clientId) => bucketItems
+      .where((item) => item.client.id == clientId)
+      .fold(0.0, (sum, item) => sum + item.toBeCollected);
 
-  /// Get total number of invoices for a specific client in the bucket.
-  int getAccountInvoiceCount(String clientId) {
-    return bucketItems.where((item) => item.client.id == clientId).length;
-  }
+  int getAccountInvoiceCount(String clientId) => 
+      bucketItems.where((item) => item.client.id == clientId).length;
 
   // ========================================================================
-  // Account Grouping Helpers (Activity)
+  // Activity helpers
   // ========================================================================
 
-  /// Returns a list of clients (Accounts) currently in activity, filtered by UI criteria.
   List<ClientModel> get activityAccounts {
-    // Get unique client IDs from activity items
     final activeClientIds = activityItems.map((e) => e.client.id).toSet();
-    
     return masterAccountList.where((client) {
-      // 1. Must have items in activity
       if (!activeClientIds.contains(client.id)) return false;
-
-      // 2. Filter by Search Query (Account Name)
       if (activitySearchQuery.value.isNotEmpty &&
           !client.name.toLowerCase().contains(activitySearchQuery.value.toLowerCase())) {
         return false;
       }
-
-      // 3. Calculate thresholds
       final totalAmount = getActivityAccountTotalDue(client.id);
       final invoiceCount = getActivityAccountInvoiceCount(client.id);
 
-      // 4. Filter by Amount Range
       if (activityMinAmount.value > 0 && totalAmount < activityMinAmount.value) return false;
       if (activityMaxAmount.value > 0 && totalAmount > activityMaxAmount.value) return false;
-
-      // 5. Filter by Invoice Count Range
       if (activityMinInvoices.value > 0 && invoiceCount < activityMinInvoices.value) return false;
       if (activityMaxInvoices.value > 0 && invoiceCount > activityMaxInvoices.value) return false;
 
@@ -208,24 +138,16 @@ class CollectionActivityController extends GetxController {
     }).toList();
   }
 
-  /// Get total amount due for a specific client in activity.
-  double getActivityAccountTotalDue(String clientId) {
-    return activityItems
-        .where((item) => item.client.id == clientId)
-        .fold(0.0, (sum, item) => sum + item.toBeCollected);
-  }
+  double getActivityAccountTotalDue(String clientId) => activityItems
+      .where((item) => item.client.id == clientId)
+      .fold(0.0, (sum, item) => sum + item.toBeCollected);
 
-  /// Get total number of invoices for a specific client in activity.
-  int getActivityAccountInvoiceCount(String clientId) {
-    return activityItems.where((item) => item.client.id == clientId).length;
-  }
+  int getActivityAccountInvoiceCount(String clientId) => 
+      activityItems.where((item) => item.client.id == clientId).length;
 
-  /// Get all activity items for a specific client.
   List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) {
     final invoices = activityItems.where((item) => item.client.id == clientId).toList();
-
     if (invoiceSearchQuery.value.isEmpty) return invoices;
-
     final query = invoiceSearchQuery.value.toLowerCase();
     return invoices.where((item) {
       return item.id.toLowerCase().contains(query) ||
@@ -286,98 +208,60 @@ class CollectionActivityController extends GetxController {
     return allHistory;
   }
 
-  /// Claims items by a list of IDs.
+  /// Returns combined history for all invoices in the system, sorted by date (newest first).
+  List<Map<String, dynamic>> get allRecentHistory {
+    final List<Map<String, dynamic>> combined = [];
+    
+    final allItems = [...bucketItems, ...activityItems];
+    for (var item in allItems) {
+      for (var history in item.history) {
+        // We only want to show user activities, or at least identify the account
+        combined.add({
+          'history': history,
+          'accountName': item.client.name,
+          'invoiceId': item.id,
+        });
+      }
+    }
+
+    // Sort by date (Assuming yyyy-MM-dd HH:mm format)
+    combined.sort((a, b) => b['history'].date.compareTo(a['history'].date));
+
+    return combined;
+  }
+
+  void setActivityFilter(String filter) => activityFilter.value = filter;
+
+  List<CollectionItemModel> get filteredActivityItems {
+    Iterable<CollectionItemModel> items = activityItems;
+    if (activityFilter.value == 'All') return items.toList();
+    return items.where((e) => e.status == activityFilter.value).toList();
+  }
+
+  // ========================================================================
+  // Claims
+  // ========================================================================
+
   void claimItemsByIds(List<String> ids) {
     if (ids.isEmpty) return;
-
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-
     for (final id in ids) {
       final index = bucketItems.indexWhere((e) => e.id == id);
       if (index == -1) continue;
-
       final item = bucketItems[index].copyWith(
-        coreStatus: CollectionStatusColors.statusOngoing,
-        delayStatus: CollectionStatusColors.statusOnSchedule,
-        outcomeStatus: CollectionStatusColors.statusNone,
-        administrativeStatus: CollectionStatusColors.statusForVerification,
+        status: CollectionStatusColors.statusOngoing,
         assignedAt: now,
       );
       activityItems.add(item);
       bucketItems.removeAt(index);
     }
-
-    // Clear selection if any of these were in the global selectedBucketIds
     selectedBucketIds.removeWhere((id) => ids.contains(id));
-
     logDebug('[CollectionActivityController] Claimed ${ids.length} items');
   }
 
-  /// Claim the selected bucket items – moves them from [bucketItems] into
-  /// [activityItems] with updated statuses and records the assignment time.
-  void claimSelectedItems() {
-    if (selectedBucketIds.isEmpty) return;
-
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-
-    for (final id in selectedBucketIds) {
-      final index = bucketItems.indexWhere((e) => e.id == id);
-      if (index == -1) continue;
-
-      final item = bucketItems[index].copyWith(
-        coreStatus: CollectionStatusColors.statusOngoing,
-        delayStatus: CollectionStatusColors.statusOnSchedule,
-        outcomeStatus: CollectionStatusColors.statusNone,
-        administrativeStatus: CollectionStatusColors.statusForVerification,
-        assignedAt: now,
-      );
-      activityItems.add(item);
-      bucketItems.removeAt(index);
-    }
-
-    selectedBucketIds.clear();
-    logDebug(
-        '[CollectionActivityController] Claimed ${activityItems.length} items');
-  }
-
-  // ========================================================================
-  // Activity helpers
-  // ========================================================================
-
-  /// Update a specific status category of an activity item.
-  void updateActivityStatus(String id, String category, String newStatus) {
-    final index = activityItems.indexWhere((e) => e.id == id);
-    if (index == -1) return;
-
-    final item = activityItems[index];
-    CollectionItemModel updatedItem;
-
-    switch (category) {
-      case CollectionStatusColors.categoryCoreFlow:
-        updatedItem = item.copyWith(coreStatus: newStatus);
-        break;
-      case CollectionStatusColors.categoryDelays:
-        updatedItem = item.copyWith(delayStatus: newStatus);
-        break;
-      case CollectionStatusColors.categoryOutcomes:
-        updatedItem = item.copyWith(outcomeStatus: newStatus);
-        break;
-      case CollectionStatusColors.categoryAdministrative:
-        updatedItem = item.copyWith(administrativeStatus: newStatus);
-        break;
-      default:
-        updatedItem = item;
-    }
-
-    activityItems[index] = updatedItem;
-  }
-
-  /// Save the activity updates and move the item back to the bucket list.
   void saveActivity({
     required String id,
-    required String delayStatus,
-    required String outcomeStatus,
-    required String administrativeStatus,
+    required String status,
     required String remarks,
     double? totalCollected,
   }) {
@@ -386,103 +270,41 @@ class CollectionActivityController extends GetxController {
 
     final oldItem = activityItems[index];
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-
-    // Update item and calculate new balance
     final double newlyCollected = totalCollected ?? 0;
     final double updatedTotalCollected = oldItem.totalCollected + newlyCollected;
     final double updatedToBeCollected = (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
 
-    // Auto-update outcome status if fully collected
-    String finalOutcomeStatus = outcomeStatus;
+    // Auto-update status to Collected if fully paid
+    String finalStatus = status;
     if (updatedToBeCollected == 0) {
-      finalOutcomeStatus = CollectionStatusColors.statusFullyCollected;
-    } else if (newlyCollected > 0 && finalOutcomeStatus == CollectionStatusColors.statusNone) {
-      // If they collected something but didn't set a status, default to partial
-      finalOutcomeStatus = CollectionStatusColors.statusPartiallyCollected;
+      finalStatus = CollectionStatusColors.statusCollected;
     }
 
-    // Create history entry
     final historyEntry = CollectionHistoryModel(
       date: now,
-      collectorName: oldItem.collectorName,
-      coreStatus: oldItem.coreStatus,
-      delayStatus: delayStatus,
-      outcomeStatus: finalOutcomeStatus,
-      administrativeStatus: administrativeStatus,
+      collectorName: 'You',
+      status: finalStatus,
       remarks: remarks,
       totalCollected: newlyCollected,
     );
 
     final updatedItem = oldItem.copyWith(
-      delayStatus: delayStatus,
-      outcomeStatus: finalOutcomeStatus,
-      administrativeStatus: administrativeStatus,
+      status: updatedToBeCollected == 0 ? CollectionStatusColors.statusCollected : CollectionStatusColors.statusPending,
       remarks: remarks,
       toBeCollected: updatedToBeCollected,
       totalCollected: updatedTotalCollected,
       history: [...oldItem.history, historyEntry],
-      assignedAt: 'N/A',
+      assignedAt: '',
       collectorName: 'Unassigned',
-      coreStatus: CollectionStatusColors.statusUnassigned,
     );
 
-    // Move to bucket
     bucketItems.add(updatedItem);
     activityItems.removeAt(index);
-
-    logDebug('[CollectionActivityController] Activity $id saved and moved to bucket');
-  }
-
-  /// Set the current filter on the activity screen.
-  void setActivityFilter(String filter) => activityFilter.value = filter;
-
-  /// Set the current category filter.
-  void setCategoryFilter(String category) {
-    categoryFilter.value = category;
-    activityFilter.value = 'All'; // Reset sub-filter when category changes
-  }
-
-  /// Filtered view of activity items based on [activityFilter] and [categoryFilter].
-  List<CollectionItemModel> get filteredActivityItems {
-    Iterable<CollectionItemModel> items = activityItems;
-
-    // First, filter by category context if specified (for the detail screens)
-    if (categoryFilter.value != 'All') {
-      items = items.where((e) {
-        switch (categoryFilter.value) {
-          case 'Core Status':
-            // Show all items since everything in activity has a Core Status
-            return true;
-          case 'Delays':
-            // Only show if it has an active delay (not "On Schedule")
-            return e.delayStatus != CollectionStatusColors.statusOnSchedule;
-          case 'Completed':
-            // Only show if it has an outcome (not "None")
-            return e.outcomeStatus != CollectionStatusColors.statusNone;
-          case 'Administrative':
-            // For Administrative, we show all since they all have an admin status
-            // (default "For Verification")
-            return true;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Then, filter by specific sub-status if not "All"
-    if (activityFilter.value == 'All') return items.toList();
-
-    return items.where((e) {
-      // Check if the current activityFilter matches ANY of the four statuses
-      return e.coreStatus == activityFilter.value ||
-          e.delayStatus == activityFilter.value ||
-          e.outcomeStatus == activityFilter.value ||
-          e.administrativeStatus == activityFilter.value;
-    }).toList();
+    logDebug('[CollectionActivityController] Activity $id saved');
   }
 
   // ========================================================================
-  // Sample data (will be replaced by repository calls)
+  // Sample Data
   // ========================================================================
 
   void _loadSampleBucketItems() {
@@ -496,37 +318,17 @@ class CollectionActivityController extends GetxController {
       ClientModel(id: 'C007', code: 'MD-C007', name: 'Global Logistics Inc.', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
       ClientModel(id: 'C008', code: 'MD-C008', name: 'Prime Manufacturing', address: '222 Industrial Ave, Cavite', contact: '09885551234', emailAddress: 'prime@mfg.com'),
     ];
-
     masterAccountList.assignAll(clients);
 
     final List<CollectionItemModel> generatedItems = [];
     final random = Random();
-
     for (var client in clients) {
-      // Generate 5-15 invoices per account
-      final invoiceCount = 5 + random.nextInt(11);
-
+      final invoiceCount = 3 + random.nextInt(5);
       for (int i = 1; i <= invoiceCount; i++) {
-        final amount = 1000.0 + random.nextInt(49001); // 1,000 to 50,000
+        final amount = 5000.0 + random.nextInt(20000);
         final id = 'INV-${client.id}-${100 + i}';
-
-        // Generate sample dates
         final postingDate = '2026-01-${10 + random.nextInt(15)}';
-
-        // Generate diverse Due Dates for monitoring
-        String dueDate;
-        final dateType = random.nextInt(10);
-        if (dateType < 3) {
-          // 30% Overdue (Past)
-          dueDate = '2026-02-${10 + random.nextInt(15)}';
-        } else if (dateType < 8) {
-          // 50% On Schedule (Next 3-4 months)
-          final month = 4 + random.nextInt(3); // April to June
-          dueDate = '2026-0$month-${10 + random.nextInt(15)}';
-        } else {
-          // 20% Long Term (Next Year)
-          dueDate = '2027-0${1 + random.nextInt(3)}-${10 + random.nextInt(15)}';
-        }
+        final dueDate = '2026-03-${10 + random.nextInt(15)}';
 
         generatedItems.add(CollectionItemModel(
           id: id,
@@ -535,38 +337,21 @@ class CollectionActivityController extends GetxController {
           postingDate: postingDate,
           dueDate: dueDate,
           documentReferences: ['REF-$id'],
-          bankName: ['BDO', 'BPI', 'Metrobank', 'RCBC', 'Landbank'][random.nextInt(5)],
+          bankName: ['BDO', 'BPI', 'Metrobank'][random.nextInt(3)],
           toBeCollected: amount,
-          totalCollected: 0,
-          documentDate: postingDate, // Using posting date as document date for consistency
-          remarks: [
-            'Post-dated cheque',
-            'Regular collection',
-            'Urgent collection',
-            'Partial payment pending',
-            'Verification needed'
-          ][random.nextInt(5)],
-          coreStatus: CollectionStatusColors.statusUnassigned,
-          delayStatus: CollectionStatusColors.statusOnSchedule,
-          outcomeStatus: CollectionStatusColors.statusNone,
-          administrativeStatus: CollectionStatusColors.statusForVerification,
-          collectorName: 'Unassigned',
+          status: CollectionStatusColors.statusPending,
           history: [
             CollectionHistoryModel(
-              date: '2026-03-01 08:00',
+              date: '2026-02-01 08:00',
               collectorName: 'System',
-              coreStatus: CollectionStatusColors.statusUnassigned,
-              remarks: 'Invoice generated in system',
+              status: CollectionStatusColors.statusPending,
+              remarks: 'Invoice Created',
             ),
           ],
         ));
       }
     }
-
     bucketItems.assignAll(generatedItems);
-
-    // Start with empty activity items
     activityItems.clear();
   }
 }
-

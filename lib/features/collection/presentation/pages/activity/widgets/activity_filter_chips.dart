@@ -4,8 +4,6 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 
 /// Horizontal scrollable filter chips for the Activity screen.
-///
-/// Allows filtering activities by sub-roles from the Core Flow category.
 class ActivityFilterChips extends StatefulWidget {
   const ActivityFilterChips({
     super.key,
@@ -16,7 +14,7 @@ class ActivityFilterChips extends StatefulWidget {
   /// Called when the user selects a different filter.
   final ValueChanged<String>? onFilterChanged;
 
-  /// Optional list of filters to display. Defaults to Core Flow sub-roles if null.
+  /// Optional list of filters to display.
   final List<String>? filters;
 
   @override
@@ -28,9 +26,7 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
 
   List<String> get _currentFilters => widget.filters ?? [
     'All',
-    CollectionStatusColors.statusUnassigned,
-    CollectionStatusColors.statusAssigned,
-    CollectionStatusColors.statusOngoing,
+    ...CollectionStatusColors.allStatuses,
   ];
 
   @override

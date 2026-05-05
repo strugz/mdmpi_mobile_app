@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_chips.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 
 class RecentActivitiesScreen extends StatelessWidget {
   const RecentActivitiesScreen({super.key});
@@ -32,21 +33,33 @@ class RecentActivitiesScreen extends StatelessWidget {
           /// Recent Activities List
           Expanded(
             child: Obx(() {
-              final items = controller.filteredActivityItems;
+              // Get global history from controller
+              final recentItems = controller.allRecentHistory;
               
-              // Flatten history from the filtered items
-              final allHistory = items.expand((item) => item.history).toList();
-
-              if (allHistory.isEmpty) {
+              if (recentItems.isEmpty) {
                 return const Center(child: Text('No recent activities found.'));
               }
 
-              // Sort all history chronologically first to ensure a unified timeline
-              allHistory.sort((a, b) => a.date.compareTo(b.date));
+              // Apply status filter if not "All"
+              final filteredItems = controller.activityFilter.value == 'All'
+                  ? recentItems
+                  : recentItems.where((item) => item['history'].status == controller.activityFilter.value).toList();
+
+              if (filteredItems.isEmpty) {
+                return const Center(child: Text('No activities match this filter.'));
+              }
+
+              final historyList = filteredItems.map((e) => e['history'] as CollectionHistoryModel).toList();
+              final accountNames = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['accountName'].toString() };
+              final invoiceIds = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['invoiceId'].toString() };
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                child: ActivityHistoryList(history: allHistory),
+                child: ActivityHistoryList(
+                  history: historyList,
+                  accountNames: accountNames,
+                  invoiceIds: invoiceIds,
+                ),
               );
             }),
           ),

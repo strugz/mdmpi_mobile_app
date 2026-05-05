@@ -3,69 +3,39 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
-/// Central status color & icon mapping for collection role categories and sub-roles.
+/// Central status color & icon mapping for collection.
 class CollectionStatusColors {
   CollectionStatusColors._();
 
-  // ─── Role Categories ───────────────────────────────────────────────
-  static const String categoryCoreFlow = 'Core Flow';
-  static const String categoryDelays = 'Delays';
-  static const String categoryOutcomes = 'Outcomes';
-  static const String categoryAdministrative = 'Administrative';
-
-  static const List<String> categories = [
-    categoryCoreFlow,
-    categoryDelays,
-    categoryOutcomes,
-    categoryAdministrative,
-  ];
-
-  // ─── Sub-roles: Core Flow ──────────────────────────────────────────
-  static const String statusUnassigned = 'Unassigned';
-  static const String statusAssigned = 'Assigned';
+  // ─── System Managed Statuses ───────────────────────────────────────
+  static const String statusPending = 'Pending';
   static const String statusOngoing = 'On-going';
 
-  // ─── Sub-roles: Delays ─────────────────────────────────────────────
-  static const String statusOnSchedule = 'On Schedule';
-  static const String statusBehindSchedule = 'Behind Schedule';
-  static const String statusRescheduled = 'Rescheduled';
+  // ─── Outcome Statuses (User Selectable) ─────────────────────────────
+  static const String statusCollected = 'Collected';
+  static const String statusPartial = 'Partially Collected';
+  static const String statusFailed = 'Failed';
+  static const String statusUnavailable = 'Customer Unavailable';
+  static const String statusRefused = 'Refused to Pay';
 
-  // ─── Sub-roles: Outcomes ───────────────────────────────────────────
-  static const String statusNone = 'None';
-  static const String statusFullyCollected = 'Fully Collected';
-  static const String statusPartiallyCollected = 'Partially Collected';
-  static const String statusFailedCollection = 'Failed Collection';
-  static const String statusCustomerUnavailable = 'Customer Unavailable';
-  static const String statusRefusedToPay = 'Refused to Pay';
+  static const List<String> allStatuses = [
+    statusPending,
+    statusOngoing,
+    statusCollected,
+    statusPartial,
+    statusFailed,
+    statusUnavailable,
+    statusRefused,
+  ];
 
-  // ─── Sub-roles: Administrative ─────────────────────────────────────
-  static const String statusCancelled = 'Cancelled';
-  static const String statusOnHold = 'On Hold';
-  static const String statusForVerification = 'For Verification';
-
-  /// Returns the list of sub-roles for a given category.
-  static List<String> subRolesFor(String category) {
-    switch (category) {
-      case categoryCoreFlow:
-        return [statusUnassigned, statusOngoing];
-      case categoryDelays:
-        return [statusRescheduled, statusBehindSchedule];
-      case categoryOutcomes:
-        return [
-          statusFullyCollected,
-          statusPartiallyCollected,
-          statusFailedCollection,
-          statusCustomerUnavailable,
-          statusRefusedToPay,
-        ];
-      case categoryAdministrative:
-        return [statusCancelled, statusOnHold, statusForVerification];
-      default:
-        return [];
-    }
-  }
-
-  // ─── Colour mapping ─────────────────────────────────────────────────
+  /// Statuses that a user can manually select in the update screen.
+  static const List<String> updatableStatuses = [
+    statusCollected,
+    statusPartial,
+    statusFailed,
+    statusUnavailable,
+    statusRefused,
+  ];
 
   /// Returns a tuple of (background, foreground) colours for the given [status].
   static (Color bg, Color fg) colorsFor(String status, {bool darkMode = false}) {
@@ -74,59 +44,25 @@ class CollectionStatusColors {
     Color fg = BColors.white;
 
     switch (s) {
-    // Core Flow
-      case statusUnassigned:
-        bg = BColors.darkerGrey;
-        break;
-      case statusAssigned:
-        bg = BColors.primary;
+      case statusPending:
+        bg = BColors.darkGrey;
         break;
       case statusOngoing:
         bg = Colors.orange;
         break;
-
-    // Delays
-      case statusOnSchedule:
-        bg = BColors.success.withValues(alpha: 0.1);
-        fg = BColors.success;
-        break;
-      case statusBehindSchedule:
-        bg = BColors.error;
-        break;
-      case statusRescheduled:
-        bg = Colors.purple;
-        break;
-
-    // Outcomes
-      case statusNone:
-        bg = BColors.darkerGrey.withValues(alpha: 0.1);
-        fg = BColors.darkerGrey;
-        break;
-      case statusFullyCollected:
+      case statusCollected:
         bg = BColors.success;
         break;
-      case statusPartiallyCollected:
+      case statusPartial:
         bg = Colors.lightGreen;
         break;
-      case statusFailedCollection:
-      case statusRefusedToPay:
+      case statusFailed:
+      case statusRefused:
         bg = BColors.error;
         break;
-      case statusCustomerUnavailable:
+      case statusUnavailable:
         bg = Colors.amber;
         break;
-
-    // Administrative
-      case statusCancelled:
-        bg = Colors.grey;
-        break;
-      case statusOnHold:
-        bg = Colors.blueGrey;
-        break;
-      case statusForVerification:
-        bg = Colors.cyan;
-        break;
-
       default:
         bg = darkMode ? BColors.darkerGrey : BColors.light;
         fg = darkMode ? BColors.light : BColors.darkGrey;
@@ -148,26 +84,17 @@ class CollectionStatusColors {
 
   static IconData iconFor(String status) {
     switch (status.trim()) {
-      case statusFullyCollected:
-      case statusOngoing:
+      case statusCollected:
+      case statusPartial:
         return Iconsax.tick_circle;
-      case statusOnSchedule:
+      case statusOngoing:
         return Iconsax.timer_1;
-      case statusBehindSchedule:
-      case statusFailedCollection:
+      case statusFailed:
+      case statusRefused:
         return Iconsax.warning_2;
-      case statusUnassigned:
-      case statusOnHold:
-      case statusNone:
+      case statusPending:
+      case statusUnavailable:
         return Iconsax.clock;
-      case statusAssigned:
-        return Iconsax.user_tick;
-      case statusRescheduled:
-        return Iconsax.calendar_tick;
-      case statusForVerification:
-        return Iconsax.document_filter;
-      case statusCancelled:
-        return Iconsax.close_circle;
       default:
         return Iconsax.info_circle;
     }

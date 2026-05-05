@@ -6,9 +6,20 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 
 class ActivityHistoryList extends StatelessWidget {
-  const ActivityHistoryList({super.key, required this.history});
+  const ActivityHistoryList({
+    super.key,
+    required this.history,
+    this.accountNames,
+    this.invoiceIds,
+  });
 
   final List<CollectionHistoryModel> history;
+  
+  /// Optional: Map of history index to account name (for global lists)
+  final Map<int, String>? accountNames;
+  
+  /// Optional: Map of history index to invoice ID (for global lists)
+  final Map<int, String>? invoiceIds;
 
   @override
   Widget build(BuildContext context) {
@@ -16,29 +27,39 @@ class ActivityHistoryList extends StatelessWidget {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: BSizes.lg),
-          child: Text('No history available for this account.'),
+          child: Text('No history available.'),
         ),
       );
     }
 
-    // Sort history to show most recent first
-    final sortedHistory = history.reversed.toList();
+    // The history is already sorted newest-first by the controller.
+    final List<CollectionHistoryModel> displayList = history;
 
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: sortedHistory.length,
+      itemCount: displayList.length,
       itemBuilder: (context, index) {
-        return _ActivityHistoryCard(history: sortedHistory[index]);
+        return _ActivityHistoryCard(
+          history: displayList[index],
+          accountName: accountNames?[index],
+          invoiceId: invoiceIds?[index],
+        );
       },
     );
   }
 }
 
 class _ActivityHistoryCard extends StatelessWidget {
-  const _ActivityHistoryCard({required this.history});
+  const _ActivityHistoryCard({
+    required this.history,
+    this.accountName,
+    this.invoiceId,
+  });
 
   final CollectionHistoryModel history;
+  final String? accountName;
+  final String? invoiceId;
 
   @override
   Widget build(BuildContext context) {
@@ -49,14 +70,33 @@ class _ActivityHistoryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// Header: Date and Collector
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(history.date, style: Theme.of(context).textTheme.labelLarge),
-                Text(history.collectorName, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey)),
+                Text(
+                  history.collectorName,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                ),
               ],
             ),
             const SizedBox(height: BSizes.xs),
+
+            /// Optional: Account & Invoice Info (for Home Screen)
+            if (accountName != null || invoiceId != null) ...[
+              Text(
+                '${accountName ?? 'Unknown'} ${invoiceId != null ? '(#$invoiceId)' : ''}',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: BColors.primary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: BSizes.xs),
+            ],
+
             if (history.totalCollected > 0)
               Padding(
                 padding: const EdgeInsets.only(bottom: BSizes.xs),
@@ -68,16 +108,9 @@ class _ActivityHistoryCard extends StatelessWidget {
                   ),
                 ),
               ),
-            Wrap(
-              spacing: BSizes.xs,
-              runSpacing: BSizes.xs,
-              children: [
-                _ActivityHistoryBadge(status: history.coreStatus),
-                _ActivityHistoryBadge(status: history.delayStatus),
-                _ActivityHistoryBadge(status: history.outcomeStatus),
-                _ActivityHistoryBadge(status: history.administrativeStatus),
-              ],
-            ),
+            
+            _ActivityHistoryBadge(status: history.status),
+            
             if (history.remarks.isNotEmpty && history.remarks != 'No remarks') ...[
               const SizedBox(height: BSizes.xs),
               Text(
@@ -99,9 +132,6 @@ class _ActivityHistoryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (status == CollectionStatusColors.statusOnSchedule || status == CollectionStatusColors.statusNone) {
-      return const SizedBox.shrink();
-    }
     final (bg, _) = CollectionStatusColors.colorsForAuto(context, status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.sm, vertical: BSizes.xxs),

@@ -4,7 +4,6 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
@@ -16,41 +15,6 @@ class CategoryDetailScreen extends StatelessWidget {
 
   final String title;
   final Color color;
-
-  List<String> _getFiltersForCategory(String category) {
-    switch (category) {
-      case 'Core Status':
-        return [
-          'All',
-          CollectionStatusColors.statusUnassigned,
-          CollectionStatusColors.statusOngoing,
-        ];
-      case 'Delays':
-        return [
-          'All',
-          CollectionStatusColors.statusRescheduled,
-          CollectionStatusColors.statusBehindSchedule,
-        ];
-      case 'Completed':
-        return [
-          'All',
-          CollectionStatusColors.statusFullyCollected,
-          CollectionStatusColors.statusPartiallyCollected,
-          CollectionStatusColors.statusFailedCollection,
-          CollectionStatusColors.statusCustomerUnavailable,
-          CollectionStatusColors.statusRefusedToPay,
-        ];
-      case 'Administrative':
-        return [
-          'All',
-          CollectionStatusColors.statusCancelled,
-          CollectionStatusColors.statusOnHold,
-          CollectionStatusColors.statusForVerification,
-        ];
-      default:
-        return ['All'];
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +30,8 @@ class CategoryDetailScreen extends StatelessWidget {
         children: [
           const SizedBox(height: BSizes.spaceBtwItems),
 
-          /// Filter chips
+          /// Filter chips (Defaulting to all simple statuses)
           ActivityFilterChips(
-            filters: _getFiltersForCategory(title),
             onFilterChanged: (filter) {
               controller.setActivityFilter(filter);
             },
@@ -96,8 +59,8 @@ class CategoryDetailScreen extends StatelessWidget {
                 );
               }
 
-              // Sort all history chronologically first to ensure a unified timeline
-              allHistory.sort((a, b) => a.date.compareTo(b.date));
+              // Sort newest first
+              allHistory.sort((a, b) => b.date.compareTo(a.date));
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),

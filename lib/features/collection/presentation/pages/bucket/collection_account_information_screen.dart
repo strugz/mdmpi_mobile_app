@@ -65,7 +65,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   Text(
                     'TOTAL AMOUNT DUE',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: BColors.white.withOpacity(0.8),
+                          color: BColors.white.withValues(alpha: 0.8),
                           letterSpacing: 1.2,
                         ),
                   ),

@@ -18,7 +18,7 @@ class ActivityInfoCard extends StatelessWidget {
         padding: const EdgeInsets.all(BSizes.md),
         child: Column(
           children: [
-            _ActivityDetailRow(label: 'Core Status', value: item.coreStatus),
+            _ActivityDetailRow(label: 'Status', value: item.status),
             _ActivityDetailRow(label: 'Date Assigned', value: item.assignedAt),
             _ActivityDetailRow(label: 'Collector', value: item.collectorName),
             _ActivityDetailRow(label: 'Account Name', value: item.client.name),

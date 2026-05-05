@@ -8,8 +8,6 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 
 /// A single activity entry tile used in the Activity list.
-///
-/// Displays invoice details, amounts, dates, and status badges.
 class ActivityListTile extends StatelessWidget {
   const ActivityListTile({
     super.key,
@@ -48,7 +46,6 @@ class ActivityListTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 1. Invoice # and Amount
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -76,20 +73,12 @@ class ActivityListTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: BSizes.sm),
-                Text(
-                  BFormatter.formatPesoCurrency(item.toBeCollected),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: BColors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
+                _buildStatusBadge(context, item.status),
               ],
             ),
             
             const SizedBox(height: BSizes.sm),
 
-            /// 2. Dates (Posted & Due)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -112,9 +101,23 @@ class ActivityListTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: BSizes.sm),
+                Text(
+                  BFormatter.formatPesoCurrency(item.toBeCollected),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: BColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: BSizes.xs),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 Expanded(
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       const Icon(Iconsax.timer, size: 14, color: BColors.error),
                       const SizedBox(width: 4),
@@ -132,30 +135,12 @@ class ActivityListTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: BSizes.sm),
+                Text(
+                  item.bankName,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BColors.darkGrey),
+                ),
               ],
-            ),
-
-            const SizedBox(height: BSizes.xs),
-            
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: BSizes.sm),
-              child: Divider(height: 1),
-            ),
-            
-            /// 4. Status Badges
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildStatusBadge(context, item.coreStatus),
-                  const SizedBox(width: BSizes.xs),
-                  _buildStatusBadge(context, item.delayStatus),
-                  const SizedBox(width: BSizes.xs),
-                  _buildStatusBadge(context, item.outcomeStatus),
-                  const SizedBox(width: BSizes.xs),
-                  _buildStatusBadge(context, item.administrativeStatus),
-                ],
-              ),
             ),
           ],
         ),
@@ -164,10 +149,6 @@ class ActivityListTile extends StatelessWidget {
   }
 
   Widget _buildStatusBadge(BuildContext context, String status) {
-    if (status == CollectionStatusColors.statusOnSchedule || status == CollectionStatusColors.statusNone) {
-      return const SizedBox.shrink();
-    }
-    
     final (bg, fg) = CollectionStatusColors.colorsForAuto(context, status);
     
     return Container(

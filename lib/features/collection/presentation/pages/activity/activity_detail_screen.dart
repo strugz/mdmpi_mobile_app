@@ -18,14 +18,19 @@ class ActivityDetailScreen extends StatefulWidget {
 }
 
 class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
-  late String selectedRemark;
+  late String selectedStatus;
   late TextEditingController totalCollectedController;
 
   @override
   void initState() {
     super.initState();
-    // Use existing outcome status as the initial remark selection
-    selectedRemark = widget.item.outcomeStatus;
+    // Default to 'Collected' if current status is system-managed (Pending/Ongoing)
+    if (widget.item.status == CollectionStatusColors.statusPending || 
+        widget.item.status == CollectionStatusColors.statusOngoing) {
+      selectedStatus = CollectionStatusColors.statusCollected;
+    } else {
+      selectedStatus = widget.item.status;
+    }
     totalCollectedController = TextEditingController(text: widget.item.totalCollected.toString());
   }
 
@@ -39,17 +44,15 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     final controller = CollectionActivityController.instance;
     controller.saveActivity(
       id: widget.item.id,
-      delayStatus: widget.item.delayStatus,
-      outcomeStatus: selectedRemark, // Map dropdown to outcome status
-      administrativeStatus: widget.item.administrativeStatus,
-      remarks: selectedRemark, // Also use it as the text remark
+      status: selectedStatus,
+      remarks: selectedStatus, // Using status as the remark text for simplicity
       totalCollected: double.tryParse(totalCollectedController.text) ?? 0,
     );
 
     Get.back();
     Get.snackbar(
       'Success',
-      'Activity updated and moved back to bucket',
+      'Activity updated',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: BColors.success.withValues(alpha: 0.8),
       colorText: Colors.white,
@@ -67,8 +70,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 1. Invoice Header (No Section Text)
-            // Invoice # and Total Amount Due
+            /// 1. Invoice Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +92,6 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             ),
             const SizedBox(height: BSizes.xs),
 
-            // Due Date
             Row(
               children: [
                 const Icon(Iconsax.timer, size: 18, color: BColors.error),
@@ -110,7 +111,6 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             ),
             const SizedBox(height: BSizes.xs),
 
-            // Invoice Date and BP
             Row(
               children: [
                 const Icon(Iconsax.calendar, size: 16, color: BColors.darkGrey),
@@ -133,21 +133,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             ),
             const SizedBox(height: BSizes.sm),
 
-            // Statuses
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildStatusBadge(context, widget.item.coreStatus),
-                  const SizedBox(width: BSizes.xs),
-                  _buildStatusBadge(context, widget.item.delayStatus),
-                  const SizedBox(width: BSizes.xs),
-                  _buildStatusBadge(context, widget.item.outcomeStatus),
-                  const SizedBox(width: BSizes.xs),
-                  _buildStatusBadge(context, widget.item.administrativeStatus),
-                ],
-              ),
-            ),
+            _buildStatusBadge(context, widget.item.status),
 
             const Padding(
               padding: EdgeInsets.symmetric(vertical: BSizes.spaceBtwSections),
@@ -168,18 +154,15 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            /// 3. Remarks (Dropdown)
-            Text('Remarks', style: Theme.of(context).textTheme.titleMedium),
+            /// 3. Update Status (Dropdown)
+            Text('Update Status', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
             DropdownButtonFormField<String>(
-              value: selectedRemark,
+              value: selectedStatus,
               decoration: const InputDecoration(
-                hintText: 'Select remark...',
+                hintText: 'Select status...',
               ),
-              items: [
-                CollectionStatusColors.statusNone,
-                ...CollectionStatusColors.subRolesFor(CollectionStatusColors.categoryOutcomes)
-              ].map((String value) {
+              items: CollectionStatusColors.updatableStatuses.map((String value) {
                 return DropdownMenuItem<String>(
                   value: value,
                   child: Text(value),
@@ -187,7 +170,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               }).toList(),
               onChanged: (newValue) {
                 setState(() {
-                  selectedRemark = newValue!;
+                  selectedStatus = newValue!;
                 });
               },
             ),
@@ -209,10 +192,6 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   }
 
   Widget _buildStatusBadge(BuildContext context, String status) {
-    if (status == CollectionStatusColors.statusOnSchedule || status == CollectionStatusColors.statusNone) {
-      return const SizedBox.shrink();
-    }
-    
     final (bg, fg) = CollectionStatusColors.colorsForAuto(context, status);
     
     return Container(
