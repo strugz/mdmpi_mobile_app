@@ -565,27 +565,8 @@ class CollectionActivityController extends GetxController {
 
     bucketItems.assignAll(generatedItems);
 
-    // Original sample activity items for other screens
-    activityItems.assignAll([
-      CollectionItemModel(
-        id: 'COL-ACT-001',
-        client: clients[0],
-        bpCode: clients[0].code,
-        postingDate: '2026-02-15',
-        dueDate: '2026-03-10',
-        documentReferences: ['CHQ-PREV-1'],
-        bankName: 'BDO',
-        toBeCollected: 5000,
-        totalCollected: 0,
-        documentDate: '2026-02-20',
-        coreStatus: CollectionStatusColors.statusOngoing,
-        delayStatus: CollectionStatusColors.statusOnSchedule,
-        outcomeStatus: CollectionStatusColors.statusNone,
-        administrativeStatus: CollectionStatusColors.statusForVerification,
-        collectorName: 'John Doe',
-        assignedAt: '2026-03-01 09:00',
-      )
-    ]);
+    // Start with empty activity items
+    activityItems.clear();
   }
 }
 
