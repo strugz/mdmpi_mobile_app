@@ -35,7 +35,7 @@ class InvoiceItemCard extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: BColors.black.withOpacity(0.05),
+              color: BColors.black.withValues(alpha: 0.05),
               blurRadius: 5,
               offset: const Offset(0, 2),
             ),
@@ -80,7 +80,16 @@ class InvoiceItemCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      _buildStatusBadge(context, item.status),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildStatusBadge(context, item.status),
+                          if (item.lastOutcome != null) ...[
+                            const SizedBox(width: BSizes.xs),
+                            _buildStatusBadge(context, item.lastOutcome!),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: BSizes.sm),
@@ -117,31 +126,19 @@ class InvoiceItemCard extends StatelessWidget {
                   ),
                   const SizedBox(height: BSizes.xs),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            const Icon(Iconsax.timer, size: 14, color: BColors.error),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                'Due: ${item.dueDate}',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: BColors.error,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                      const Icon(Iconsax.timer, size: 14, color: BColors.error),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'Due: ${item.dueDate}',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: BColors.error,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ),
-                          ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: BSizes.sm),
-                      Text(
-                        item.bankName,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BColors.darkGrey),
                       ),
                     ],
                   ),

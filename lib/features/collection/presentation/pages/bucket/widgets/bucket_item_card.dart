@@ -118,13 +118,6 @@ class BucketItemCard extends StatelessWidget {
                   /// Document details row
                   Row(
                     children: [
-                      /// Bank
-                      BIconLabelChip(
-                        icon: Iconsax.bank,
-                        label: item.bankName,
-                      ),
-                      const SizedBox(width: BSizes.sm),
-
                       /// Document references
                       BIconLabelChip(
                         icon: Iconsax.document_text,

@@ -5,7 +5,6 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
@@ -25,6 +24,8 @@ class CollectionHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = Get.put(CollectionActivityController());
+
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
@@ -60,7 +61,6 @@ class CollectionHomeScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
                   child: Obx(() {
-                    final controller = Get.find<CollectionActivityController>();
                     return CollectionBucketButton(
                       itemCount: controller.bucketItems.length,
                       onTap: () => Get.to(
@@ -83,41 +83,37 @@ class CollectionHomeScreen extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: CollectionSummaryCard(
-                              title: 'On-going',
-                              value: '—',
-                              icon: Iconsax.timer_1,
-                              color: Colors.orange,
+                            child: Obx(() => CollectionSummaryCard(
+                              title: 'Core',
+                              value: controller.coreItems.length.toString(),
+                              icon: Iconsax.category,
+                              color: Colors.blue,
                               expand: false,
                               onTap: () {
-                                final controller = CollectionActivityController.instance;
-                                controller.setActivityFilter(CollectionStatusColors.statusOngoing);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'On-going Activities', color: Colors.orange),
+                                  () => const CategoryDetailScreen(title: 'Core', color: Colors.blue),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
                               },
-                            ),
+                            )),
                           ),
                           const SizedBox(width: BSizes.spaceBtwItems),
                           Expanded(
-                            child: CollectionSummaryCard(
-                              title: 'Pending',
-                              value: '—',
-                              icon: Iconsax.clock,
-                              color: BColors.darkGrey,
+                            child: Obx(() => CollectionSummaryCard(
+                              title: 'Outcomes',
+                              value: controller.outcomeItems.length.toString(),
+                              icon: Iconsax.task,
+                              color: Colors.orange,
                               expand: false,
                               onTap: () {
-                                final controller = CollectionActivityController.instance;
-                                controller.setActivityFilter(CollectionStatusColors.statusPending);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Pending Items', color: BColors.darkGrey),
+                                  () => const CategoryDetailScreen(title: 'Outcomes', color: Colors.orange),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
                               },
-                            ),
+                            )),
                           ),
                         ],
                       ),
@@ -125,40 +121,36 @@ class CollectionHomeScreen extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: CollectionSummaryCard(
-                              title: 'Collected',
-                              value: '—',
+                            child: Obx(() => CollectionSummaryCard(
+                              title: 'Completed',
+                              value: controller.completedItems.length.toString(),
                               icon: Iconsax.tick_circle,
                               color: BColors.success,
                               onTap: () {
-                                final controller = CollectionActivityController.instance;
-                                controller.setActivityFilter(CollectionStatusColors.statusCollected);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Collected Items', color: BColors.success),
+                                  () => const CategoryDetailScreen(title: 'Completed', color: BColors.success),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
                               },
-                            ),
+                            )),
                           ),
                           const SizedBox(width: BSizes.spaceBtwItems),
                           Expanded(
-                            child: CollectionSummaryCard(
-                              title: 'Failed',
-                              value: '—',
-                              icon: Iconsax.warning_2,
+                            child: Obx(() => CollectionSummaryCard(
+                              title: 'Due Date',
+                              value: controller.overdueItems.length.toString(),
+                              icon: Iconsax.timer,
                               color: BColors.error,
                               expand: false,
                               onTap: () {
-                                final controller = CollectionActivityController.instance;
-                                controller.setActivityFilter(CollectionStatusColors.statusFailed);
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Failed Collections', color: BColors.error),
+                                  () => const CategoryDetailScreen(title: 'Due Date', color: BColors.error),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
                               },
-                            ),
+                            )),
                           ),
                         ],
                       ),
@@ -207,7 +199,6 @@ class CollectionHomeScreen extends StatelessWidget {
                     ),
 
                     Obx(() {
-                      final controller = CollectionActivityController.instance;
                       final recentItems = controller.allRecentHistory;
 
                       if (recentItems.isEmpty) {

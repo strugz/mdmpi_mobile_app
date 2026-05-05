@@ -16,8 +16,11 @@ class CollectionItemModel {
   final String postingDate;
   final String dueDate;
   
-  /// Consolidated status field.
+  /// Consolidated status field (Pending, On-going, Collected).
   final String status;
+
+  /// The outcome of the last activity (Failed, Partially Collected, etc.).
+  final String? lastOutcome;
 
   final String assignedAt;
   final String collectorName;
@@ -36,6 +39,7 @@ class CollectionItemModel {
     this.postingDate = 'N/A',
     this.dueDate = 'N/A',
     this.status = CollectionStatusColors.statusPending,
+    this.lastOutcome,
     this.assignedAt = '',
     this.collectorName = 'Unassigned',
     this.history = const [],
@@ -59,6 +63,7 @@ class CollectionItemModel {
     String? postingDate,
     String? dueDate,
     String? status,
+    String? lastOutcome,
     String? assignedAt,
     String? collectorName,
     List<CollectionHistoryModel>? history,
@@ -76,6 +81,7 @@ class CollectionItemModel {
       postingDate: postingDate ?? this.postingDate,
       dueDate: dueDate ?? this.dueDate,
       status: status ?? this.status,
+      lastOutcome: lastOutcome ?? this.lastOutcome,
       assignedAt: assignedAt ?? this.assignedAt,
       collectorName: collectorName ?? this.collectorName,
       history: history ?? this.history,
@@ -108,6 +114,7 @@ class CollectionItemModel {
       postingDate: (json['PostingDate'] ?? 'N/A').toString(),
       dueDate: (json['DueDate'] ?? 'N/A').toString(),
       status: (json['Status'] ?? json['CoreStatus'] ?? CollectionStatusColors.statusPending).toString(),
+      lastOutcome: json['LastOutcome']?.toString(),
       assignedAt: (json['AssignedAt'] ?? 'N/A').toString(),
       collectorName: (json['CollectorName'] ?? 'Unassigned').toString(),
       history: json['History'] != null && json['History'] is List
@@ -131,6 +138,7 @@ class CollectionItemModel {
       'PostingDate': postingDate,
       'DueDate': dueDate,
       'Status': status,
+      'LastOutcome': lastOutcome,
       'AssignedAt': assignedAt,
       'CollectorName': collectorName,
       'History': history.map((e) => e.toJson()).toList(),

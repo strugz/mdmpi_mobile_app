@@ -73,7 +73,16 @@ class ActivityListTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                _buildStatusBadge(context, item.status),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildStatusBadge(context, item.status),
+                    if (item.lastOutcome != null) ...[
+                      const SizedBox(width: BSizes.xs),
+                      _buildStatusBadge(context, item.lastOutcome!),
+                    ],
+                  ],
+                ),
               ],
             ),
             
@@ -101,12 +110,23 @@ class ActivityListTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: BSizes.sm),
-                Text(
-                  BFormatter.formatPesoCurrency(item.toBeCollected),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: BColors.primary,
-                        fontWeight: FontWeight.bold,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      BFormatter.formatPesoCurrency(
+                        item.toBeCollected == 0 ? item.totalCollected : item.toBeCollected,
                       ),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: item.toBeCollected == 0 ? BColors.success : BColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    if (item.toBeCollected == 0) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Iconsax.tick_circle5, color: BColors.success, size: 18),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -114,31 +134,19 @@ class ActivityListTile extends StatelessWidget {
             const SizedBox(height: BSizes.xs),
 
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      const Icon(Iconsax.timer, size: 14, color: BColors.error),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'Due: ${item.dueDate}',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: BColors.error,
-                                fontWeight: FontWeight.bold,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                const Icon(Iconsax.timer, size: 14, color: BColors.error),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'Due: ${item.dueDate}',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: BColors.error,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ),
-                    ],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(width: BSizes.sm),
-                Text(
-                  item.bankName,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BColors.darkGrey),
                 ),
               ],
             ),

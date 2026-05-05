@@ -9,6 +9,7 @@ class ActivityFilterChips extends StatefulWidget {
     super.key,
     this.onFilterChanged,
     this.filters,
+    this.activeColor,
   });
 
   /// Called when the user selects a different filter.
@@ -16,6 +17,9 @@ class ActivityFilterChips extends StatefulWidget {
 
   /// Optional list of filters to display.
   final List<String>? filters;
+
+  /// The color to use when a chip is selected.
+  final Color? activeColor;
 
   @override
   State<ActivityFilterChips> createState() => _ActivityFilterChipsState();
@@ -32,8 +36,10 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
   @override
   Widget build(BuildContext context) {
     final filters = _currentFilters;
+    final selectedColor = widget.activeColor ?? BColors.primary;
+
     return SizedBox(
-      height: 48,
+      height: 40,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
@@ -48,17 +54,20 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
               setState(() => _selectedIndex = index);
               widget.onFilterChanged?.call(filters[index]);
             },
-            selectedColor: BColors.primary,
+            selectedColor: selectedColor,
             labelStyle: TextStyle(
               color: isSelected ? BColors.white : BColors.darkerGrey,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              fontSize: 13,
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
             ),
             side: BorderSide(
-              color: isSelected ? BColors.primary : BColors.grey,
+              color: isSelected ? selectedColor : BColors.grey,
             ),
+            padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
+            pressElevation: 0,
           );
         },
       ),

@@ -23,7 +23,6 @@ class ActivityInfoCard extends StatelessWidget {
             _ActivityDetailRow(label: 'Collector', value: item.collectorName),
             _ActivityDetailRow(label: 'Account Name', value: item.client.name),
             _ActivityDetailRow(label: 'Address', value: item.client.address),
-            _ActivityDetailRow(label: 'Bank', value: item.bankName),
             _ActivityDetailRow(label: 'To be Collected', value: BFormatter.formatPesoCurrency(item.toBeCollected)),
             _ActivityDetailRow(label: 'Total Collected', value: BFormatter.formatPesoCurrency(item.totalCollected)),
             _ActivityDetailRow(label: 'Documents', value: item.documentReferences.join(', ')),

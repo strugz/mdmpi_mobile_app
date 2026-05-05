@@ -102,8 +102,7 @@ class CollectionActivityController extends GetxController {
     final query = invoiceSearchQuery.value.toLowerCase();
     return invoices.where((item) {
       return item.id.toLowerCase().contains(query) ||
-             item.documentReferences.any((ref) => ref.toLowerCase().contains(query)) ||
-             item.bankName.toLowerCase().contains(query);
+             item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
     }).toList();
   }
 
@@ -151,8 +150,7 @@ class CollectionActivityController extends GetxController {
     final query = invoiceSearchQuery.value.toLowerCase();
     return invoices.where((item) {
       return item.id.toLowerCase().contains(query) ||
-          item.documentReferences.any((ref) => ref.toLowerCase().contains(query)) ||
-          item.bankName.toLowerCase().contains(query);
+          item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
     }).toList();
   }
 
@@ -239,6 +237,45 @@ class CollectionActivityController extends GetxController {
   }
 
   // ========================================================================
+  // Dashboard Getters
+  // ========================================================================
+
+  /// Core: Pending and On-going only
+  List<CollectionItemModel> get coreItems {
+    final allItems = [...bucketItems, ...activityItems];
+    return allItems.where((item) => 
+      item.status == CollectionStatusColors.statusPending || 
+      item.status == CollectionStatusColors.statusOngoing
+    ).toList();
+  }
+
+  /// Outcomes: Collected, Partially Collected, failed, Customer Unavailable, Refused to pay
+  List<CollectionItemModel> get outcomeItems {
+    final allItems = [...bucketItems, ...activityItems];
+    return allItems.where((item) => item.lastOutcome != null).toList();
+  }
+
+  /// Completed: invoice reach 0 total amount due
+  List<CollectionItemModel> get completedItems {
+    final allItems = [...bucketItems, ...activityItems];
+    return allItems.where((item) => item.toBeCollected == 0).toList();
+  }
+
+  /// Due Date: invoices past their due date
+  List<CollectionItemModel> get overdueItems {
+    final allItems = [...bucketItems, ...activityItems];
+    final now = DateTime.now();
+    return allItems.where((item) {
+      try {
+        final dueDate = DateTime.parse(item.dueDate);
+        return dueDate.isBefore(now);
+      } catch (e) {
+        return false;
+      }
+    }).toList();
+  }
+
+  // ========================================================================
   // Claims
   // ========================================================================
 
@@ -274,22 +311,22 @@ class CollectionActivityController extends GetxController {
     final double updatedTotalCollected = oldItem.totalCollected + newlyCollected;
     final double updatedToBeCollected = (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
 
-    // Auto-update status to Collected if fully paid
-    String finalStatus = status;
-    if (updatedToBeCollected == 0) {
-      finalStatus = CollectionStatusColors.statusCollected;
-    }
+    // If fully paid, status is Collected. 
+    // If not fully paid, status is Pending (moving back to bucket) but with the outcome recorded.
+    final bool isFullyPaid = updatedToBeCollected == 0;
+    final String finalStatus = isFullyPaid ? CollectionStatusColors.statusCollected : CollectionStatusColors.statusPending;
 
     final historyEntry = CollectionHistoryModel(
       date: now,
       collectorName: 'You',
-      status: finalStatus,
+      status: status,
       remarks: remarks,
       totalCollected: newlyCollected,
     );
 
     final updatedItem = oldItem.copyWith(
-      status: updatedToBeCollected == 0 ? CollectionStatusColors.statusCollected : CollectionStatusColors.statusPending,
+      status: finalStatus,
+      lastOutcome: status, // Always store the selected status as the last outcome
       remarks: remarks,
       toBeCollected: updatedToBeCollected,
       totalCollected: updatedTotalCollected,
