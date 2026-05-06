@@ -129,6 +129,7 @@ class StandardDeliveryDataManager {
         itemCategoryID: normalizedItemCategory,
         formCategoryID: normalizedFormCategory,
         recipientContactDetails: formState.recipientContactDetails.text.trim(),
+        recipientName: formState.recipientName.text.trim(),
       );
 
       // Send notifications
@@ -710,3 +711,5 @@ class StandardDeliveryDataManager {
     return true;
   }
 }
+
+

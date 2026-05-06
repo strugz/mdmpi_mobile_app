@@ -28,6 +28,7 @@ class StandardDeliveryFormState {
   final TextEditingController selectedHelper = TextEditingController();
   final TextEditingController receiver = TextEditingController();
   final TextEditingController recipientContactDetails = TextEditingController();
+  final TextEditingController recipientName = TextEditingController();
   final TextEditingController mobile = TextEditingController();
   final TextEditingController tripTicketNumber = TextEditingController();
   final TextEditingController remarks = TextEditingController();
@@ -78,11 +79,12 @@ class StandardDeliveryFormState {
     clientInformation.value = ClientModel.empty();
     receiverSignatureBytes.value = null;
     receiverSignatureBase64.value = "";
-    selectedDriver.clear();
-    selectedHelper.clear();
-    receiver.clear();
-    recipientContactDetails.clear();
-    mobile.clear();
+     selectedDriver.clear();
+     selectedHelper.clear();
+     receiver.clear();
+     recipientContactDetails.clear();
+     recipientName.clear();
+     mobile.clear();
     tripTicketNumber.clear();
     remarks.clear();
 
@@ -116,11 +118,12 @@ class StandardDeliveryFormState {
     targetDate.dispose();
     requestedBy.dispose();
     preference.dispose();
-    selectedDriver.dispose();
-    selectedHelper.dispose();
-    receiver.dispose();
-    recipientContactDetails.dispose();
-    mobile.dispose();
+     selectedDriver.dispose();
+     selectedHelper.dispose();
+     receiver.dispose();
+     recipientContactDetails.dispose();
+     recipientName.dispose();
+     mobile.dispose();
     tripTicketNumber.dispose();
     remarks.dispose();
 

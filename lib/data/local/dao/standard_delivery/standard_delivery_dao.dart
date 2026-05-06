@@ -153,6 +153,7 @@ class RequestDao {
        'RequestDriverHelper': requestModel.helper,
        'Receiver': requestModel.receiver,
        'RecipientContactDetails': requestModel.recipientContactDetails,
+       'RecipientName': requestModel.recipientName,
        'TripTicketNumber': requestModel.tripTicketNumber,
        'ItemCategoryID': requestModel.itemCategoryID,
        'FormCategoryID': requestModel.formCategoryID,

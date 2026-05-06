@@ -243,6 +243,20 @@ class StandardDelivery extends StatelessWidget {
                           : null,
                     ),
                     const SizedBox(height: BSizes.spaceBtwItems),
+
+                    /// Recipient Name
+                    TextFormField(
+                      controller: stdDeliveryController.formState.recipientName,
+                      decoration: InputDecoration(
+                        labelText: 'Recipient Name',
+                        prefixIcon: const Icon(Iconsax.user),
+                        hintText: 'Enter recipient name',
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Please enter recipient name'
+                          : null,
+                    ),
+                    const SizedBox(height: BSizes.spaceBtwItems),
                   ],
                 ),
               ),

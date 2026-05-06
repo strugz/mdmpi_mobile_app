@@ -43,6 +43,7 @@ Future<void> createAllTables(Database db) async {
       RequestDriverHelper TEXT,
       Receiver TEXT,
       RecipientContactDetails TEXT,
+      RecipientName TEXT,
       TripTicketNumber TEXT,
       ItemCategoryID TEXT,
       FormCategoryID TEXT

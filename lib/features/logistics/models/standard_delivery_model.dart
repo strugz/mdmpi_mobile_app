@@ -31,6 +31,7 @@ class StandardDeliveryModel {
   String image;
   String tripTicketNumber;
   String recipientContactDetails;
+  String recipientName;
   CancelRemarksModel cancelRemarks;
   String itemCategoryID;
   String formCategoryID;
@@ -64,6 +65,7 @@ class StandardDeliveryModel {
     this.image = '',
     this.tripTicketNumber = '',
     this.recipientContactDetails = '',
+    this.recipientName = '',
     this.cancelRemarks = CancelRemarksModel.empty,
     this.itemCategoryID = '',
     this.formCategoryID = '',
@@ -98,6 +100,7 @@ class StandardDeliveryModel {
     String? image,
     String? tripTicketNumber,
     String? recipientContactDetails,
+    String? recipientName,
     CancelRemarksModel? cancelRemarks,
     String? itemCategoryID,
     String? formCategoryID,
@@ -128,10 +131,11 @@ class StandardDeliveryModel {
       helper: helper ?? this.helper,
       receiver: receiver ?? this.receiver,
       signature: signature ?? this.signature,
-      image: image ?? this.image,
-      tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber,
-      recipientContactDetails: recipientContactDetails ?? this.recipientContactDetails,
-      cancelRemarks: cancelRemarks ?? this.cancelRemarks,
+       image: image ?? this.image,
+       tripTicketNumber: tripTicketNumber ?? this.tripTicketNumber,
+       recipientContactDetails: recipientContactDetails ?? this.recipientContactDetails,
+       recipientName: recipientName ?? this.recipientName,
+       cancelRemarks: cancelRemarks ?? this.cancelRemarks,
       itemCategoryID: itemCategoryID ?? this.itemCategoryID,
       formCategoryID: formCategoryID ?? this.formCategoryID,
     );
@@ -186,10 +190,11 @@ class StandardDeliveryModel {
         helper: '',
         receiver: '',
         signature: '',
-        image: '',
-        tripTicketNumber: '',
-        recipientContactDetails: '',
-        cancelRemarks: CancelRemarksModel.empty,
+         image: '',
+         tripTicketNumber: '',
+         recipientContactDetails: '',
+         recipientName: '',
+         cancelRemarks: CancelRemarksModel.empty,
         itemCategoryID: '',
         formCategoryID: '',
       );
@@ -222,10 +227,11 @@ class StandardDeliveryModel {
       'Helper': helper,
       'Receiver': receiver,
       'Signature': signature,
-      'Image': image,
-      'TripTicketNumber': tripTicketNumber,
-      'RecipientContactDetails': recipientContactDetails,
-      'CancelRemarks': cancelRemarks.toJson(),
+       'Image': image,
+       'TripTicketNumber': tripTicketNumber,
+       'RecipientContactDetails': recipientContactDetails,
+       'RecipientName': recipientName,
+       'CancelRemarks': cancelRemarks.toJson(),
       'ItemCategoryID': itemCategoryID,
       'FormCategoryID': formCategoryID,
     };
@@ -280,10 +286,11 @@ class StandardDeliveryModel {
       helper: (json['Helper']?.toString() ?? ''),
       receiver: (json['Receiver']?.toString() ?? ''),
       signature: (json['Signature']?.toString() ?? ''),
-      image: (json['Image']?.toString() ?? ''),
-      tripTicketNumber: (json['TripTicketNumber']?.toString() ?? ''),
-      recipientContactDetails: (json['RecipientContactDetails']?.toString() ?? ''),
-      cancelRemarks: json['CancelRemarks'] != null
+       image: (json['Image']?.toString() ?? ''),
+       tripTicketNumber: (json['TripTicketNumber']?.toString() ?? ''),
+       recipientContactDetails: (json['RecipientContactDetails']?.toString() ?? ''),
+       recipientName: (json['RecipientName']?.toString() ?? ''),
+       cancelRemarks: json['CancelRemarks'] != null
           ? CancelRemarksModel.fromJson(
               Map<String, dynamic>.from(json['CancelRemarks']))
           : CancelRemarksModel.empty,
@@ -346,15 +353,16 @@ class StandardDeliveryModel {
         locationEndAt: (lower['locationendat'] ?? '').toString(),
         mobileID: parsedMobileId,
         mobileName: (lower['mobilename'] ?? '').toString(),
-        helper: (lower['requestdriverhelper'] ?? lower['helper'] ?? '').toString(),
-        receiver: (lower['receiver'] ?? '').toString(),
-         signature: (lower['signature'] ?? '').toString(),
-         client: clientModel,
-         documentReference: [],
-         image: (lower['image'] ?? '').toString(),
-         tripTicketNumber: (lower['tripticketnumber'] ?? '').toString(),
-         recipientContactDetails: (lower['recipientcontactdetails'] ?? '').toString(),
-         cancelRemarks: CancelRemarksModel.empty,
+         helper: (lower['requestdriverhelper'] ?? lower['helper'] ?? '').toString(),
+         receiver: (lower['receiver'] ?? '').toString(),
+          signature: (lower['signature'] ?? '').toString(),
+          client: clientModel,
+          documentReference: [],
+          image: (lower['image'] ?? '').toString(),
+          tripTicketNumber: (lower['tripticketnumber'] ?? '').toString(),
+          recipientContactDetails: (lower['recipientcontactdetails'] ?? '').toString(),
+          recipientName: (lower['recipientname'] ?? '').toString(),
+          cancelRemarks: CancelRemarksModel.empty,
         itemCategoryID: (lower['itemcategoryid'] ?? '').toString(),
         formCategoryID: (lower['formcategoryid'] ?? '').toString(),
       );
@@ -376,6 +384,7 @@ class StandardDeliveryModel {
     String itemCategoryID = '',
     String formCategoryID = '',
     String recipientContactDetails = '',
+    String recipientName = '',
   }) {
     if (clientId == null || client == null) {
       throw ArgumentError('Client ID and Client information cannot be null.');
@@ -392,9 +401,10 @@ class StandardDeliveryModel {
       status: 'New Request',
       createdBy: createdBy,
       createdAt: DateTime.now().toString(),
-      itemCategoryID: itemCategoryID,
-      formCategoryID: formCategoryID,
-      recipientContactDetails: recipientContactDetails,
-    );
-  }
-}
+       itemCategoryID: itemCategoryID,
+       formCategoryID: formCategoryID,
+       recipientContactDetails: recipientContactDetails,
+       recipientName: recipientName,
+     );
+   }
+ }
