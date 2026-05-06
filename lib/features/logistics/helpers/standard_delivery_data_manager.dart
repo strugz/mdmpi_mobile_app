@@ -131,9 +131,7 @@ class StandardDeliveryDataManager {
         recipientContactDetails: formState.recipientContactDetails.text.trim(),
       );
 
-      print(jsonEncode(newRequest));
-
-/*      // Send notifications
+      // Send notifications
       _webSocketController.sendNotificationMessage(
         NotificationModel(title: 'New', body: 'New Request Received!'),
       );
@@ -169,7 +167,7 @@ class StandardDeliveryDataManager {
       formState.reset();
 
       controller.errorMessage.value = null;
-      BLoaders.successSnackBar(title: 'Success', message: 'Request created');*/
+      BLoaders.successSnackBar(title: 'Success', message: 'Request created');
     } catch (e) {
       controller.errorMessage.value = 'An error occurred: $e';
       BLoaders.errorSnackBar(
@@ -322,29 +320,30 @@ class StandardDeliveryDataManager {
           newStatus == BTexts.statusForDelivery && request.deliveredAt.isEmpty
               ? nowString
               : request.deliveredAt,
-      deliveredEndAt:
-          newStatus == BTexts.statusDoneDelivery && request.deliveredEndAt.isEmpty
-              ? nowString
-              : request.deliveredEndAt,
+      deliveredEndAt: newStatus == BTexts.statusDoneDelivery &&
+              request.deliveredEndAt.isEmpty
+          ? nowString
+          : request.deliveredEndAt,
       locationStartedAt: newStatus == BTexts.statusForDelivery &&
               request.locationStartedAt.isEmpty
           ? nowString
           : request.locationStartedAt,
-      locationEndAt:
-          newStatus == BTexts.statusDoneDelivery && request.locationEndAt.isEmpty
-              ? nowString
-              : request.locationEndAt,
+      locationEndAt: newStatus == BTexts.statusDoneDelivery &&
+              request.locationEndAt.isEmpty
+          ? nowString
+          : request.locationEndAt,
       helper: newStatus == BTexts.statusItemPrepared && request.helper.isEmpty
           ? formState.selectedHelper.text
           : request.helper,
-      receiver: newStatus == BTexts.statusDoneDelivery && request.receiver.isEmpty
-          ? formState.receiver.text
-          : request.receiver,
+      receiver:
+          newStatus == BTexts.statusDoneDelivery && request.receiver.isEmpty
+              ? formState.receiver.text
+              : request.receiver,
       mobileID: resolvedMobileID,
-      tripTicketNumber:
-          newStatus == BTexts.statusItemPrepared && request.tripTicketNumber.isEmpty
-              ? formState.tripTicketNumber.text
-              : request.tripTicketNumber,
+      tripTicketNumber: newStatus == BTexts.statusItemPrepared &&
+              request.tripTicketNumber.isEmpty
+          ? formState.tripTicketNumber.text
+          : request.tripTicketNumber,
     );
   }
 
@@ -426,7 +425,8 @@ class StandardDeliveryDataManager {
     await _dbHelper.updateRequest(requestModel: request);
     BLoaders.warningSnackBar(
       title: 'No Internet',
-      message: 'Request updated locally. Sync with server when connection returns.',
+      message:
+          'Request updated locally. Sync with server when connection returns.',
     );
   }
 
@@ -435,15 +435,16 @@ class StandardDeliveryDataManager {
     StandardDeliveryModel updatedRequest,
   ) {
     controller.currentSelectedRequest.value = updatedRequest;
-    final index =
-        controller.allPendingRequests.indexWhere((req) => req.id == updatedRequest.id);
+    final index = controller.allPendingRequests
+        .indexWhere((req) => req.id == updatedRequest.id);
     if (index != -1) {
       controller.allPendingRequests[index] = updatedRequest;
       controller.allPendingRequests.refresh();
     }
 
     if (controller is StandardDeliveryController) {
-      controller.filterManager.applyFilter(controller.allPendingRequests.toList());
+      controller.filterManager
+          .applyFilter(controller.allPendingRequests.toList());
     }
   }
 
