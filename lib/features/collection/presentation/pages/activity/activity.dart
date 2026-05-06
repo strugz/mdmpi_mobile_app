@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/w
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
 import 'activity_account_invoices_screen.dart';
 import 'widgets/activity_filter_modal.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 
 /// Collection Activity Screen
 ///
@@ -41,19 +42,12 @@ class CollectionActivityScreen extends StatelessWidget {
                                controller.activityMinInvoices.value > 0 ||
                                controller.activityMaxInvoices.value > 0;
               
-              return CollectionSearchFilterBar(
+               return CollectionSearchFilterBar(
                 searchHint: 'Search by account name...',
                 initialValue: controller.activitySearchQuery.value,
                 onSearchChanged: (value) => controller.activitySearchQuery.value = value,
                 hasActiveFilter: hasFilter,
-                onFilterTap: () => Get.bottomSheet(
-                  const ActivityFilterModal(),
-                  backgroundColor: BColors.white,
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
-                  ),
-                ),
+                onFilterTap: () => showSideFilter(ActivityFilterModal()),
               );
             }),
 

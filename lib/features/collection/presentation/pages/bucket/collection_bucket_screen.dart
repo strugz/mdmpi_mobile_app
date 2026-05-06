@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_filter_modal.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'collection_account_invoices_screen.dart';
 import 'collection_account_information_screen.dart';
 import 'widgets/collection_search_filter_bar.dart';
@@ -40,19 +41,12 @@ class CollectionBucketScreen extends StatelessWidget {
                                controller.bucketMinInvoices.value > 0 ||
                                controller.bucketMaxInvoices.value > 0;
               
-              return CollectionSearchFilterBar(
+                return CollectionSearchFilterBar(
                 searchHint: 'Search by account name...',
                 initialValue: controller.bucketSearchQuery.value,
                 onSearchChanged: (value) => controller.bucketSearchQuery.value = value,
                 hasActiveFilter: hasFilter,
-                onFilterTap: () => Get.bottomSheet(
-                  const BucketFilterModal(),
-                  backgroundColor: BColors.white,
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
-                  ),
-                ),
+                    onFilterTap: () => showSideFilter(BucketFilterModal()),
               );
             }),
 

@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'widgets/collection_search_filter_bar.dart';
 import 'widgets/invoice_item_card.dart';
 import 'widgets/bucket_filter_modal.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 
 class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -103,19 +104,12 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
                                controller.bucketMinInvoices.value > 0 ||
                                controller.bucketMaxInvoices.value > 0;
               
-              return CollectionSearchFilterBar(
+               return CollectionSearchFilterBar(
                 searchHint: 'Search invoice ID or bank...',
                 initialValue: controller.invoiceSearchQuery.value,
                 onSearchChanged: (value) => controller.invoiceSearchQuery.value = value,
                 hasActiveFilter: hasFilter,
-                onFilterTap: () => Get.bottomSheet(
-                  const BucketFilterModal(),
-                  backgroundColor: BColors.white,
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
-                  ),
-                ),
+                onFilterTap: () => showSideFilter(BucketFilterModal(clientId: widget.client.id)),
               );
             }),
 

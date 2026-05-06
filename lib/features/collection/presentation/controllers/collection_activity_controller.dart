@@ -98,12 +98,26 @@ class CollectionActivityController extends GetxController {
 
   List<CollectionItemModel> getInvoicesByAccount(String clientId) {
     final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
-    if (invoiceSearchQuery.value.isEmpty) return invoices;
-    final query = invoiceSearchQuery.value.toLowerCase();
-    return invoices.where((item) {
-      return item.id.toLowerCase().contains(query) ||
-             item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
-    }).toList();
+    // Apply search query if present
+    var results = invoices;
+    if (invoiceSearchQuery.value.isNotEmpty) {
+      final query = invoiceSearchQuery.value.toLowerCase();
+      results = results.where((item) {
+        return item.id.toLowerCase().contains(query) ||
+            item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
+      }).toList();
+    }
+
+    // Apply amount range filter when set (bucket-level filter used for account invoices)
+    if (bucketMinAmount.value > 0 || bucketMaxAmount.value > 0) {
+      results = results.where((item) {
+        final minOk = bucketMinAmount.value > 0 ? item.toBeCollected >= bucketMinAmount.value : true;
+        final maxOk = bucketMaxAmount.value > 0 ? item.toBeCollected <= bucketMaxAmount.value : true;
+        return minOk && maxOk;
+      }).toList();
+    }
+
+    return results;
   }
 
   double getAccountTotalDue(String clientId) => bucketItems
@@ -146,12 +160,25 @@ class CollectionActivityController extends GetxController {
 
   List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) {
     final invoices = activityItems.where((item) => item.client.id == clientId).toList();
-    if (invoiceSearchQuery.value.isEmpty) return invoices;
-    final query = invoiceSearchQuery.value.toLowerCase();
-    return invoices.where((item) {
-      return item.id.toLowerCase().contains(query) ||
-          item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
-    }).toList();
+    var results = invoices;
+    if (invoiceSearchQuery.value.isNotEmpty) {
+      final query = invoiceSearchQuery.value.toLowerCase();
+      results = results.where((item) {
+        return item.id.toLowerCase().contains(query) ||
+            item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
+      }).toList();
+    }
+
+    // Apply activity amount range filter when set
+    if (activityMinAmount.value > 0 || activityMaxAmount.value > 0) {
+      results = results.where((item) {
+        final minOk = activityMinAmount.value > 0 ? item.toBeCollected >= activityMinAmount.value : true;
+        final maxOk = activityMaxAmount.value > 0 ? item.toBeCollected <= activityMaxAmount.value : true;
+        return minOk && maxOk;
+      }).toList();
+    }
+
+    return results;
   }
 
   // ========================================================================
