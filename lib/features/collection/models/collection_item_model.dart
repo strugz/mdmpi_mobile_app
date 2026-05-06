@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
@@ -144,4 +145,13 @@ class CollectionItemModel {
       'History': history.map((e) => e.toJson()).toList(),
     };
   }
+
+  /// Number of days past the due date. Positive when overdue, zero when due today
+  /// or when parsing fails.
+  int get daysPastDue {
+    return BFormatter.daysPastFromString(dueDate);
+  }
+
+  /// True if invoice is past its due date (daysPastDue > 0)
+  bool get isOverdue => daysPastDue > 0;
 }

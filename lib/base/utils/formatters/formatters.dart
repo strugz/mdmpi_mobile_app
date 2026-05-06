@@ -110,6 +110,40 @@ class BFormatter {
         date.day == tomorrow.day;
   }
 
+  /// Returns number of whole days between [date] and now.
+  /// Positive when [date] is in the past (i.e. days past due), zero if today or parsing failed.
+  static int daysBetweenNow(DateTime date, {DateTime? now}) {
+    try {
+      final base = now ?? DateTime.now();
+      return base.difference(date).inDays;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Parses a date string (attempting ISO / epoch forms) and returns days past due
+  /// relative to now. Positive means overdue. Returns 0 for invalid input or not overdue.
+  static int daysPastFromString(String? dateStr, {DateTime? now}) {
+    if (dateStr == null || dateStr.isEmpty) return 0;
+    final norm = normalizeToIsoDatetime(dateStr);
+    if (norm == null) return 0;
+    try {
+      final dt = DateTime.parse(norm);
+      return daysBetweenNow(dt, now: now);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Format a human readable overdue string. If days > 0 returns "N days overdue",
+  /// if 0 returns "Due today", if negative returns "Due in N days".
+  static String formatDaysOverdue(int days) {
+    if (days > 1) return '$days days overdue';
+    if (days == 1) return '1 day overdue';
+    if (days == 0) return 'Due today';
+    return 'Due in ${-days} days';
+  }
+
   /// Normalize a date/time string to an ISO-8601 datetime string when possible.
   ///
   /// Accepts ISO-8601 input, epoch milliseconds (as a string/int), or epoch

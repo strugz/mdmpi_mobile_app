@@ -21,14 +21,18 @@ class ActivityListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
+    final daysPast = item.daysPastDue;
+    final isOverdue = item.isOverdue;
     
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+        child: Container(
         margin: const EdgeInsets.only(bottom: BSizes.sm),
         padding: const EdgeInsets.all(BSizes.md),
         decoration: BoxDecoration(
-          color: dark ? BColors.darkerGrey.withValues(alpha: 0.3) : BColors.white,
+          color: isOverdue
+              ? BColors.error.withOpacity(0.06)
+              : (dark ? BColors.darkerGrey.withValues(alpha: 0.3) : BColors.white),
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           border: Border.all(
             color: dark ? Colors.transparent : BColors.grey,
@@ -135,19 +139,36 @@ class ActivityListTile extends StatelessWidget {
 
             Row(
               children: [
-                const Icon(Iconsax.timer, size: 14, color: BColors.error),
+                Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     'Due: ${item.dueDate}',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: BColors.error,
+                          color: isOverdue ? BColors.error : BColors.darkGrey,
                           fontWeight: FontWeight.bold,
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (isOverdue) ...[
+                  const SizedBox(width: BSizes.xs),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: BColors.error,
+                      borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                    ),
+                    child: Text(
+                      BFormatter.formatDaysOverdue(daysPast),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: BColors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

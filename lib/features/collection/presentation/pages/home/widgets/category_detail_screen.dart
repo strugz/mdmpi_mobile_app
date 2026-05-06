@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_list_tile.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_chips.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/due_date_helper.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/activity_detail_screen.dart';
+// ...existing code...
 
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
@@ -55,6 +56,14 @@ class CategoryDetailScreen extends StatelessWidget {
             ),
           ],
           const SizedBox(height: BSizes.spaceBtwItems),
+          if (title == 'Due Date') ...[
+            ActivityFilterChips(
+              filters: DueDateHelper.labelsWithAll,
+              activeColor: color,
+              onFilterChanged: (filter) => selectedFilter.value = filter,
+            ),
+            const SizedBox(height: BSizes.spaceBtwItems),
+          ],
           Expanded(
             child: Obx(() {
               List<CollectionItemModel> items = [];
@@ -79,6 +88,10 @@ class CategoryDetailScreen extends StatelessWidget {
                   break;
                 case 'Due Date':
                   items = controller.overdueItems;
+                  if (selectedFilter.value != 'All') {
+                    final bucket = DueDateHelper.fromLabel(selectedFilter.value)!;
+                    items = items.where((i) => DueDateHelper.inBucket(i.daysPastDue, bucket)).toList();
+                  }
                   break;
                 default:
                   items = [];

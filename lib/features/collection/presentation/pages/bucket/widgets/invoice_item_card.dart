@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
@@ -21,13 +22,15 @@ class InvoiceItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(symbol: '₱');
+    final daysPast = item.daysPastDue;
+    final isOverdue = item.isOverdue;
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+        child: Container(
         padding: const EdgeInsets.all(BSizes.md),
         decoration: BoxDecoration(
-          color: BColors.white,
+          color: isOverdue ? BColors.error.withOpacity(0.06) : BColors.white,
           borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
           border: Border.all(
             color: isSelected ? BColors.primary : BColors.grey,
@@ -125,23 +128,40 @@ class InvoiceItemCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: BSizes.xs),
-                  Row(
-                    children: [
-                      const Icon(Iconsax.timer, size: 14, color: BColors.error),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: Text(
-                          'Due: ${item.dueDate}',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: BColors.error,
-                                fontWeight: FontWeight.bold,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+                   Row(
+                     children: [
+                       Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
+                       const SizedBox(width: 4),
+                       Flexible(
+                         child: Text(
+                           'Due: ${item.dueDate}',
+                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                 color: isOverdue ? BColors.error : BColors.darkGrey,
+                                 fontWeight: FontWeight.bold,
+                               ),
+                           maxLines: 1,
+                           overflow: TextOverflow.ellipsis,
+                         ),
+                       ),
+                       if (isOverdue) ...[
+                         const SizedBox(width: BSizes.xs),
+                         Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                           decoration: BoxDecoration(
+                             color: BColors.error,
+                             borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                           ),
+                           child: Text(
+                             BFormatter.formatDaysOverdue(daysPast),
+                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                   color: BColors.white,
+                                   fontWeight: FontWeight.bold,
+                                 ),
+                           ),
+                         ),
+                       ],
+                     ],
+                   ),
                 ],
               ),
             ),

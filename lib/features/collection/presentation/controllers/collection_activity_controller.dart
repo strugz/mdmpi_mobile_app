@@ -364,8 +364,12 @@ class CollectionActivityController extends GetxController {
       for (int i = 1; i <= invoiceCount; i++) {
         final amount = 5000.0 + random.nextInt(20000);
         final id = 'INV-${client.id}-${100 + i}';
-        final postingDate = '2026-01-${10 + random.nextInt(15)}';
-        final dueDate = '2026-03-${10 + random.nextInt(15)}';
+        final now = DateTime.now();
+        // Create a variety of due dates: some past (overdue), some today, some future
+        final possibleOffsets = [-60, -45, -20, -5, 0, 5, 15, 40];
+        final offset = possibleOffsets[random.nextInt(possibleOffsets.length)];
+        final postingDate = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: 60 + random.nextInt(50))));
+        final dueDate = DateFormat('yyyy-MM-dd').format(now.add(Duration(days: offset)));
 
         generatedItems.add(CollectionItemModel(
           id: id,
