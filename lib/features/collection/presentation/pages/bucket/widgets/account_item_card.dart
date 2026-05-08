@@ -9,6 +9,7 @@ class AccountItemCard extends StatelessWidget {
   final ClientModel client;
   final int invoiceCount;
   final double totalAmount;
+  final double totalCollected;
   final VoidCallback onTap;
   final VoidCallback onInfoTap;
 
@@ -17,6 +18,7 @@ class AccountItemCard extends StatelessWidget {
     required this.client,
     required this.invoiceCount,
     required this.totalAmount,
+    this.totalCollected = 0.0,
     required this.onTap,
     required this.onInfoTap,
   });
@@ -97,6 +99,7 @@ class AccountItemCard extends StatelessWidget {
             const Divider(height: BSizes.spaceBtwSections),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +109,7 @@ class AccountItemCard extends StatelessWidget {
                       style: Theme.of(context).textTheme.labelMedium,
                     ),
                     Text(
-                      '$invoiceCount pending',
+                      '$invoiceCount invoices',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -124,6 +127,18 @@ class AccountItemCard extends StatelessWidget {
                       currencyFormat.format(totalAmount),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: BColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: BSizes.xs),
+                    Text(
+                      'Total Collected',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                    Text(
+                      currencyFormat.format(totalCollected),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: BColors.success,
                             fontWeight: FontWeight.bold,
                           ),
                     ),

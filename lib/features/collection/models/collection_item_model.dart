@@ -1,4 +1,3 @@
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -39,7 +38,8 @@ class CollectionItemModel {
     this.bpCode = 'N/A',
     this.postingDate = 'N/A',
     this.dueDate = 'N/A',
-    this.status = CollectionStatusColors.statusPending,
+    // Default to empty / unknown status — 'Pending' and 'On-going' are removed.
+    this.status = '',
     this.lastOutcome,
     this.assignedAt = '',
     this.collectorName = 'Unassigned',
@@ -114,7 +114,7 @@ class CollectionItemModel {
       bpCode: (json['BPCode'] ?? json['CustomerCode'] ?? 'N/A').toString(),
       postingDate: (json['PostingDate'] ?? 'N/A').toString(),
       dueDate: (json['DueDate'] ?? 'N/A').toString(),
-      status: (json['Status'] ?? json['CoreStatus'] ?? CollectionStatusColors.statusPending).toString(),
+       status: (json['Status'] ?? json['CoreStatus'] ?? '').toString(),
       lastOutcome: json['LastOutcome']?.toString(),
       assignedAt: (json['AssignedAt'] ?? 'N/A').toString(),
       collectorName: (json['CollectorName'] ?? 'Unassigned').toString(),

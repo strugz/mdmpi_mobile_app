@@ -116,11 +116,11 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
             Expanded(
               child: invoices.isEmpty
                   ? Center(
-                      child: Text(
-                        controller.invoiceSearchQuery.value.isEmpty 
-                            ? 'No pending invoices for this account.'
-                            : 'No invoices match your search.',
-                      ),
+                            child: Text(
+                                    controller.invoiceSearchQuery.value.isEmpty
+                                        ? 'No invoices for this account.'
+                                        : 'No invoices match your search.',
+                                  ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(BSizes.defaultSpace),

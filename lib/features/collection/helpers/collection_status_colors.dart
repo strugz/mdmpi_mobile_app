@@ -7,9 +7,8 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 class CollectionStatusColors {
   CollectionStatusColors._();
 
-  // ─── System Managed Statuses ───────────────────────────────────────
-  static const String statusPending = 'Pending';
-  static const String statusOngoing = 'On-going';
+  // Note: 'Pending' and 'On-going' have been removed from the visible status set.
+  // Keep only outcome (user-selectable) statuses here.
 
   // ─── Outcome Statuses (User Selectable) ─────────────────────────────
   static const String statusCollected = 'Collected';
@@ -19,8 +18,6 @@ class CollectionStatusColors {
   static const String statusRefused = 'Refused to Pay';
 
   static const List<String> allStatuses = [
-    statusPending,
-    statusOngoing,
     statusCollected,
     statusPartial,
     statusFailed,
@@ -44,12 +41,6 @@ class CollectionStatusColors {
     Color fg = BColors.white;
 
     switch (s) {
-      case statusPending:
-        bg = BColors.darkGrey;
-        break;
-      case statusOngoing:
-        bg = Colors.orange;
-        break;
       case statusCollected:
         bg = BColors.success;
         break;
@@ -87,12 +78,9 @@ class CollectionStatusColors {
       case statusCollected:
       case statusPartial:
         return Iconsax.tick_circle;
-      case statusOngoing:
-        return Iconsax.timer_1;
       case statusFailed:
       case statusRefused:
         return Iconsax.warning_2;
-      case statusPending:
       case statusUnavailable:
         return Iconsax.clock;
       default:

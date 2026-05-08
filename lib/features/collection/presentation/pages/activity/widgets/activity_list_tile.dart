@@ -23,6 +23,12 @@ class ActivityListTile extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final daysPast = item.daysPastDue;
     final isOverdue = item.isOverdue;
+    // compute trimmed values here so they are not declared inside the widget
+    // collection literal (declaring variables inside a list literal causes
+    // a parse error). Use these when deciding whether to show the second
+    // status badge.
+    final lastOutcome = item.lastOutcome?.trim() ?? '';
+    final status = item.status.trim();
     
     return GestureDetector(
       onTap: onTap,
@@ -81,7 +87,11 @@ class ActivityListTile extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _buildStatusBadge(context, item.status),
-                    if (item.lastOutcome != null) ...[
+                    // Only show the second badge when lastOutcome is present and
+                    // different from the main status to avoid duplicate badges
+                    // (e.g. both being "Collected"). Comparison is
+                    // case-insensitive and trimmed.
+                    if (lastOutcome.isNotEmpty && lastOutcome.toLowerCase() != status.toLowerCase()) ...[
                       const SizedBox(width: BSizes.xs),
                       _buildStatusBadge(context, item.lastOutcome!),
                     ],

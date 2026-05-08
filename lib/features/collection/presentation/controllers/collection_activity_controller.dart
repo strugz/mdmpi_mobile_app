@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 /// Manages the Collection Bucket → Activity flow with a simplified status model.
 class CollectionActivityController extends GetxController {
@@ -117,12 +118,23 @@ class CollectionActivityController extends GetxController {
       }).toList();
     }
 
+    // Sort by due date (ascending: oldest first)
+    results.sort((a, b) {
+      if (a.dueDate == 'N/A') return 1;
+      if (b.dueDate == 'N/A') return -1;
+      return a.dueDate.compareTo(b.dueDate);
+    });
+
     return results;
   }
 
   double getAccountTotalDue(String clientId) => bucketItems
       .where((item) => item.client.id == clientId)
       .fold(0.0, (sum, item) => sum + item.toBeCollected);
+
+  double getAccountTotalCollected(String clientId) => bucketItems
+      .where((item) => item.client.id == clientId)
+      .fold(0.0, (sum, item) => sum + item.totalCollected);
 
   int getAccountInvoiceCount(String clientId) => 
       bucketItems.where((item) => item.client.id == clientId).length;
@@ -155,6 +167,10 @@ class CollectionActivityController extends GetxController {
       .where((item) => item.client.id == clientId)
       .fold(0.0, (sum, item) => sum + item.toBeCollected);
 
+  double getActivityAccountTotalCollected(String clientId) => activityItems
+      .where((item) => item.client.id == clientId)
+      .fold(0.0, (sum, item) => sum + item.totalCollected);
+
   int getActivityAccountInvoiceCount(String clientId) => 
       activityItems.where((item) => item.client.id == clientId).length;
 
@@ -177,6 +193,13 @@ class CollectionActivityController extends GetxController {
         return minOk && maxOk;
       }).toList();
     }
+
+    // Sort by due date (ascending: oldest first)
+    results.sort((a, b) {
+      if (a.dueDate == 'N/A') return 1;
+      if (b.dueDate == 'N/A') return -1;
+      return a.dueDate.compareTo(b.dueDate);
+    });
 
     return results;
   }
@@ -267,20 +290,7 @@ class CollectionActivityController extends GetxController {
   // Dashboard Getters
   // ========================================================================
 
-  /// Core: Pending and On-going only
-  List<CollectionItemModel> get coreItems {
-    final allItems = [...bucketItems, ...activityItems];
-    return allItems.where((item) => 
-      item.status == CollectionStatusColors.statusPending || 
-      item.status == CollectionStatusColors.statusOngoing
-    ).toList();
-  }
-
-  /// Outcomes: Collected, Partially Collected, failed, Customer Unavailable, Refused to pay
-  List<CollectionItemModel> get outcomeItems {
-    final allItems = [...bucketItems, ...activityItems];
-    return allItems.where((item) => item.lastOutcome != null).toList();
-  }
+  // Core and Outcomes summary getters removed per UI requirements.
 
   /// Completed: invoice reach 0 total amount due
   List<CollectionItemModel> get completedItems {
@@ -312,8 +322,9 @@ class CollectionActivityController extends GetxController {
     for (final id in ids) {
       final index = bucketItems.indexWhere((e) => e.id == id);
       if (index == -1) continue;
+      // Do not assign a system-managed 'On-going' status; keep status empty and set assignedAt.
       final item = bucketItems[index].copyWith(
-        status: CollectionStatusColors.statusOngoing,
+        status: '',
         assignedAt: now,
       );
       activityItems.add(item);
@@ -341,11 +352,12 @@ class CollectionActivityController extends GetxController {
     // If fully paid, status is Collected. 
     // If not fully paid, status is Pending (moving back to bucket) but with the outcome recorded.
     final bool isFullyPaid = updatedToBeCollected == 0;
-    final String finalStatus = isFullyPaid ? CollectionStatusColors.statusCollected : CollectionStatusColors.statusPending;
+    // When not fully paid, avoid reintroducing the removed 'Pending' status. Use empty status and rely on lastOutcome.
+    final String finalStatus = isFullyPaid ? CollectionStatusColors.statusCollected : '';
 
     final historyEntry = CollectionHistoryModel(
       date: now,
-      collectorName: 'You',
+      collectorName: UserController.instance.user.value.initials,
       status: status,
       remarks: remarks,
       totalCollected: newlyCollected,
@@ -407,12 +419,13 @@ class CollectionActivityController extends GetxController {
           documentReferences: ['REF-$id'],
           bankName: ['BDO', 'BPI', 'Metrobank'][random.nextInt(3)],
           toBeCollected: amount,
-          status: CollectionStatusColors.statusPending,
+          // Start with an empty/unknown status (remove 'Pending')
+          status: '',
           history: [
             CollectionHistoryModel(
               date: '2026-02-01 08:00',
               collectorName: 'System',
-              status: CollectionStatusColors.statusPending,
+              status: '',
               remarks: 'Invoice Created',
             ),
           ],

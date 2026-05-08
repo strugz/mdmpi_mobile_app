@@ -114,6 +114,7 @@ class CollectionActivityScreen extends StatelessWidget {
                           client: client,
                           invoiceCount: controller.getActivityAccountInvoiceCount(client.id),
                           totalAmount: controller.getActivityAccountTotalDue(client.id),
+                          totalCollected: controller.getActivityAccountTotalCollected(client.id),
                           onTap: () => Get.to(() => CollectionActivityAccountInvoicesScreen(client: client)),
                           onInfoTap: () => Get.to(() => CollectionAccountInformationScreen(client: client)),
                         );

@@ -1,4 +1,4 @@
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+// collection_status_colors is intentionally not imported anymore; history entries default to empty status.
 
 /// Represents a single history record for a collection account.
 class CollectionHistoryModel {
@@ -11,7 +11,8 @@ class CollectionHistoryModel {
   const CollectionHistoryModel({
     required this.date,
     required this.collectorName,
-    this.status = CollectionStatusColors.statusOngoing,
+    // History entries default to an empty status (removed 'On-going')
+    this.status = '',
     this.remarks = 'No remarks',
     this.totalCollected = 0,
   });
@@ -20,7 +21,7 @@ class CollectionHistoryModel {
     return CollectionHistoryModel(
       date: (json['Date'] ?? 'N/A').toString(),
       collectorName: (json['CollectorName'] ?? 'Unassigned').toString(),
-      status: (json['Status'] ?? CollectionStatusColors.statusOngoing).toString(),
+      status: (json['Status'] ?? '').toString(),
       remarks: (json['Remarks'] ?? 'No remarks').toString(),
       totalCollected: (json['TotalCollected'] is num)
           ? (json['TotalCollected'] as num).toDouble()

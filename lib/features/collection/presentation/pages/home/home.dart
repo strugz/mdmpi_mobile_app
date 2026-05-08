@@ -75,49 +75,11 @@ class CollectionHomeScreen extends StatelessWidget {
 
                 const SizedBox(height: BSizes.spaceBtwSections),
 
-                // Summary cards grid
+                // Summary cards grid (Core and Outcomes removed)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
                   child: Column(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Obx(() => CollectionSummaryCard(
-                              title: 'Core',
-                              value: controller.coreItems.length.toString(),
-                              icon: Iconsax.category,
-                              color: Colors.blue,
-                              expand: false,
-                              onTap: () {
-                                Get.to(
-                                  () => const CategoryDetailScreen(title: 'Core', color: Colors.blue),
-                                  transition: Transition.cupertino,
-                                  duration: const Duration(milliseconds: 300),
-                                );
-                              },
-                            )),
-                          ),
-                          const SizedBox(width: BSizes.spaceBtwItems),
-                          Expanded(
-                            child: Obx(() => CollectionSummaryCard(
-                              title: 'Outcomes',
-                              value: controller.outcomeItems.length.toString(),
-                              icon: Iconsax.task,
-                              color: Colors.orange,
-                              expand: false,
-                              onTap: () {
-                                Get.to(
-                                  () => const CategoryDetailScreen(title: 'Outcomes', color: Colors.orange),
-                                  transition: Transition.cupertino,
-                                  duration: const Duration(milliseconds: 300),
-                                );
-                              },
-                            )),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: BSizes.spaceBtwItems),
                       Row(
                         children: [
                           Expanded(

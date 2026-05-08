@@ -7,7 +7,6 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 // ...existing code...
 
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
@@ -33,28 +32,7 @@ class CategoryDetailScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
-          if (title == 'Core') ...[
-            const SizedBox(height: BSizes.spaceBtwItems),
-            ActivityFilterChips(
-              filters: const ['All', 'Pending', 'On-going'],
-              activeColor: color,
-              onFilterChanged: (filter) => selectedFilter.value = filter,
-            ),
-          ] else if (title == 'Outcomes') ...[
-            const SizedBox(height: BSizes.spaceBtwItems),
-            ActivityFilterChips(
-              filters: const [
-                'All',
-                'Collected',
-                'Partially Collected',
-                'Failed',
-                'Customer Unavailable',
-                'Refused to Pay'
-              ],
-              activeColor: color,
-              onFilterChanged: (filter) => selectedFilter.value = filter,
-            ),
-          ],
+          // Core and Outcomes categories removed — their filters and summary cards were removed.
           const SizedBox(height: BSizes.spaceBtwItems),
           if (title == 'Due Date') ...[
             ActivityFilterChips(
@@ -69,20 +47,7 @@ class CategoryDetailScreen extends StatelessWidget {
               List<CollectionItemModel> items = [];
 
               switch (title) {
-                case 'Core':
-                  items = controller.coreItems;
-                  if (selectedFilter.value == 'Pending') {
-                    items = items.where((i) => i.status == CollectionStatusColors.statusPending).toList();
-                  } else if (selectedFilter.value == 'On-going') {
-                    items = items.where((i) => i.status == CollectionStatusColors.statusOngoing).toList();
-                  }
-                  break;
-                case 'Outcomes':
-                  items = controller.outcomeItems;
-                  if (selectedFilter.value != 'All') {
-                    items = items.where((i) => i.lastOutcome == selectedFilter.value).toList();
-                  }
-                  break;
+                // 'Core' and 'Outcomes' cases removed.
                 case 'Completed':
                   items = controller.completedItems;
                   break;

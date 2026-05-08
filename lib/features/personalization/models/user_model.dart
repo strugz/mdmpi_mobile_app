@@ -33,6 +33,14 @@ class UserModel {
   /// Helper function to get the full name.
   String get fullName => '$firstName $lastName';
 
+  /// Helper function to get initials.
+  String get initials {
+    if (initial.isNotEmpty) return initial;
+    String first = firstName.isNotEmpty ? firstName[0] : '';
+    String last = lastName.isNotEmpty ? lastName[0] : '';
+    return (first + last).toUpperCase();
+  }
+
   /// Helper function to format phone number.
   String get formattedPhoneNo => BFormatter.formatPhoneNumber(phoneNumber);
 

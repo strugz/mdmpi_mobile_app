@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 class ActivityHistoryList extends StatelessWidget {
   const ActivityHistoryList({
@@ -63,6 +64,11 @@ class _ActivityHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String displayCollectorName = history.collectorName;
+    if (displayCollectorName == 'You') {
+      displayCollectorName = UserController.instance.user.value.initials;
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: BSizes.sm),
       child: Padding(
@@ -76,7 +82,7 @@ class _ActivityHistoryCard extends StatelessWidget {
               children: [
                 Text(history.date, style: Theme.of(context).textTheme.labelLarge),
                 Text(
-                  history.collectorName,
+                  displayCollectorName,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
                 ),
               ],

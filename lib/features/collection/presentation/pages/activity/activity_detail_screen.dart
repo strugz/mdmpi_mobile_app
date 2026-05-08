@@ -24,9 +24,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Default to 'Collected' if current status is system-managed (Pending/Ongoing)
-    if (widget.item.status == CollectionStatusColors.statusPending || 
-        widget.item.status == CollectionStatusColors.statusOngoing) {
+    // Default to 'Collected' if current status is not a user-updatable outcome.
+    if (widget.item.status.trim().isEmpty ||
+        !CollectionStatusColors.updatableStatuses.contains(widget.item.status)) {
       selectedStatus = CollectionStatusColors.statusCollected;
     } else {
       selectedStatus = widget.item.status;
