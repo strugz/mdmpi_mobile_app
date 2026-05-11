@@ -13,14 +13,14 @@ class CollectionStatusColors {
   // ─── Outcome Statuses (User Selectable) ─────────────────────────────
   static const String statusCollected = 'Collected';
   static const String statusPartial = 'Partially Collected';
-  static const String statusFailed = 'Failed';
+  static const String statusFollowUp = 'Follow Up';
   static const String statusUnavailable = 'Customer Unavailable';
   static const String statusRefused = 'Refused to Pay';
 
   static const List<String> allStatuses = [
     statusCollected,
     statusPartial,
-    statusFailed,
+    statusFollowUp,
     statusUnavailable,
     statusRefused,
   ];
@@ -29,7 +29,7 @@ class CollectionStatusColors {
   static const List<String> updatableStatuses = [
     statusCollected,
     statusPartial,
-    statusFailed,
+    statusFollowUp,
     statusUnavailable,
     statusRefused,
   ];
@@ -47,7 +47,9 @@ class CollectionStatusColors {
       case statusPartial:
         bg = Colors.lightGreen;
         break;
-      case statusFailed:
+      case statusFollowUp:
+        bg = BColors.info;
+        break;
       case statusRefused:
         bg = BColors.error;
         break;
@@ -78,7 +80,8 @@ class CollectionStatusColors {
       case statusCollected:
       case statusPartial:
         return Iconsax.tick_circle;
-      case statusFailed:
+      case statusFollowUp:
+        return Iconsax.info_circle;
       case statusRefused:
         return Iconsax.warning_2;
       case statusUnavailable:

@@ -19,7 +19,11 @@ class ActivityDetailScreen extends StatefulWidget {
 
 class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   late String selectedStatus;
+  late String selectedPurpose;
   late TextEditingController totalCollectedController;
+  late TextEditingController bankNameController;
+  late TextEditingController checkNumberController;
+  late TextEditingController checkDateController;
 
   @override
   void initState() {
@@ -31,12 +35,19 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     } else {
       selectedStatus = widget.item.status;
     }
+    selectedPurpose = 'Collection';
     totalCollectedController = TextEditingController(text: widget.item.totalCollected.toString());
+    bankNameController = TextEditingController();
+    checkNumberController = TextEditingController();
+    checkDateController = TextEditingController();
   }
 
   @override
   void dispose() {
     totalCollectedController.dispose();
+    bankNameController.dispose();
+    checkNumberController.dispose();
+    checkDateController.dispose();
     super.dispose();
   }
 
@@ -47,6 +58,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       status: selectedStatus,
       remarks: selectedStatus, // Using status as the remark text for simplicity
       totalCollected: double.tryParse(totalCollectedController.text) ?? 0,
+      bankName: bankNameController.text.trim().isEmpty ? null : bankNameController.text.trim(),
+      checkNumber: checkNumberController.text.trim().isEmpty ? null : checkNumberController.text.trim(),
+      checkDate: checkDateController.text.trim().isEmpty ? null : checkDateController.text.trim(),
+      purposeOfVisit: selectedPurpose,
     );
 
     Get.back();
@@ -140,7 +155,75 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               child: Divider(),
             ),
 
-            /// 2. Paid to invoice
+            /// 1. Purpose of Visit
+            Text('Purpose of Visit', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            DropdownButtonFormField<String>(
+              value: selectedPurpose,
+              decoration: const InputDecoration(
+                hintText: 'Select purpose...',
+                prefixIcon: Icon(Iconsax.info_circle),
+              ),
+              items: ['Pre-Collection', 'Collection'].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  selectedPurpose = newValue!;
+                });
+              },
+            ),
+
+            const SizedBox(height: BSizes.spaceBtwSections),
+
+            /// 2. Bank Details
+            Text('Bank Details (Optional)', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: BSizes.spaceBtwItems),
+            
+            TextField(
+              controller: bankNameController,
+              decoration: const InputDecoration(
+                hintText: 'Bank Name',
+                prefixIcon: Icon(Iconsax.bank),
+              ),
+            ),
+            const SizedBox(height: BSizes.spaceBtwInputFields),
+            
+            TextField(
+              controller: checkNumberController,
+              decoration: const InputDecoration(
+                hintText: 'Check Number',
+                prefixIcon: Icon(Iconsax.card_edit),
+              ),
+            ),
+            const SizedBox(height: BSizes.spaceBtwInputFields),
+            
+            TextField(
+              controller: checkDateController,
+              readOnly: true,
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (date != null) {
+                  checkDateController.text = BFormatter.formatDate(date);
+                }
+              },
+              decoration: const InputDecoration(
+                hintText: 'Check Date',
+                prefixIcon: Icon(Iconsax.calendar_1),
+              ),
+            ),
+
+            const SizedBox(height: BSizes.spaceBtwSections),
+
+            /// 3. Paid to invoice
             Text('Paid to invoice', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
             TextField(
@@ -154,8 +237,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            /// 3. Update Status (Dropdown)
-            Text('Update Status', style: Theme.of(context).textTheme.titleMedium),
+            /// 4. Update Status / Remarks
+            Text('Update Status / Remarks', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
             DropdownButtonFormField<String>(
               value: selectedStatus,
@@ -177,7 +260,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
             const SizedBox(height: BSizes.spaceBtwSections * 1.5),
 
-            /// 4. Save Button
+            /// 5. Save Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(

@@ -81,12 +81,14 @@ class CollectionActivityController extends GetxController {
 
   List<ClientModel> get bucketAccounts {
     return masterAccountList.where((client) {
+      final invoiceCount = getAccountInvoiceCount(client.id);
+      if (invoiceCount == 0) return false;
+
       if (bucketSearchQuery.value.isNotEmpty &&
           !client.name.toLowerCase().contains(bucketSearchQuery.value.toLowerCase())) {
         return false;
       }
       final totalAmount = getAccountTotalDue(client.id);
-      final invoiceCount = getAccountInvoiceCount(client.id);
 
       if (bucketMinAmount.value > 0 && totalAmount < bucketMinAmount.value) return false;
       if (bucketMaxAmount.value > 0 && totalAmount > bucketMaxAmount.value) return false;
@@ -98,7 +100,7 @@ class CollectionActivityController extends GetxController {
   }
 
   List<CollectionItemModel> getInvoicesByAccount(String clientId) {
-    final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
+    final invoices = bucketItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).toList();
     // Apply search query if present
     var results = invoices;
     if (invoiceSearchQuery.value.isNotEmpty) {
@@ -137,14 +139,14 @@ class CollectionActivityController extends GetxController {
       .fold(0.0, (sum, item) => sum + item.totalCollected);
 
   int getAccountInvoiceCount(String clientId) => 
-      bucketItems.where((item) => item.client.id == clientId).length;
+      bucketItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).length;
 
   // ========================================================================
   // Activity helpers
   // ========================================================================
 
   List<ClientModel> get activityAccounts {
-    final activeClientIds = activityItems.map((e) => e.client.id).toSet();
+    final activeClientIds = activityItems.where((e) => e.toBeCollected > 0).map((e) => e.client.id).toSet();
     return masterAccountList.where((client) {
       if (!activeClientIds.contains(client.id)) return false;
       if (activitySearchQuery.value.isNotEmpty &&
@@ -172,10 +174,10 @@ class CollectionActivityController extends GetxController {
       .fold(0.0, (sum, item) => sum + item.totalCollected);
 
   int getActivityAccountInvoiceCount(String clientId) => 
-      activityItems.where((item) => item.client.id == clientId).length;
+      activityItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).length;
 
   List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) {
-    final invoices = activityItems.where((item) => item.client.id == clientId).toList();
+    final invoices = activityItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).toList();
     var results = invoices;
     if (invoiceSearchQuery.value.isNotEmpty) {
       final query = invoiceSearchQuery.value.toLowerCase();
@@ -339,6 +341,10 @@ class CollectionActivityController extends GetxController {
     required String status,
     required String remarks,
     double? totalCollected,
+    String? bankName,
+    String? checkNumber,
+    String? checkDate,
+    String? purposeOfVisit,
   }) {
     final index = activityItems.indexWhere((e) => e.id == id);
     if (index == -1) return;
@@ -361,6 +367,10 @@ class CollectionActivityController extends GetxController {
       status: status,
       remarks: remarks,
       totalCollected: newlyCollected,
+      bankName: bankName,
+      checkNumber: checkNumber,
+      checkDate: checkDate,
+      purposeOfVisit: purposeOfVisit,
     );
 
     final updatedItem = oldItem.copyWith(

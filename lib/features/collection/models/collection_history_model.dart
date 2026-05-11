@@ -7,6 +7,10 @@ class CollectionHistoryModel {
   final String status;
   final String remarks;
   final double totalCollected;
+  final String? bankName;
+  final String? checkNumber;
+  final String? checkDate;
+  final String? purposeOfVisit;
 
   const CollectionHistoryModel({
     required this.date,
@@ -15,6 +19,10 @@ class CollectionHistoryModel {
     this.status = '',
     this.remarks = 'No remarks',
     this.totalCollected = 0,
+    this.bankName,
+    this.checkNumber,
+    this.checkDate,
+    this.purposeOfVisit,
   });
 
   factory CollectionHistoryModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +34,10 @@ class CollectionHistoryModel {
       totalCollected: (json['TotalCollected'] is num)
           ? (json['TotalCollected'] as num).toDouble()
           : double.tryParse(json['TotalCollected']?.toString() ?? '') ?? 0,
+      bankName: json['BankName']?.toString(),
+      checkNumber: json['CheckNumber']?.toString(),
+      checkDate: json['CheckDate']?.toString(),
+      purposeOfVisit: json['PurposeOfVisit']?.toString(),
     );
   }
 
@@ -36,6 +48,10 @@ class CollectionHistoryModel {
       'Status': status,
       'Remarks': remarks,
       'TotalCollected': totalCollected,
+      'BankName': bankName,
+      'CheckNumber': checkNumber,
+      'CheckDate': checkDate,
+      'PurposeOfVisit': purposeOfVisit,
     };
   }
 }
