@@ -25,8 +25,6 @@ class StandardDeliveryRepository extends GetxController {
       final dto = StandardDeliveryMapper.toInsertDto(requestData, items);
       final payload = dto.toJson();
 
-      print('Payload for insertDelivery: ${jsonEncode(payload)}'); // Debug log
-
       final response = await http.post(
         Uri.parse("${dotenv.env['API_URL']!}/api4/request"),
         headers: <String, String>{'Content-Type': 'application/json'},

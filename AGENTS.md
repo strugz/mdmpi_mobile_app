@@ -37,15 +37,19 @@ Important architectural notes
 
 - **Local Storage Data Viewer:** A developer-only tool for inspecting and managing SQLite database tables is available under `lib/features/logistics/screens/data_test/`. It is accessible from the Settings screen ("Developer Tools" section) and via the `/local-storage-viewer` route. This tool is for debugging and should not be exposed in production builds. See the feature's `README.md` for details.
 
+- **Signature Outbox (developer tool):** A developer-facing tool for reviewing/retrying pending receiver signature uploads is available from Settings > Developer Tools and via `/signature-outbox` (`BRoutes.signatureOutbox`). Its page (`lib/features/personalization/screens/settings/signature_outbox_page.dart`) instantiates `SignatureOutboxController` in-widget via `Get.put(...)` when needed; keep this debug-facing flow hidden from production users.
+
 - Platform initialization helper: `lib/base/utils/platform_init.dart` centralizes several early-start concerns used by `main.dart` (sqflite FFI initialization on desktop, conditional Firebase initialization, eager NotificationService init, and eager registration of `AuthenticationRepository` via `Get.put` when Firebase is available). Inspect `initPlatform(...)` when auditing early/eager registrations and desktop vs mobile platform behavior.
 
 - Note: several core services/controllers are registered eagerly via `Get.put` in `lib/bindings/general_bindings.dart` (not only in `main.dart`). Examples: `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering used by the app.
 - Delivery-location integrations are also DI-managed in `GeneralBindings`: `ILocationAlternativeService`, `IMapsService`, `IPlacesService`, and `ILocationTrackingService` are lazy-registered there. When touching map/location flows, resolve these abstractions with `Get.find()` instead of calling geolocation/maps APIs directly from widgets or controllers.
 
 - Recently added repositories and controllers (all registered in `GeneralBindings`):
-  - **Repositories:** `BackLoadRepository` (`data/repositories/app_data/`, REST + local DB, outside Firebase guard), `InventoryItemRepository` (`data/repositories/inventory/`, Gemini OCR endpoint), `FormCategoryRepository` (`data/repositories/common/`), `CancelRemarksRepository` (`data/repositories/app_data/`), `UserMDMPIRepository` (`data/repositories/user/`).
+  - **Repositories:** `BackLoadRepository` (`data/repositories/app_data/`, REST + local DB, outside Firebase guard), `InventoryItemRepository` (`data/repositories/inventory/`, Gemini OCR endpoint), `FormCategoryRepository` (`data/repositories/common/`), `CancelRemarksRepository` (`data/repositories/app_data/`), `UserMDMPIRepository` (`data/repositories/user/`), `ContactRepository` (`data/repositories/common/`, local contact-directory data via SQLite).
   - **Controllers:** `BackLoadController`, `InventoryItemController`, `ChartController`, `RequestController`, `StockReceiveController`, `HotlineDirectController`. All in `features/logistics/controllers/`.
+    - `ContactDirectoryController` (`features/personalization/controller/`) is registered in `GeneralBindings` and depends on `ContactRepository`.
     - `RequestHotlineController` (stub, **not** registered in `GeneralBindings` — do not `Get.find()` it without registering first).
+    - `SignatureOutboxController` (`features/personalization/controller/`) is used by the Signature Outbox developer tool and is instantiated from the page/widget layer (not centrally registered in `GeneralBindings`).
     - Additional controllers (present but not previously listed) that agents should inspect: `HomeController`, `DeliveryVehicleController`, `DeliveryLocationController`, `RequestTransportController`, `WebSocketNotificationController`, `WebSocketDispatcherController`, `WebSocketDeliveryController`, and `NavigationController` (`lib/data/controllers/navigation_controller.dart`). These are registered either in `GeneralBindings` or instantiated in-place for developer tools / UI shells — check `lib/bindings/general_bindings.dart` for registration style (fenix/permanent/eager) before using `Get.find()`.
   - **Role handlers:** `features/logistics/services/implementations/` now contains `hotline_direct_role_handler.dart`, `request_role_handler.dart`, `pick_up_role_handler.dart`, `stock_receive_role_handler.dart` — implementing `IRequestActionHandler`.
 
@@ -93,8 +97,8 @@ Where to look for examples (key files)
 - Routes constants and GetPage list: `lib/base/utils/routes/` (BRoutes/AppRoutes)
 - Feature QA tooling: `bin/generate_module_qa.dart` and `lib/features/logistics/screens/data_test/IMPLEMENTATION_SUMMARY.md`
 - DB helper & schema: `lib/data/local/database_helper.dart` and `lib/data/local/db_schema.dart`
-  - Tables: `a_tblRequest`, `a_tblRequestDocumentReference`, `a_tblRequestReceiverSignature`, `a_tblRequestImage`, `a_tblRequestRemarks`, `ACCMST_`, `a_tblMobile`, `Users`, `CNTMST`, `a_tblRequestPickUp`, `a_tblItemCategory`, `a_tblFormCategory`, `a_tblRequestAirSea`, `a_tblRequestPullOutReturnPickUp`, `a_tblLocationAlternative`, `a_tblClientContactPerson`, `a_tblRequestBackload`.
-  - DAOs by domain: `dao/standard_delivery/` (`standard_delivery_dao`, `location_alternative_dao`), `dao/air_sea/` (`air_sea_dao`), `dao/pick_up/` (`pick_up_dao`), `dao/pull_out/` (`pull_out_dao`), `dao/common/` (`backload_dao`, `client_contact_person_dao`, `client_dao`, `cntmst_dao`, `document_reference_dao`, `form_category_dao`, `item_category_dao`, `mobile_dao`, `remarks_dao`, `user_dao`).
+  - Tables: `a_tblRequest`, `a_tblRequestDocumentReference`, `a_tblRequestReceiverSignature`, `a_tblRequestImage`, `a_tblRequestRemarks`, `ACCMST_`, `a_tblMobile`, `Users`, `CNTMST`, `a_tblRequestPickUp`, `a_tblItemCategory`, `a_tblFormCategory`, `a_tblRequestAirSea`, `a_tblRequestPullOutReturnPickUp`, `a_tblLocationAlternative`, `a_tblClientContactPerson`, `a_tblRequestBackload`, `contacts`.
+  - DAOs by domain: `dao/standard_delivery/` (`standard_delivery_dao`, `location_alternative_dao`), `dao/air_sea/` (`air_sea_dao`), `dao/pick_up/` (`pick_up_dao`), `dao/pull_out/` (`pull_out_dao`), `dao/common/` (`backload_dao`, `client_contact_person_dao`, `client_dao`, `cntmst_dao`, `contact_dao`, `document_reference_dao`, `form_category_dao`, `item_category_dao`, `mobile_dao`, `remarks_dao`, `signature_dao`, `user_dao`).
 
 - Platform init & sqflite FFI: `lib/base/utils/platform_init.dart` — shows `ensureSqfliteFfiInitialized()`, conditional Firebase init, and the code path that registers `AuthenticationRepository` when Firebase is present.
 
@@ -105,9 +109,9 @@ Where to look for examples (key files)
 
 - Local Storage Data Viewer: `lib/features/logistics/screens/data_test/local_storage_data_viewer.dart`, `local_storage_data_controller.dart`, and documentation in the same folder (`README.md`, `ARCHITECTURE.md`, `IMPLEMENTATION_SUMMARY.md`).
 
-- Module documentation: keep `docs/README.md` as the live module-doc index. BackLoad has `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`, even though the index still marks BackLoad as Planned. Inventory Item has `docs/modules/inventory_item/INVENTORY_ITEM_MODULE_DOCUMENTATION.md`. Additional module READMEs exist under `docs/modules/` for: air-sea, authentication, collection, hotline-direct, personalization, pick-up, pull-out, standard-delivery, stock-receive. `docs/modules/advanced_filter/` is an empty scaffold.
+- Module documentation: keep `docs/README.md` as the live module-doc index. BackLoad has `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`, even though the index still marks BackLoad as Planned. Inventory Item has `docs/modules/inventory_item/INVENTORY_ITEM_MODULE_DOCUMENTATION.md`. Additional module READMEs exist under `docs/modules/` for: air-sea, authentication, collection, hotline-direct, personalization, pick-up, pull-out, standard-delivery, stock-receive. Cross-module rollout planning docs also exist in `docs/modules/request-forms/` (for example `INVENTORY_SCANNER_ROLLOUT_PLAN.md`). `docs/modules/advanced_filter/` is an empty scaffold.
 
-- Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined — `backLoad` has a corresponding `GetPage` in `AppRoutes.pages` which constructs `BackLoadTransactionPage` and expects a `StandardDeliveryModel` via `Get.arguments`. The request route (`BRoutes.request`) uses `RequestBindings` (currently an empty placeholder — controllers are registered centrally in `GeneralBindings`).
+- Routes: `lib/base/utils/routes/routes.dart` (`BRoutes`) and `lib/base/utils/routes/app_routes.dart` (`AppRoutes.pages`). `BRoutes.backLoad` (`'/back-load'`) and `BRoutes.pullOutForm` (`'/pull-out-form'`) are defined — `backLoad` has a corresponding `GetPage` in `AppRoutes.pages` which constructs `BackLoadTransactionPage` and expects a `StandardDeliveryModel` via `Get.arguments`. `BRoutes.signatureOutbox` (`'/signature-outbox'`) maps to `SignatureOutboxPage` for developer troubleshooting of pending signature uploads. The request route (`BRoutes.request`) uses `RequestBindings` (currently an empty placeholder — controllers are registered centrally in `GeneralBindings`).
 Developer workflows & scripts
 -----------------------------
 - Standard local dev: `flutter pub get` ; `flutter run` (use PowerShell on Windows; chain with `;` if needed).
@@ -164,6 +168,7 @@ What NOT to change / common pitfalls
 - Avoid `print` statements and in-widget business logic.
 
 - Do not expose the Local Storage Data Viewer to production users; it is for development/debugging only.
+- Do not expose the Signature Outbox developer page to production users; it is for development/debugging only.
 
 - NOTE: There are a few legacy `print()` calls still present in the codebase (used for quick debugging). Replace these with `logDebug()` or `BloggerHelper` when making changes. Notable instances include:
   - `lib/data/repositories/inventory/inventory_item_repository.dart` (debug `print("HeHim: ...")` in Gemini integration)
@@ -172,6 +177,7 @@ What NOT to change / common pitfalls
   - `lib/features/logistics/helpers/hotline_direct_data_manager.dart` (debug `print('HEY2: ...')`)
   - `lib/features/logistics/screens/request_forms/widgets/pull_out_form.dart` and `lib/features/logistics/screens/common/b_request_form.dart` (UI debug prints)
   - `lib/features/authentication/domain/usecases/login_with_google_usecase.dart` (debug `print('Warning: ...')` in Google sign-in user record save)
+  - `lib/common/widgets/form/b_autocomplete_text_field.dart` (debug print when contact person save fails)
   - `lib/debug/reset_database.dart` (intentional console utility — safe in debug tool)
 
   When replacing prints, prefer `logDebug()` from `lib/base/utils/logger.dart` for simple messages and `BloggerHelper` for structured logs.
