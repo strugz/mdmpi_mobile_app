@@ -107,6 +107,7 @@ class BackLoadController extends GetxController {
   /// fails, nothing is saved to the local BackLoad table. After API success
   /// the local history is updated and the standard delivery list is refreshed.
   Future<bool> submitBackLoad(StandardDeliveryModel request) async {
+    print("object");
     if (selectedRemarks.value == null || selectedRemarks.value!.isEmpty) {
       BLoaders.errorSnackBar(
           title: 'Validation', message: 'Please select a reason');

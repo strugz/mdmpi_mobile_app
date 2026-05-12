@@ -25,6 +25,8 @@ class StandardDeliveryRepository extends GetxController {
       final dto = StandardDeliveryMapper.toInsertDto(requestData, items);
       final payload = dto.toJson();
 
+      print('Payload for insertDelivery: ${jsonEncode(payload)}'); // Debug log
+
       final response = await http.post(
         Uri.parse("${dotenv.env['API_URL']!}/api4/request"),
         headers: <String, String>{'Content-Type': 'application/json'},
@@ -49,7 +51,10 @@ class StandardDeliveryRepository extends GetxController {
   }
 
   Future<void> updateDelivery(
-      StandardDeliveryModel requestData, String actionBy) async {
+    StandardDeliveryModel requestData,
+    String actionBy, {
+    bool showSuccessSnackBar = true,
+  }) async {
     try {
       final updateDto =
           StandardDeliveryMapper.toUpdateDto(requestData, actionBy);
@@ -85,7 +90,9 @@ class StandardDeliveryRepository extends GetxController {
 
         if (message == 'Request updated successfully.' ||
             message.contains('updated successfully')) {
-          BLoaders.successSnackBar(title: 'Information', message: message);
+          if (showSuccessSnackBar) {
+            BLoaders.successSnackBar(title: 'Information', message: message);
+          }
           return;
         } else {
           BLoaders.warningSnackBar(title: 'Information', message: message);

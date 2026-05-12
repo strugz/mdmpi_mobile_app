@@ -132,6 +132,10 @@ class StandardDeliveryDataManager {
         recipientName: formState.recipientName.text.trim(),
       );
 
+      // Save to repository - include scanned items from form state
+      await _repository.insertDelivery(
+          newRequest, formState.scannedInventoryItems.toList());
+
       // Send notifications
       _webSocketController.sendNotificationMessage(
         NotificationModel(title: 'New', body: 'New Request Received!'),
@@ -139,10 +143,6 @@ class StandardDeliveryDataManager {
 
       await _messageController.sendSmsMessage(
           BTexts.statusNewRequest, newRequest);
-
-      // Save to repository - include scanned items from form state
-      await _repository.insertDelivery(
-          newRequest, formState.scannedInventoryItems.toList());
 
       // Reload requests based on form category
       // If it's Hotline Direct (form category ID '8'), refresh HotlineDirectController
@@ -411,24 +411,37 @@ class StandardDeliveryDataManager {
     required String userInitial,
     required bool useLocalStorage,
   }) async {
-    if (useLocalStorage) {
-      await _dbHelper.updateRequest(requestModel: request);
-      return;
-    }
-
-    final isConnected = await validateConnectivity();
-    if (isConnected) {
-      await _repository.updateDelivery(request, userInitial);
-      await _dbHelper.updateRequest(requestModel: request);
-      return;
-    }
-
-    await _dbHelper.updateRequest(requestModel: request);
-    BLoaders.warningSnackBar(
-      title: 'No Internet',
-      message:
-          'Request updated locally. Sync with server when connection returns.',
+    BFullScreenLoader.openLoadingDialog(
+      'Please wait saving update...',
+      BImages.docerAnimation,
     );
+
+    try {
+      if (useLocalStorage) {
+        await _dbHelper.updateRequest(requestModel: request);
+        return;
+      }
+
+      final isConnected = await validateConnectivity();
+      if (isConnected) {
+        await _repository.updateDelivery(
+          request,
+          userInitial,
+          showSuccessSnackBar: false,
+        );
+        await _dbHelper.updateRequest(requestModel: request);
+        return;
+      }
+
+      await _dbHelper.updateRequest(requestModel: request);
+      BLoaders.warningSnackBar(
+        title: 'No Internet',
+        message:
+            'Request updated locally. Sync with server when connection returns.',
+      );
+    } finally {
+      BFullScreenLoader.stopLoading();
+    }
   }
 
   void _applyReactiveRequestUpdate(
@@ -711,5 +724,3 @@ class StandardDeliveryDataManager {
     return true;
   }
 }
-
-

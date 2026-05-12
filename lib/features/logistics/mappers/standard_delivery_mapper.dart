@@ -4,7 +4,6 @@ import 'package:mdmpi_mobile_app/features/logistics/dtos/client_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/remarks_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/image_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/signature_dto.dart';
-import 'dart:convert';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_insert_dto.dart';
 import 'package:mdmpi_mobile_app/features/logistics/dtos/standard_delivery/standard_delivery_update_dto.dart';
 
@@ -129,6 +128,10 @@ class StandardDeliveryMapper {
       requestStatus: m.status.isNotEmpty ? m.status : null,
       requestBy: m.requestBy.isNotEmpty ? m.requestBy : null,
       requestCreatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
+      recipientContactDetails: m.recipientContactDetails.isNotEmpty ? m.recipientContactDetails
+          : null,
+      recipientName:
+          m.recipientName.isNotEmpty ? m.recipientName : null,
       documentReference:
           m.documentReference.isNotEmpty ? m.documentReference : null,
       items: items,
