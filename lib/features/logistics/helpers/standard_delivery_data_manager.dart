@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
@@ -142,7 +140,8 @@ class StandardDeliveryDataManager {
       );
 
       await _messageController.sendSmsMessage(
-          BTexts.statusNewRequest, newRequest);
+          BTexts.statusNewRequest, newRequest,
+          inventoryItems: formState.scannedInventoryItems.toList());
 
       // Reload requests based on form category
       // If it's Hotline Direct (form category ID '8'), refresh HotlineDirectController
@@ -168,7 +167,6 @@ class StandardDeliveryDataManager {
       formState.reset();
 
       controller.errorMessage.value = null;
-      BLoaders.successSnackBar(title: 'Success', message: 'Request created');
     } catch (e) {
       controller.errorMessage.value = 'An error occurred: $e';
       BLoaders.errorSnackBar(
@@ -249,8 +247,6 @@ class StandardDeliveryDataManager {
       _applyReactiveRequestUpdate(controller, updatedRequest);
 
       formState.reset();
-
-      BLoaders.successSnackBar(title: 'Success', message: 'Request updated');
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(

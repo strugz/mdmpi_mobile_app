@@ -4,15 +4,14 @@ import 'package:another_telephony/telephony.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
-
-import '../../features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
+import 'package:mdmpi_mobile_app/data/services/sms/sms_message_template_service.dart';
+import 'package:mdmpi_mobile_app/data/services/sms/sms_payload_builder.dart';
+import 'package:mdmpi_mobile_app/data/services/sms/sms_request_payload.dart';
+import 'package:mdmpi_mobile_app/data/services/sms/sms_status_policy.dart';
 
 sealed class SmsResult {
   const SmsResult();
@@ -71,19 +70,73 @@ class MessagingController extends GetxController {
   static const Duration _smsSendConfirmationTimeout = Duration(seconds: 5);
   static const Duration _smsDeliveryConfirmationTimeout = Duration(seconds: 5);
 
-  final Telephony _telephony;
+  Telephony? _telephony;
+  final SmsStatusPolicy _smsStatusPolicy;
+  final SmsMessageTemplateService _smsMessageTemplateService;
+  final SmsPayloadBuilder _smsPayloadBuilder;
+  final bool Function()? _isAndroidChecker;
+  final Future<List<String>> Function()? _contactPhoneNumbersProvider;
+  final Future<List<String>> Function(String requesterCode)?
+      _managerPhoneNumbersProvider;
+  final Future<bool?> Function()? _smsPermissionRequester;
+  final Future<void> Function({
+    required String to,
+    required String message,
+    required bool isMultipart,
+    required void Function(SendStatus status) statusListener,
+  })? _smsSender;
+  final Future<String?> Function()? _networkIssueChecker;
+  final void Function(String text, String animation)? _openLoadingDialog;
+  final void Function()? _closeLoadingDialog;
   final _dbHelper = DatabaseHelper.instance;
   final Rxn<SmsResult> lastSmsResult = Rxn<SmsResult>();
 
-  MessagingController({Telephony? telephony})
-      : _telephony = telephony ?? Telephony.instance;
+  Telephony get _telephonyInstance => _telephony ??= Telephony.instance;
+
+  MessagingController({
+    Telephony? telephony,
+    SmsStatusPolicy? smsStatusPolicy,
+    SmsMessageTemplateService? smsMessageTemplateService,
+    SmsPayloadBuilder? smsPayloadBuilder,
+    bool Function()? isAndroidChecker,
+    Future<List<String>> Function()? contactPhoneNumbersProvider,
+    Future<List<String>> Function(String requesterCode)?
+        managerPhoneNumbersProvider,
+    Future<bool?> Function()? smsPermissionRequester,
+    Future<void> Function({
+      required String to,
+      required String message,
+      required bool isMultipart,
+      required void Function(SendStatus status) statusListener,
+    })? smsSender,
+    Future<String?> Function()? networkIssueChecker,
+    void Function(String text, String animation)? openLoadingDialog,
+    void Function()? closeLoadingDialog,
+  })  : _telephony = telephony,
+        _smsStatusPolicy = smsStatusPolicy ?? SmsStatusPolicy(),
+        _smsMessageTemplateService =
+            smsMessageTemplateService ?? SmsMessageTemplateService(),
+        _smsPayloadBuilder = smsPayloadBuilder ??
+            SmsPayloadBuilder(
+              cancelRemarksResolver: (id) async =>
+                  (await DatabaseHelper.instance.getRequestRemarks(id)).remarks,
+            ),
+        _isAndroidChecker = isAndroidChecker,
+        _contactPhoneNumbersProvider = contactPhoneNumbersProvider,
+        _managerPhoneNumbersProvider = managerPhoneNumbersProvider,
+        _smsPermissionRequester = smsPermissionRequester,
+        _smsSender = smsSender,
+        _networkIssueChecker = networkIssueChecker,
+        _openLoadingDialog = openLoadingDialog,
+        _closeLoadingDialog = closeLoadingDialog;
 
   Future<SmsResult> sendSmsMessage(
     String status,
     Object requestModel, {
     String? overrideCancelRemarks,
+    List<InventoryItemModel>? inventoryItems,
   }) async {
-    if (!GetPlatform.isAndroid) {
+    if (!(_isAndroidChecker?.call() ?? GetPlatform.isAndroid)) {
       return _storeSmsResult(
         const SmsSendError(
           'SMS sending is only supported on Android devices.',
@@ -92,10 +145,11 @@ class MessagingController extends GetxController {
     }
 
     try {
-      final smsPayload = await _buildSmsRequestPayload(
+      final smsPayload = await _smsPayloadBuilder.build(
         status,
         requestModel,
         overrideCancelRemarks: overrideCancelRemarks,
+        inventoryItems: inventoryItems,
       );
 
       if (smsPayload == null) {
@@ -111,8 +165,7 @@ class MessagingController extends GetxController {
 
       final managersPhoneNumber = smsPayload.requesterCode.isEmpty
           ? <String>[]
-          : await _dbHelper
-              .getUserAndManagerPhoneNumbers(smsPayload.requesterCode);
+          : await _resolveManagerPhoneNumbers(smsPayload.requesterCode);
 
       recipients.addAll(managersPhoneNumber);
 
@@ -124,7 +177,7 @@ class MessagingController extends GetxController {
         );
       }
 
-      bool? permissionsGranted = await _telephony.requestSmsPermissions;
+      bool? permissionsGranted = await _requestSmsPermissions();
 
       if (permissionsGranted != true) {
         return _storeSmsResult(
@@ -132,8 +185,7 @@ class MessagingController extends GetxController {
         );
       }
 
-      final String message = createMessage(status, smsPayload);
-
+      final String message = _createMessage(status, smsPayload);
       if (message.isEmpty) {
         return _storeSmsResult(
           SmsSendError('No message content for status: $status'),
@@ -146,8 +198,10 @@ class MessagingController extends GetxController {
           return _storeSmsResult(SmsLikelyNetworkIssue(likelyNetworkIssue));
         }
 
-        BFullScreenLoader.openLoadingDialog(
-            'Please wait message sending...', BImages.docerAnimation);
+        (_openLoadingDialog ?? BFullScreenLoader.openLoadingDialog)(
+          'Please wait message sending...',
+          BImages.docerAnimation,
+        );
         final sendResults = <_RecipientSendResult>[];
 
         try {
@@ -159,7 +213,7 @@ class MessagingController extends GetxController {
             await Future.delayed(const Duration(seconds: 1));
           }
         } finally {
-          BFullScreenLoader.stopLoading();
+          (_closeLoadingDialog ?? BFullScreenLoader.stopLoading)();
         }
 
         final result = _summarizeSendResults(sendResults);
@@ -182,98 +236,28 @@ class MessagingController extends GetxController {
   }
 
   Future<List<String>> _resolveSmsRecipients() async {
-    final savedContactPhoneNumbers = await _dbHelper.getContactPhoneNumbers();
-    return savedContactPhoneNumbers;
-  }
-
-  String createMessage(String status, _SmsRequestPayload requestModel) {
-    final documentReferences = requestModel.documentReferences;
-    final documentReferencesText =
-        documentReferences.isEmpty ? 'N/A' : _formatDocumentReferencesForSms(documentReferences);
-    final targetDateLine = requestModel.targetDate.isEmpty
-        ? ''
-        : '\nTarget Date: ${requestModel.targetDate}.';
-    final completionActorLine = requestModel.completionActor.isEmpty
-        ? ''
-        : '${requestModel.completionActorLabel}: ${requestModel.completionActor}\n';
-    final completionTimeLine = requestModel.completionAt.isEmpty
-        ? ''
-        : '${requestModel.completionTimeLabel}: ${requestModel.completionAt}\n';
-    final completionStatus = requestModel.completionStatusLabel.isEmpty
-        ? status.toUpperCase()
-        : requestModel.completionStatusLabel;
-    final cancellationRemarks = requestModel.cancelRemarks.isEmpty
-        ? 'Not provided.'
-        : requestModel.cancelRemarks;
-
-    String message = '';
-    switch (status) {
-      case BTexts.statusNewRequest:
-        message = '${requestModel.clientName} \n'
-            'Document References:\n'
-            '$documentReferencesText\n'
-            'Status: Allocated and for Preparation.'
-            '$targetDateLine';
-        break;
-      case BTexts.statusGettingSuppliesReady:
-        message = '${requestModel.clientName} \n'
-            'Document References:\n'
-            '$documentReferencesText\n'
-            'Your request is currently being processed. We are preparing the necessary supplies for your delivery.\n'
-            'Status: Getting Supplies Ready.'
-            '$targetDateLine';
-        break;
-      case BTexts.statusItemPrepared:
-        message = '${requestModel.clientName} \n'
-            'Document References:\n'
-            '$documentReferencesText\n'
-            'Status: Ready for Delivery.'
-            '$targetDateLine';
-        break;
-      case BTexts.statusItemPacked:
-      case BTexts.statusForDispatch:
-      case BTexts.statusDispatch:
-      case BTexts.statusInTransit:
-      case BTexts.statusEndorsedToGuard:
-      case BTexts.statusDropOff:
-      case BTexts.statusProvincialPickUp:
-      case BTexts.statusProvincialInTransit:
-        message = '${requestModel.clientName} \n'
-            'Document References:\n'
-            '$documentReferencesText\n'
-            'Status: $status.'
-            '$targetDateLine';
-        break;
-      case BTexts.statusDoneDelivery:
-      case BTexts.statusReceived:
-      case BTexts.statusTakenOut:
-      case BTexts.statusProvincialDelivered:
-        message = '${requestModel.clientName} \n'
-            '$completionActorLine'
-            '$completionTimeLine'
-            'Document References:\n'
-            '$documentReferencesText\n'
-            'Status: $completionStatus.';
-        break;
-      case BTexts.statusCancelled:
-        message = '${requestModel.clientName} \n'
-            'Document References:\n'
-            '$documentReferencesText\n'
-            'Status: Cancelled.\n'
-            'Remarks: $cancellationRemarks';
-        break;
-      default:
-        message = '${requestModel.clientName} \n'
-            'Document References:\n'
-            '$documentReferencesText\n'
-            'Status: $status.'
-            '$targetDateLine';
+    if (_contactPhoneNumbersProvider != null) {
+      return _contactPhoneNumbersProvider();
     }
-    return message;
+    return _dbHelper.getContactPhoneNumbers();
   }
 
-  String _formatDocumentReferencesForSms(List<String> documentReferences) {
-    return documentReferences.join('\n');
+  Future<List<String>> _resolveManagerPhoneNumbers(String requesterCode) async {
+    if (_managerPhoneNumbersProvider != null) {
+      return _managerPhoneNumbersProvider(requesterCode);
+    }
+    return _dbHelper.getUserAndManagerPhoneNumbers(requesterCode);
+  }
+
+  Future<bool?> _requestSmsPermissions() async {
+    if (_smsPermissionRequester != null) {
+      return _smsPermissionRequester();
+    }
+    return _telephonyInstance.requestSmsPermissions;
+  }
+
+  String _createMessage(String status, SmsRequestPayload payload) {
+    return _smsMessageTemplateService.createMessage(status, payload);
   }
 
   SmsResult _storeSmsResult(SmsResult result) {
@@ -282,105 +266,7 @@ class MessagingController extends GetxController {
   }
 
   bool _requiresSmsForStatus(String status) {
-    return status == BTexts.statusNewRequest ||
-        status == BTexts.statusGettingSuppliesReady ||
-        status == BTexts.statusItemPrepared ||
-        status == BTexts.statusDoneDelivery ||
-        status == BTexts.statusCancelled ||
-        status == BTexts.statusItemPacked ||
-        status == BTexts.statusReceived ||
-        status == BTexts.statusInTransit ||
-        status == BTexts.statusTakenOut ||
-        status == BTexts.statusEndorsedToGuard ||
-        status == BTexts.statusForDispatch ||
-        status == BTexts.statusDispatch ||
-        status == BTexts.statusDropOff ||
-        status == BTexts.statusProvincialPickUp ||
-        status == BTexts.statusProvincialInTransit ||
-        status == BTexts.statusProvincialDelivered;
-  }
-
-  Future<_SmsRequestPayload?> _buildSmsRequestPayload(String status, Object requestModel, {String? overrideCancelRemarks,}) async {
-    final normalizedCancelRemarks = overrideCancelRemarks?.trim() ?? '';
-
-    switch (requestModel) {
-      case StandardDeliveryModel model:
-        final cancelRemarks = normalizedCancelRemarks.isNotEmpty
-            ? normalizedCancelRemarks
-            : status == BTexts.statusCancelled
-                ? (await _dbHelper.getRequestRemarks(model.id)).remarks
-                : model.cancelRemarks.remarks;
-
-        return _SmsRequestPayload(
-          requestId: model.id,
-          requesterCode: model.requestBy,
-          clientName: model.client.name,
-          documentReferences: model.documentReference,
-          targetDate: model.deliveryDate,
-          completionActor: model.receiver,
-          completionActorLabel: 'Received By',
-          completionAt: model.deliveredEndAt,
-          completionTimeLabel: 'Date Time Received',
-          cancelRemarks: cancelRemarks,
-          completionStatusLabel:
-              model.documentReference.any((reference) =>
-                      reference.toUpperCase().contains('PULL OUT'))
-                  ? 'PULLED OUT'
-                  : 'DELIVERED',
-        );
-      case PickUpModel model:
-        return _SmsRequestPayload(
-          requestId: model.id,
-          requesterCode: model.createdBy,
-          clientName: model.client.name,
-          documentReferences: model.documentReference,
-          targetDate: model.datePickUp,
-          completionActor: model.receivedBy,
-          completionActorLabel: 'Received By',
-          completionAt: model.updatedAt,
-          completionTimeLabel: 'Date Time Updated',
-          cancelRemarks:
-              normalizedCancelRemarks.isNotEmpty ? normalizedCancelRemarks : model.remarks,
-          completionStatusLabel: 'RECEIVED',
-        );
-      case PullOutModel model:
-        final isStockReceive = model.formCategoryId == '9';
-        return _SmsRequestPayload(
-          requestId: model.id,
-          requesterCode:
-              model.requestedBy.isNotEmpty ? model.requestedBy : model.createdBy,
-          clientName: model.client.name,
-          documentReferences: model.documentReference,
-          targetDate: model.pullOutDate,
-          completionActor: model.releasedBy,
-          completionActorLabel: 'Released By',
-          completionAt: model.pullOutDateEndAt,
-          completionTimeLabel: 'Date Time Completed',
-          cancelRemarks: normalizedCancelRemarks.isNotEmpty
-              ? normalizedCancelRemarks
-              : model.cancelRemarks.remarks,
-          completionStatusLabel:
-              isStockReceive ? 'STOCK RECEIVED' : 'TAKEN OUT',
-        );
-      case AirSeaModel model:
-        return _SmsRequestPayload(
-          requestId: model.id,
-          requesterCode: model.createdBy,
-          clientName: model.client.name,
-          documentReferences: model.documentReference,
-          targetDate: model.datePickUp,
-          completionActor: _resolveAirSeaCompletionActor(status, model),
-          completionActorLabel: _resolveAirSeaCompletionActorLabel(status),
-          completionAt: _resolveAirSeaCompletionTime(status, model),
-          completionTimeLabel: _resolveAirSeaCompletionTimeLabel(status),
-          cancelRemarks: normalizedCancelRemarks.isNotEmpty
-              ? normalizedCancelRemarks
-              : model.cancelRemarks.remarks,
-          completionStatusLabel: _resolveAirSeaCompletionStatusLabel(status),
-        );
-      default:
-        return null;
-    }
+    return _smsStatusPolicy.requiresSmsForStatus(status);
   }
 
   List<String> _normalizeRecipients(List<String> recipients) {
@@ -399,21 +285,30 @@ class MessagingController extends GetxController {
     final deliveredCompleter = Completer<void>();
 
     try {
-      await _telephony.sendSms(
-        to: phoneNumber,
-        message: message,
-        isMultipart: message.length > 160,
-        statusListener: (status) {
-          if (status == SendStatus.SENT && !sentCompleter.isCompleted) {
-            sentCompleter.complete();
-          }
+      void statusListener(SendStatus status) {
+        if (status == SendStatus.SENT && !sentCompleter.isCompleted) {
+          sentCompleter.complete();
+        }
+        if (status == SendStatus.DELIVERED && !deliveredCompleter.isCompleted) {
+          deliveredCompleter.complete();
+        }
+      }
 
-          if (status == SendStatus.DELIVERED &&
-              !deliveredCompleter.isCompleted) {
-            deliveredCompleter.complete();
-          }
-        },
-      );
+      if (_smsSender != null) {
+        await _smsSender(
+          to: phoneNumber,
+          message: message,
+          isMultipart: message.length > 160,
+          statusListener: statusListener,
+        );
+      } else {
+        await _telephonyInstance.sendSms(
+          to: phoneNumber,
+          message: message,
+          isMultipart: message.length > 160,
+          statusListener: statusListener,
+        );
+      }
 
       final bool sentConfirmed = await _waitForStatus(
         sentCompleter,
@@ -479,22 +374,28 @@ class MessagingController extends GetxController {
   }
 
   Future<String?> _getLikelyMessagingNetworkIssue() async {
-    final bool? isSmsCapable = await _tryGetBool(() => _telephony.isSmsCapable);
+    if (_networkIssueChecker != null) {
+      return _networkIssueChecker();
+    }
+
+    final bool? isSmsCapable =
+        await _tryGetBool(() => _telephonyInstance.isSmsCapable);
     if (isSmsCapable == false) {
       return 'This device is not capable of sending SMS messages.';
     }
 
-    final SimState? simState = await _tryGetSimState(() => _telephony.simState);
+    final SimState? simState =
+        await _tryGetSimState(() => _telephonyInstance.simState);
     if (simState != null && !_isReadySimState(simState)) {
       return 'The SIM is not ready for SMS messaging '
           '(state: ${_enumLabel(simState.name)}).';
     }
 
     final ServiceState? serviceState =
-        await _tryGetServiceState(() => _telephony.serviceState);
+        await _tryGetServiceState(() => _telephonyInstance.serviceState);
     if (serviceState != null && _isUnavailableServiceState(serviceState)) {
       final operatorName =
-          await _tryGetString(() => _telephony.networkOperatorName);
+          await _tryGetString(() => _telephonyInstance.networkOperatorName);
       final operatorSuffix =
           (operatorName != null && operatorName.trim().isNotEmpty)
               ? ' on ${operatorName.trim()}'
@@ -531,7 +432,9 @@ class MessagingController extends GetxController {
     }
   }
 
-  Future<ServiceState?> _tryGetServiceState(Future<ServiceState> Function() getter,) async {
+  Future<ServiceState?> _tryGetServiceState(
+    Future<ServiceState> Function() getter,
+  ) async {
     try {
       return await getter();
     } catch (_) {
@@ -663,69 +566,6 @@ class MessagingController extends GetxController {
   String _enumLabel(String value) {
     return value.toLowerCase().replaceAll('_', ' ');
   }
-
-  String _resolveAirSeaCompletionActor(String status, AirSeaModel model) {
-    switch (status) {
-      case BTexts.statusReceived:
-        return model.receivedBy;
-      case BTexts.statusEndorsedToGuard:
-        return model.endorsedBy;
-      case BTexts.statusDropOff:
-        return model.receivedBy;
-      case BTexts.statusProvincialDelivered:
-        return model.provincialReceiverName;
-      default:
-        return model.receivedBy;
-    }
-  }
-
-  String _resolveAirSeaCompletionActorLabel(String status) {
-    switch (status) {
-      case BTexts.statusEndorsedToGuard:
-        return 'Endorsed By';
-      default:
-        return 'Received By';
-    }
-  }
-
-  String _resolveAirSeaCompletionTime(String status, AirSeaModel model) {
-    switch (status) {
-      case BTexts.statusReceived:
-        return model.receivedAt;
-      case BTexts.statusDropOff:
-        return model.dropOffAt;
-      case BTexts.statusProvincialDelivered:
-        return model.provincialDeliveredEndAt;
-      default:
-        return model.updatedAt;
-    }
-  }
-
-  String _resolveAirSeaCompletionTimeLabel(String status) {
-    switch (status) {
-      case BTexts.statusDropOff:
-        return 'Date Time Dropped Off';
-      case BTexts.statusProvincialDelivered:
-        return 'Date Time Delivered';
-      default:
-        return 'Date Time Received';
-    }
-  }
-
-  String _resolveAirSeaCompletionStatusLabel(String status) {
-    switch (status) {
-      case BTexts.statusReceived:
-        return 'RECEIVED';
-      case BTexts.statusDropOff:
-        return 'DROPPED OFF';
-      case BTexts.statusProvincialDelivered:
-        return 'PROVINCIAL DELIVERED';
-      case BTexts.statusEndorsedToGuard:
-        return 'ENDORSED TO GUARD';
-      default:
-        return status.toUpperCase();
-    }
-  }
 }
 
 class _RecipientSendResult {
@@ -743,34 +583,6 @@ class _RecipientSendResult {
     required this.deliveryConfirmed,
     this.issue,
     this.isLikelyNetworkIssue = false,
-  });
-}
-
-class _SmsRequestPayload {
-  final String requestId;
-  final String requesterCode;
-  final String clientName;
-  final List<String> documentReferences;
-  final String targetDate;
-  final String completionActor;
-  final String completionActorLabel;
-  final String completionAt;
-  final String completionTimeLabel;
-  final String cancelRemarks;
-  final String completionStatusLabel;
-
-  const _SmsRequestPayload({
-    required this.requestId,
-    required this.requesterCode,
-    required this.clientName,
-    required this.documentReferences,
-    required this.targetDate,
-    required this.completionActor,
-    required this.completionActorLabel,
-    required this.completionAt,
-    required this.completionTimeLabel,
-    required this.cancelRemarks,
-    required this.completionStatusLabel,
   });
 }
 
