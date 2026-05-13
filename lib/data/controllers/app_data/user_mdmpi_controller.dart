@@ -35,6 +35,31 @@ class UserMdmpiController extends GetxController {
     }
   }
 
+  Future<void> hardResetUserMdmpiList(bool isDisplay) async {
+    try {
+      isLoading.value = true;
+
+      final apiUser = await _userMdmpiRepository.getAllClientAPI();
+
+      final dbHelper = DatabaseHelper.instance;
+      await dbHelper.deleteCntmsts();
+      if (apiUser.isNotEmpty) {
+        await dbHelper.insertCntmsts(apiUser);
+      }
+
+      userList.assignAll(apiUser);
+
+      if (isDisplay == true) {
+        BLoaders.successSnackBar(
+            title: 'Success', message: 'User List Updated');
+      }
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> filterUserFromLocal() async {
     try {
       isLoading.value = true;

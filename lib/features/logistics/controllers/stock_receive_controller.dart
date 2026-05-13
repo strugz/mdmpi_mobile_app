@@ -117,6 +117,10 @@ class StockReceiveController extends GetxController {
     await dataManager.fetchStockReceives(this, useLocalStorage.value);
   }
 
+  Future<void> hardResetStockReceives() async {
+    await dataManager.hardResetStockReceives(this);
+  }
+
   /// Insert a new Stock Receive request and refresh the list.
   Future<void> addStockReceive(PullOutModel model) async {
     await dataManager.insertStockReceiveModel(model, this);

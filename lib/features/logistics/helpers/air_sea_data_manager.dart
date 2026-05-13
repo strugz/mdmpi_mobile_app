@@ -102,6 +102,36 @@ class AirSeaDataManager {
     }
   }
 
+  /// Hard reset Air/Sea data by clearing local cache and forcing a fresh API load.
+  Future<void> hardResetAirSeaRequests(AirSeaController controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      await _repository.clearLocalData();
+      final results = await _repository.getAll(forceRefresh: true);
+
+      controller.airSeaRequests.assignAll(results);
+      controller.filterManager.applyFilter(controller.airSeaRequests.toList());
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Air/Sea data refreshed successfully',
+      );
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
   /// Creates and saves a new Air/Sea request from form data.
   /// Validates client selection, document references, pick-up date, and item category.
   /// Displays loading dialog during save operation and shows appropriate feedback.

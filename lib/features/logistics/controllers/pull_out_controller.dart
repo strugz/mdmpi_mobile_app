@@ -106,6 +106,10 @@ class PullOutController extends GetxController {
     await dataManager.fetchPullOuts(this, useLocalStorage.value);
   }
 
+  Future<void> hardResetPullOuts() async {
+    await dataManager.hardResetPullOuts(this);
+  }
+
   /// Insert a new pull-out request and refresh the list.
   Future<void> addPullOut(PullOutModel model) async {
     await dataManager.insertPullOutModel(model, this);

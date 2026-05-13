@@ -73,7 +73,7 @@ class StockReceiveList extends StatelessWidget {
               absorbing: controller.isLoading.value,
               child: RefreshIndicator(
                 onRefresh: () async {
-                  await controller.loadStockReceives();
+                  await controller.hardResetStockReceives();
                 },
                 child: ListView.separated(
                   shrinkWrap: true,
@@ -117,7 +117,7 @@ class StockReceiveList extends StatelessWidget {
             absorbing: controller.isLoading.value,
             child: RefreshIndicator(
               onRefresh: () async {
-                await controller.loadStockReceives();
+                await controller.hardResetStockReceives();
               },
               child: LayoutBuilder(
                 builder: (context, constraints) {

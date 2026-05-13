@@ -580,6 +580,52 @@ class StandardDeliveryDataManager {
     }
   }
 
+  /// Hard reset the Standard Delivery cache by fetching from the API,
+  /// clearing local request tables, and repopulating the local database.
+  Future<void> hardResetRequests(IDeliveryRequestController controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      final apiRequests = await _repository.getAllPending();
+
+      await _dbHelper.deleteRequest();
+      await _dbHelper.insertRequests(apiRequests);
+
+      final standardDeliveryRequests =
+          apiRequests.where((r) => r.formCategoryID == '6').toList();
+
+      controller.allPendingRequests.assignAll(standardDeliveryRequests);
+
+      try {
+        if (controller is StandardDeliveryController) {
+          controller.filterManager
+              .applyFilter(controller.allPendingRequests.toList());
+        }
+      } catch (e) {
+        logDebug('⚠️ Could not apply filterManager during hard reset: $e');
+      }
+
+      controller.updateRequestCounts();
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Request data refreshed successfully',
+      );
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
   /// Load item and form categories and populate the controller form state.
   ///
   /// Sets default category selections:

@@ -86,4 +86,36 @@ class MobileController extends GetxController {
       isLoading.value = false;
     }
   }
+
+  Future<void> hardResetVehicles(bool isDisplay) async {
+    final isConnected = await NetworkManager.instance.isConnected();
+
+    if (!isConnected) {
+      BLoaders.errorSnackBar(
+          title: "Internet", message: "No Internet Connection");
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+
+      final mobiles = await mobileRepository.getAllMobile();
+
+      await _dbHelper.deleteMobiles();
+      if (mobiles.isNotEmpty) {
+        await _dbHelper.insertMobiles(mobiles);
+      }
+
+      mobile.assignAll(mobiles);
+
+      if (isDisplay == true) {
+        BLoaders.successSnackBar(
+            title: 'Success', message: 'Vehicle List Updated');
+      }
+    } catch (e) {
+      BLoaders.errorSnackBar(title: "Oh Snap!", message: e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
 }

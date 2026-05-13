@@ -87,6 +87,40 @@ class ClientController extends GetxController {
     }
   }
 
+  Future<void> hardResetClients(bool isDisplay) async {
+    final isConnected = await NetworkManager.instance.isConnected();
+
+    if (!isConnected) {
+      BLoaders.errorSnackBar(
+          title: "Internet", message: "No Internet Connection");
+      return;
+    }
+
+    try {
+      final dbHelper = DatabaseHelper.instance;
+      isLoading.value = true;
+
+      final apiClients = await _clientRepository.getAllClientAPI();
+
+      await dbHelper.deleteClients();
+      if (apiClients.isNotEmpty) {
+        await dbHelper.insertClients(apiClients);
+      }
+
+      allClient.assignAll(apiClients);
+      searchClient.assignAll(apiClients);
+
+      if (isDisplay == true) {
+        BLoaders.successSnackBar(
+            title: 'Success', message: 'Client List Updated');
+      }
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> filterClientFromDb(String searchQuery) async {
     try {
       isLoading.value = true;

@@ -98,6 +98,36 @@ class PickUpDataManager {
     }
   }
 
+  /// Hard reset Pick-Up data by clearing local cache and forcing a fresh API load.
+  Future<void> hardResetPickUps(PickUpController controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      await _repository.clearLocalData();
+      final results = await _repository.getAll(forceRefresh: true);
+
+      controller.pickUps.assignAll(results);
+      controller.filterManager.applyFilter(controller.pickUps.toList());
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Pick-Up data refreshed successfully',
+      );
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
   /// Creates and saves a new pick-up request from form data.
   /// Validates client selection, document references, pick-up date, and item category.
   /// Displays loading dialog during save operation and shows appropriate feedback.

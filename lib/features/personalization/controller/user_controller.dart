@@ -158,6 +158,44 @@ class UserController extends GetxController {
     }
   }
 
+  Future<void> hardResetUsers(bool isDisplay) async {
+    final isConnected = await NetworkManager.instance.isConnected();
+
+    if (!isConnected) {
+      BLoaders.errorSnackBar(
+          title: "Internet", message: "No Internet Connection");
+      return;
+    }
+
+    try {
+      profileLoading.value = true;
+
+      if (userRepository == null) {
+        BLoaders.warningSnackBar(
+          title: 'Unavailable',
+          message: 'User sync is not available on this platform.',
+        );
+        return;
+      }
+
+      final users = await userRepository!.fetchAllUsers();
+
+      await dbHelper.deleteUsers();
+      if (users.isNotEmpty) {
+        await dbHelper.insertUsers(users);
+      }
+
+      if (isDisplay == true) {
+        BLoaders.successSnackBar(
+            title: 'Success', message: 'User List Updated');
+      }
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+    } finally {
+      profileLoading.value = false;
+    }
+  }
+
   /// Save user Record from any Registration provided
   Future<void> saveUserRecord(UserCredential? userCredentials) async {
     try {

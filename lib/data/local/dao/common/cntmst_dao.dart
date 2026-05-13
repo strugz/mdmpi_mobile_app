@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/data/models/cntmst_model.dart';
 
@@ -13,6 +11,10 @@ class CntmstDao {
       batch.insert('CNTMST', itm.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> deleteAll() async {
+    await db.delete('CNTMST');
   }
 
   Future<List<CNTMSTModel>> getRequesters() async {

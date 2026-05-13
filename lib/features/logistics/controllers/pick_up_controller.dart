@@ -124,6 +124,10 @@ class PickUpController extends GetxController {
     await dataManager.fetchPickUps(this, useLocalStorage.value);
   }
 
+  Future<void> hardResetPickUps() async {
+    await dataManager.hardResetPickUps(this);
+  }
+
   /// Loads item categories from the repository and populates form state.
   /// Safe to call multiple times; will not duplicate data.
   /// Sets default category selection (prefers 'reagent' if available).

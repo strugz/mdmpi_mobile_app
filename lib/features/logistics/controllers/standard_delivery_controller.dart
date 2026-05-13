@@ -14,7 +14,6 @@ import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_mod
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
-import 'package:mdmpi_mobile_app/data/repositories/app_data/backload_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_data_manager.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -141,7 +140,6 @@ class StandardDeliveryController extends GetxController
     // Load initial data
     await dataManager.loadCategories(this);
     await loadRequests();
-    
 
     // Set up user context
     userController = Get.find<UserController>();
@@ -157,8 +155,6 @@ class StandardDeliveryController extends GetxController
     }
     super.onClose();
   }
-
-  
 
   // ========================================================================
   // COMPUTED PROPERTIES
@@ -214,6 +210,10 @@ class StandardDeliveryController extends GetxController
   @override
   Future<void> refreshRequests() async {
     await dataManager.fetchStandardDeliveryRequests(this, false);
+  }
+
+  Future<void> hardResetRequests() async {
+    await dataManager.hardResetRequests(this);
   }
 
   // ========================================================================
@@ -291,9 +291,8 @@ class StandardDeliveryController extends GetxController
     filterManager.setClientNameQuery(query, allPendingRequests);
   }
 
-
   void setDocumentReferenceQuery(String query) {
-    filterManager.setDocumentReferenceQuery(query,allPendingRequests);
+    filterManager.setDocumentReferenceQuery(query, allPendingRequests);
   }
   // ========================================================================
   // CRUD OPERATIONS
@@ -665,7 +664,6 @@ class StandardDeliveryController extends GetxController
       final repo = Get.find<InventoryItemRepository>();
       final result = await repo.analyzeFileWithGemini(file, prompt: prompt);
 
-
       print(jsonEncode(result.value));
 
       if (result.isSuccess) {
@@ -711,7 +709,9 @@ class StandardDeliveryController extends GetxController
 
           final merged = InventoryItemModel(
             itemCode: existing.itemCode,
-            description: existing.description.isNotEmpty ? existing.description : inc.description,
+            description: existing.description.isNotEmpty
+                ? existing.description
+                : inc.description,
             qty: mergedQty,
             unit: existing.unit.isNotEmpty ? existing.unit : inc.unit,
             batches: batchMap.values.toList(),

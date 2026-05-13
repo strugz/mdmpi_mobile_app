@@ -343,6 +343,36 @@ class StockReceiveDataManager {
     }
   }
 
+  /// Hard reset Stock Receive data by forcing a fresh API load and replacing the controller cache.
+  Future<void> hardResetStockReceives(dynamic controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      final results = await _repository.getAll(forceRefresh: true);
+      final stockReceiveRequests = results.where((r) => r.formCategoryId == '9').toList();
+
+      (controller.stockReceives as RxList<PullOutModel>).assignAll(stockReceiveRequests);
+      controller.filterManager.applyFilter(controller.stockReceives.toList());
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Stock Receive data refreshed successfully',
+      );
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
   /// Insert a Stock Receive model and refresh controller list.
   Future<void> insertStockReceiveModel(PullOutModel model, dynamic controller) async {
     if (controller.isSaving.value) return;

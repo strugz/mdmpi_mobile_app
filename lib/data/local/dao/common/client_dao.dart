@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
@@ -15,9 +13,12 @@ class ClientDao {
     Batch batch = db.batch();
     for (var c in clients) {
       batch.insert('ACCMST_', c.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
-      print(jsonEncode(c));
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> deleteAll() async {
+    await db.delete('ACCMST_');
   }
 
   /// Try to fetch client by id from ACCMST_ first, then fallback to DLRMST.

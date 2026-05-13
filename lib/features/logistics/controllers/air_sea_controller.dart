@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -138,6 +136,10 @@ class AirSeaController extends GetxController {
     await dataManager.fetchAirSeaRequests(this, useLocalStorage.value);
   }
 
+  Future<void> hardResetAirSeaRequests() async {
+    await dataManager.hardResetAirSeaRequests(this);
+  }
+
   /// Loads item categories from the repository and populates form state.
   /// Safe to call multiple times; will not duplicate data.
   /// Sets default category selection (prefers 'reagent' if available).
@@ -175,7 +177,7 @@ class AirSeaController extends GetxController {
 
       historyStages.addAll(results);
 
-      stagesStatus.value = results.map((stage) => stage.status ?? '').toList();
+      stagesStatus.value = results.map((stage) => stage.status).toList();
 
     } catch (e) {
       logDebug('AirSeaController.loadHistory error: $e');

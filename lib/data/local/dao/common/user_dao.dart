@@ -17,6 +17,10 @@ class UserDao {
     await batch.commit(noResult: true);
   }
 
+  Future<void> deleteAll() async {
+    await db.delete('Users');
+  }
+
   Future<List<UserModel>> getUsers() async {
     final List<Map<String, dynamic>> maps = await db.query('Users');
     return maps.map((m) => UserModel.fromJson(m)).toList();

@@ -506,6 +506,44 @@ class HotlineDirectDataManager {
     }
   }
 
+  /// Hard reset Hotline Direct data by clearing local request tables and forcing a fresh API load.
+  Future<void> hardResetHotlineDirectRequests(
+      HotlineDirectController controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      final apiRequests = await _repository.getAllPending();
+
+      await _dbHelper.deleteRequest();
+      await _dbHelper.insertRequests(apiRequests);
+
+      final hotlineDirectRequests =
+          apiRequests.where((r) => r.formCategoryID == '8').toList();
+
+      controller.allPendingRequests.assignAll(hotlineDirectRequests);
+      controller.filterManager
+          .applyFilter(controller.allPendingRequests.toList());
+      controller.updateRequestCounts();
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Hotline Direct data refreshed successfully',
+      );
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
   /// Load item and form categories and populate the controller form state.
   ///
   /// Sets default category selections:

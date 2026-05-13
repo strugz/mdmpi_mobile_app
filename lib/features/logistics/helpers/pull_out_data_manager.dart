@@ -330,6 +330,36 @@ class PullOutDataManager {
     }
   }
 
+  /// Hard reset Pull-Out data by forcing a fresh API load and replacing the controller cache.
+  Future<void> hardResetPullOuts(PullOutController controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      final results = await _repository.getAll(forceRefresh: true);
+      final pullOutsRequests = results.where((r) => r.formCategoryId == '4').toList();
+
+      controller.pullOuts.assignAll(pullOutsRequests);
+      controller.filterManager.applyFilter(controller.pullOuts.toList());
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Pull-Out data refreshed successfully',
+      );
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
   /// Insert a PullOutModel and refresh controller list.
   Future<void> insertPullOutModel(
       PullOutModel model, PullOutController controller) async {

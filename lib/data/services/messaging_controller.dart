@@ -67,8 +67,8 @@ class SmsSendError extends SmsResult {
 class MessagingController extends GetxController {
   static MessagingController get instance => Get.find();
 
-  static const Duration _smsSendConfirmationTimeout = Duration(seconds: 5);
-  static const Duration _smsDeliveryConfirmationTimeout = Duration(seconds: 5);
+  static const Duration _smsSendConfirmationTimeout = Duration(seconds: 3);
+  static const Duration _smsDeliveryConfirmationTimeout = Duration(seconds: 3);
 
   Telephony? _telephony;
   final SmsStatusPolicy _smsStatusPolicy;
@@ -585,4 +585,3 @@ class _RecipientSendResult {
     this.isLikelyNetworkIssue = false,
   });
 }
-

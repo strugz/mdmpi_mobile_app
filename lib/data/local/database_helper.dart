@@ -410,6 +410,11 @@ class DatabaseHelper {
     await dao.insertCntmsts(cntmstList);
   }
 
+  Future<void> deleteCntmsts() async {
+    final db = await database;
+    await db.delete('CNTMST');
+  }
+
   Future<List<CNTMSTModel>> getCntmstRequesters() async {
     final dao = await cntmstDao;
     return await dao.getRequesters();
@@ -436,6 +441,11 @@ class DatabaseHelper {
     await dao.insertUsers(users);
   }
 
+  Future<void> deleteUsers() async {
+    final db = await database;
+    await db.delete('Users');
+  }
+
   Future<List<UserModel>> getUsers() async {
     final dao = await userDao;
     return await dao.getUsers();
@@ -455,6 +465,11 @@ class DatabaseHelper {
   Future<void> insertClients(List<ClientModel> clients) async {
     final dao = await clientDao;
     await dao.insertClients(clients);
+  }
+
+  Future<void> deleteClients() async {
+    final db = await database;
+    await db.delete('ACCMST_');
   }
 
   Future<bool> hasACCMSTData() async {

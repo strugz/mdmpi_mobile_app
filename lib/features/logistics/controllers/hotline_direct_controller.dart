@@ -206,6 +206,10 @@ class HotlineDirectController extends GetxController
     await dataManager.fetchHotlineDirectRequests(this, false);
   }
 
+  Future<void> hardResetRequests() async {
+    await dataManager.hardResetHotlineDirectRequests(this);
+  }
+
   // ========================================================================
   // REQUEST COUNT TRACKING
   // ========================================================================
