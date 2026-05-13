@@ -8,7 +8,7 @@ import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 
 /// Card widget displaying Air/Sea request summary.
 /// Shows client name, item category, pick-up date, and status.

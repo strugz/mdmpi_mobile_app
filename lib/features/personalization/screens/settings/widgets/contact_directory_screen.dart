@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
-import 'package:mdmpi_mobile_app/data/models/cnstmst_model.dart';
+import 'package:mdmpi_mobile_app/data/models/cntmst_model.dart';
 import 'package:mdmpi_mobile_app/data/models/contact_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/contact_directory_controller.dart';
 

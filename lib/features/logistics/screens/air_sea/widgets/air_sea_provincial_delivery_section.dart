@@ -14,7 +14,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controll
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 
-import '../../../../../base/utils/constants/text_string.dart';
+import '../../../../../base/utils/constants/text_strings.dart';
 import '../../../../../base/utils/helpers/helper_functions.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 

@@ -1,4 +1,4 @@
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/data/services/sms/sms_request_payload.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/logistics_onboarding_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/widgets/onboarding_dot_navigation.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/onboarding/widgets/onboarding_next_button.dart';

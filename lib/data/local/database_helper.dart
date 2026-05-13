@@ -7,7 +7,7 @@ import '../../features/logistics/models/standard_delivery_model.dart';
 import '../../features/logistics/models/cancel_remarks_model.dart';
 import '../../features/logistics/models/client_model.dart';
 import '../../data/models/mobile_model.dart';
-import '../../data/models/cnstmst_model.dart';
+import '../../data/models/cntmst_model.dart';
 import '../../features/personalization/models/user_model.dart';
 
 // DAO imports

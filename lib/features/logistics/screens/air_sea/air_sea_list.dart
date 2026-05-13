@@ -12,7 +12,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
+import '../../../../base/utils/constants/text_strings.dart';
 import '../../../../base/utils/popups/shimmer.dart';
 
 /// Role priority map: Lower number = Higher priority (more capabilities)

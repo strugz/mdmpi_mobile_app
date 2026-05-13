@@ -11,7 +11,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../base/utils/constants/sizes.dart';
 import '../../../../../../common/widgets/texts/product_title_text.dart';
-import '../../../../../base/utils/constants/text_string.dart';
+import '../../../../../base/utils/constants/text_strings.dart';
 import '../../../../../base/utils/popups/full_screen_loader.dart';
 import '../../../../../common/controllers/camera_controller.dart';
 import '../../../controllers/pull_out_controller.dart';

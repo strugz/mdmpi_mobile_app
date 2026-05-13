@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/onboarding/widgets/onboarding_dot_navigation.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/onboarding/widgets/onboarding_page.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/onboarding/widgets/onboarding_skip.dart';

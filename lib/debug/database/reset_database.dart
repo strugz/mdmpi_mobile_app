@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 /// This is useful when database schema changes and you need a fresh start.
 ///
 /// Run with:
-///   flutter run -t lib/debug/reset_database.dart -d <deviceId>
+///   flutter run -t lib/debug/database/reset_database.dart -d <deviceId>
 ///
 /// WARNING: This will delete ALL local data!
 
@@ -74,4 +74,6 @@ Future<void> main() async {
     exit(0);
   }
 }
+
+
 

@@ -1,6 +1,6 @@
 import 'dart:collection';
 
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 
 /// Encapsulates which statuses trigger SMS notifications.
 class SmsStatusPolicy {

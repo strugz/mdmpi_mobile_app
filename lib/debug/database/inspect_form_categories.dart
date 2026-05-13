@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 
 /// Debug entrypoint: prints all form categories in the database
 /// Run with:
-///   flutter run -t lib/debug/inspect_form_categories.dart -d <deviceId>
+///   flutter run -t lib/debug/database/inspect_form_categories.dart -d <deviceId>
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,4 +32,6 @@ Future<void> main() async {
     exit(0);
   }
 }
+
+
 

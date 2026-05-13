@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/client_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/document_reference_dao.dart';
 

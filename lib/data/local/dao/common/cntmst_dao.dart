@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:sqflite/sqflite.dart';
-import 'package:mdmpi_mobile_app/data/models/cnstmst_model.dart';
+import 'package:mdmpi_mobile_app/data/models/cntmst_model.dart';
 
 class CntmstDao {
   final Database db;

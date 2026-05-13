@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transport_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_client_search.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_dispatcher.dart';

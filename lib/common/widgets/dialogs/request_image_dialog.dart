@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 
 import 'package:mdmpi_mobile_app/features/logistics/helpers/b_proof_image.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/request_network_image_dialog.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 
 class ImageBytesDialog extends StatelessWidget {
   final Uint8List bytes;

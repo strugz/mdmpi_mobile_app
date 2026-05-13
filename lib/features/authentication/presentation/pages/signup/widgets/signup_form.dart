@@ -8,7 +8,7 @@ import 'package:mdmpi_mobile_app/common/widgets/login_signup/form_divider.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/widgets/terms_conditions_checkbox.dart';
 
 import '../../../../../../../base/utils/constants/sizes.dart';
-import '../../../../../../../base/utils/constants/text_string.dart';
+import '../../../../../../../base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/signup_controller.dart';
 
 class SignUpForm extends StatelessWidget {

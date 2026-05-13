@@ -1,8 +1,8 @@
 import 'package:another_telephony/telephony.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 
-import '../../features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 sealed class SmsResult {}
 
@@ -95,3 +95,4 @@ class MessagingControllerDuplicate extends GetxController {
     return documentReferences.join('\n');
   }
 }
+

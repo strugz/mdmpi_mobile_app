@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
-import '../../models/cnstmst_model.dart';
+import '../../models/cntmst_model.dart';
 
 class UserMDMPIRepository extends GetxController {
   static UserMDMPIRepository get instance => Get.find();

@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
-import 'package:mdmpi_mobile_app/bindings/request_bindings.dart';
+import 'package:mdmpi_mobile_app/bindings/features/request_bindings.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/login.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/password_configuration/forget_password.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/signup.dart';

@@ -180,3 +180,4 @@ class BTexts {
     'Stock receive',
   ];
 }
+

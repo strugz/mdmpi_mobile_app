@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/app_routes.dart';
 import 'package:mdmpi_mobile_app/base/utils/theme/theme.dart';
-import 'package:mdmpi_mobile_app/bindings/general_bindings.dart';
+import 'package:mdmpi_mobile_app/bindings/app/general_bindings.dart';
 import 'package:mdmpi_mobile_app/main.dart';
 
 class App extends StatelessWidget {

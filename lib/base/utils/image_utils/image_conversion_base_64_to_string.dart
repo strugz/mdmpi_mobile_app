@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:mdmpi_mobile_app/base/utils/paths/path.dart';
 
-import '../constants/text_string.dart';
+import '../constants/text_strings.dart';
 
 class BImageHelperFunctions {
   /// Convert base64 string to image and save to device

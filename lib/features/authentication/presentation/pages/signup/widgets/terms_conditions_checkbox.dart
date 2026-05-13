@@ -4,7 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
 import '../../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../../base/utils/constants/sizes.dart';
-import '../../../../../../../base/utils/constants/text_string.dart';
+import '../../../../../../../base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/signup_controller.dart';
 
 class AgreeToPolicy extends StatelessWidget {

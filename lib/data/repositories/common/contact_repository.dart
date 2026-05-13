@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
-import 'package:mdmpi_mobile_app/data/models/cnstmst_model.dart';
+import 'package:mdmpi_mobile_app/data/models/cntmst_model.dart';
 import 'package:mdmpi_mobile_app/data/models/contact_model.dart';
 
 class ContactRepository extends GetxController {

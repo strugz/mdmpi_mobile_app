@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 
 /// Debug entrypoint: prints counts and some metadata for the signature/image tables.
 /// Run with:
-///   flutter run -t lib/debug/inspect_db.dart -d <deviceId>
+///   flutter run -t lib/debug/database/inspect_db.dart -d <deviceId>
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,4 +36,6 @@ Future<void> main() async {
     exit(0);
   }
 }
+
+
 

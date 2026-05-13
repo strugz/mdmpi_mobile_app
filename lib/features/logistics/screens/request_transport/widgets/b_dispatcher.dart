@@ -4,7 +4,7 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_co
 import 'package:mdmpi_mobile_app/common/widgets/layouts/draggable_bottom_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_action_button.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_request_details.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 
 import '../../../../personalization/controller/user_controller.dart';
 import '../../../controllers/request_transport_controller.dart';

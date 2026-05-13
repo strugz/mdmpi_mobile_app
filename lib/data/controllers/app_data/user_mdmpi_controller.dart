@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 import '../../local/database_helper.dart';
-import '../../models/cnstmst_model.dart';
+import '../../models/cntmst_model.dart';
 import '../../repositories/user/user_mdmpi_repository.dart';
 
 class UserMdmpiController extends GetxController {

@@ -8,3 +8,4 @@ class RequestBindings extends Bindings {
     // placeholder for future registrations if needed.
   }
 }
+
