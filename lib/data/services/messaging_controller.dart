@@ -300,11 +300,7 @@ class MessagingController extends GetxController {
         status == BTexts.statusProvincialDelivered;
   }
 
-  Future<_SmsRequestPayload?> _buildSmsRequestPayload(
-    String status,
-    Object requestModel, {
-    String? overrideCancelRemarks,
-  }) async {
+  Future<_SmsRequestPayload?> _buildSmsRequestPayload(String status, Object requestModel, {String? overrideCancelRemarks,}) async {
     final normalizedCancelRemarks = overrideCancelRemarks?.trim() ?? '';
 
     switch (requestModel) {
@@ -535,9 +531,7 @@ class MessagingController extends GetxController {
     }
   }
 
-  Future<ServiceState?> _tryGetServiceState(
-    Future<ServiceState> Function() getter,
-  ) async {
+  Future<ServiceState?> _tryGetServiceState(Future<ServiceState> Function() getter,) async {
     try {
       return await getter();
     } catch (_) {
