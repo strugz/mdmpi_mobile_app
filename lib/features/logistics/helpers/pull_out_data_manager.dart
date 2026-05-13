@@ -342,6 +342,7 @@ class PullOutDataManager {
     controller.errorMessage.value = null;
 
     try {
+      await _repository.clearLocalData();
       final results = await _repository.getAll(forceRefresh: true);
       final pullOutsRequests = results.where((r) => r.formCategoryId == '4').toList();
 

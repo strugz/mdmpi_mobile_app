@@ -88,9 +88,7 @@ class PullOutRepository extends GetxController {
               body: jsonEncode(payload))
           .timeout(const Duration(seconds: 60));
 
-  /// Fetch all pull-out requests.
-  /// [forceRefresh] is accepted for API compatibility but currently has no effect
-  /// since PullOut doesn't have local DB caching yet.
+  /// Fetch all pull-out requests and cache them to the local Pull-Out table.
   Future<List<PullOutModel>> getAll({bool forceRefresh = false}) async {
     try {
       final url = _uri(_resource);
@@ -98,12 +96,27 @@ class PullOutRepository extends GetxController {
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         final items = _decodeRootToList(decoded);
-        return items
+
+        final requests = items
             .whereType<dynamic>()
             .map((e) => e is Map<String, dynamic>
                 ? PullOutModel.fromJson(e)
                 : PullOutModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
+
+        try {
+          final dao = await _dao;
+          await dao.deleteAll();
+          for (final request in requests) {
+            await dao.insertPullOut(request);
+          }
+          logDebug(
+              'PullOutRepository: Cached ${requests.length} pull-out requests to local DB');
+        } catch (dbError) {
+          logDebug('PullOutRepository: Failed to cache to local DB: $dbError');
+        }
+
+        return requests;
       }
       throw Exception(
           'Failed to load pull-out requests (${response.statusCode})');
@@ -114,11 +127,16 @@ class PullOutRepository extends GetxController {
   }
 
   /// Get pull-outs from local DB only (no API call).
-  /// Currently just redirects to getAll() since PullOut doesn't have local DB yet.
-  /// This method exists for API compatibility with other repositories.
   Future<List<PullOutModel>> getLocalPullOuts() async {
-    // TODO: Implement local DB support for pull-out requests
-    return await getAll();
+    final dao = await _dao;
+    return await dao.getPullOutRequests();
+  }
+
+  /// Clear all local Pull-Out data.
+  Future<void> clearLocalData() async {
+    final dao = await _dao;
+    await dao.deleteAll();
+    logDebug('PullOutRepository: Local data cleared');
   }
 
   /// Insert a new pull-out request to API and local DB.
