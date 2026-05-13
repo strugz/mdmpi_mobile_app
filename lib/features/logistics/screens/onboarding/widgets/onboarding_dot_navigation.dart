@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/logistics_onboarding_controller.dart';
 
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 

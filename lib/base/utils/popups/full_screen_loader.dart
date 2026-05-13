@@ -14,7 +14,7 @@ import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/standard_delivery/standard_delivery_page.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';

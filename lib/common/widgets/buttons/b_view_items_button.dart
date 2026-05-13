@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/logistics/presentation/pages/standard_delivery/inventory_items_page.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/inventory_items_page.dart';
 
 /// Reusable centered text button used to open an items page for a given
 /// request id. By default this navigates to [InventoryItemsPage], but a

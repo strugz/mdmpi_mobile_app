@@ -45,7 +45,7 @@ import '../data/repositories/image/image_repository.dart';
 import '../data/repositories/user/user_repository.dart';
 import '../data/services/messaging_controller.dart';
 import '../features/authentication/presentation/controllers/forget_password_controller.dart';
-import '../features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
+import '../features/logistics/controllers/logistics_onboarding_controller.dart';
 import '../features/authentication/presentation/controllers/verify_email_controller.dart';
 import '../common/controllers/camera_controller.dart';
 import '../features/logistics/controllers/chart_controller.dart';

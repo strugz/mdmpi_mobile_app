@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/logistics_onboarding_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
