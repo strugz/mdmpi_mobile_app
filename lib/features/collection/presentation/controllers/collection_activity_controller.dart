@@ -130,13 +130,19 @@ class CollectionActivityController extends GetxController {
     return results;
   }
 
-  double getAccountTotalDue(String clientId) => bucketItems
-      .where((item) => item.client.id == clientId)
-      .fold(0.0, (sum, item) => sum + item.toBeCollected);
+  double getAccountTotalDue(String clientId) {
+    final allItems = [...bucketItems, ...activityItems];
+    return allItems
+        .where((item) => item.client.id == clientId)
+        .fold(0.0, (sum, item) => sum + item.toBeCollected);
+  }
 
-  double getAccountTotalCollected(String clientId) => bucketItems
-      .where((item) => item.client.id == clientId)
-      .fold(0.0, (sum, item) => sum + item.totalCollected);
+  double getAccountTotalCollected(String clientId) {
+    final allItems = [...bucketItems, ...activityItems];
+    return allItems
+        .where((item) => item.client.id == clientId)
+        .fold(0.0, (sum, item) => sum + item.totalCollected);
+  }
 
   int getAccountInvoiceCount(String clientId) => 
       bucketItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).length;
@@ -215,7 +221,8 @@ class CollectionActivityController extends GetxController {
     final now = DateTime.now();
     final firstDayOfCurrentMonth = DateTime(now.year, now.month, 1);
     
-    final accountInvoices = bucketItems.where((item) => item.client.id == clientId).toList();
+    final allItems = [...bucketItems, ...activityItems];
+    final accountInvoices = allItems.where((item) => item.client.id == clientId).toList();
     
     double totalPastDue = 0;
     int pastDueCount = 0;
@@ -246,16 +253,25 @@ class CollectionActivityController extends GetxController {
   }
 
   /// Returns combined history for all invoices of a specific account (both bucket and activity)
-  List<CollectionHistoryModel> getAccountHistory(String clientId) {
+  /// Now returns a list of maps containing the history model and the full invoice item.
+  List<Map<String, dynamic>> getAccountHistory(String clientId) {
     final allItems = [...bucketItems, ...activityItems];
     final accountItems = allItems.where((item) => item.client.id == clientId).toList();
 
-    final allHistory = accountItems.expand((item) => item.history).toList();
+    final List<Map<String, dynamic>> combined = [];
+    for (var item in accountItems) {
+      for (var history in item.history) {
+        combined.add({
+          'history': history,
+          'item': item,
+        });
+      }
+    }
 
     // Sort newest first
-    allHistory.sort((a, b) => b.date.compareTo(a.date));
+    combined.sort((a, b) => b['history'].date.compareTo(a['history'].date));
 
-    return allHistory;
+    return combined;
   }
 
   /// Returns combined history for all invoices in the system, sorted by date (newest first).
@@ -270,6 +286,7 @@ class CollectionActivityController extends GetxController {
           'history': history,
           'accountName': item.client.name,
           'invoiceId': item.id,
+          'item': item,
         });
       }
     }
@@ -317,6 +334,30 @@ class CollectionActivityController extends GetxController {
   // ========================================================================
   // Claims
   // ========================================================================
+
+  void unclaimAccount(String clientId) {
+    final invoices = activityItems.where((item) => item.client.id == clientId).toList();
+    if (invoices.isEmpty) return;
+
+    for (final inv in invoices) {
+      final index = activityItems.indexWhere((e) => e.id == inv.id);
+      if (index != -1) {
+        final item = activityItems[index].copyWith(assignedAt: '');
+        bucketItems.add(item);
+        activityItems.removeAt(index);
+      }
+    }
+    logDebug('[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
+  }
+
+  void claimAccount(String clientId) {
+    final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
+    if (invoices.isEmpty) return;
+
+    final ids = invoices.map((e) => e.id).toList();
+    claimItemsByIds(ids);
+    logDebug('[CollectionActivityController] Account $clientId claimed (${invoices.length} invoices)');
+  }
 
   void claimItemsByIds(List<String> ids) {
     if (ids.isEmpty) return;
@@ -436,7 +477,7 @@ class CollectionActivityController extends GetxController {
               date: '2026-02-01 08:00',
               collectorName: 'System',
               status: '',
-              remarks: 'Invoice Created',
+              remarks: 'Invoice #$id Created',
             ),
           ],
         ));

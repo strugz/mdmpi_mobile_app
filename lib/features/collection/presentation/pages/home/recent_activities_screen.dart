@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_chips.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 
 class RecentActivitiesScreen extends StatelessWidget {
   const RecentActivitiesScreen({super.key});
@@ -52,6 +53,7 @@ class RecentActivitiesScreen extends StatelessWidget {
               final historyList = filteredItems.map((e) => e['history'] as CollectionHistoryModel).toList();
               final accountNames = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['accountName'].toString() };
               final invoiceIds = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['invoiceId'].toString() };
+              final items = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['item'] as CollectionItemModel };
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
@@ -59,6 +61,7 @@ class RecentActivitiesScreen extends StatelessWidget {
                   history: historyList,
                   accountNames: accountNames,
                   invoiceIds: invoiceIds,
+                  items: items,
                 ),
               );
             }),

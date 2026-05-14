@@ -11,6 +11,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/rec
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/total_collected_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/total_collected_month_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
@@ -186,11 +188,13 @@ class CollectionHomeScreen extends StatelessWidget {
                       final historyList = recentThree.map((e) => e['history'] as CollectionHistoryModel).toList();
                       final accountNames = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['accountName'].toString() };
                       final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId'].toString() };
+                      final items = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['item'] as CollectionItemModel };
 
                       return ActivityHistoryList(
                         history: historyList,
                         accountNames: accountNames,
                         invoiceIds: invoiceIds,
+                        items: items,
                       );
                     }),
                     

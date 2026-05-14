@@ -12,6 +12,7 @@ class AccountItemCard extends StatelessWidget {
   final double totalCollected;
   final VoidCallback onTap;
   final VoidCallback onInfoTap;
+  final VoidCallback? onClaimTap; // Added optional claim tap
 
   const AccountItemCard({
     super.key,
@@ -21,6 +22,7 @@ class AccountItemCard extends StatelessWidget {
     this.totalCollected = 0.0,
     required this.onTap,
     required this.onInfoTap,
+    this.onClaimTap,
   });
 
   @override
@@ -114,6 +116,29 @@ class AccountItemCard extends StatelessWidget {
                             fontWeight: FontWeight.bold,
                           ),
                     ),
+                    if (onClaimTap != null) ...[
+                      const SizedBox(height: BSizes.md),
+                      SizedBox(
+                        height: 32,
+                        child: OutlinedButton(
+                          onPressed: onClaimTap,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: BSizes.md),
+                            side: const BorderSide(color: BColors.primary),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                            ),
+                          ),
+                          child: Text(
+                            'Claim Account',
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  color: BColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 Column(

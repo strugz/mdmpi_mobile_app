@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 class ActivityHistoryList extends StatelessWidget {
@@ -13,6 +14,7 @@ class ActivityHistoryList extends StatelessWidget {
     required this.history,
     this.accountNames,
     this.invoiceIds,
+    this.items,
   });
 
   final List<CollectionHistoryModel> history;
@@ -22,6 +24,9 @@ class ActivityHistoryList extends StatelessWidget {
   
   /// Optional: Map of history index to invoice ID (for global lists)
   final Map<int, String>? invoiceIds;
+
+  /// Optional: Map of history index to full invoice item
+  final Map<int, CollectionItemModel>? items;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +51,7 @@ class ActivityHistoryList extends StatelessWidget {
           history: displayList[index],
           accountName: accountNames?[index],
           invoiceId: invoiceIds?[index],
+          item: items?[index],
         );
       },
     );
@@ -57,11 +63,13 @@ class _ActivityHistoryCard extends StatelessWidget {
     required this.history,
     this.accountName,
     this.invoiceId,
+    this.item,
   });
 
   final CollectionHistoryModel history;
   final String? accountName;
   final String? invoiceId;
+  final CollectionItemModel? item;
 
   void _showDetail(BuildContext context, String collectorName) {
     showModalBottomSheet(
@@ -91,14 +99,23 @@ class _ActivityHistoryCard extends StatelessWidget {
             const Divider(),
             const SizedBox(height: BSizes.sm),
 
-            if (accountName != null || invoiceId != null) ...[
+            if (accountName != null || invoiceId != null || item != null) ...[
               Text(
-                accountName ?? 'Unknown Account',
+                accountName ?? item?.client.name ?? 'Unknown Account',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(color: BColors.primary),
               ),
-              if (invoiceId != null)
-                Text('Invoice #$invoiceId', style: Theme.of(context).textTheme.labelMedium),
+              if (invoiceId != null || item != null)
+                Text('Invoice #${invoiceId ?? item?.id}', style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: BSizes.md),
+            ],
+
+            if (item != null) ...[
+              _buildDetailRow(context, 'Total Amount', BFormatter.formatPesoCurrency(item!.toBeCollected + item!.totalCollected), icon: Iconsax.money),
+              _buildDetailRow(context, 'Current Balance', BFormatter.formatPesoCurrency(item!.toBeCollected), icon: Iconsax.wallet_money, valueColor: BColors.primary),
+              _buildDetailRow(context, 'Due Date', item!.dueDate, icon: Iconsax.calendar, valueColor: item!.isOverdue ? BColors.error : null),
+              if (item!.documentReferences.isNotEmpty)
+                _buildDetailRow(context, 'References', item!.documentReferences.join(', '), icon: Iconsax.document_text),
+              const Divider(height: BSizes.lg),
             ],
 
             if (history.purposeOfVisit != null)

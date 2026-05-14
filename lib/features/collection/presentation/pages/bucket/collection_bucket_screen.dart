@@ -100,6 +100,16 @@ class CollectionBucketScreen extends StatelessWidget {
                           totalCollected: controller.getAccountTotalCollected(client.id),
                           onTap: () => Get.to(() => CollectionAccountInvoicesScreen(client: client)),
                           onInfoTap: () => Get.to(() => CollectionAccountInformationScreen(client: client)),
+                          onClaimTap: () {
+                            controller.claimAccount(client.id);
+                            Get.snackbar(
+                              'Account Claimed',
+                              'All invoices for ${client.name} moved to Activity.',
+                              snackPosition: SnackPosition.BOTTOM,
+                              backgroundColor: BColors.success,
+                              colorText: BColors.white,
+                            );
+                          },
                         );
                       },
                     ),

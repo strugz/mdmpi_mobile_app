@@ -44,127 +44,115 @@ class InvoiceItemCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Checkbox(
-              value: isSelected,
-              onChanged: (_) => onTap(),
-              activeColor: BColors.primary,
-            ),
-            const SizedBox(width: BSizes.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Invoice #${item.id}',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              'BP: ${item.bpCode}',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: BColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildStatusBadge(context, item.status),
-                          if (item.lastOutcome != null) ...[
-                            const SizedBox(width: BSizes.xs),
-                            _buildStatusBadge(context, item.lastOutcome!),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: BSizes.sm),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Posted: ${item.postingDate}',
-                                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                      color: BColors.darkGrey,
-                                    ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: BSizes.sm),
                       Text(
-                        currencyFormat.format(item.toBeCollected),
+                        'Invoice #${item.id}',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'BP: ${item.bpCode}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                               color: BColors.primary,
                               fontWeight: FontWeight.bold,
                             ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                  const SizedBox(height: BSizes.xs),
-                   Row(
-                     children: [
-                       Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
-                       const SizedBox(width: 4),
-                       Flexible(
-                         child: Text(
-                           'Due: ${item.dueDate}',
-                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                 color: isOverdue ? BColors.error : BColors.darkGrey,
-                                 fontWeight: FontWeight.bold,
-                               ),
-                           maxLines: 1,
-                           overflow: TextOverflow.ellipsis,
-                         ),
-                       ),
-                       if (isOverdue) ...[
-                         const SizedBox(width: BSizes.xs),
-                         Container(
-                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                           decoration: BoxDecoration(
-                             color: BColors.error,
-                             borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-                           ),
-                           child: Text(
-                             BFormatter.formatDaysOverdue(daysPast),
-                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                   color: BColors.white,
-                                   fontWeight: FontWeight.bold,
-                                 ),
-                           ),
-                         ),
-                       ],
-                     ],
-                   ),
-                ],
-              ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildStatusBadge(context, item.status),
+                    if (item.lastOutcome != null) ...[
+                      const SizedBox(width: BSizes.xs),
+                      _buildStatusBadge(context, item.lastOutcome!),
+                    ],
+                  ],
+                ),
+              ],
             ),
+            const SizedBox(height: BSizes.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Posted: ${item.postingDate}',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: BColors.darkGrey,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: BSizes.sm),
+                Text(
+                  currencyFormat.format(item.toBeCollected),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: BColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+            const SizedBox(height: BSizes.xs),
+             Row(
+               children: [
+                 Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
+                 const SizedBox(width: 4),
+                 Flexible(
+                   child: Text(
+                     'Due: ${item.dueDate}',
+                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                           color: isOverdue ? BColors.error : BColors.darkGrey,
+                           fontWeight: FontWeight.bold,
+                         ),
+                     maxLines: 1,
+                     overflow: TextOverflow.ellipsis,
+                   ),
+                 ),
+                 if (isOverdue) ...[
+                   const SizedBox(width: BSizes.xs),
+                   Container(
+                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                     decoration: BoxDecoration(
+                       color: BColors.error,
+                       borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                     ),
+                     child: Text(
+                       BFormatter.formatDaysOverdue(daysPast),
+                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                             color: BColors.white,
+                             fontWeight: FontWeight.bold,
+                           ),
+                     ),
+                   ),
+                 ],
+               ],
+             ),
           ],
         ),
       ),

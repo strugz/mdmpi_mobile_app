@@ -3,6 +3,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -147,7 +149,10 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                       ),
                     )
                   else
-                    ActivityHistoryList(history: history),
+                    ActivityHistoryList(
+                      history: history.map((e) => e['history'] as CollectionHistoryModel).toList(),
+                      items: { for (var i = 0; i < history.length; i++) i : history[i]['item'] as CollectionItemModel },
+                    ),
                 ],
               ),
             ),

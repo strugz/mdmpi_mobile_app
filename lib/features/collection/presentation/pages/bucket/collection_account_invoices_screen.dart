@@ -21,7 +21,6 @@ class CollectionAccountInvoicesScreen extends StatefulWidget {
 
 class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoicesScreen> {
   final controller = Get.find<CollectionActivityController>();
-  final RxSet<String> localSelectedIds = <String>{}.obs;
 
   @override
   void dispose() {
@@ -34,64 +33,38 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.client.name),
-        actions: [
-          Obx(() {
-            final invoices = controller.getInvoicesByAccount(widget.client.id);
-            if (invoices.isEmpty) return const SizedBox.shrink();
-            
-            final allSelected = localSelectedIds.length == invoices.length;
-            return TextButton(
-              onPressed: () {
-                if (allSelected) {
-                  localSelectedIds.clear();
-                } else {
-                  localSelectedIds.assignAll(invoices.map((e) => e.id));
-                }
-              },
-              child: Text(
-                allSelected ? 'Deselect All' : 'Select All',
-                style: const TextStyle(color: BColors.primary, fontWeight: FontWeight.w600),
-              ),
-            );
-          }),
-        ],
       ),
-      bottomNavigationBar: Obx(() {
-        if (localSelectedIds.isEmpty) return const SizedBox.shrink();
-
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(BSizes.defaultSpace),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  final count = localSelectedIds.length;
-                  controller.claimItemsByIds(localSelectedIds.toList());
-                  Get.back();
-                  Get.snackbar(
-                    'Invoices Claimed',
-                    '$count invoice${count == 1 ? '' : 's'} claimed for ${widget.client.name}.',
-                    snackPosition: SnackPosition.BOTTOM,
-                    backgroundColor: BColors.success,
-                    colorText: BColors.white,
-                  );
-                },
-                icon: const Icon(Iconsax.tick_circle),
-                label: Text('Claim ${localSelectedIds.length} Invoices'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: BColors.primary,
-                  foregroundColor: BColors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
-                  ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(BSizes.defaultSpace),
+          child: SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                controller.claimAccount(widget.client.id);
+                Get.back();
+                Get.snackbar(
+                  'Account Claimed',
+                  'All invoices for ${widget.client.name} have been moved to Activity.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: BColors.success,
+                  colorText: BColors.white,
+                );
+              },
+              icon: const Icon(Iconsax.tick_circle),
+              label: const Text('Claim Account'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BColors.primary,
+                foregroundColor: BColors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
                 ),
               ),
             ),
           ),
-        );
-      }),
+        ),
+      ),
       body: Obx(() {
         final invoices = controller.getInvoicesByAccount(widget.client.id);
 
@@ -128,17 +101,11 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
                       separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
                       itemBuilder: (context, index) {
                         final item = invoices[index];
-                        return Obx(() => InvoiceItemCard(
-                              item: item,
-                              isSelected: localSelectedIds.contains(item.id),
-                              onTap: () {
-                                if (localSelectedIds.contains(item.id)) {
-                                  localSelectedIds.remove(item.id);
-                                } else {
-                                  localSelectedIds.add(item.id);
-                                }
-                              },
-                            ));
+                        return InvoiceItemCard(
+                          item: item,
+                          isSelected: false,
+                          onTap: () {}, // No selection in bucket view anymore
+                        );
                       },
                     ),
             ),

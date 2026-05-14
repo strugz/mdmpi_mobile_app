@@ -4,10 +4,12 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'activity_detail_screen.dart';
 import 'widgets/activity_filter_modal.dart';
 import 'widgets/activity_list_tile.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
+import 'package:iconsax/iconsax.dart';
 
 class CollectionActivityAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -32,6 +34,26 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.client.name),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Get.defaultDialog(
+                title: 'Unclaim Account',
+                middleText: 'Move all invoices back to the bucket?',
+                textConfirm: 'Unclaim',
+                textCancel: 'Cancel',
+                confirmTextColor: BColors.white,
+                buttonColor: BColors.error,
+                onConfirm: () {
+                  controller.unclaimAccount(widget.client.id);
+                  Get.back(); // Close dialog
+                  Get.back(); // Return to Activity list
+                },
+              );
+            },
+            child: const Text('Unclaim', style: TextStyle(color: BColors.error)),
+          ),
+        ],
       ),
       body: Obx(() {
         final invoices = controller.getActivityInvoicesByAccount(widget.client.id);
