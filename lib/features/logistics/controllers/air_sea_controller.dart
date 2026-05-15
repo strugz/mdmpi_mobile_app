@@ -401,6 +401,9 @@ class AirSeaController extends GetxController {
   ///
   /// [value] True to use local storage, false to use API directly
   void toggleStoragePreference(bool value) {
+    if (useLocalStorage.value == value) {
+      return;
+    }
     useLocalStorage.value = value;
     loadAirSeaRequests();
   }

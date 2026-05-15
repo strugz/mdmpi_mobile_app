@@ -126,75 +126,11 @@ class RequestDao {
   }
 
   Future<void> insertRequests(List<StandardDeliveryModel> requestModels) async {
-    Batch batch = db.batch();
     for (StandardDeliveryModel requestModel in requestModels) {
-      // Prepare DB-mapped row (Request-prefixed keys)
-      final parsedId = int.tryParse(requestModel.id) ?? requestModel.id;
-      Map<String, dynamic> requestData = {
-        'RequestID': parsedId,
-        'RequestClientID': requestModel.clientId,
-        'RequestShippingMethod': requestModel.shippingMethod,
-        'RequestDeliveryTerms': requestModel.deliveryTerms,
-        'RequestDeliveryDate': requestModel.deliveryDate,
-        'RequestPreference': requestModel.preference,
-        'RequestStatus': requestModel.status,
-        'RequestBy': requestModel.requestBy,
-        'RequestCreatedBy': requestModel.createdBy,
-        'RequestCreatedAt': requestModel.createdAt,
-        'RequestItemPreparedBy': requestModel.itemPreparedBy,
-        'RequestDeliveredBy': requestModel.deliveredBy,
-        'RequestItemPreparedAt': requestModel.itemPreparedAt,
-        'RequestItemPreparedEndAt': requestModel.itemPreparedEndAt,
-        'RequestDeliveredAt': requestModel.deliveredAt,
-        'RequestDeliveredEndAt': requestModel.deliveredEndAt,
-       'LocationStartedAt': requestModel.locationStartedAt,
-       'LocationEndAt': requestModel.locationEndAt,
-       'MobileID': requestModel.mobileID ?? 0,
-       'RequestDriverHelper': requestModel.helper,
-       'Receiver': requestModel.receiver,
-       'RecipientContactDetails': requestModel.recipientContactDetails,
-       'RecipientName': requestModel.recipientName,
-       'TripTicketNumber': requestModel.tripTicketNumber,
-       'ItemCategoryID': requestModel.itemCategoryID,
-       'FormCategoryID': requestModel.formCategoryID,
-       };
-
-       batch.insert('a_tblRequest', requestData, conflictAlgorithm: ConflictAlgorithm.replace);
-
-      // Also insert document references into their table
-      if (requestModel.documentReference.isNotEmpty) {
-        for (var ref in requestModel.documentReference) {
-          if (ref.isNotEmpty) {
-            // Skip inserting if an entry with the same RequestID and Reference already exists
-            final List<Map<String, dynamic>> existing = await db.query(
-              'a_tblRequestDocumentReference',
-              where: 'RequestID = ? AND Reference = ?',
-              whereArgs: [parsedId, ref],
-              limit: 1,
-            );
-            if (existing.isEmpty) {
-              batch.insert('a_tblRequestDocumentReference', {
-                'RequestID': parsedId,
-                'Reference': ref,
-                'RequestCreatedAt': requestModel.createdAt,
-              }, conflictAlgorithm: ConflictAlgorithm.replace);
-            }
-          }
-        }
-      }
-
-      // Also persist client info (ACCMST_) so client lookup later can find the client
-      // Use ClientModel.toJson() and replace on conflict to keep latest data
-      try {
-        final client = requestModel.client;
-        if (client.id.isNotEmpty) {
-          batch.insert('ACCMST_', client.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
-        }
-      } catch (_) {
-        // ignore if client is missing or malformed; we don't want batch to fail entirely
-      }
+      // Reuse the single-request upsert logic so an API refresh cannot
+      // overwrite a newer local status with an older server value.
+      await insertRequest(requestModel);
     }
-    await batch.commit(noResult: true);
   }
 
   Future<void> updateRequest({required StandardDeliveryModel requestModel}) async {

@@ -413,6 +413,9 @@ class HotlineDirectController extends GetxController
   /// [value] True to use local storage, false to use API directly
   @override
   void toggleStoragePreference(bool value) {
+    if (useLocalStorage.value == value) {
+      return;
+    }
     useLocalStorage.value = value;
     loadRequests();
   }

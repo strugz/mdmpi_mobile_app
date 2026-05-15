@@ -57,6 +57,7 @@ Future<void> createAllTables(Database db) async {
       RequestID INTEGER,
       Reference TEXT,
       RequestCreatedAt TEXT,
+      UNIQUE(RequestID, Reference),
       FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
     )
   ''');

@@ -7,6 +7,7 @@ The Standard Delivery module manages standard delivery logistics requests. It is
 ## Related Plans
 
 - [Standard Delivery Signature API Status Plan](STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md)
+- [Standard Delivery Local DB Rework Plan](STANDARD_DELIVERY_LOCAL_DB_REWORK_PLAN.md)
 
 ## Status Flow
 
