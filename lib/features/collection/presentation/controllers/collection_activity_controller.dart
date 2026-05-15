@@ -41,6 +41,14 @@ class CollectionActivityController extends GetxController {
 
   final RxList<ClientModel> masterAccountList = <ClientModel>[].obs;
 
+  // Multi-select Account state
+  final RxBool isSelectionMode = false.obs;
+  final RxSet<String> selectedAccountIds = <String>{}.obs;
+
+  // Multi-select Activity Invoice state
+  final RxBool isActivitySelectionMode = false.obs;
+  final RxSet<String> selectedActivityInvoiceIds = <String>{}.obs;
+
   // ========================================================================
   // Lifecycle
   // ========================================================================
@@ -297,6 +305,29 @@ class CollectionActivityController extends GetxController {
     return combined;
   }
 
+  /// Returns activities grouped by date for the calendar
+  Map<DateTime, List<Map<String, dynamic>>> get activitiesByDate {
+    final Map<DateTime, List<Map<String, dynamic>>> grouped = {};
+
+    for (var entry in allRecentHistory) {
+      final history = entry['history'] as CollectionHistoryModel;
+      try {
+        // Parse yyyy-MM-dd HH:mm to get just the date part
+        final datePart = history.date.split(' ')[0];
+        final date = DateTime.parse(datePart);
+        final normalizedDate = DateTime(date.year, date.month, date.day);
+        
+        if (!grouped.containsKey(normalizedDate)) {
+          grouped[normalizedDate] = [];
+        }
+        grouped[normalizedDate]!.add(entry);
+      } catch (e) {
+        // Skip unparseable dates
+      }
+    }
+    return grouped;
+  }
+
   void setActivityFilter(String filter) => activityFilter.value = filter;
 
   List<CollectionItemModel> get filteredActivityItems {
@@ -377,6 +408,43 @@ class CollectionActivityController extends GetxController {
     logDebug('[CollectionActivityController] Claimed ${ids.length} items');
   }
 
+  // ========================================================================
+  // Multi-select Account logic
+  // ========================================================================
+
+  void toggleAccountSelection(String clientId) {
+    if (selectedAccountIds.contains(clientId)) {
+      selectedAccountIds.remove(clientId);
+      if (selectedAccountIds.isEmpty) {
+        isSelectionMode.value = false;
+      }
+    } else {
+      isSelectionMode.value = true;
+      selectedAccountIds.add(clientId);
+    }
+  }
+
+  void enterSelectionMode(String clientId) {
+    isSelectionMode.value = true;
+    selectedAccountIds.add(clientId);
+  }
+
+  void exitSelectionMode() {
+    isSelectionMode.value = false;
+    selectedAccountIds.clear();
+  }
+
+  void claimSelectedAccounts() {
+    if (selectedAccountIds.isEmpty) return;
+    
+    final idsToClaim = selectedAccountIds.toList();
+    for (final clientId in idsToClaim) {
+      claimAccount(clientId);
+    }
+    
+    exitSelectionMode();
+  }
+
   void saveActivity({
     required String id,
     required String status,
@@ -428,6 +496,95 @@ class CollectionActivityController extends GetxController {
     bucketItems.add(updatedItem);
     activityItems.removeAt(index);
     logDebug('[CollectionActivityController] Activity $id saved');
+  }
+
+  // ========================================================================
+  // Multi-select Activity Invoice logic
+  // ========================================================================
+
+  void toggleActivityInvoiceSelection(String id) {
+    if (selectedActivityInvoiceIds.contains(id)) {
+      selectedActivityInvoiceIds.remove(id);
+      if (selectedActivityInvoiceIds.isEmpty) {
+        isActivitySelectionMode.value = false;
+      }
+    } else {
+      isActivitySelectionMode.value = true;
+      selectedActivityInvoiceIds.add(id);
+    }
+  }
+
+  void exitActivitySelectionMode() {
+    isActivitySelectionMode.value = false;
+    selectedActivityInvoiceIds.clear();
+  }
+
+  void saveBatchActivity({
+    required List<String> ids,
+    required Map<String, String> statuses,
+    required String remarks,
+    required double totalAmountReceived,
+    String? bankName,
+    String? checkNumber,
+    String? checkDate,
+    String? purposeOfVisit,
+  }) {
+    // 1. Sort items by due date (oldest first) to apply waterfall logic correctly
+    final selectedItems = activityItems.where((item) => ids.contains(item.id)).toList();
+    selectedItems.sort((a, b) {
+      if (a.dueDate == 'N/A') return 1;
+      if (b.dueDate == 'N/A') return -1;
+      return a.dueDate.compareTo(b.dueDate);
+    });
+
+    double remainingPool = totalAmountReceived;
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+
+    for (var item in selectedItems) {
+      final double canApply = min(remainingPool, item.toBeCollected);
+      remainingPool -= canApply;
+
+      final double updatedTotalCollected = item.totalCollected + canApply;
+      final double updatedToBeCollected = (item.toBeCollected - canApply).clamp(0, double.infinity);
+
+      final bool isFullyPaid = updatedToBeCollected == 0;
+      
+      // Use the status provided for this specific item ID
+      final String itemStatus = statuses[item.id] ?? (isFullyPaid ? CollectionStatusColors.statusCollected : '');
+
+      final historyEntry = CollectionHistoryModel(
+        date: now,
+        collectorName: UserController.instance.user.value.initials,
+        status: itemStatus,
+        remarks: '$remarks (Batch Payment)',
+        totalCollected: canApply,
+        bankName: bankName,
+        checkNumber: checkNumber,
+        checkDate: checkDate,
+        purposeOfVisit: purposeOfVisit,
+      );
+
+      final updatedItem = item.copyWith(
+        status: isFullyPaid ? CollectionStatusColors.statusCollected : '',
+        lastOutcome: itemStatus,
+        remarks: remarks,
+        toBeCollected: updatedToBeCollected,
+        totalCollected: updatedTotalCollected,
+        history: [...item.history, historyEntry],
+        assignedAt: '',
+        collectorName: 'Unassigned',
+      );
+
+      // Update in lists
+      final idx = activityItems.indexWhere((e) => e.id == item.id);
+      if (idx != -1) {
+        activityItems.removeAt(idx);
+        bucketItems.add(updatedItem);
+      }
+    }
+
+    exitActivitySelectionMode();
+    logDebug('[CollectionActivityController] Batch activity saved for ${ids.length} items');
   }
 
   // ========================================================================

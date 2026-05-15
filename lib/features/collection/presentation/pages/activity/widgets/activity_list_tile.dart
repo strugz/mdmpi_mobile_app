@@ -13,10 +13,16 @@ class ActivityListTile extends StatelessWidget {
     super.key,
     required this.item,
     this.onTap,
+    this.onLongPress,
+    this.isSelected = false,
+    this.isSelectionMode = false,
   });
 
   final CollectionItemModel item;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+  final bool isSelected;
+  final bool isSelectionMode;
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +38,20 @@ class ActivityListTile extends StatelessWidget {
     
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
         child: Container(
         margin: const EdgeInsets.only(bottom: BSizes.sm),
         padding: const EdgeInsets.all(BSizes.md),
         decoration: BoxDecoration(
-          color: isOverdue
-              ? BColors.error.withOpacity(0.06)
-              : (dark ? BColors.darkerGrey.withValues(alpha: 0.3) : BColors.white),
+          color: isSelected 
+              ? BColors.primary.withOpacity(0.05)
+              : (isOverdue
+                  ? BColors.error.withOpacity(0.06)
+                  : (dark ? BColors.darkerGrey.withValues(alpha: 0.3) : BColors.white)),
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           border: Border.all(
-            color: dark ? Colors.transparent : BColors.grey,
+            color: isSelected ? BColors.primary : (dark ? Colors.transparent : BColors.grey),
+            width: isSelected ? 2 : 1,
           ),
           boxShadow: dark
               ? null
@@ -53,134 +63,150 @@ class ActivityListTile extends StatelessWidget {
                   ),
                 ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Invoice #${item.id}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'BP: ${item.bpCode}',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: BColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
                 Row(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildStatusBadge(context, item.status),
-                    // Only show the second badge when lastOutcome is present and
-                    // different from the main status to avoid duplicate badges
-                    // (e.g. both being "Collected"). Comparison is
-                    // case-insensitive and trimmed.
-                    if (lastOutcome.isNotEmpty && lastOutcome.toLowerCase() != status.toLowerCase()) ...[
-                      const SizedBox(width: BSizes.xs),
-                      _buildStatusBadge(context, item.lastOutcome!),
-                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Invoice #${item.id}',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'BP: ${item.bpCode}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: BColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!isSelectionMode)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildStatusBadge(context, item.status),
+                          // Only show the second badge when lastOutcome is present and
+                          // different from the main status to avoid duplicate badges
+                          // (e.g. both being "Collected"). Comparison is
+                          // case-insensitive and trimmed.
+                          if (lastOutcome.isNotEmpty && lastOutcome.toLowerCase() != status.toLowerCase()) ...[
+                            const SizedBox(width: BSizes.xs),
+                            _buildStatusBadge(context, item.lastOutcome!),
+                          ],
+                        ],
+                      ),
                   ],
                 ),
-              ],
-            ),
-            
-            const SizedBox(height: BSizes.sm),
+                
+                const SizedBox(height: BSizes.sm),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'Posted: ${item.postingDate}',
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                color: BColors.darkGrey,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Posted: ${item.postingDate}',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: BColors.darkGrey,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: BSizes.sm),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          BFormatter.formatPesoCurrency(
+                            item.toBeCollected == 0 ? item.totalCollected : item.toBeCollected,
+                          ),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: item.toBeCollected == 0 ? BColors.success : BColors.primary,
+                                fontWeight: FontWeight.bold,
                               ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (item.toBeCollected == 0) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Iconsax.tick_circle5, color: BColors.success, size: 18),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: BSizes.xs),
+
+                Row(
+                  children: [
+                    Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Due: ${item.dueDate}',
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: isOverdue ? BColors.error : BColors.darkGrey,
+                              fontWeight: FontWeight.bold,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isOverdue) ...[
+                      const SizedBox(width: BSizes.xs),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: BColors.error,
+                          borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                        ),
+                        child: Text(
+                          BFormatter.formatDaysOverdue(daysPast),
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: BColors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: BSizes.sm),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      BFormatter.formatPesoCurrency(
-                        item.toBeCollected == 0 ? item.totalCollected : item.toBeCollected,
-                      ),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: item.toBeCollected == 0 ? BColors.success : BColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    if (item.toBeCollected == 0) ...[
-                      const SizedBox(width: 4),
-                      const Icon(Iconsax.tick_circle5, color: BColors.success, size: 18),
                     ],
                   ],
                 ),
               ],
             ),
-
-            const SizedBox(height: BSizes.xs),
-
-            Row(
-              children: [
-                Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    'Due: ${item.dueDate}',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: isOverdue ? BColors.error : BColors.darkGrey,
-                          fontWeight: FontWeight.bold,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+            if (isSelectionMode)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Icon(
+                  isSelected ? Iconsax.tick_circle5 : Iconsax.add_circle,
+                  color: isSelected ? BColors.primary : BColors.darkGrey,
+                  size: 24,
                 ),
-                if (isOverdue) ...[
-                  const SizedBox(width: BSizes.xs),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: BColors.error,
-                      borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-                    ),
-                    child: Text(
-                      BFormatter.formatDaysOverdue(daysPast),
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: BColors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
           ],
         ),
       ),
@@ -188,6 +214,7 @@ class ActivityListTile extends StatelessWidget {
   }
 
   Widget _buildStatusBadge(BuildContext context, String status) {
+    if (status.isEmpty) return const SizedBox.shrink();
     final (bg, fg) = CollectionStatusColors.colorsForAuto(context, status);
     
     return Container(

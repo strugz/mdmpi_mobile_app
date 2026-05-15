@@ -220,6 +220,9 @@ class _ActivityHistoryCard extends StatelessWidget {
       displayCollectorName = UserController.instance.user.value.initials;
     }
 
+    final isOverdue = item?.isOverdue ?? false;
+    final daysPast = item?.daysPastDue ?? 0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: BSizes.sm),
       child: InkWell(
@@ -230,56 +233,147 @@ class _ActivityHistoryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// Header: Date and Collector
+              /// Header: Invoice ID and BP Code + Status Badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(history.date, style: Theme.of(context).textTheme.labelLarge),
-                  Text(
-                    displayCollectorName,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Invoice #${invoiceId ?? item?.id ?? 'Unknown'}',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (item != null)
+                          Text(
+                            'BP: ${item!.bpCode}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: BColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
                   ),
+                  _ActivityHistoryBadge(status: history.status),
+                ],
+              ),
+              const SizedBox(height: BSizes.sm),
+
+              /// Body Row 1: Posted Date + Amount Collected
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Posted: ${item?.postingDate ?? 'N/A'}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: BColors.darkGrey,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (history.totalCollected > 0)
+                    Text(
+                      BFormatter.formatPesoCurrency(history.totalCollected),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: BColors.success,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
                 ],
               ),
               const SizedBox(height: BSizes.xs),
 
-              /// Optional: Account & Invoice Info (for Home Screen)
-              if (accountName != null || invoiceId != null) ...[
-                Text(
-                  '${accountName ?? 'Unknown'} ${invoiceId != null ? '(#$invoiceId)' : ''}',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: BColors.primary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: BSizes.xs),
-              ],
-
-              if (history.totalCollected > 0)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: BSizes.xs),
-                  child: Text(
-                    'Collected: ${BFormatter.formatPesoCurrency(history.totalCollected)}',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: BColors.success,
-                      fontWeight: FontWeight.bold,
+              /// Body Row 2: Due Date + Overdue Tag + Collector Name
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'Due: ${item?.dueDate ?? 'N/A'}',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: isOverdue ? BColors.error : BColors.darkGrey,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isOverdue) ...[
+                          const SizedBox(width: BSizes.xs),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: BColors.error,
+                              borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                            ),
+                            child: Text(
+                              BFormatter.formatDaysOverdue(daysPast),
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: BColors.white,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-              
-              _ActivityHistoryBadge(status: history.status),
-              
-              if (history.remarks.isNotEmpty && history.remarks != 'No remarks') ...[
-                const SizedBox(height: BSizes.xs),
-                Text(
-                  'Remarks: ${history.remarks}',
-                  style: Theme.of(context).textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                  Text(
+                    displayCollectorName,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey, fontSize: 10),
+                  ),
+                ],
+              ),
+              const Divider(height: BSizes.md),
+
+              /// Footer: Timestamp and Remarks
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    history.date,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+                  ),
+                  if (history.remarks.isNotEmpty && history.remarks != 'No remarks')
+                    Expanded(
+                      child: Text(
+                        '  |  ${history.remarks}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          fontSize: 10,
+                          color: BColors.darkerGrey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -295,6 +389,7 @@ class _ActivityHistoryBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (status.isEmpty) return const SizedBox.shrink();
     final (bg, _) = CollectionStatusColors.colorsForAuto(context, status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.sm, vertical: BSizes.xxs),

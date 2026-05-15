@@ -12,7 +12,10 @@ class AccountItemCard extends StatelessWidget {
   final double totalCollected;
   final VoidCallback onTap;
   final VoidCallback onInfoTap;
-  final VoidCallback? onClaimTap; // Added optional claim tap
+  final VoidCallback? onClaimTap;
+  final VoidCallback? onLongPress;
+  final bool isSelected;
+  final bool isSelectionMode;
 
   const AccountItemCard({
     super.key,
@@ -23,6 +26,9 @@ class AccountItemCard extends StatelessWidget {
     required this.onTap,
     required this.onInfoTap,
     this.onClaimTap,
+    this.onLongPress,
+    this.isSelected = false,
+    this.isSelectionMode = false,
   });
 
   @override
@@ -31,12 +37,16 @@ class AccountItemCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.all(BSizes.md),
         decoration: BoxDecoration(
-          color: BColors.white,
+          color: isSelected ? BColors.primary.withOpacity(0.05) : BColors.white,
           borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
-          border: Border.all(color: BColors.grey),
+          border: Border.all(
+            color: isSelected ? BColors.primary : BColors.grey,
+            width: isSelected ? 2 : 1,
+          ),
           boxShadow: [
             BoxShadow(
               color: BColors.black.withOpacity(0.05),
@@ -45,132 +55,147 @@ class AccountItemCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        client.name,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        'Code: ${client.code}',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: BColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: onInfoTap,
-                  icon: const Icon(Iconsax.info_circle, size: 22, color: BColors.primary),
-                  constraints: const BoxConstraints(),
-                  padding: EdgeInsets.zero,
-                ),
-              ],
-            ),
-            const SizedBox(height: BSizes.xs),
-            Row(
-              children: [
-                const Icon(Iconsax.location, size: 16, color: BColors.darkGrey),
-                const SizedBox(width: BSizes.xs),
-                Expanded(
-                  child: Text(
-                    client.address,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: BColors.darkGrey,
-                        ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: BSizes.spaceBtwSections),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Invoices',
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                    Text(
-                      '$invoiceCount invoices',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            client.name,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                    ),
-                    if (onClaimTap != null) ...[
-                      const SizedBox(height: BSizes.md),
-                      SizedBox(
-                        height: 32,
-                        child: OutlinedButton(
-                          onPressed: onClaimTap,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: BSizes.md),
-                            side: const BorderSide(color: BColors.primary),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                            ),
-                          ),
-                          child: Text(
-                            'Claim Account',
-                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          Text(
+                            'Code: ${client.code}',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
                                   color: BColors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
+                    if (!isSelectionMode)
+                      IconButton(
+                        onPressed: onInfoTap,
+                        icon: const Icon(Iconsax.info_circle, size: 22, color: BColors.primary),
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.zero,
+                      ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: BSizes.xs),
+                Row(
                   children: [
-                    Text(
-                      'Total Amount Due',
-                      style: Theme.of(context).textTheme.labelMedium,
+                    const Icon(Iconsax.location, size: 16, color: BColors.darkGrey),
+                    const SizedBox(width: BSizes.xs),
+                    Expanded(
+                      child: Text(
+                        client.address,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: BColors.darkGrey,
+                            ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    Text(
-                      currencyFormat.format(totalAmount),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: BColors.primary,
-                            fontWeight: FontWeight.bold,
+                  ],
+                ),
+                const Divider(height: BSizes.spaceBtwSections),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Invoices',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        Text(
+                          '$invoiceCount invoices',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        if (onClaimTap != null && !isSelectionMode) ...[
+                          const SizedBox(height: BSizes.md),
+                          SizedBox(
+                            height: 32,
+                            child: OutlinedButton(
+                              onPressed: onClaimTap,
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: BSizes.md),
+                                side: const BorderSide(color: BColors.primary),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                                ),
+                              ),
+                              child: Text(
+                                'Claim Account',
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                      color: BColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ),
                           ),
+                        ],
+                      ],
                     ),
-                    const SizedBox(height: BSizes.xs),
-                    Text(
-                      'Total Collected',
-                      style: Theme.of(context).textTheme.labelMedium,
-                    ),
-                    Text(
-                      currencyFormat.format(totalCollected),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: BColors.success,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Total Amount Due',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        Text(
+                          currencyFormat.format(totalAmount),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: BColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: BSizes.xs),
+                        Text(
+                          'Total Collected',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                        Text(
+                          currencyFormat.format(totalCollected),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: BColors.success,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
+            if (isSelectionMode)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Icon(
+                  isSelected ? Iconsax.tick_circle5 : Iconsax.add_circle,
+                  color: isSelected ? BColors.primary : BColors.darkGrey,
+                  size: 24,
+                ),
+              ),
           ],
         ),
       ),
