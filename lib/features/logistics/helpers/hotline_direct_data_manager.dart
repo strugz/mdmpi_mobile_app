@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
@@ -262,7 +263,8 @@ class HotlineDirectDataManager {
             : request.tripTicketNumber,
       );
 
-      print('HEY2: ${jsonEncode(updatedRequest)}');
+      logDebug(
+          'HotlineDirectDataManager.updateRequestStatus: ${jsonEncode(updatedRequest)}');
 
       // Handle signature upload
       final bool signatureWasAdded = newStatus == BTexts.statusDoneDelivery &&
@@ -292,28 +294,12 @@ class HotlineDirectDataManager {
           finalImageBase64.isNotEmpty;
 
       if (imageProofWasAdded) {
-        final isConnectedForUpload =
-            await NetworkManager.instance.isConnected();
-        if (isConnectedForUpload) {
-          try {
-            await ImageRepository.instance.uploadFile(
-              requestId: request.id,
-              base64Image: finalImageBase64,
-              type: 'Proof',
-            );
-          } catch (e) {
-            BLoaders.warningSnackBar(
-              title: 'Upload Failed',
-              message:
-                  'Image proof could not be uploaded. It will be synced when connection is available.',
-            );
-          }
-        } else {
-          BLoaders.warningSnackBar(
-              title: 'No Internet',
-              message:
-                  'Image saved locally. It will be uploaded when internet connection is available.');
-        }
+        await ProofImageOutboxUploader.instance.uploadOrQueue(
+          requestId: request.id,
+          imageLookupKey: request.id,
+          base64Image: finalImageBase64,
+          type: 'Proof',
+        );
       }
 
       if (controller.useLocalStorage.value) {

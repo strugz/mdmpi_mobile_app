@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repos
 import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
@@ -212,30 +213,13 @@ class PullOutDataManager {
             await BImageHelperFunctions.getDeliveryImageAsBase64(
                 newStatus, request.id);
 
-        if (finalImageBase64!.isNotEmpty) {
-          final isConnectedForUpload =
-              await NetworkManager.instance.isConnected();
-
-          if (isConnectedForUpload) {
-            try {
-              await ImageRepository.instance.uploadFile(
-                requestId: request.id,
-                base64Image: finalImageBase64,
-                type: 'Proof',
-              );
-            } catch (e) {
-              BLoaders.warningSnackBar(
-                title: 'Upload Failed',
-                message:
-                    'Image proof could not be uploaded. It will be synced when connection is available.',
-              );
-            }
-          } else {
-            BLoaders.warningSnackBar(
-                title: 'No Internet',
-                message:
-                    'Image saved locally. It will be uploaded when internet connection is available.');
-          }
+        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
+          await ProofImageOutboxUploader.instance.uploadOrQueue(
+            requestId: request.id,
+            imageLookupKey: request.id,
+            base64Image: finalImageBase64,
+            type: 'Proof',
+          );
         }
       }
 
@@ -344,7 +328,8 @@ class PullOutDataManager {
     try {
       await _repository.clearLocalData();
       final results = await _repository.getAll(forceRefresh: true);
-      final pullOutsRequests = results.where((r) => r.formCategoryId == '4').toList();
+      final pullOutsRequests =
+          results.where((r) => r.formCategoryId == '4').toList();
 
       controller.pullOuts.assignAll(pullOutsRequests);
       controller.filterManager.applyFilter(controller.pullOuts.toList());

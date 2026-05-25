@@ -143,6 +143,12 @@ class SettingsScreen extends StatelessWidget {
                           'Review pending or failed receiver signature uploads',
                       onTap: () => Get.toNamed(BRoutes.signatureOutbox),
                     ),
+                    BSettingsMenuTile(
+                      icon: Iconsax.gallery,
+                      title: 'Image Outbox',
+                      subTitle: 'Review pending or failed proof image uploads',
+                      onTap: () => Get.toNamed(BRoutes.imageOutbox),
+                    ),
                   ],
 
                   /// --  Logout Button

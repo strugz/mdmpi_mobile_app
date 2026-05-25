@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/back_load/backload_t
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/address/add_new_address.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/image_outbox_page.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/signature_outbox_page.dart';
 
@@ -34,12 +35,22 @@ class AppRoutes {
     GetPage(name: BRoutes.verifyEmail, page: () => const VerifyEmailScreen()),
     GetPage(name: BRoutes.signIn, page: () => const LoginScreen()),
     GetPage(name: BRoutes.forgetPassword, page: () => const ForgetPassword()),
-    GetPage(name: BRoutes.onBoarding, page: () => const OnBoardingScreen()), // TODO: Make department-specific routes (e.g., logisticsOnBoarding)
-    GetPage(name: BRoutes.request, page: () => const RequestScreen(), binding: RequestBindings()),
+    GetPage(
+        name: BRoutes.onBoarding,
+        page: () =>
+            const OnBoardingScreen()), // TODO: Make department-specific routes (e.g., logisticsOnBoarding)
+    GetPage(
+        name: BRoutes.request,
+        page: () => const RequestScreen(),
+        binding: RequestBindings()),
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
     GetPage(name: BRoutes.pullOutForm, page: () => const PullOutForm()),
-    GetPage(name: BRoutes.localStorageViewer, page: () => const LocalStorageDataViewer()),
-    GetPage(name: BRoutes.signatureOutbox, page: () => const SignatureOutboxPage()),
+    GetPage(
+        name: BRoutes.localStorageViewer,
+        page: () => const LocalStorageDataViewer()),
+    GetPage(
+        name: BRoutes.signatureOutbox, page: () => const SignatureOutboxPage()),
+    GetPage(name: BRoutes.imageOutbox, page: () => const ImageOutboxPage()),
     // BackLoad receives the StandardDeliveryModel via Get.arguments
     GetPage(
       name: BRoutes.backLoad,

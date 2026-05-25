@@ -17,6 +17,7 @@ import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -361,6 +362,15 @@ class StandardDeliveryDataManager {
 
     final isConnectedForUpload = await NetworkManager.instance.isConnected();
     if (!isConnectedForUpload) {
+      if (imageProofWasAdded) {
+        await ProofImageOutboxUploader.instance.queueOnly(
+          requestId: request.id,
+          imageLookupKey: request.id,
+          base64Image: finalImageBase64,
+          type: 'Proof',
+          apiStatus: 'Pending',
+        );
+      }
       BLoaders.warningSnackBar(
         title: 'No Internet',
         message:
@@ -386,19 +396,12 @@ class StandardDeliveryDataManager {
     }
 
     if (imageProofWasAdded) {
-      try {
-        await ImageRepository.instance.uploadFile(
-          requestId: request.id,
-          base64Image: finalImageBase64,
-          type: 'Proof',
-        );
-      } catch (e) {
-        BLoaders.warningSnackBar(
-          title: 'Upload Failed',
-          message:
-              'Image proof could not be uploaded. It will be synced when connection is available.',
-        );
-      }
+      await ProofImageOutboxUploader.instance.uploadOrQueue(
+        requestId: request.id,
+        imageLookupKey: request.id,
+        base64Image: finalImageBase64,
+        type: 'Proof',
+      );
     }
   }
 

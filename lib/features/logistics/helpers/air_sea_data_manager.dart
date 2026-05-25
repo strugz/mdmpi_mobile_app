@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/data/repositories/air_sea/air_sea_repository.da
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_status_stages_model.dart';
@@ -559,29 +560,16 @@ class AirSeaDataManager {
       return;
     }
 
-    final isConnectedForUpload = await NetworkManager.instance.isConnected();
-    if (!isConnectedForUpload) {
-      if (showOfflineWarning && offlineMessage != null) {
-        BLoaders.warningSnackBar(
-          title: 'No Internet',
-          message: offlineMessage,
-        );
-      }
-      return;
-    }
-
-    try {
-      await ImageRepository.instance.uploadFile(
-        requestId: requestId,
-        base64Image: imageBase64,
-        type: type,
-      );
-    } catch (e) {
-      BLoaders.warningSnackBar(
-        title: 'Upload Failed',
-        message: uploadFailureMessage,
-      );
-    }
+    await ProofImageOutboxUploader.instance.uploadOrQueue(
+      requestId: requestId,
+      imageLookupKey: imageLookupKey,
+      base64Image: imageBase64,
+      type: type,
+      uploadFailureMessage: uploadFailureMessage,
+      offlineMessage: offlineMessage ??
+          'Image saved locally. It will be uploaded when internet connection is available.',
+      showOfflineWarning: showOfflineWarning,
+    );
   }
 
   /// Cancels an Air/Sea request with remarks via API.

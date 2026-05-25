@@ -81,6 +81,19 @@ Future<void> createAllTables(Database db) async {
     )
   ''');
 
+  // Table: a_tblRequestImageOutbox
+  await db.execute('''
+    CREATE TABLE a_tblRequestImageOutbox (
+      RequestID TEXT NOT NULL,
+      ImageType TEXT NOT NULL,
+      ImageLookupKey TEXT NOT NULL,
+      RequestImage TEXT,
+      ApiStatus TEXT DEFAULT 'Pending',
+      CapturedAt TEXT,
+      UNIQUE(RequestID, ImageType, ImageLookupKey)
+    )
+  ''');
+
   // Table: a_tblRequestRemarks
   await db.execute('''
     CREATE TABLE  a_tblRequestRemarks (
@@ -307,5 +320,4 @@ Future<void> createAllTables(Database db) async {
       created_at TEXT NOT NULL
     )
   ''');
-
 }

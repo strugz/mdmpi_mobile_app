@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
@@ -33,7 +34,8 @@ import '../../../data/repositories/image/image_repository.dart';
 /// - Uses PullOutRepository but filters for Stock Receive category only
 class StockReceiveDataManager {
   final PullOutRepository _repository = Get.find<PullOutRepository>();
-  final CancelRemarksRepository _cancelRemarksRepository = Get.find<CancelRemarksRepository>();
+  final CancelRemarksRepository _cancelRemarksRepository =
+      Get.find<CancelRemarksRepository>();
   final MessagingController _messageController =
       Get.find<MessagingController>();
 
@@ -87,7 +89,8 @@ class StockReceiveDataManager {
       if (controller.formState.pullOutDateController.text.trim().isEmpty) {
         controller.errorMessage.value = 'Please pick a stock receive date.';
         BLoaders.errorSnackBar(
-            title: 'Stock Receive Date', message: 'Please pick a stock receive date.');
+            title: 'Stock Receive Date',
+            message: 'Please pick a stock receive date.');
         return;
       }
 
@@ -219,30 +222,13 @@ class StockReceiveDataManager {
             await BImageHelperFunctions.getDeliveryImageAsBase64(
                 newStatus, request.id);
 
-        if (finalImageBase64!.isNotEmpty) {
-          final isConnectedForUpload =
-              await NetworkManager.instance.isConnected();
-
-          if (isConnectedForUpload) {
-            try {
-              await ImageRepository.instance.uploadFile(
-                requestId: request.id,
-                base64Image: finalImageBase64,
-                type: 'Proof',
-              );
-            } catch (e) {
-              BLoaders.warningSnackBar(
-                title: 'Upload Failed',
-                message:
-                    'Image proof could not be uploaded. It will be synced when connection is available.',
-              );
-            }
-          } else {
-            BLoaders.warningSnackBar(
-                title: 'No Internet',
-                message:
-                    'Image saved locally. It will be uploaded when internet connection is available.');
-          }
+        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
+          await ProofImageOutboxUploader.instance.uploadOrQueue(
+            requestId: request.id,
+            imageLookupKey: request.id,
+            base64Image: finalImageBase64,
+            type: 'Proof',
+          );
         }
       }
 
@@ -267,8 +253,8 @@ class StockReceiveDataManager {
   }
 
   /// Cancel a Stock Receive request with remarks via API.
-  Future<void> cancelRequestWithRemarks(
-      PullOutModel request, String remarks, String user, dynamic controller) async {
+  Future<void> cancelRequestWithRemarks(PullOutModel request, String remarks,
+      String user, dynamic controller) async {
     BFullScreenLoader.openLoadingDialog(
         'Saving on process...', BImages.docerAnimation);
 
@@ -278,7 +264,8 @@ class StockReceiveDataManager {
     }
 
     try {
-      await _repository.cancelPullOutAPI(request.id, remarks, user, silent: true);
+      await _repository.cancelPullOutAPI(request.id, remarks, user,
+          silent: true);
       await _messageController.sendSmsMessage(
         BTexts.statusCancelled,
         request,
@@ -303,7 +290,8 @@ class StockReceiveDataManager {
   ///
   /// [controller] The Stock Receive controller to update with fetched data
   /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
-  Future<void> fetchStockReceives(dynamic controller, [bool useLocalStorage = true]) async {
+  Future<void> fetchStockReceives(dynamic controller,
+      [bool useLocalStorage = true]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -312,26 +300,30 @@ class StockReceiveDataManager {
 
       if (!useLocalStorage) {
         // Force API fetch by passing forceRefresh: true
-        logDebug('StockReceiveDataManager: Fetching from API (useLocalStorage=false, forcing refresh)');
+        logDebug(
+            'StockReceiveDataManager: Fetching from API (useLocalStorage=false, forcing refresh)');
         results = await _repository.getAll(forceRefresh: true);
       } else {
         logDebug('StockReceiveDataManager: Fetching from local DB first');
         results = await _repository.getLocalPullOuts();
         if (results.isEmpty) {
-          logDebug('StockReceiveDataManager: Local DB empty, fetching from API');
+          logDebug(
+              'StockReceiveDataManager: Local DB empty, fetching from API');
           results = await _repository.getAll();
         } else {
-          logDebug('StockReceiveDataManager: Loaded ${results.length} items from local DB');
+          logDebug(
+              'StockReceiveDataManager: Loaded ${results.length} items from local DB');
         }
       }
 
       // Filter for Stock Receive category only (formCategoryId = '7')
-      final stockReceiveRequests = results
-          .where((r) => r.formCategoryId == '9')
-          .toList();
+      final stockReceiveRequests =
+          results.where((r) => r.formCategoryId == '9').toList();
 
-      (controller.stockReceives as RxList<PullOutModel>).assignAll(stockReceiveRequests);
-      logDebug('StockReceiveDataManager: Assigned ${stockReceiveRequests.length} Stock Receive requests to controller');
+      (controller.stockReceives as RxList<PullOutModel>)
+          .assignAll(stockReceiveRequests);
+      logDebug(
+          'StockReceiveDataManager: Assigned ${stockReceiveRequests.length} Stock Receive requests to controller');
 
       controller.filterManager.applyFilter(controller.stockReceives.toList());
     } catch (e) {
@@ -356,9 +348,11 @@ class StockReceiveDataManager {
 
     try {
       final results = await _repository.getAll(forceRefresh: true);
-      final stockReceiveRequests = results.where((r) => r.formCategoryId == '9').toList();
+      final stockReceiveRequests =
+          results.where((r) => r.formCategoryId == '9').toList();
 
-      (controller.stockReceives as RxList<PullOutModel>).assignAll(stockReceiveRequests);
+      (controller.stockReceives as RxList<PullOutModel>)
+          .assignAll(stockReceiveRequests);
       controller.filterManager.applyFilter(controller.stockReceives.toList());
 
       BLoaders.successSnackBar(
@@ -374,7 +368,8 @@ class StockReceiveDataManager {
   }
 
   /// Insert a Stock Receive model and refresh controller list.
-  Future<void> insertStockReceiveModel(PullOutModel model, dynamic controller) async {
+  Future<void> insertStockReceiveModel(
+      PullOutModel model, dynamic controller) async {
     if (controller.isSaving.value) return;
     controller.isSaving.value = true;
     controller.errorMessage.value = null;
@@ -391,7 +386,6 @@ class StockReceiveDataManager {
     }
   }
 
-
   /// Load item and form categories and populate the controller caches.
   /// Sets default category selections to Stock Receive.
   Future<void> loadCategories(dynamic controller) async {
@@ -404,8 +398,9 @@ class StockReceiveDataManager {
       if (controller.formState.formCategoryController.text.trim().isEmpty &&
           controller.formState.formCategories.isNotEmpty) {
         final defaultForm = controller.formState.formCategories.firstWhere(
-          (e) => e.name.toLowerCase().contains('stock') ||
-                 e.name.toLowerCase().contains('receive'),
+          (e) =>
+              e.name.toLowerCase().contains('stock') ||
+              e.name.toLowerCase().contains('receive'),
           orElse: () => controller.formState.formCategories.first,
         );
         controller.formState.formCategoryController.text = defaultForm.id;
@@ -427,12 +422,14 @@ class StockReceiveDataManager {
   /// Fetch cancel remarks for a Stock Receive request from CancelRemarksRepository.
   Future<CancelRemarksModel> fetchCancelRemarks(String requestId) async {
     try {
-      logDebug('🔍 StockReceiveDataManager: Fetching cancel remarks for: $requestId');
+      logDebug(
+          '🔍 StockReceiveDataManager: Fetching cancel remarks for: $requestId');
       final result = await _cancelRemarksRepository.getCancelRemarksByRequestId(
         requestId,
         module: RequestModule.pullOut,
       );
-      logDebug('✅ StockReceiveDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
+      logDebug(
+          '✅ StockReceiveDataManager: API returned remarks: "${result.remarks}" date: "${result.date}"');
       return result;
     } catch (e) {
       logDebug('❌ StockReceiveDataManager.fetchCancelRemarks FAILED: $e');
@@ -440,4 +437,3 @@ class StockReceiveDataManager {
     }
   }
 }
-

@@ -17,6 +17,7 @@ import 'dao/air_sea/air_sea_dao.dart';
 import 'dao/pull_out/pull_out_dao.dart';
 import 'dao/common/document_reference_dao.dart';
 import 'dao/common/signature_dao.dart';
+import 'dao/common/image_outbox_dao.dart';
 import 'dao/common/backload_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
@@ -40,6 +41,7 @@ class DatabaseHelper {
   // Cached DAO instances
   RequestDao? _requestDao;
   SignatureDao? _signatureDao;
+  ImageOutboxDao? _imageOutboxDao;
   PickUpDao? _pickUpDao;
   AirSeaDao? _airSeaDao;
   PullOutDao? _pullOutDao;
@@ -66,7 +68,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 15,
+      version: 16,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -103,6 +105,7 @@ class DatabaseHelper {
     // already includes the column; on upgrade we ALTER only if missing.
     await _addColumnIfNotExists(db, 'a_tblRequestReceiverSignature',
         'ApiStatus', "TEXT DEFAULT 'Pending'");
+    await _ensureImageOutboxTable(db);
   }
 
   /// Drop cache-backed tables and recreate from the canonical schema.
@@ -114,6 +117,7 @@ class DatabaseHelper {
       'a_tblRequestDocumentReference',
       'a_tblRequestReceiverSignature',
       'a_tblRequestImage',
+      'a_tblRequestImageOutbox',
       'a_tblRequestRemarks',
       'ACCMST_',
       'a_tblMobile',
@@ -142,6 +146,20 @@ class DatabaseHelper {
         department TEXT NOT NULL,
         contact_number TEXT NOT NULL,
         created_at TEXT NOT NULL
+      )
+    ''');
+  }
+
+  Future<void> _ensureImageOutboxTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS a_tblRequestImageOutbox (
+        RequestID TEXT NOT NULL,
+        ImageType TEXT NOT NULL,
+        ImageLookupKey TEXT NOT NULL,
+        RequestImage TEXT,
+        ApiStatus TEXT DEFAULT 'Pending',
+        CapturedAt TEXT,
+        UNIQUE(RequestID, ImageType, ImageLookupKey)
       )
     ''');
   }
@@ -176,6 +194,13 @@ class DatabaseHelper {
     final db = await database;
     _signatureDao = SignatureDao(db);
     return _signatureDao!;
+  }
+
+  Future<ImageOutboxDao> get imageOutboxDao async {
+    if (_imageOutboxDao != null) return _imageOutboxDao!;
+    final db = await database;
+    _imageOutboxDao = ImageOutboxDao(db);
+    return _imageOutboxDao!;
   }
 
   Future<DocumentReferenceDao> get documentReferenceDao async {
@@ -335,6 +360,7 @@ class DatabaseHelper {
     await db.delete('a_tblRequestDocumentReference');
     await db.delete('a_tblRequestReceiverSignature');
     await db.delete('a_tblRequestImage');
+    await db.delete('a_tblRequestImageOutbox');
   }
 
   // --- Signature/image helpers delegated to RequestDao ---
@@ -402,6 +428,48 @@ class DatabaseHelper {
   Future<int> deleteReceiverSignatureByRequestId(dynamic requestID) async {
     final dao = await signatureDao;
     return await dao.deleteReceiverSignatureByRequestId(requestID);
+  }
+
+  Future<void> insertImageOutboxItem({
+    required String requestId,
+    required String imageType,
+    required String imageLookupKey,
+    required String imageBase64,
+    String apiStatus = 'Pending',
+    String? capturedAt,
+  }) async {
+    final dao = await imageOutboxDao;
+    return dao.insertImageOutboxItem(
+      requestId: requestId,
+      imageType: imageType,
+      imageLookupKey: imageLookupKey,
+      imageBase64: imageBase64,
+      apiStatus: apiStatus,
+      capturedAt: capturedAt,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingImageOutboxItems() async {
+    final dao = await imageOutboxDao;
+    return dao.getPendingImageOutboxItems();
+  }
+
+  Future<int> deleteImageOutboxItem({
+    required String requestId,
+    required String imageType,
+    required String imageLookupKey,
+  }) async {
+    final dao = await imageOutboxDao;
+    return dao.deleteImageOutboxItem(
+      requestId: requestId,
+      imageType: imageType,
+      imageLookupKey: imageLookupKey,
+    );
+  }
+
+  Future<int> clearImageOutbox() async {
+    final dao = await imageOutboxDao;
+    return dao.clearImageOutbox();
   }
 
   // --- CNTMST helpers (delegated) ---
@@ -505,6 +573,8 @@ class DatabaseHelper {
     _database = null;
 
     _requestDao = null;
+    _signatureDao = null;
+    _imageOutboxDao = null;
     _documentReferenceDao = null;
     _remarksDao = null;
     _clientDao = null;
@@ -529,6 +599,8 @@ class DatabaseHelper {
 
       // Clear all cached DAOs
       _requestDao = null;
+      _signatureDao = null;
+      _imageOutboxDao = null;
       _pickUpDao = null;
       _airSeaDao = null;
       _documentReferenceDao = null;

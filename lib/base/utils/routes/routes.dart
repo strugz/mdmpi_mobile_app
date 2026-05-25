@@ -1,5 +1,5 @@
 //  routes.dart
-class BRoutes{
+class BRoutes {
   static const home = '/';
   static const store = '/store';
   static const favourites = '/favourites';
@@ -31,6 +31,7 @@ class BRoutes{
   // Data test routes
   static const localStorageViewer = '/local-storage-viewer';
   static const signatureOutbox = '/signature-outbox';
+  static const imageOutbox = '/image-outbox';
   // Back load routes
   static const backLoad = '/back-load';
 }
