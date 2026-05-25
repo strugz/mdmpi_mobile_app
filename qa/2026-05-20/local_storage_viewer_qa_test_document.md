@@ -1,0 +1,40 @@
+# Local Storage Viewer – QA Test Document
+
+## Module Overview
+
+| Field | Details |
+|---|---|
+| Module Name | Local Storage Viewer |
+| Feature Description | Validate the developer-facing Local Storage Viewer, including table selection, row loading, row count display, refresh behavior, empty-state handling, per-row expansion, row deletion, table clearing, and general UI stability. |
+| Application Stack | Flutter, Dart, Local Database / Mobile Application |
+| Target Platforms | Android, iOS |
+| Test Document Type | Manual QA Test Specification with automation-ready IDs |
+| Default Execution Status | Not Tested |
+| Document Date | 2026-05-20 |
+| Access Scope Note | This is a developer-facing tool and should remain hidden from production users. |
+
+## Detailed Test Cases
+
+| Module Name | Feature Description | Test Scenario | Test Case ID | Preconditions | Testing Steps | Expected Result | Actual Result | Status (Pass/Fail) | Severity Level | Priority | Device/Platform Tested | Tester Name | Test Date | Remarks/Notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Positive testing – open Local Storage Viewer from Settings developer tools | `LSV-001` | Debug/developer build is installed; user can access Settings developer tools. | 1. Open the Settings screen.<br>2. Open the Developer Tools section.<br>3. Tap **Local Storage Viewer**.<br>4. Review the loaded screen. | Local Storage Viewer opens successfully with the expected title, back arrow, table selector, row count area, and action icons. | `TBD during execution` | Not Tested | Critical | High | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Mark Blocked if testing on a non-debug build where the tool is intentionally hidden. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Functional testing – table dropdown lists available tables and switches selection | `LSV-002` | Local Storage Viewer is open. | 1. Open the table dropdown.<br>2. Review the available table names.<br>3. Select multiple different tables in sequence.<br>4. Observe loading behavior and row count changes. | Dropdown lists available tables correctly; selecting a table refreshes the view and updates the selected-table state and row count. | `TBD during execution` | Not Tested | Critical | High | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Confirms table selection flow. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | UI/data testing – row count display and refresh action | `LSV-003` | At least one table has data or can be refreshed. | 1. Note the displayed row count for the selected table.<br>2. Tap the refresh icon.<br>3. Observe loading state and updated count. | Refresh reloads the selected table data successfully, and the displayed total row count matches the visible dataset state. | `TBD during execution` | Not Tested | Major | High | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Useful after modifying local DB via other modules. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Empty-state testing – table with no data | `LSV-004` | A table with zero rows is available, or an existing table can be cleared first. | 1. Select a table with no rows.<br>2. Observe the main content area. | The tool displays a clear empty state such as “No data in [table]” without crash or broken layout. | `TBD during execution` | Not Tested | Medium | Medium | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Good baseline for freshly installed/debug environments. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Functional testing – row expansion and field visibility | `LSV-005` | Selected table contains one or more rows. | 1. Open a table containing data.<br>2. Expand one or more row cards.<br>3. Review field keys and values within the expanded content. | Each row displays a readable summary, expands successfully, and shows field key/value pairs without truncation-related data loss. | `TBD during execution` | Not Tested | Major | Medium | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Confirm long text remains selectable/readable. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Delete-flow testing – single-row swipe delete with confirm/cancel | `LSV-006` | Selected table contains at least one row and supports row deletion. | 1. Swipe a row to reveal delete action.<br>2. Tap/carry through the delete gesture.<br>3. In the confirmation dialog, first tap **Cancel**.<br>4. Repeat and confirm **Delete**. | Cancel keeps the row intact; confirming delete removes the row, shows success feedback, and refreshes the list accordingly. | `TBD during execution` | Not Tested | Critical | High | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Validate row count updates after deletion. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Destructive-action testing – Clear Table action with confirm/cancel | `LSV-007` | Selected table is visible; preferably test with non-critical QA data. | 1. Tap the app-bar **Clear Table** icon.<br>2. Review the confirmation dialog text.<br>3. Tap **Cancel**.<br>4. Repeat and confirm **Clear**.<br>5. Observe the resulting table view. | Cancel leaves the table unchanged; confirm clears all rows from the selected table, shows success feedback, and updates the screen to the empty state. | `TBD during execution` | Not Tested | Critical | High | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Use only safe QA data because this action is destructive. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Error-handling testing – unsupported deletion or DB operation failure | `LSV-008` | A problematic table or failure condition can be simulated, or a table without a detectable primary key can be tested if present. | 1. Attempt row deletion on a table/state that cannot be deleted cleanly.<br>2. Attempt clear or refresh during a DB issue if reproducible.<br>3. Observe feedback and app stability. | Tool remains stable and surfaces clear error feedback instead of crashing or freezing when DB operations fail. | `TBD during execution` | Not Tested | Major | Medium | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Mark Blocked if safe failure simulation is unavailable. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | UI testing – scrolling, readability, and theme compatibility | `LSV-009` | Tool is available on Android and iOS devices with data loaded. | 1. Scroll through a long table list.<br>2. Expand multiple rows with long values.<br>3. Review light/dark mode if supported. | Scrolling remains smooth; row cards stay readable; expanded content is visible; theme changes do not create unreadable sections. | `TBD during execution` | Not Tested | Medium | Medium | Android phone, iPhone | `[Tester Name]` | `[YYYY-MM-DD]` | Particularly useful for tables with large rows or signatures/images metadata. |
+| Local Storage Viewer | Developer tool for SQLite table inspection and cleanup | Regression testing – repeated table switching, deletion, and refresh cycles | `LSV-010` | Tool is open and multiple tables are available. | 1. Switch among several tables repeatedly.<br>2. Refresh data multiple times.<br>3. Delete rows or clear a table where safe.<br>4. Observe stability over an extended session. | Tool remains responsive and stable; no stale data, duplicate rows, navigation issues, or crashes occur after repeated operations. | `TBD during execution` | Not Tested | Major | Medium | Android 13+, iOS 16+ | `[Tester Name]` | `[YYYY-MM-DD]` | Good regression case after local DB or debug-tool changes. |
+
+## Summary
+
+| Summary Metric | Count |
+|---|---:|
+| Total Test Cases | 10 |
+| Passed | 0 |
+| Failed | 0 |
+| Blocked | 0 |
+| Not Tested | 10 |
+
