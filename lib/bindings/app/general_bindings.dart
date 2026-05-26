@@ -86,7 +86,7 @@ class GeneralBindings extends Bindings {
     // Core Services
     // ========================================================================
     Get.put(NetworkManager());
-    Get.put(WebSocketNotificationController());
+    Get.lazyPut(() => WebSocketNotificationController(), fenix: true);
     Get.put(MessagingController());
     // UserController must be registered after repositories are available.
 

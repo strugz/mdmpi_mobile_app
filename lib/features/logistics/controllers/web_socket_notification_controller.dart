@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
-import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/status.dart' as status;
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../notification.dart';
 import '../models/combined_message_model.dart';
 import '../models/notification_model.dart';
 import '../models/rider_location_model.dart';
+import 'web_socket_connection_config.dart';
 
 typedef NotificationCallback = void Function(NotificationModel notification);
 
@@ -15,15 +18,20 @@ class WebSocketNotificationController extends GetxController {
   // Provides a static getter to access the instance of WebSocketNotificationController.
   static WebSocketNotificationController get instance => Get.find();
 
+  WebSocketNotificationController({
+    WebSocketChannelFactory? channelFactory,
+  }) : _channelFactory = channelFactory ?? WebSocketConnectionConfig.connect;
+
   final message = ''.obs;
   final isConnected = false.obs;
   final connectionAttempted = false.obs;
   final isSender = false.obs;
+  final connectionState = WebSocketConnectionState.disconnected.obs;
 
-  IOWebSocketChannel? _channel;
+  final WebSocketChannelFactory _channelFactory;
+  WebSocketChannel? _channel;
   Timer? _reconnectTimer;
-  final String _webSocketUrl =
-      'wss://inventory.mdmpi.com.ph/api2/ws?apiKey=mdmpiIMSmdmpiIMSmdmpiIMS'; // Replace with your actual URL
+  bool _intentionalDisconnect = false;
 
   NotificationCallback? _onNotificationReceived;
 
@@ -41,29 +49,39 @@ class WebSocketNotificationController extends GetxController {
 
   // Establishes a WebSocket connection to the specified URL.
   // It handles connection success, incoming messages, errors, and disconnections.
-  void connect() {
-    if (isConnected.value || _channel != null) {
+  Future<void> connect() async {
+    if (_channel != null ||
+        connectionState.value == WebSocketConnectionState.connecting ||
+        connectionState.value == WebSocketConnectionState.connected) {
       return;
     }
+
+    _intentionalDisconnect = false;
+    _cancelReconnectTimer();
     connectionAttempted.value = true;
+    connectionState.value = WebSocketConnectionState.connecting;
     try {
-      _channel = IOWebSocketChannel.connect(Uri.parse(_webSocketUrl));
-      isConnected.value =
-      true; // Optimistically set to true, listen stream will confirm
+      final channel = _channelFactory(WebSocketConnectionConfig.endpoint);
+      _channel = channel;
+      await channel.ready;
+      if (_intentionalDisconnect ||
+          connectionState.value == WebSocketConnectionState.closing) {
+        await channel.sink.close(status.goingAway);
+        return;
+      }
 
-      _channel!.stream.listen(
-            (data) {
+      isConnected.value = true;
+      connectionState.value = WebSocketConnectionState.connected;
+
+      channel.stream.listen(
+        (data) {
           message.value = data.toString();
-          isConnected.value = true; // Ensure isConnected is true on data
-          _cancelReconnectTimer(); // Cancel timer if connection is successful
+          isConnected.value = true;
+          connectionState.value = WebSocketConnectionState.connected;
+          _cancelReconnectTimer();
 
-          // 1. Decode the JSON string
-          // Assuming 'data' is a JSON string. If it's bytes, you might need  utf8.decode(data) first.
           final Map<String, dynamic> jsonData = jsonDecode(data);
-
-          // 2. Pass the decoded Map to your fromJson factory method
           final combinedMessage = NotificationModel.fromJson(jsonData);
-          // Process the message and show a notification
           if (!message.value.contains('location_update')) {
             if (isSender.value != true) {
               ShowLocalNotification().showNotification(
@@ -76,19 +94,28 @@ class WebSocketNotificationController extends GetxController {
         },
         onDone: () {
           isConnected.value = false;
-          _channel = null;
-          _scheduleReconnect();
+          if (identical(_channel, channel)) {
+            _channel = null;
+          }
+          connectionState.value = WebSocketConnectionState.disconnected;
+          if (!_intentionalDisconnect) _scheduleReconnect();
         },
         onError: (error) {
+          logDebug('WebSocketNotification: Stream error: $error');
           isConnected.value = false;
-          _channel = null;
-          _scheduleReconnect();
+          if (identical(_channel, channel)) {
+            _channel = null;
+          }
+          connectionState.value = WebSocketConnectionState.disconnected;
+          if (!_intentionalDisconnect) _scheduleReconnect();
         },
         cancelOnError: true,
       );
     } catch (e) {
+      logDebug('WebSocketNotification: Connection failed: $e');
       isConnected.value = false;
       _channel = null;
+      connectionState.value = WebSocketConnectionState.disconnected;
       _scheduleReconnect();
     }
   }
@@ -97,11 +124,10 @@ class WebSocketNotificationController extends GetxController {
   // This is typically called when the connection is lost or fails.
   void _scheduleReconnect() {
     if (_reconnectTimer?.isActive ?? false) _reconnectTimer!.cancel();
-    // Don't attempt to reconnect if the controller is already closed
-    if (isClosed) return;
-    _reconnectTimer = Timer(const Duration(seconds: 5), () {
+    if (isClosed || _intentionalDisconnect) return;
+    connectionState.value = WebSocketConnectionState.reconnecting;
+    _reconnectTimer = Timer(WebSocketConnectionConfig.reconnectDelay, () {
       if (!isConnected.value && !isClosed) {
-        // Check again before connecting
         connect();
       }
     });
@@ -128,12 +154,12 @@ class WebSocketNotificationController extends GetxController {
     if (_channel != null && isConnected.value) {
       isSender.value = true;
       WebSocketCombinedMessageModel combinedMessage =
-      WebSocketCombinedMessageModel(
+          WebSocketCombinedMessageModel(
         message: 'Notification', // Or a relevant type for notifications
         notificationUpdate: notification,
         // Assuming locationUpdate can be null or you have an empty state for it
         locationUpdate:
-        RiderLocationModel.empty(), // Or null, depending on your model
+            RiderLocationModel.empty(), // Or null, depending on your model
       );
 
       // It's generally more direct to encode the object you just created
@@ -142,7 +168,7 @@ class WebSocketNotificationController extends GetxController {
     } else {
       // Attempt to connect if not already connected.
       if (!isConnected.value) {
-        connect(); // Attempt to establish a new connection.
+        connect();
       }
 
       // Schedule a retry after a short delay to allow the connection to establish.
@@ -166,10 +192,13 @@ class WebSocketNotificationController extends GetxController {
   void disconnect() {
     BLoaders.warningSnackBar(
         title: 'Notification', message: 'Notification Disconnected.');
+    _intentionalDisconnect = true;
+    connectionState.value = WebSocketConnectionState.closing;
     _cancelReconnectTimer();
-    _channel?.sink.close();
+    _channel?.sink.close(status.goingAway);
     _channel = null;
     isConnected.value = false;
+    connectionState.value = WebSocketConnectionState.disconnected;
   }
 
   // Called when the controller is closed. It ensures the WebSocket connection is disconnected.

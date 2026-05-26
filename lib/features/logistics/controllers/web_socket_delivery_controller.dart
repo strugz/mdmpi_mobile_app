@@ -10,12 +10,21 @@ import 'package:web_socket_channel/status.dart' as status; // For status codes
 import '../models/rider_location_model.dart'; // Assuming this path is correct
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
+import 'web_socket_connection_config.dart';
+
 class WebSocketDeliveryController extends GetxController {
   static WebSocketDeliveryController get instance => Get.find();
 
-  late WebSocketChannel channel; // Make nullable for better state management
+  WebSocketDeliveryController({
+    WebSocketChannelFactory? channelFactory,
+  }) : _channelFactory = channelFactory ?? WebSocketConnectionConfig.connect;
+
+  WebSocketChannel? channel;
+  final WebSocketChannelFactory _channelFactory;
   final message = ''.obs; // For generic messages, if needed
   final isConnected = false.obs;
+  final connectionState = WebSocketConnectionState.disconnected.obs;
+  bool _intentionalDisconnect = false;
 
   // Specific to your delivery use case
   final riderLocations = RxMap<String, LatLng>();
@@ -48,18 +57,31 @@ class WebSocketDeliveryController extends GetxController {
     connectWebSocket();
   }
 
-  void connectWebSocket() async {
-    isConnected.value = true;
+  Future<void> connectWebSocket() async {
+    if (channel != null ||
+        connectionState.value == WebSocketConnectionState.connecting ||
+        connectionState.value == WebSocketConnectionState.connected) {
+      return;
+    }
+
+    connectionState.value = WebSocketConnectionState.connecting;
+    _intentionalDisconnect = false;
     try {
-      channel = WebSocketChannel.connect(
-        Uri.parse(
-            'wss://inventory.mdmpi.com.ph/api2/ws?apiKey=mdmpiIMSmdmpiIMSmdmpiIMS'),
-      );
-      channel.stream.listen(
+      final activeChannel = _channelFactory(WebSocketConnectionConfig.endpoint);
+      channel = activeChannel;
+      await activeChannel.ready;
+      if (_intentionalDisconnect ||
+          connectionState.value == WebSocketConnectionState.closing) {
+        await activeChannel.sink.close(status.goingAway);
+        return;
+      }
+
+      isConnected.value = true;
+      connectionState.value = WebSocketConnectionState.connected;
+      activeChannel.stream.listen(
         (data) {
-          if (!isConnected.value) {
-            isConnected.value = true;
-          }
+          isConnected.value = true;
+          connectionState.value = WebSocketConnectionState.connected;
           try {
             handleIncomingData(data);
           } catch (e) {
@@ -87,19 +109,28 @@ class WebSocketDeliveryController extends GetxController {
             }
           }
           isConnected.value = false;
+          if (identical(channel, activeChannel)) {
+            channel = null;
+          }
+          connectionState.value = WebSocketConnectionState.disconnected;
           // Consider a brief delay before reconnecting to avoid tight loops on persistent errors.
-          // reconnectWebSocket();
+          if (!_intentionalDisconnect) reconnectWebSocket();
         },
         onDone: () {
           isConnected.value = false;
+          if (identical(channel, activeChannel)) {
+            channel = null;
+          }
+          connectionState.value = WebSocketConnectionState.disconnected;
           // If the closure was unexpected, you might want to attempt reconnection.
-          if (channel.closeCode != status.normalClosure &&
-              channel.closeCode !=
+          if (!_intentionalDisconnect &&
+              activeChannel.closeCode != status.normalClosure &&
+              activeChannel.closeCode !=
                   status.goingAway && /* add other normal codes if any */
-              channel.closeCode !=
+              activeChannel.closeCode !=
                   null /* Ensure there's a close code to check */) {
             reconnectWebSocket(); // Your existing reconnect logic
-          } else if (channel.closeCode == null && isConnected.value) {
+          } else if (activeChannel.closeCode == null) {
             // This might happen if the stream is cancelled before a close frame is received
             logDebug(
                 'WebSocketDelivery: Stream done, but no close code. Might be an abrupt closure or client-side cancellation. Ensuring isConnected is false.');
@@ -112,8 +143,11 @@ class WebSocketDeliveryController extends GetxController {
             true, // Good: cancels the subscription on the first error.
       );
     } catch (e) {
+      logDebug('WebSocketDelivery: Connection failed: $e');
       isConnected.value = false;
-      reconnectWebSocket();
+      channel = null;
+      connectionState.value = WebSocketConnectionState.disconnected;
+      if (!_intentionalDisconnect) reconnectWebSocket();
     }
   }
 
@@ -194,20 +228,26 @@ class WebSocketDeliveryController extends GetxController {
   }
 
   void reconnectWebSocket() async {
-    if (isConnected.value && channel.closeCode == null) {
+    if (isConnected.value ||
+        connectionState.value == WebSocketConnectionState.reconnecting ||
+        connectionState.value == WebSocketConnectionState.connecting ||
+        _intentionalDisconnect) {
       return;
     }
-    channel.sink.close(status.goingAway).catchError((e) {
+    connectionState.value = WebSocketConnectionState.reconnecting;
+    channel?.sink.close(status.goingAway).catchError((e) {
       logDebug(
           "WebSocketDelivery: Error closing old channel sink during reconnect: $e");
     });
-    await Future.delayed(const Duration(seconds: 5));
+    channel = null;
+    await Future.delayed(WebSocketConnectionConfig.reconnectDelay);
+    if (_intentionalDisconnect || isClosed) return;
     connectWebSocket();
   }
 
   void sendMessage(String msg) {
-    if (isConnected.value) {
-      channel.sink.add(msg);
+    if (isConnected.value && channel != null) {
+      channel!.sink.add(msg);
     } else {
       logDebug(
           'WebSocketDelivery: Cannot send message. Not connected or channel is null.');
@@ -216,11 +256,15 @@ class WebSocketDeliveryController extends GetxController {
 
   @override
   void onClose() {
+    _intentionalDisconnect = true;
+    connectionState.value = WebSocketConnectionState.closing;
     isConnected.value = false; // Set state before closing
-    channel.sink.close(status.goingAway).catchError((e) {
+    channel?.sink.close(status.goingAway).catchError((e) {
       logDebug(
           "WebSocketDelivery: Error closing channel sink on controller dispose: $e");
     }); // Use a status code like "going away"
+    channel = null;
+    connectionState.value = WebSocketConnectionState.disconnected;
     super.onClose();
   }
 }

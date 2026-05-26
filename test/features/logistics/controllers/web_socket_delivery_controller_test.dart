@@ -1,7 +1,90 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_connection_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_delivery_controller.dart';
+import 'package:web_socket_channel/status.dart' as status;
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+class FakeWebSocketChannel implements WebSocketChannel {
+  FakeWebSocketChannel({Future<void>? ready}) : ready = ready ?? Future.value();
+
+  final StreamController<dynamic> _streamController =
+      StreamController<dynamic>();
+  final FakeWebSocketSink _sink = FakeWebSocketSink();
+
+  @override
+  final Future<void> ready;
+
+  @override
+  String? get protocol => null;
+
+  @override
+  int? closeCode;
+
+  @override
+  String? closeReason;
+
+  @override
+  Stream get stream => _streamController.stream;
+
+  @override
+  WebSocketSink get sink => _sink;
+
+  int get closeCount => _sink.closeCount;
+
+  List<dynamic> get sentMessages => _sink.sentMessages;
+
+  void addIncoming(dynamic data) => _streamController.add(data);
+
+  void addError(Object error) => _streamController.addError(error);
+
+  Future<void> closeIncoming([int? code, String? reason]) {
+    closeCode = code;
+    closeReason = reason;
+    return _streamController.close();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class FakeWebSocketSink implements WebSocketSink {
+  final List<dynamic> sentMessages = [];
+  int closeCount = 0;
+  int? lastCloseCode;
+  String? lastCloseReason;
+  final Completer<void> _done = Completer<void>();
+
+  @override
+  Future<void> get done => _done.future;
+
+  @override
+  void add(dynamic event) {
+    sentMessages.add(event);
+  }
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {
+    if (!_done.isCompleted) _done.completeError(error, stackTrace);
+  }
+
+  @override
+  Future<void> addStream(Stream stream) async {
+    await for (final event in stream) {
+      add(event);
+    }
+  }
+
+  @override
+  Future<void> close([int? closeCode, String? closeReason]) async {
+    closeCount += 1;
+    lastCloseCode = closeCode;
+    lastCloseReason = closeReason;
+    if (!_done.isCompleted) _done.complete();
+  }
+}
 
 void main() {
   group('WebSocketDeliveryController', () {
@@ -101,6 +184,77 @@ void main() {
 
       expect(first, second);
       expect(first, inInclusiveRange(0, 9));
+    });
+
+    test('duplicate connect calls only create one active channel', () async {
+      var createCount = 0;
+      final fakeChannel = FakeWebSocketChannel();
+      controller = WebSocketDeliveryController(
+        channelFactory: (_) {
+          createCount += 1;
+          return fakeChannel;
+        },
+      );
+
+      await Future.wait([
+        controller.connectWebSocket(),
+        controller.connectWebSocket(),
+      ]);
+
+      expect(createCount, 1);
+      expect(
+          controller.connectionState.value, WebSocketConnectionState.connected);
+      expect(controller.isConnected.value, true);
+    });
+
+    test('intentional onClose closes once and disables reconnect', () async {
+      var createCount = 0;
+      final fakeChannel = FakeWebSocketChannel();
+      controller = WebSocketDeliveryController(
+        channelFactory: (_) {
+          createCount += 1;
+          return fakeChannel;
+        },
+      );
+
+      await controller.connectWebSocket();
+      controller.onClose();
+      await fakeChannel.closeIncoming(status.goingAway);
+      await Future<void>.delayed(WebSocketConnectionConfig.reconnectDelay +
+          const Duration(milliseconds: 20));
+
+      expect(fakeChannel.closeCount, 1);
+      expect(createCount, 1);
+      expect(controller.isConnected.value, false);
+      expect(controller.connectionState.value,
+          WebSocketConnectionState.disconnected);
+    });
+
+    test('stream error schedules only one reconnect while reconnecting',
+        () async {
+      final channels = <FakeWebSocketChannel>[];
+      controller = WebSocketDeliveryController(
+        channelFactory: (_) {
+          final channel = FakeWebSocketChannel();
+          channels.add(channel);
+          return channel;
+        },
+      );
+
+      await controller.connectWebSocket();
+      channels.first.addError(Exception('network dropped'));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(controller.connectionState.value,
+          WebSocketConnectionState.reconnecting);
+      controller.reconnectWebSocket();
+
+      await Future<void>.delayed(WebSocketConnectionConfig.reconnectDelay +
+          const Duration(milliseconds: 50));
+
+      expect(channels.length, 2);
+      expect(
+          controller.connectionState.value, WebSocketConnectionState.connected);
     });
   });
 }
