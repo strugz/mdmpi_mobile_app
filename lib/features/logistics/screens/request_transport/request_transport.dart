@@ -113,6 +113,7 @@ class RequestTransport extends StatelessWidget {
                 bottom: MediaQuery.of(context).size.height * 0.45 + 16,
                 right: 5,
                 child: FloatingActionButton(
+                  heroTag: 'request_transport_my_location',
                   backgroundColor: BColors.white,
                   onPressed: () {
                     reqTranController.selectedDestinationMarkerId.value = null;
@@ -123,6 +124,19 @@ class RequestTransport extends StatelessWidget {
                   child: const Icon(Icons.my_location, color: BColors.dark),
                 ),
               ),
+
+              if (currentRequest.status == BTexts.statusForDelivery)
+                Positioned(
+                  bottom: MediaQuery.of(context).size.height * 0.45 + 88,
+                  right: 5,
+                  child: FloatingActionButton(
+                    heroTag: 'request_transport_external_navigation',
+                    tooltip: 'Open navigation',
+                    backgroundColor: BColors.primary,
+                    onPressed: reqTranController.openExternalNavigation,
+                    child: const Icon(Icons.navigation, color: BColors.white),
+                  ),
+                ),
 
               /// Route loading overlay
               if (!reqTranController.isRouteLoaded.value)

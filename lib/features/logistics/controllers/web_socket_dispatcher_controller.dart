@@ -41,7 +41,7 @@ class WebSocketDispatcherController extends GetxController {
     try {
       channel = WebSocketChannel.connect(
         Uri.parse(
-            'wss://inventory.mdmpi.com.ph/api/ws?apiKey=mdmpiIMSmdmpiIMSmdmpiIMS'), // Your actual URL
+            'wss://inventory.mdmpi.com.ph/api2/ws?apiKey=mdmpiIMSmdmpiIMSmdmpiIMS'), // Your actual URL
       );
 
       logDebug('WebSocket: Connection initiated. Listening to stream...');

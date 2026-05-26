@@ -68,6 +68,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controll
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transport_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_delivery_controller.dart';
@@ -172,6 +173,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => LoginController(), fenix: true);
     Get.lazyPut(() => LoadingScreenController(), fenix: true);
     Get.lazyPut(() => WebSocketDispatcherController(), fenix: true);
+    Get.lazyPut(() => RiderRealtimeTrackingController(), fenix: true);
     Get.lazyPut(() => RequestTransportController(), fenix: true);
     Get.lazyPut(() => DeliveryVehicleController(), fenix: true);
     Get.lazyPut(() => ClientController(), fenix: true);
@@ -220,11 +222,11 @@ class GeneralBindings extends Bindings {
     // ========================================================================
     Get.lazyPut<IPermissionService>(() => PermissionService(), fenix: true);
     Get.lazyPut<INotificationService>(() => NotificationService(), fenix: true);
-    Get.lazyPut<ILocationAlternativeService>(() => LocationAlternativeService(), fenix: true);
+    Get.lazyPut<ILocationAlternativeService>(() => LocationAlternativeService(),
+        fenix: true);
     Get.lazyPut<IMapsService>(() => MapsService(), fenix: true);
     Get.lazyPut<IPlacesService>(() => PlacesService(), fenix: true);
-    Get.lazyPut<ILocationTrackingService>(() => LocationTrackingService(), fenix: true);
+    Get.lazyPut<ILocationTrackingService>(() => LocationTrackingService(),
+        fenix: true);
   }
 }
-
-

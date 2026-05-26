@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -15,13 +14,13 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/location_alternative_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../base/utils/local_storage/text_storage_service.dart';
-import '../models/rider_location_model.dart';
 
 class RequestTransportController extends GetxController {
   static RequestTransportController get instance => Get.find();
@@ -50,9 +49,8 @@ class RequestTransportController extends GetxController {
   /// Variables for Location Listening
   StreamSubscription<Position>? positionStream;
 
-  /// WebSocket Controller - Lazy getter
-  WebSocketDispatcherController get webSocketController =>
-      Get.find<WebSocketDispatcherController>();
+  RiderRealtimeTrackingController get riderTrackingController =>
+      Get.find<RiderRealtimeTrackingController>();
 
   /// New loading state
   final RxBool isLoadingAction = false.obs;
@@ -148,23 +146,14 @@ class RequestTransportController extends GetxController {
       if (currentRequest == null) return;
 
       if (currentRequest.status == BTexts.statusForDelivery) {
-        if (webSocketController.isConnected.value) {
-          final riderLocation = RiderLocationModel(
-            type: 'location_update',
-            requestId: currentRequest.id,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            timestamp: position.timestamp,
-            status: 'en_route',
-            riderInitial: currentRequest.deliveredBy,
-            eta: eta.value ?? "Calculating...",
-            distance: distance.value ?? "Calculating...",
-            client: currentRequest.client.name,
-          );
-          webSocketController.sendMessage(jsonEncode(riderLocation.toJson()));
-        } else {
-          webSocketController.reconnectWebSocket();
-        }
+        riderTrackingController.startTrackingForRequest(
+          currentRequest,
+          eta: eta.value,
+          distance: distance.value,
+        );
+      } else if (riderTrackingController.activeRequestId.value ==
+          currentRequest.id) {
+        riderTrackingController.stopTracking();
       }
     });
   }
@@ -352,6 +341,63 @@ class RequestTransportController extends GetxController {
     );
   }
 
+  Future<void> openExternalNavigation() async {
+    final origin = currentLocation.value;
+    final destinationPoint = _effectiveNavigationDestination();
+
+    if (origin == LatLng(0, 0)) {
+      BLoaders.warningSnackBar(
+        title: 'Navigation',
+        message: 'Current location is not ready yet.',
+      );
+      return;
+    }
+
+    if (destinationPoint == null || destinationPoint == LatLng(0, 0)) {
+      BLoaders.warningSnackBar(
+        title: 'Navigation',
+        message: 'Destination is not ready yet.',
+      );
+      return;
+    }
+
+    final originText = '${origin.latitude},${origin.longitude}';
+    final destinationText =
+        '${destinationPoint.latitude},${destinationPoint.longitude}';
+
+    final launchCandidates = <Uri>[
+      Uri.parse('waze://?ll=$destinationText&navigate=yes'),
+      Uri.parse('google.navigation:q=$destinationText&mode=d'),
+      Uri.parse(
+        'https://www.google.com/maps/dir/?api=1'
+        '&origin=$originText'
+        '&destination=$destinationText'
+        '&travelmode=driving',
+      ),
+    ];
+
+    for (final uri in launchCandidates) {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
+
+    BLoaders.errorSnackBar(
+      title: 'Navigation',
+      message: 'No navigation app is available.',
+    );
+  }
+
+  LatLng? _effectiveNavigationDestination() {
+    final savedLocation = currentLocationAlternative.value;
+    if (hasLocationAlternative.value && savedLocation != null) {
+      return LatLng(savedLocation.latitude, savedLocation.longitude);
+    }
+
+    return destination.value;
+  }
+
   /// Handle search here button press
   Future<void> onSearchHerePressed() async {
     if (!isSearching.value) {
@@ -460,6 +506,7 @@ class RequestTransportController extends GetxController {
       String newStatus = "";
       if (currentRequest.status == BTexts.statusItemPrepared) {
         newStatus = BTexts.statusForDelivery;
+        currentRequest.deliveredBy = userInitial;
         currentRequest.locationStartedAt =
             '${currentLocation.value.latitude} ${currentLocation.value.longitude}';
 
@@ -478,13 +525,20 @@ class RequestTransportController extends GetxController {
         await clearLocationAlternativesOnDropOff();
         _textStorageService.clearAll();
 
-        webSocketController.onClose();
+        await riderTrackingController.stopTracking();
       } else {
         isLoadingAction.value = false; // <--- Stop loading on error
       }
 
       await requestController.updateRequestStatus(
           currentRequest, newStatus, userInitial);
+      if (newStatus == BTexts.statusForDelivery) {
+        await riderTrackingController.startTrackingForRequest(
+          currentRequest,
+          eta: eta.value,
+          distance: distance.value,
+        );
+      }
     } catch (e) {
       BLoaders.errorSnackBar(
           title: "Error",

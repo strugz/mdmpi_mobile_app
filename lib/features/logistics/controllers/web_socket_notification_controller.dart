@@ -23,7 +23,7 @@ class WebSocketNotificationController extends GetxController {
   IOWebSocketChannel? _channel;
   Timer? _reconnectTimer;
   final String _webSocketUrl =
-      'wss://inventory.mdmpi.com.ph/api/ws?apiKey=mdmpiIMSmdmpiIMSmdmpiIMS'; // Replace with your actual URL
+      'wss://inventory.mdmpi.com.ph/api2/ws?apiKey=mdmpiIMSmdmpiIMSmdmpiIMS'; // Replace with your actual URL
 
   NotificationCallback? _onNotificationReceived;
 

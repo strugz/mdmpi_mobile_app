@@ -103,7 +103,8 @@ class SettingsScreen extends StatelessWidget {
                     () => BSettingsMenuTile(
                       icon: Iconsax.location,
                       title: 'Realtime Location Saver',
-                      subTitle: 'Save current location locally every 15 meters',
+                      subTitle:
+                          'Save latest location locally; delivery tracking handles live sharing',
                       trailing: Switch(
                         value: realtimeLocationSaverController.isEnabled.value,
                         onChanged: realtimeLocationSaverController.toggle,
