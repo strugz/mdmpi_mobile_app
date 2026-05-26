@@ -118,7 +118,12 @@ class SignUpForm extends StatelessWidget {
                 dropdownList: controller.departments.value
                     .map((department) => department.department)
                     .toList(),
-                controller: controller.department),
+                controller: controller.department,
+                // Make department required. The BDropdown passes the selected
+                // value to the validator; when null or empty we'll show the
+                // standard required error text.
+                validator: (value) => BValidator.validateEmptyText('Department', value?.toString()),
+                ),
             const SizedBox(height: BSizes.spaceBtwInputFields),
 
             /// Multi select
@@ -134,8 +139,22 @@ class SignUpForm extends StatelessWidget {
                   FocusScope.of(context).requestFocus(controller.phoneNumberFocus),
               onFieldSubmitted: (_) =>
                   FocusScope.of(context).requestFocus(controller.phoneNumberFocus),
+              // Make role required. Since the field is read-only we validate
+              // against the backing controller text.
+              validator: (value) => BValidator.validateEmptyText('Role', controller.selectedRole.text),
               decoration: InputDecoration(
-                  prefixIcon: Icon(Iconsax.document_code), labelText: 'Role'),
+                  prefixIcon: Icon(Iconsax.document_code),
+                  labelText: 'Role',
+                  // show a red outline when validation fails so the required
+                  // state is visually obvious
+                  errorBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.red),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                    borderRadius: BorderRadius.circular(4),
+                  )),
             ),
 
             const SizedBox(height: BSizes.spaceBtwInputFields),

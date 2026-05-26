@@ -42,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> {
             right: 0,
             child: const Center(
               child: Text(
-                "Efficiency in Every Tap",
+                "Malayo na, Mas lalayo pa",
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,

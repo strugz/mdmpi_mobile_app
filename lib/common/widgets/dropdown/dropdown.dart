@@ -52,6 +52,17 @@ class BDropdown extends StatelessWidget {
                         : BColors.black.withOpacity(0.9)),
                 labelText: label,
                 labelStyle: TextStyle(color: BColors.darkGrey),
+                // When validation fails we want a visible red outline so the user
+                // immediately sees the required field. Keep default look until
+                // an error occurs by only specifying the error borders.
+                errorBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Colors.red),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                focusedErrorBorder: OutlineInputBorder(
+                  borderSide: const BorderSide(color: Colors.red, width: 2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
               items: options
                   .map(
