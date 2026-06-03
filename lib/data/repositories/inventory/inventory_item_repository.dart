@@ -240,8 +240,6 @@ class InventoryItemRepository extends GetxController {
 
       final decoded = jsonDecode(resp.body);
 
-      print("HeHim: $decoded");
-
       String? textContent;
 
       try {
