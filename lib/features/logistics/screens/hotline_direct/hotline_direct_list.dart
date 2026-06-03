@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/back_load/backload_transaction_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_request_card_horizontal.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -96,8 +97,8 @@ class HotlineDirectList extends StatelessWidget {
                     physics: const AlwaysScrollableScrollPhysics(),
                     separatorBuilder: (_, __) =>
                         const SizedBox(height: BSizes.spaceBtwItems),
-                    itemCount: requestController
-                        .filterManager.filteredRequests.length,
+                    itemCount:
+                        requestController.filterManager.filteredRequests.length,
                     itemBuilder: (_, index) {
                       final request = requestController
                           .filterManager.filteredRequests[index];
@@ -109,27 +110,24 @@ class HotlineDirectList extends StatelessWidget {
                             : () => {
                                   requestController
                                       .currentSelectedRequest.value = request,
-                                  _showAppropriateDialog(
-                                      context,
-                                      request,
-                                      userController,
-                                      requestController)
+                                  _showAppropriateDialog(context, request,
+                                      userController, requestController)
                                 },
                         onLongPress: requestController.isLoading.value
                             ? null
-                            : () => {
-                                  if (request.status !=
-                                          BTexts.statusDoneDelivery &&
-                                      request.status !=
-                                          BTexts.statusCancelled)
-                                    {
-                                      requestController
-                                          .currentSelectedRequest.value =
-                                          request,
-                                      BDialog.showRemarksDialog(
-                                          context, request),
-                                    },
-                                },
+                            : () {
+                                if (request.status !=
+                                        BTexts.statusDoneDelivery &&
+                                    request.status != BTexts.statusCancelled &&
+                                    request.status != BTexts.statusBackLoad) {
+                                  requestController
+                                      .currentSelectedRequest.value = request;
+                                  Get.find<BackLoadController>()
+                                      .initForRequest(request);
+                                  Get.to(() => BackLoadTransactionPage(
+                                      requestModel: request));
+                                }
+                              },
                         child: BRequestCardHorizontal(
                           requestModel: request,
                         ),
@@ -150,18 +148,15 @@ class HotlineDirectList extends StatelessWidget {
                             height: MediaQuery.of(context).size.height * 0.6,
                             child: Center(
                               child: Column(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
                                     Icons.inbox_outlined,
                                     size: 80,
-                                    color: dark
-                                        ? BColors.light
-                                        : BColors.darkGrey,
+                                    color:
+                                        dark ? BColors.light : BColors.darkGrey,
                                   ),
-                                  const SizedBox(
-                                      height: BSizes.spaceBtwItems),
+                                  const SizedBox(height: BSizes.spaceBtwItems),
                                   Text(
                                     'No Hotline Direct requests found',
                                     style: Theme.of(context)
@@ -242,8 +237,8 @@ class HotlineDirectList extends StatelessWidget {
     // Invoke only the selected handler
     final handler = handlers[activeRole];
     if (handler != null) {
-      handler.handleAction(context, request, requestController,
-          userController, userInitial);
+      handler.handleAction(
+          context, request, requestController, userController, userInitial);
     } else {
       // Fallback to default handler if no specific handler is found
       HotlineDirectDefaultHandler().handleAction(

@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/backload_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/backload_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -105,9 +106,8 @@ class BackLoadController extends GetxController {
   ///
   /// **API-first:** the record is sent to the API first. If the API call
   /// fails, nothing is saved to the local BackLoad table. After API success
-  /// the local history is updated and the standard delivery list is refreshed.
+  /// the local history is updated and delivery lists are refreshed.
   Future<bool> submitBackLoad(StandardDeliveryModel request) async {
-    print("object");
     if (selectedRemarks.value == null || selectedRemarks.value!.isEmpty) {
       BLoaders.errorSnackBar(
           title: 'Validation', message: 'Please select a reason');
@@ -121,7 +121,7 @@ class BackLoadController extends GetxController {
       final result = await _repository.addBackLoad(
         requestId: request.id,
         remarks: selectedRemarks.value!,
-        deliveryDate: deliveryDateController.value.text
+        deliveryDate: deliveryDateController.value.text,
       );
 
       if (result.isFailure) {
@@ -138,27 +138,36 @@ class BackLoadController extends GetxController {
         final saved = result.value;
 
         // Avoid inserting duplicates if the item already exists
-        final exists = backLoadEntries.any((e) => e.backLoadId == saved.backLoadId);
+        final exists =
+            backLoadEntries.any((e) => e.backLoadId == saved.backLoadId);
         if (!exists) {
           backLoadEntries.insert(0, saved);
         } else {
           // Replace the existing item with the new one (if you want to refresh)
-          final idx = backLoadEntries.indexWhere((e) => e.backLoadId == saved.backLoadId);
+          final idx = backLoadEntries
+              .indexWhere((e) => e.backLoadId == saved.backLoadId);
           if (idx != -1) backLoadEntries[idx] = saved;
         }
 
         latestBackLoad.value = saved;
       } catch (e) {
-        logDebug('? BackLoadController: failed to update in-memory state after save: $e');
+        logDebug(
+            '? BackLoadController: failed to update in-memory state after save: $e');
       }
 
-
-      // Refresh the standard delivery list so status reflects 'Back Load'
+      // Refresh delivery lists so status reflects 'Back Load'
       try {
         final sdController = Get.find<StandardDeliveryController>();
         await sdController.loadRequests();
-      } catch (_) {
-        // Controller may not be registered in some contexts
+      } catch (e) {
+        logDebug('BackLoadController: could not refresh Standard Delivery: $e');
+      }
+
+      try {
+        final hotlineController = Get.find<HotlineDirectController>();
+        await hotlineController.loadRequests();
+      } catch (e) {
+        logDebug('BackLoadController: could not refresh Hotline Direct: $e');
       }
 
       BLoaders.successSnackBar(
