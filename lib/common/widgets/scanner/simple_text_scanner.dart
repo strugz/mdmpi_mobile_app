@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_extractor.dart';
 
@@ -22,6 +24,15 @@ class _SimpleTextScannerState extends State<SimpleTextScanner> {
   Future<void> _captureAndAnalyze() async {
     try {
       _isProcessing.value = true;
+
+      final permission = await Get.find<IPermissionService>().requireForFeature(
+        PermissionType.camera,
+        featureName: 'Document scanner',
+      );
+      if (!permission.granted) {
+        Get.back(result: null);
+        return;
+      }
 
       final XFile? picked = await _picker.pickImage(
         source: ImageSource.camera,
@@ -44,7 +55,8 @@ class _SimpleTextScannerState extends State<SimpleTextScanner> {
       final InputImage inputImage = InputImage.fromFile(file);
       final String rawText = await textRecognition.processImage(inputImage);
 
-      final RegExp inventoryHeader = RegExp(r'inventory\s*transfer', caseSensitive: false);
+      final RegExp inventoryHeader =
+          RegExp(r'inventory\s*transfer', caseSensitive: false);
       final String filteredRawText = rawText
           .split(RegExp(r'\r?\n'))
           .where((line) => !inventoryHeader.hasMatch(line))
@@ -53,10 +65,7 @@ class _SimpleTextScannerState extends State<SimpleTextScanner> {
 
       Get.back(result: matches);
     } catch (e) {
-      try {
-        // Use existing logger if available; avoid print
-        // logDebug('SimpleTextScanner error: $e\n$st');
-      } catch (_) {}
+      logDebug('SimpleTextScanner error: $e');
       // Return empty list as fallback
       Get.back(result: <String>[]);
     } finally {

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
@@ -33,6 +34,8 @@ import 'package:iconsax/iconsax.dart';
 class StandardDeliveryController extends GetxController
     implements IDeliveryRequestController {
   static StandardDeliveryController get instance => Get.find();
+
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   // ========================================================================
   // STATE PROPERTIES
@@ -467,6 +470,12 @@ class StandardDeliveryController extends GetxController
   /// platform handling so the UI widget stays pure.
   Future<void> pickAndAnalyzeFromCamera() async {
     try {
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.camera,
+        featureName: 'Inventory camera scanner',
+      );
+      if (!permission.granted) return;
+
       final picker = ImagePicker();
       final XFile? picked =
           await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
@@ -523,6 +532,12 @@ class StandardDeliveryController extends GetxController
       );
 
       if (choice == null) return;
+
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.storage,
+        featureName: 'Inventory file scanner',
+      );
+      if (!permission.granted) return;
 
       if (choice == 'gallery') {
         final picker = ImagePicker();
@@ -667,7 +682,7 @@ class StandardDeliveryController extends GetxController
       final repo = Get.find<InventoryItemRepository>();
       final result = await repo.analyzeFileWithGemini(file, prompt: prompt);
 
-      print(jsonEncode(result.value));
+      logDebug(jsonEncode(result.value));
 
       if (result.isSuccess) {
         _mergeScannedItems(result.value);

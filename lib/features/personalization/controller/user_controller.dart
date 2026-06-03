@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
 import 'package:firebase_core/firebase_core.dart' show Firebase;
@@ -36,6 +37,8 @@ class UserController extends GetxController {
   final _storage = GetStorage();
 
   GlobalKey<FormState> reAuthFormKey = GlobalKey<FormState>();
+
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   @override
   Future<void> onInit() async {
@@ -149,6 +152,7 @@ class UserController extends GetxController {
         BLoaders.successSnackBar(
             title: 'Success', message: 'User List Updated');
       }
+
       /// Update Rx User
       profileLoading.value = false;
     } catch (e) {
@@ -279,11 +283,13 @@ class UserController extends GetxController {
               Get.offAll(() => const LoginScreen());
             } else {
               BFullScreenLoader.stopLoading();
-              BLoaders.errorSnackBar(title: 'Error', message: deleteResult.error);
+              BLoaders.errorSnackBar(
+                  title: 'Error', message: deleteResult.error);
             }
           } else {
             BFullScreenLoader.stopLoading();
-            BLoaders.errorSnackBar(title: 'Authentication Failed', message: result.error);
+            BLoaders.errorSnackBar(
+                title: 'Authentication Failed', message: result.error);
           }
         } else if (provider == 'password') {
           BFullScreenLoader.stopLoading();
@@ -313,22 +319,26 @@ class UserController extends GetxController {
         return;
       }
 
-      final reAuthResult = await AuthenticationRepository.instance.reAuthenticate(
+      final reAuthResult =
+          await AuthenticationRepository.instance.reAuthenticate(
         email: verifyEmail.text.trim(),
         password: verifyPassword.text.trim(),
       );
 
       if (reAuthResult.isFailure) {
         BFullScreenLoader.stopLoading();
-        BLoaders.errorSnackBar(title: 'Authentication Failed', message: reAuthResult.error);
+        BLoaders.errorSnackBar(
+            title: 'Authentication Failed', message: reAuthResult.error);
         return;
       }
 
-      final deleteResult = await AuthenticationRepository.instance.deleteAccount();
+      final deleteResult =
+          await AuthenticationRepository.instance.deleteAccount();
 
       if (deleteResult.isFailure) {
         BFullScreenLoader.stopLoading();
-        BLoaders.errorSnackBar(title: 'Delete Failed', message: deleteResult.error);
+        BLoaders.errorSnackBar(
+            title: 'Delete Failed', message: deleteResult.error);
         return;
       }
 
@@ -343,6 +353,12 @@ class UserController extends GetxController {
   /// Upload Profile Image
   Future<void> uploadUserProfilePicture() async {
     try {
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.storage,
+        featureName: 'Profile picture upload',
+      );
+      if (!permission.granted) return;
+
       final image = await ImagePicker().pickImage(
           source: ImageSource.gallery,
           imageQuality: 70,
@@ -353,7 +369,8 @@ class UserController extends GetxController {
 
         //  Upload Image (requires Firebase-backed repo)
         if (userRepository == null) {
-          BLoaders.errorSnackBar(title: 'Error', message: 'Upload not available on this platform');
+          BLoaders.errorSnackBar(
+              title: 'Error', message: 'Upload not available on this platform');
           return;
         }
 

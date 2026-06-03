@@ -7,6 +7,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/local_storage/text_storage_service.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 
 import '../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
@@ -42,6 +43,8 @@ class CameraHandlerController extends GetxController
         _textRecognitionService = textRecognitionService,
         _textExtractor = textExtractor;
 
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
+
   @override
   void onInit() {
     super.onInit();
@@ -70,6 +73,15 @@ class CameraHandlerController extends GetxController
 
   /// Initializes the camera only when a preview/capture flow actually needs it.
   Future<void> ensureCameraReady() async {
+    final permission = await _permissionService.requireForFeature(
+      PermissionType.camera,
+      featureName: 'Camera',
+    );
+    if (!permission.granted) {
+      isCameraLoading.value = false;
+      return;
+    }
+
     if (_cameraService.isInitialized) {
       isCameraLoading.value = false;
       return;
@@ -236,6 +248,14 @@ class CameraHandlerController extends GetxController
     }
 
     try {
+      final storagePermission = await _permissionService.requireForFeature(
+        PermissionType.storage,
+        featureName: 'Proof photo',
+      );
+      if (!storagePermission.granted) {
+        return;
+      }
+
       final XFile? imageFile = await _cameraService.takePicture();
 
       imageProofPath.value =

@@ -2,14 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 
 import '../abstracts/i_location_tracking_service.dart';
 
 /// Implementation of ILocationTrackingService using Geolocator plugin.
 class LocationTrackingService implements ILocationTrackingService {
   StreamSubscription<Position>? _positionStream;
+
+  IPermissionService? get _permissionServiceOrNull {
+    if (Get.isRegistered<IPermissionService>()) {
+      return Get.find<IPermissionService>();
+    }
+    return null;
+  }
 
   @override
   Stream<Position> startTracking({
@@ -88,6 +97,14 @@ class LocationTrackingService implements ILocationTrackingService {
   Future<Position> getCurrentLocation({
     LocationAccuracy accuracy = LocationAccuracy.high,
   }) async {
+    final permissionResult = await _permissionServiceOrNull?.requireForFeature(
+      PermissionType.location,
+      featureName: 'Current location',
+    );
+    if (permissionResult != null && !permissionResult.granted) {
+      throw Exception('Location permission denied');
+    }
+
     final serviceEnabled = await isLocationServiceEnabled();
     if (!serviceEnabled) {
       BLoaders.warningSnackBar(

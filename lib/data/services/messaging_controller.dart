@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/data/services/sms/sms_message_template_service.dart';
@@ -253,6 +254,15 @@ class MessagingController extends GetxController {
     if (_smsPermissionRequester != null) {
       return _smsPermissionRequester();
     }
+
+    if (Get.isRegistered<IPermissionService>()) {
+      final permission = await Get.find<IPermissionService>().requireForFeature(
+        PermissionType.sms,
+        featureName: 'SMS notification',
+      );
+      if (!permission.granted) return false;
+    }
+
     return _telephonyInstance.requestSmsPermissions;
   }
 

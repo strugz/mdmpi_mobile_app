@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/call_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/delivery_vehicle_model.dart';
 
 import '../../../base/utils/helpers/helper_functions.dart';
@@ -42,6 +43,7 @@ class DeliveryLocationController extends GetxController {
   bool _hasCenteredInitialRiders = false;
 
   final userController = Get.find<UserController>();
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   @override
   void onInit() {
@@ -246,6 +248,12 @@ class DeliveryLocationController extends GetxController {
   }
 
   Future<void> getUserLocation() async {
+    final permissionCheck = await _permissionService.requireForFeature(
+      PermissionType.location,
+      featureName: 'Delivery location map',
+    );
+    if (!permissionCheck.granted) return;
+
     bool serviceEnabled;
     LocationPermission permission;
 

@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/rider_location_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -18,6 +19,7 @@ class RiderRealtimeTrackingController extends GetxController {
 
   final GetStorage _storage = GetStorage();
   late final ILocationTrackingService _locationTrackingService;
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   final RxBool isTracking = false.obs;
   final RxString activeRequestId = ''.obs;
@@ -58,6 +60,17 @@ class RiderRealtimeTrackingController extends GetxController {
     activeRequestId.value = request.id;
 
     try {
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.location,
+        featureName: 'Rider realtime tracking',
+      );
+      if (!permission.granted) {
+        isTracking.value = false;
+        activeRequestId.value = '';
+        _activeRequest = null;
+        return;
+      }
+
       _positionSubscription = _locationTrackingService
           .startTracking(
         accuracy: LocationAccuracy.high,

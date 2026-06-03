@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_maps_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -70,6 +71,8 @@ class RequestTransportController extends GetxController {
   late final ILocationTrackingService _locationTrackingService;
   late final ILocationAlternativeService _locationAlternativeService;
 
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
+
   /// Reactive fields for location alternatives tracking
   final RxBool hasLocationAlternative = false.obs;
   final Rx<LocationAlternativeModel?> currentLocationAlternative =
@@ -126,6 +129,12 @@ class RequestTransportController extends GetxController {
   }
 
   Future<void> startLocationTracking() async {
+    final permission = await _permissionService.requireForFeature(
+      PermissionType.location,
+      featureName: 'Delivery tracking',
+    );
+    if (!permission.granted) return;
+
     positionStream = _locationTrackingService
         .startTracking(
       accuracy: LocationAccuracy.high,
@@ -317,6 +326,12 @@ class RequestTransportController extends GetxController {
 
   Future<void> getUserLocation() async {
     try {
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.location,
+        featureName: 'Request transport map',
+      );
+      if (!permission.granted) return;
+
       final position = await _locationTrackingService.getCurrentLocation(
         accuracy: LocationAccuracy.high,
       );

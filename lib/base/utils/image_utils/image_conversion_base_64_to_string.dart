@@ -3,15 +3,31 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/paths/path.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 
 import '../constants/text_strings.dart';
 
 class BImageHelperFunctions {
+  static Future<bool> _requireStoragePermission(String featureName) async {
+    if (!Get.isRegistered<IPermissionService>()) return true;
+
+    final permission = await Get.find<IPermissionService>().requireForFeature(
+      PermissionType.storage,
+      featureName: featureName,
+    );
+    return permission.granted;
+  }
+
   /// Convert base64 string to image and save to device
   static Future<File?> convertBase64ToImageAndSave(
       String base64String, String fileNameWithoutExtension) async {
     try {
+      final storageGranted =
+          await _requireStoragePermission('Proof image storage');
+      if (!storageGranted) return null;
+
       // Check if the file already exists (optional, depends on your logic)
       final File imageFile =
           File('${BPaths.deliveryShots}/$fileNameWithoutExtension.jpg');
@@ -61,6 +77,10 @@ class BImageHelperFunctions {
         newStatus == BTexts.statusDropOff ||
         newStatus == BTexts.statusProvincialPickUp ||
         newStatus == BTexts.statusProvincialDelivered) {
+      final storageGranted =
+          await _requireStoragePermission('Proof image storage');
+      if (!storageGranted) return null;
+
       const deliveryShotsDirPath = BPaths.deliveryShots;
 
       await Directory(deliveryShotsDirPath).create(recursive: true);
@@ -81,6 +101,9 @@ class BImageHelperFunctions {
     if (imageFile == null) return "";
 
     try {
+      final storageGranted = await _requireStoragePermission('Proof photo');
+      if (!storageGranted) return "";
+
       final deliveryShotsDir = Directory(BPaths.deliveryShots);
 
       if (!await deliveryShotsDir.exists()) {

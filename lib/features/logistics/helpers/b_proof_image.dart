@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:path/path.dart' as p;
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/paths/path.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/repositories/image/image_repository.dart';
 
@@ -27,6 +28,16 @@ class BProofImage {
     return null;
   }
 
+  Future<bool> _requireStoragePermission(String featureName) async {
+    if (!Get.isRegistered<IPermissionService>()) return true;
+
+    final permission = await Get.find<IPermissionService>().requireForFeature(
+      PermissionType.storage,
+      featureName: featureName,
+    );
+    return permission.granted;
+  }
+
   String _buildFileName(String requestId, {String type = 'Proof'}) {
     return type == 'Provincial_PickUp_Proof'
         ? '${requestId}_provincial_pick_up.jpg'
@@ -41,8 +52,6 @@ class BProofImage {
     String requestId, {
     String type = 'Proof',
   }) async {
-
-
     final primaryPath = _buildFilePath(requestId, type: type);
     if (await File(primaryPath).exists()) {
       return primaryPath;
@@ -64,6 +73,10 @@ class BProofImage {
     String type = 'Proof',
   }) async {
     if (bytes.isEmpty || requestId.isEmpty) return null;
+
+    final storageGranted =
+        await _requireStoragePermission('Proof image storage');
+    if (!storageGranted) return null;
 
     final dirPath = BPaths.deliveryShots;
     final filePath = _buildFilePath(requestId, type: type);
@@ -96,7 +109,9 @@ class BProofImage {
   /// Load image bytes for the given request id.
   /// Returns bytes from local DB if present; otherwise, if [fetchIfMissing]
   /// is true, attempts to fetch from the API and stores the result in DB.
-  Future<Uint8List?> loadRequestImageBytes(String requestId, String apiController, {bool fetchIfMissing = false, String type = 'Proof'}) async {
+  Future<Uint8List?> loadRequestImageBytes(
+      String requestId, String apiController,
+      {bool fetchIfMissing = false, String type = 'Proof'}) async {
     if (requestId.isEmpty || apiController.isEmpty) {
       logDebug(
           'BProofImage.loadRequestImageBytes: invalid requestId/apiController');
@@ -104,6 +119,10 @@ class BProofImage {
     }
 
     try {
+      final storageGranted =
+          await _requireStoragePermission('Proof image storage');
+      if (!storageGranted) return null;
+
       final existingLocalPath =
           await _findExistingLocalFilePath(requestId, type: type);
       if (existingLocalPath != null) {
@@ -186,7 +205,6 @@ class BProofImage {
         return null;
       }
 
-
       return _persistBytesToLocalFile(bytes, requestId, type: type);
     } catch (e, st) {
       logDebug(
@@ -195,4 +213,3 @@ class BProofImage {
     }
   }
 }
-

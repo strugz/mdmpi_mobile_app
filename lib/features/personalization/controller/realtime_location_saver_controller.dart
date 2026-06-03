@@ -6,6 +6,7 @@ import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 
 class RealtimeLocationSaverController extends GetxController {
   static const String _enabledKey = 'realtime_location_saver_enabled';
@@ -15,6 +16,7 @@ class RealtimeLocationSaverController extends GetxController {
 
   final GetStorage _storage = GetStorage();
   late final ILocationTrackingService _locationTrackingService;
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   final RxBool isEnabled = false.obs;
   final RxMap<String, dynamic> latestLocation = <String, dynamic>{}.obs;
@@ -49,6 +51,16 @@ class RealtimeLocationSaverController extends GetxController {
 
   Future<void> _startTracking() async {
     try {
+      final permissionCheck = await _permissionService.requireForFeature(
+        PermissionType.location,
+        featureName: 'Realtime location saver',
+      );
+      if (!permissionCheck.granted) {
+        isEnabled.value = false;
+        _storage.write(_enabledKey, false);
+        return;
+      }
+
       final serviceEnabled =
           await _locationTrackingService.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -130,8 +142,7 @@ class RealtimeLocationSaverController extends GetxController {
       'speed': position.speed,
       'speedAccuracy': position.speedAccuracy,
       'altitude': position.altitude,
-      'timestamp':
-          (position.timestamp ?? DateTime.now()).toIso8601String(),
+      'timestamp': position.timestamp.toIso8601String(),
     };
 
     latestLocation.value = payload;

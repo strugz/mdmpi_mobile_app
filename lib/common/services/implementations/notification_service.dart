@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import '../../services/abstracts/i_notification_service.dart';
 
 /// Notification service backed by flutter_local_notifications.
@@ -10,7 +12,8 @@ class NotificationService implements INotificationService {
   bool _initialized = false;
 
   @override
-  Future<void> init({void Function(String? payload)? onSelectNotification}) async {
+  Future<void> init(
+      {void Function(String? payload)? onSelectNotification}) async {
     if (_initialized) return;
 
     const androidInit = AndroidInitializationSettings('@mipmap/launcher_icon');
@@ -49,6 +52,14 @@ class NotificationService implements INotificationService {
     required String body,
     String? payload,
   }) async {
+    if (Get.isRegistered<IPermissionService>()) {
+      final permission = await Get.find<IPermissionService>().requireForFeature(
+        PermissionType.notifications,
+        featureName: 'Notifications',
+      );
+      if (!permission.granted) return;
+    }
+
     if (!_initialized) {
       await init();
     }
