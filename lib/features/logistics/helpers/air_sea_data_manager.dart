@@ -280,6 +280,14 @@ class AirSeaDataManager {
   /// [formState] Form state containing signature and field values
   Future<void> updateRequestStatus(AirSeaModel request, String newStatus,
       dynamic controller, AirSeaFormState formState) async {
+    if (!await _validateRequiredUpdateFields(
+      request: request,
+      newStatus: newStatus,
+      formState: formState,
+    )) {
+      return;
+    }
+
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -665,6 +673,221 @@ class AirSeaDataManager {
           '💡 Tip: Check if GET /api4/RequestAirSea/cancel/$requestId endpoint exists');
       return CancelRemarksModel.empty;
     }
+  }
+
+  Future<bool> _validateRequiredUpdateFields({
+    required AirSeaModel request,
+    required String newStatus,
+    required AirSeaFormState formState,
+  }) async {
+    if (newStatus == BTexts.statusEndorsedToGuard) {
+      return _validateNamedSignature(
+        name: request.receivedBy.trim().isNotEmpty
+            ? request.receivedBy
+            : formState.receivedByController.text,
+        nameMessage: 'Please enter Guard Name',
+        signatureMessage: 'Please capture Guard Signature',
+        formState: formState,
+      );
+    }
+
+    if (newStatus == BTexts.statusReceived) {
+      if (!_validateNamedSignature(
+        name: request.receivedBy.trim().isNotEmpty
+            ? request.receivedBy
+            : formState.receivedByController.text,
+        nameMessage: 'Please enter Receiver Name',
+        signatureMessage: 'Please capture Receiver Signature',
+        formState: formState,
+      )) {
+        return false;
+      }
+      final waybill = request.waybillNumber.trim().isNotEmpty
+          ? request.waybillNumber
+          : formState.waybillNumberController.text;
+      if (waybill.trim().isEmpty) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please enter Waybill Number',
+        );
+        return false;
+      }
+      return true;
+    }
+
+    if (newStatus == BTexts.statusForDispatch) {
+      return _validateDispatchInfo(request, formState);
+    }
+
+    if (newStatus == BTexts.statusDropOff) {
+      if (!_validateNamedSignature(
+        name: request.receivedBy.trim().isNotEmpty
+            ? request.receivedBy
+            : formState.receivedByController.text,
+        nameMessage: 'Please enter Receiver Name',
+        signatureMessage: 'Please capture Receiver Signature',
+        formState: formState,
+      )) {
+        return false;
+      }
+      return _validateProofImage(
+        newStatus: newStatus,
+        imageLookupKey: request.id,
+        formImagePath: formState.cameraDropOffPicture.value,
+        message: 'Please capture proof image for drop off',
+      );
+    }
+
+    if (newStatus == BTexts.statusProvincialPickUp) {
+      return _validateProofImage(
+        newStatus: newStatus,
+        imageLookupKey: '${request.id}_provincial_pick_up',
+        formImagePath: formState.cameraPickUpPicture.value,
+        message: 'Please capture or attach pick-up proof image',
+      );
+    }
+
+    if (newStatus == BTexts.statusProvincialInTransit) {
+      return _validateLatestRealtimeLocation();
+    }
+
+    if (newStatus == BTexts.statusProvincialDelivered) {
+      if (formState.provincialDeliveredToController.text.trim().isEmpty &&
+          request.provincialReceiverName.trim().isEmpty) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please enter the client contact person name',
+        );
+        return false;
+      }
+      if (!_hasSignature(formState)) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please capture recipient signature',
+        );
+        return false;
+      }
+      if (!await _validateProofImage(
+        newStatus: newStatus,
+        imageLookupKey: '${request.id}_provincial_delivery',
+        formImagePath: formState.cameraDropOffPicture.value,
+        message: 'Please capture proof image for delivery',
+      )) {
+        return false;
+      }
+      return _validateLatestRealtimeLocation();
+    }
+
+    return true;
+  }
+
+  bool _validateNamedSignature({
+    required String name,
+    required String nameMessage,
+    required String signatureMessage,
+    required AirSeaFormState formState,
+  }) {
+    if (name.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: nameMessage,
+      );
+      return false;
+    }
+    if (!_hasSignature(formState)) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: signatureMessage,
+      );
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateDispatchInfo(
+    AirSeaModel request,
+    AirSeaFormState formState,
+  ) {
+    final tripTicket = request.tripTicketNumber.trim().isNotEmpty
+        ? request.tripTicketNumber
+        : formState.tripTicketController.text;
+    final driver = request.driver.trim().isNotEmpty
+        ? request.driver
+        : formState.driverController.text;
+    final helper = request.helper.trim().isNotEmpty
+        ? request.helper
+        : formState.helperController.text;
+    final hasVehicle = (request.mobileId != null && request.mobileId != 0) ||
+        formState.vehicleController.text.trim().isNotEmpty;
+
+    if (tripTicket.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Trip Ticket Number',
+      );
+      return false;
+    }
+    if (driver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Driver',
+      );
+      return false;
+    }
+    if (helper.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Helper',
+      );
+      return false;
+    }
+    if (!hasVehicle) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _validateProofImage({
+    required String newStatus,
+    required String imageLookupKey,
+    required String formImagePath,
+    required String message,
+  }) async {
+    final proofImage = await BImageHelperFunctions.getDeliveryImageAsBase64(
+          newStatus,
+          imageLookupKey,
+        ) ??
+        formImagePath;
+
+    if (proofImage.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: message,
+      );
+      return false;
+    }
+    return true;
+  }
+
+  bool _validateLatestRealtimeLocation() {
+    if (_readLatestRealtimeLocation() != null) {
+      return true;
+    }
+    BLoaders.errorSnackBar(
+      title: 'Validation Error',
+      message:
+          'No realtime location found. Please enable realtime location saver and wait for a location update before starting transit.',
+    );
+    return false;
+  }
+
+  bool _hasSignature(AirSeaFormState formState) {
+    return formState.receiverSignatureBase64.value.trim().isNotEmpty ||
+        (formState.receiverSignatureBytes.value?.isNotEmpty ?? false);
   }
 
   /// Fetches status/history stages for a specific Air/Sea request.

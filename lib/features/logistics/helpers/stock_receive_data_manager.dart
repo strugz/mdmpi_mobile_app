@@ -161,6 +161,14 @@ class StockReceiveDataManager {
     dynamic controller,
     PullOutFormState formState,
   ) async {
+    if (!await _validateRequiredUpdateFields(
+      request: request,
+      newStatus: newStatus,
+      formState: formState,
+    )) {
+      return;
+    }
+
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -435,5 +443,99 @@ class StockReceiveDataManager {
       logDebug('❌ StockReceiveDataManager.fetchCancelRemarks FAILED: $e');
       return CancelRemarksModel.empty;
     }
+  }
+
+  static Future<bool> _validateRequiredUpdateFields({
+    required PullOutModel request,
+    required String newStatus,
+    required PullOutFormState formState,
+  }) async {
+    if (newStatus == BTexts.statusInTransit) {
+      return _validateDispatchInfo(request, formState);
+    }
+
+    if (newStatus == BTexts.statusTakenOut) {
+      return _validateCompletionInfo(request, newStatus, formState);
+    }
+
+    return true;
+  }
+
+  static bool _validateDispatchInfo(
+    PullOutModel request,
+    PullOutFormState formState,
+  ) {
+    final tripTicket = request.tripTicketNumber.trim().isNotEmpty
+        ? request.tripTicketNumber
+        : formState.tripTicketController.text;
+    final driver = request.driver.trim().isNotEmpty
+        ? request.driver
+        : formState.driverController.text;
+    final hasVehicle = (request.mobileID != null && request.mobileID != 0) ||
+        formState.mobile.text.trim().isNotEmpty;
+
+    if (tripTicket.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Trip Ticket Number',
+      );
+      return false;
+    }
+    if (driver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Driver',
+      );
+      return false;
+    }
+    if (!hasVehicle) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  static Future<bool> _validateCompletionInfo(
+    PullOutModel request,
+    String newStatus,
+    PullOutFormState formState,
+  ) async {
+    final releasedBy = request.releasedBy.trim().isNotEmpty
+        ? request.releasedBy
+        : formState.releasedByController.text;
+    final hasSignature =
+        formState.receiverSignatureBase64.value.trim().isNotEmpty ||
+            (formState.receiverSignatureBytes.value?.isNotEmpty ?? false);
+    final proofImage = await BImageHelperFunctions.getDeliveryImageAsBase64(
+          newStatus,
+          request.id,
+        ) ??
+        formState.cameraDropOffPicture.value;
+
+    if (releasedBy.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Released By',
+      );
+      return false;
+    }
+    if (!hasSignature) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture the receiver signature',
+      );
+      return false;
+    }
+    if (proofImage.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture proof image',
+      );
+      return false;
+    }
+    return true;
   }
 }

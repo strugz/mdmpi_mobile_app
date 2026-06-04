@@ -19,6 +19,7 @@ import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
@@ -187,6 +188,14 @@ class HotlineDirectDataManager {
     String userInitial,
     HotlineDirectController controller,
   ) async {
+    if (!await _validateRequiredUpdateFields(
+      request: request,
+      newStatus: newStatus,
+      formState: controller.formState,
+    )) {
+      return;
+    }
+
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -653,5 +662,101 @@ class HotlineDirectDataManager {
           title: 'Upload Failed',
           message: "Could not upload requests: ${e.toString()}");
     }
+  }
+
+  static Future<bool> _validateRequiredUpdateFields({
+    required StandardDeliveryModel request,
+    required String newStatus,
+    required StandardDeliveryFormState formState,
+  }) async {
+    if (newStatus == BTexts.statusItemPrepared) {
+      return _validateDeliveryInfo(request, formState);
+    }
+
+    if (newStatus == BTexts.statusDoneDelivery) {
+      return _validateCompletionInfo(request, newStatus, formState);
+    }
+
+    return true;
+  }
+
+  static bool _validateDeliveryInfo(
+    StandardDeliveryModel request,
+    StandardDeliveryFormState formState,
+  ) {
+    final tripTicket = request.tripTicketNumber.trim().isNotEmpty
+        ? request.tripTicketNumber
+        : formState.tripTicketNumber.text;
+    final driver = request.deliveredBy.trim().isNotEmpty
+        ? request.deliveredBy
+        : formState.selectedDriver.text;
+    final hasVehicle = (request.mobileID != null && request.mobileID != 0) ||
+        formState.mobile.text.trim().isNotEmpty;
+
+    if (tripTicket.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Trip Ticket Number',
+      );
+      return false;
+    }
+    if (driver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Driver',
+      );
+      return false;
+    }
+    if (!hasVehicle) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  static Future<bool> _validateCompletionInfo(
+    StandardDeliveryModel request,
+    String newStatus,
+    StandardDeliveryFormState formState,
+  ) async {
+    final receiver = request.receiver.trim().isNotEmpty
+        ? request.receiver
+        : formState.receiver.text;
+    final hasSignature = request.signature.trim().isNotEmpty ||
+        formState.receiverSignatureBase64.value.trim().isNotEmpty ||
+        (formState.receiverSignatureBytes.value?.isNotEmpty ?? false);
+    final proofImage = request.image.trim().isNotEmpty
+        ? request.image
+        : await BImageHelperFunctions.getDeliveryImageAsBase64(
+              newStatus,
+              request.id,
+            ) ??
+            formState.cameraPickUpPicture.value;
+
+    if (receiver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: "Please enter the receiver's name.",
+      );
+      return false;
+    }
+    if (!hasSignature) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: "Please capture the receiver's signature.",
+      );
+      return false;
+    }
+    if (proofImage.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture the delivery proof image.',
+      );
+      return false;
+    }
+    return true;
   }
 }

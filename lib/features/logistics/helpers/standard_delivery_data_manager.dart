@@ -192,12 +192,12 @@ class StandardDeliveryDataManager {
     String userInitial,
     IDeliveryRequestController controller,
   ) async {
-    // Validate delivery info fields before entering the try block
-    // so the finally block (which pops the navigator) is not reached on failure.
-    if (newStatus == BTexts.statusItemPrepared && request.deliveredBy.isEmpty) {
-      if (!_validateDeliveryInfo(controller.formState)) {
-        return;
-      }
+    if (!await _validateRequiredUpdateFields(
+      request: request,
+      newStatus: newStatus,
+      formState: controller.formState,
+    )) {
+      return;
     }
 
     try {
@@ -738,11 +738,108 @@ class StandardDeliveryDataManager {
   // VALIDATION HELPERS
   // ========================================================================
 
+  static Future<bool> _validateRequiredUpdateFields({
+    required StandardDeliveryModel request,
+    required String newStatus,
+    required StandardDeliveryFormState formState,
+  }) async {
+    if (newStatus == BTexts.statusItemPrepared) {
+      return _validateDeliveryInfoForUpdate(request, formState);
+    }
+
+    if (newStatus == BTexts.statusDoneDelivery) {
+      return _validateCompletionInfo(request, newStatus, formState);
+    }
+
+    return true;
+  }
+
+  static bool _validateDeliveryInfoForUpdate(
+    StandardDeliveryModel request,
+    StandardDeliveryFormState formState,
+  ) {
+    final tripTicket = request.tripTicketNumber.trim().isNotEmpty
+        ? request.tripTicketNumber
+        : formState.tripTicketNumber.text;
+    final driver = request.deliveredBy.trim().isNotEmpty
+        ? request.deliveredBy
+        : formState.selectedDriver.text;
+    final hasVehicle = (request.mobileID != null && request.mobileID != 0) ||
+        formState.mobile.text.trim().isNotEmpty;
+
+    if (tripTicket.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Trip Ticket Number',
+      );
+      return false;
+    }
+    if (driver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Driver',
+      );
+      return false;
+    }
+    if (!hasVehicle) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  static Future<bool> _validateCompletionInfo(
+    StandardDeliveryModel request,
+    String newStatus,
+    StandardDeliveryFormState formState,
+  ) async {
+    final receiver = request.receiver.trim().isNotEmpty
+        ? request.receiver
+        : formState.receiver.text;
+    final hasSignature = request.signature.trim().isNotEmpty ||
+        formState.receiverSignatureBase64.value.trim().isNotEmpty ||
+        (formState.receiverSignatureBytes.value?.isNotEmpty ?? false);
+    final proofImage = request.image.trim().isNotEmpty
+        ? request.image
+        : await BImageHelperFunctions.getDeliveryImageAsBase64(
+              newStatus,
+              request.id,
+            ) ??
+            formState.cameraPickUpPicture.value;
+
+    if (receiver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: "Please enter the receiver's name.",
+      );
+      return false;
+    }
+    if (!hasSignature) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: "Please capture the receiver's signature.",
+      );
+      return false;
+    }
+    if (proofImage.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture the delivery proof image.',
+      );
+      return false;
+    }
+    return true;
+  }
+
   /// Validates trip ticket, driver, helper, and vehicle fields
   /// before transitioning to Item Prepared.
   ///
   /// Mirrors [PullOutModalConfig._validateDeliveryInfo] adapted for
   /// Standard Delivery field names.
+  // ignore: unused_element
   static bool _validateDeliveryInfo(StandardDeliveryFormState formState) {
     if (formState.tripTicketNumber.text.trim().isEmpty) {
       BLoaders.errorSnackBar(

@@ -274,6 +274,14 @@ class PickUpDataManager {
   /// [formState] Form state containing signature and field values
   Future<void> updateRequestStatus(PickUpModel request, String newStatus,
       PickUpController controller, PickUpFormState formState) async {
+    if (!await _validateRequiredUpdateFields(
+      request: request,
+      newStatus: newStatus,
+      formState: formState,
+    )) {
+      return;
+    }
+
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -453,5 +461,50 @@ class PickUpDataManager {
           '💡 Tip: Check if GET /api4/RequestPickUp/cancel/$requestId endpoint exists');
       return CancelRemarksModel.empty;
     }
+  }
+
+  static Future<bool> _validateRequiredUpdateFields({
+    required PickUpModel request,
+    required String newStatus,
+    required PickUpFormState formState,
+  }) async {
+    if (newStatus != BTexts.statusReceived) {
+      return true;
+    }
+
+    final receivedBy = request.receivedBy.trim().isNotEmpty
+        ? request.receivedBy
+        : formState.receivedByController.text;
+    final hasSignature =
+        formState.receiverSignatureBase64.value.trim().isNotEmpty ||
+            (formState.receiverSignatureBytes.value?.isNotEmpty ?? false);
+    final proofImage = await BImageHelperFunctions.getDeliveryImageAsBase64(
+          newStatus,
+          request.id,
+        ) ??
+        formState.cameraDropOffPicture.value;
+
+    if (receivedBy.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Received By',
+      );
+      return false;
+    }
+    if (!hasSignature) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture the receiver signature',
+      );
+      return false;
+    }
+    if (proofImage.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture proof image',
+      );
+      return false;
+    }
+    return true;
   }
 }
