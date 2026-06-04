@@ -2,13 +2,18 @@
 
 ## Overview
 
-This folder contains module-level documentation for the MDMPI Mobile App. Each module README describes the module's purpose, architecture, folder structure, data flow, key components, DI registration, and relevant notes.
+This folder contains application-level and module-level documentation for the MDMPI Mobile App. Application guides are organized by audience; module READMEs describe purpose, architecture, folder structure, data flow, key components, DI registration, and relevant notes.
 
 ## Documentation Structure
 
 ```
 docs/
   README.md                          # This file — documentation index
+  application/
+    README.md                        # Application documentation landing page
+    USER_GUIDE.md                    # Daily app usage guide
+    ADMIN_GUIDE.md                   # Operations admin support guide
+    DEVELOPER_GUIDE.md               # Developer setup and architecture guide
   modules/
     air-sea/README.md                # Air & Sea logistics module
     air-sea/AIR_SEA_PROVINCIAL_DELIVERY_PLAN.md  # Provincial delivery extension plan
@@ -25,6 +30,15 @@ docs/
     collection/README.md             # Collection department module
     personalization/README.md        # User profile, settings, address module
 ```
+
+## Logistics Application Documentation
+
+| Audience | Link |
+|---|---|
+| Logistics documentation landing page | [application/](application/) |
+| Logistics Users | [application/USER_GUIDE.md](application/USER_GUIDE.md) |
+| Logistics Operations Admins | [application/ADMIN_GUIDE.md](application/ADMIN_GUIDE.md) |
+| Logistics Developers | [application/DEVELOPER_GUIDE.md](application/DEVELOPER_GUIDE.md) |
 
 ## Module Documentation
 
