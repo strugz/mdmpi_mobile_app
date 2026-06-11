@@ -14,6 +14,7 @@ class ActivityListTile extends StatelessWidget {
     required this.item,
     this.onTap,
     this.onLongPress,
+    this.onInfoTap,
     this.isSelected = false,
     this.isSelectionMode = false,
   });
@@ -21,6 +22,7 @@ class ActivityListTile extends StatelessWidget {
   final CollectionItemModel item;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final VoidCallback? onInfoTap;
   final bool isSelected;
   final bool isSelectionMode;
 
@@ -108,6 +110,15 @@ class ActivityListTile extends StatelessWidget {
                             const SizedBox(width: BSizes.xs),
                             _buildStatusBadge(context, item.lastOutcome!),
                           ],
+                          if (onInfoTap != null) ...[
+                            const SizedBox(width: BSizes.xs),
+                            IconButton(
+                              onPressed: onInfoTap,
+                              icon: const Icon(Iconsax.info_circle, color: BColors.primary, size: 20),
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ],
                         ],
                       ),
                   ],
@@ -178,7 +189,7 @@ class ActivityListTile extends StatelessWidget {
                     if (isOverdue) ...[
                       const SizedBox(width: BSizes.xs),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
                           color: BColors.error,
                           borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
@@ -188,7 +199,7 @@ class ActivityListTile extends StatelessWidget {
                           style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                 color: BColors.white,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 10,
+                                fontSize: 9,
                               ),
                         ),
                       ),

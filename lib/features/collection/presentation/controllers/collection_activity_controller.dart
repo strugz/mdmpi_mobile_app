@@ -489,13 +489,19 @@ class CollectionActivityController extends GetxController {
       toBeCollected: updatedToBeCollected,
       totalCollected: updatedTotalCollected,
       history: [...oldItem.history, historyEntry],
-      assignedAt: '',
-      collectorName: 'Unassigned',
+      // If fully paid, move to bucket and reset assignment. 
+      // If NOT fully paid, keep current assignment.
+      assignedAt: isFullyPaid ? '' : oldItem.assignedAt,
+      collectorName: isFullyPaid ? 'Unassigned' : oldItem.collectorName,
     );
 
-    bucketItems.add(updatedItem);
-    activityItems.removeAt(index);
-    logDebug('[CollectionActivityController] Activity $id saved');
+    if (isFullyPaid) {
+      bucketItems.add(updatedItem);
+      activityItems.removeAt(index);
+    } else {
+      activityItems[index] = updatedItem;
+    }
+    logDebug('[CollectionActivityController] Activity $id saved. Move to bucket: $isFullyPaid');
   }
 
   // ========================================================================
@@ -571,15 +577,21 @@ class CollectionActivityController extends GetxController {
         toBeCollected: updatedToBeCollected,
         totalCollected: updatedTotalCollected,
         history: [...item.history, historyEntry],
-        assignedAt: '',
-        collectorName: 'Unassigned',
+        // If fully paid, move to bucket and reset assignment. 
+        // If NOT fully paid, keep current assignment.
+        assignedAt: isFullyPaid ? '' : item.assignedAt,
+        collectorName: isFullyPaid ? 'Unassigned' : item.collectorName,
       );
 
       // Update in lists
       final idx = activityItems.indexWhere((e) => e.id == item.id);
       if (idx != -1) {
-        activityItems.removeAt(idx);
-        bucketItems.add(updatedItem);
+        if (isFullyPaid) {
+          activityItems.removeAt(idx);
+          bucketItems.add(updatedItem);
+        } else {
+          activityItems[idx] = updatedItem;
+        }
       }
     }
 

@@ -10,7 +10,10 @@ import '../../../../../base/utils/constants/text_string.dart';
 class BHomeAppBar extends StatelessWidget {
   const BHomeAppBar({
     super.key,
+    this.title,
   });
+
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +22,7 @@ class BHomeAppBar extends StatelessWidget {
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(BTexts.dashboardTitle,
+          Text(title ?? BTexts.dashboardTitle,
               style: Theme.of(context)
                   .textTheme
                   .labelMedium!

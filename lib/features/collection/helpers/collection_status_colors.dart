@@ -13,25 +13,31 @@ class CollectionStatusColors {
   // ─── Outcome Statuses (User Selectable) ─────────────────────────────
   static const String statusCollected = 'Collected';
   static const String statusPartial = 'Partially Collected';
+  static const String statusPreCollection = 'Pre-Collection';
   static const String statusFollowUp = 'Follow Up';
   static const String statusUnavailable = 'Customer Unavailable';
   static const String statusRefused = 'Refused to Pay';
+  static const String statusOthers = 'Others';
 
   static const List<String> allStatuses = [
     statusCollected,
     statusPartial,
+    statusPreCollection,
     statusFollowUp,
     statusUnavailable,
     statusRefused,
+    statusOthers,
   ];
 
   /// Statuses that a user can manually select in the update screen.
   static const List<String> updatableStatuses = [
     statusCollected,
     statusPartial,
+    statusPreCollection,
     statusFollowUp,
     statusUnavailable,
     statusRefused,
+    statusOthers,
   ];
 
   /// Returns a tuple of (background, foreground) colours for the given [status].
@@ -47,6 +53,9 @@ class CollectionStatusColors {
       case statusPartial:
         bg = Colors.lightGreen;
         break;
+      case statusPreCollection:
+        bg = BColors.primary;
+        break;
       case statusFollowUp:
         bg = BColors.info;
         break;
@@ -55,6 +64,9 @@ class CollectionStatusColors {
         break;
       case statusUnavailable:
         bg = Colors.amber;
+        break;
+      case statusOthers:
+        bg = BColors.darkGrey;
         break;
       default:
         bg = darkMode ? BColors.darkerGrey : BColors.light;
@@ -80,12 +92,16 @@ class CollectionStatusColors {
       case statusCollected:
       case statusPartial:
         return Iconsax.tick_circle;
+      case statusPreCollection:
+        return Iconsax.calendar_tick;
       case statusFollowUp:
         return Iconsax.info_circle;
       case statusRefused:
         return Iconsax.warning_2;
       case statusUnavailable:
         return Iconsax.clock;
+      case statusOthers:
+        return Iconsax.edit;
       default:
         return Iconsax.info_circle;
     }

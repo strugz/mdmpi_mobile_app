@@ -85,7 +85,7 @@ class BTexts {
   static const String homeAppbarSubTitle = "Good Day!";
 
   /// Dashboard Texts
-  static const String dashboardTitle = "Activity Dashboard";
+  static const String dashboardTitle = "Home";
   static const String dashboardTotalRequests = "Total Requests:";
   static const String dashboardGettingSuppliesReady = "Getting Supplies Ready:";
   static const String dashboardItemsPrepared = "Items Prepared:";

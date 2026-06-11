@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
@@ -35,85 +38,117 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Collection Calendar'),
-      ),
-      body: Obx(() {
-        // This Obx ensures the calendar reacts to data changes in the controller
-        // ignore: unused_local_variable
-        final dummy = controller.allRecentHistory.length; 
-        
-        return Column(
-          children: [
-            TableCalendar(
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.utc(2030, 12, 31),
-              focusedDay: _focusedDay,
-              calendarFormat: _calendarFormat,
-              eventLoader: _getEventsForDay,
-              selectedDayPredicate: (day) {
-                return isSameDay(_selectedDay, day);
-              },
-              onDaySelected: (selectedDay, focusedDay) {
-                if (!isSameDay(_selectedDay, selectedDay)) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay = focusedDay;
-                  });
-                }
-              },
-              onFormatChanged: (format) {
-                if (_calendarFormat != format) {
-                  setState(() {
-                    _calendarFormat = format;
-                  });
-                }
-              },
-              onPageChanged: (focusedDay) {
-                _focusedDay = focusedDay;
-              },
-              calendarStyle: const CalendarStyle(
-                todayDecoration: BoxDecoration(
-                  color: BColors.accent,
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: BoxDecoration(
-                  color: BColors.primary,
-                  shape: BoxShape.circle,
+      body: SingleChildScrollView(
+        child: Obx(() {
+          // This Obx ensures the calendar reacts to data changes in the controller
+          // ignore: unused_local_variable
+          final dummy = controller.allRecentHistory.length; 
+          
+          return Column(
+            children: [
+              // Header
+              const BPrimaryHeaderContainer(
+                child: Column(
+                  children: [
+                    BHomeAppBar(title: 'Calendar'),
+                    SizedBox(height: BSizes.spaceBtwSections),
+                  ],
                 ),
               ),
-              headerStyle: const HeaderStyle(
-                formatButtonVisible: true,
-                titleCentered: true,
-              ),
-              calendarBuilders: CalendarBuilders(
-                markerBuilder: (context, date, events) {
-                  if (events.isNotEmpty) {
-                    return Positioned(
-                      bottom: 4,
-                      child: Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: BColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    );
+
+              TableCalendar(
+                firstDay: DateTime.utc(2020, 1, 1),
+                lastDay: DateTime.utc(2030, 12, 31),
+                focusedDay: _focusedDay,
+                calendarFormat: _calendarFormat,
+                eventLoader: _getEventsForDay,
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                onDaySelected: (selectedDay, focusedDay) {
+                  if (!isSameDay(_selectedDay, selectedDay)) {
+                    setState(() {
+                      _selectedDay = selectedDay;
+                      _focusedDay = focusedDay;
+                    });
                   }
-                  return null;
                 },
+                onFormatChanged: (format) {
+                  if (_calendarFormat != format) {
+                    setState(() {
+                      _calendarFormat = format;
+                    });
+                  }
+                },
+                onPageChanged: (focusedDay) {
+                  _focusedDay = focusedDay;
+                },
+                calendarStyle: const CalendarStyle(
+                  todayDecoration: BoxDecoration(
+                    color: BColors.accent,
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: BoxDecoration(
+                    color: BColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                ),
+                calendarBuilders: CalendarBuilders(
+                  markerBuilder: (context, date, events) => const SizedBox.shrink(),
+                  defaultBuilder: (context, day, focusedDay) {
+                    final events = _getEventsForDay(day);
+                    if (events.isNotEmpty) {
+                      return _buildCalendarDay(day, BColors.success);
+                    }
+                    return null;
+                  },
+                  todayBuilder: (context, day, focusedDay) {
+                    final events = _getEventsForDay(day);
+                    if (events.isNotEmpty) {
+                      return _buildCalendarDay(day, BColors.success, isToday: true);
+                    }
+                    return null;
+                  },
+                  selectedBuilder: (context, day, focusedDay) {
+                    final events = _getEventsForDay(day);
+                    return _buildCalendarDay(
+                      day, 
+                      BColors.primary, 
+                      hasActivity: events.isNotEmpty,
+                      isSelected: true,
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            const Divider(),
-            
-            Expanded(
-              child: _buildEventList(),
-            ),
-          ],
-        );
-      }),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              const Divider(),
+              
+              _buildEventList(),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  /// Helper to build a decorated calendar day
+  Widget _buildCalendarDay(DateTime day, Color color, {bool isToday = false, bool hasActivity = false, bool isSelected = false}) {
+    return Container(
+      margin: const EdgeInsets.all(4.0),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: (isSelected && hasActivity)
+          ? Border.all(color: BColors.success, width: 2)
+          : (isToday ? Border.all(color: BColors.accent, width: 2) : null),
+      ),
+      child: Text(
+        '${day.day}',
+        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
     );
   }
 
@@ -124,16 +159,19 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
 
     if (dayActivities.isEmpty) {
       return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.calendar_today_outlined, size: 48, color: BColors.darkGrey),
-            SizedBox(height: BSizes.sm),
-            Text(
-              'No activities recorded for this day.',
-              style: TextStyle(color: BColors.darkGrey),
-            ),
-          ],
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: BSizes.lg),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.calendar_today_outlined, size: 48, color: BColors.darkGrey),
+              SizedBox(height: BSizes.sm),
+              Text(
+                'No activities recorded for this day.',
+                style: TextStyle(color: BColors.darkGrey),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -143,7 +181,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
     final invoiceIds = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['invoiceId'].toString() };
     final items = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['item'] as CollectionItemModel };
 
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

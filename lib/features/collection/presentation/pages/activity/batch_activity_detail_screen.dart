@@ -18,7 +18,6 @@ class BatchActivityDetailScreen extends StatefulWidget {
 }
 
 class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
-  late String selectedPurpose;
   late TextEditingController totalAmountController;
   late TextEditingController bankNameController;
   late TextEditingController checkNumberController;
@@ -26,13 +25,14 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
 
   // Track statuses per invoice ID
   final Map<String, String> itemStatuses = {};
+  // Track custom remarks for "Others" status
+  final Map<String, String> itemOthersRemarks = {};
   // Track manually overridden statuses to prevent waterfall from overwriting them
   final Set<String> manualStatusOverrides = {};
 
   @override
   void initState() {
     super.initState();
-    selectedPurpose = 'Collection';
     totalAmountController = TextEditingController();
     bankNameController = TextEditingController();
     checkNumberController = TextEditingController();
@@ -94,15 +94,25 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
       return;
     }
 
+    // Finalize statuses: replace 'Others' with the custom remark
+    final Map<String, String> finalStatuses = Map.from(itemStatuses);
+    for (var entry in finalStatuses.entries) {
+      if (entry.value == CollectionStatusColors.statusOthers) {
+        finalStatuses[entry.key] = itemOthersRemarks[entry.key]?.isNotEmpty == true 
+            ? itemOthersRemarks[entry.key]! 
+            : 'Others';
+      }
+    }
+
     controller.saveBatchActivity(
       ids: widget.items.map((e) => e.id).toList(),
-      statuses: itemStatuses,
+      statuses: finalStatuses,
       remarks: 'Batch Recording',
       totalAmountReceived: total,
       bankName: bankNameController.text.trim().isEmpty ? null : bankNameController.text.trim(),
       checkNumber: checkNumberController.text.trim().isEmpty ? null : checkNumberController.text.trim(),
       checkDate: checkDateController.text.trim().isEmpty ? null : checkDateController.text.trim(),
-      purposeOfVisit: selectedPurpose,
+      purposeOfVisit: 'Collection', // Defaulting since dropdown was removed
     );
 
     Get.back();
@@ -118,27 +128,60 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   void _showStatusPicker(String itemId) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(BSizes.defaultSpace),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Select Status for Invoice #$itemId', style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            ...CollectionStatusColors.updatableStatuses.map((status) => ListTile(
-              title: Text(status),
-              leading: Icon(CollectionStatusColors.iconFor(status), color: CollectionStatusColors.colorFor(status)),
-              trailing: itemStatuses[itemId] == status ? const Icon(Iconsax.tick_circle, color: BColors.primary) : null,
-              onTap: () {
-                setState(() {
-                  itemStatuses[itemId] = status;
-                  manualStatusOverrides.add(itemId);
-                });
-                Navigator.pop(context);
-              },
-            )),
-          ],
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            top: BSizes.defaultSpace,
+            left: BSizes.defaultSpace,
+            right: BSizes.defaultSpace,
+            bottom: MediaQuery.of(context).viewInsets.bottom + BSizes.defaultSpace,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Select Status for Invoice #$itemId', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              ...CollectionStatusColors.updatableStatuses.map((status) => ListTile(
+                title: Text(status),
+                leading: Icon(CollectionStatusColors.iconFor(status), color: CollectionStatusColors.colorFor(status)),
+                trailing: itemStatuses[itemId] == status ? const Icon(Iconsax.tick_circle, color: BColors.primary) : null,
+                onTap: () {
+                  setModalState(() {
+                    itemStatuses[itemId] = status;
+                  });
+                  setState(() {
+                    itemStatuses[itemId] = status;
+                    manualStatusOverrides.add(itemId);
+                  });
+                  if (status != CollectionStatusColors.statusOthers) {
+                    Navigator.pop(context);
+                  }
+                },
+              )),
+              if (itemStatuses[itemId] == CollectionStatusColors.statusOthers) ...[
+                const SizedBox(height: BSizes.sm),
+                TextField(
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Enter custom remark...',
+                    prefixIcon: Icon(Iconsax.edit),
+                  ),
+                  onChanged: (val) => itemOthersRemarks[itemId] = val,
+                  onSubmitted: (_) => Navigator.pop(context),
+                ),
+                const SizedBox(height: BSizes.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Confirm Remark'),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -180,14 +223,6 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             Text('Visit & Bank Details', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
             
-            DropdownButtonFormField<String>(
-              value: selectedPurpose,
-              decoration: const InputDecoration(labelText: 'Purpose of Visit', prefixIcon: Icon(Iconsax.info_circle)),
-              items: ['Pre-Collection', 'Collection'].map((String value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-              onChanged: (newValue) => setState(() => selectedPurpose = newValue!),
-            ),
-            const SizedBox(height: BSizes.spaceBtwInputFields),
-
             TextField(
               controller: bankNameController,
               decoration: const InputDecoration(labelText: 'Bank Name', prefixIcon: Icon(Iconsax.bank)),

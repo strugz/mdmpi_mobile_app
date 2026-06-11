@@ -9,6 +9,7 @@ import 'activity_detail_screen.dart';
 import 'batch_activity_detail_screen.dart';
 import 'widgets/activity_filter_modal.dart';
 import 'widgets/activity_list_tile.dart';
+import 'widgets/invoice_details_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -162,6 +163,14 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
                             }
                           },
                           onLongPress: () => controller.toggleActivityInvoiceSelection(item.id),
+                          onInfoTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => InvoiceDetailsModal(item: item),
+                            );
+                          },
                         );
                       },
                     ),

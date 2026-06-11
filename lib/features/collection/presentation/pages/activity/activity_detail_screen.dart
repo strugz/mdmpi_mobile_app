@@ -19,11 +19,11 @@ class ActivityDetailScreen extends StatefulWidget {
 
 class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   late String selectedStatus;
-  late String selectedPurpose;
   late TextEditingController totalCollectedController;
   late TextEditingController bankNameController;
   late TextEditingController checkNumberController;
   late TextEditingController checkDateController;
+  late TextEditingController othersRemarkController;
 
   @override
   void initState() {
@@ -35,11 +35,11 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     } else {
       selectedStatus = widget.item.status;
     }
-    selectedPurpose = 'Collection';
     totalCollectedController = TextEditingController(text: widget.item.totalCollected.toString());
     bankNameController = TextEditingController();
     checkNumberController = TextEditingController();
     checkDateController = TextEditingController();
+    othersRemarkController = TextEditingController();
   }
 
   @override
@@ -48,20 +48,36 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     bankNameController.dispose();
     checkNumberController.dispose();
     checkDateController.dispose();
+    othersRemarkController.dispose();
     super.dispose();
   }
 
   void _saveActivity() {
     final controller = CollectionActivityController.instance;
+    
+    // If "Others" is selected, use the custom remark as both status and remark
+    final String finalStatus = selectedStatus == CollectionStatusColors.statusOthers 
+        ? othersRemarkController.text.trim()
+        : selectedStatus;
+        
+    final String finalRemarks = selectedStatus == CollectionStatusColors.statusOthers 
+        ? othersRemarkController.text.trim()
+        : selectedStatus;
+
+    if (selectedStatus == CollectionStatusColors.statusOthers && othersRemarkController.text.trim().isEmpty) {
+      Get.snackbar('Required', 'Please enter a remark for "Others"', backgroundColor: BColors.warning);
+      return;
+    }
+
     controller.saveActivity(
       id: widget.item.id,
-      status: selectedStatus,
-      remarks: selectedStatus, // Using status as the remark text for simplicity
+      status: finalStatus.isEmpty ? 'Others' : finalStatus,
+      remarks: finalRemarks.isEmpty ? 'Others' : finalRemarks,
       totalCollected: double.tryParse(totalCollectedController.text) ?? 0,
       bankName: bankNameController.text.trim().isEmpty ? null : bankNameController.text.trim(),
       checkNumber: checkNumberController.text.trim().isEmpty ? null : checkNumberController.text.trim(),
       checkDate: checkDateController.text.trim().isEmpty ? null : checkDateController.text.trim(),
-      purposeOfVisit: selectedPurpose,
+      purposeOfVisit: selectedStatus == CollectionStatusColors.statusPreCollection ? 'Pre-Collection' : 'Collection',
     );
 
     Get.back();
@@ -155,31 +171,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               child: Divider(),
             ),
 
-            /// 1. Purpose of Visit
-            Text('Purpose of Visit', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            DropdownButtonFormField<String>(
-              value: selectedPurpose,
-              decoration: const InputDecoration(
-                hintText: 'Select purpose...',
-                prefixIcon: Icon(Iconsax.info_circle),
-              ),
-              items: ['Pre-Collection', 'Collection'].map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (newValue) {
-                setState(() {
-                  selectedPurpose = newValue!;
-                });
-              },
-            ),
-
-            const SizedBox(height: BSizes.spaceBtwSections),
-
-            /// 2. Bank Details
+            /// 1. Bank Details
             Text('Bank Details (Optional)', style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: BSizes.spaceBtwItems),
             
@@ -238,12 +230,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             const SizedBox(height: BSizes.spaceBtwSections),
 
             /// 4. Update Status / Remarks
-            Text('Update Status / Remarks', style: Theme.of(context).textTheme.titleMedium),
+            Text('Update Status / Outcome', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
             DropdownButtonFormField<String>(
               value: selectedStatus,
               decoration: const InputDecoration(
                 hintText: 'Select status...',
+                prefixIcon: Icon(Iconsax.status),
               ),
               items: CollectionStatusColors.updatableStatuses.map((String value) {
                 return DropdownMenuItem<String>(
@@ -257,6 +250,18 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                 });
               },
             ),
+
+            if (selectedStatus == CollectionStatusColors.statusOthers) ...[
+              const SizedBox(height: BSizes.spaceBtwInputFields),
+              TextField(
+                controller: othersRemarkController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter custom remarks...',
+                  prefixIcon: Icon(Iconsax.edit),
+                ),
+                maxLines: 2,
+              ),
+            ],
 
             const SizedBox(height: BSizes.spaceBtwSections * 1.5),
 

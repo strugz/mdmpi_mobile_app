@@ -137,7 +137,7 @@ class InvoiceItemCard extends StatelessWidget {
                  if (isOverdue) ...[
                    const SizedBox(width: BSizes.xs),
                    Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                      decoration: BoxDecoration(
                        color: BColors.error,
                        borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
@@ -147,6 +147,7 @@ class InvoiceItemCard extends StatelessWidget {
                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                              color: BColors.white,
                              fontWeight: FontWeight.bold,
+                             fontSize: 9,
                            ),
                      ),
                    ),
