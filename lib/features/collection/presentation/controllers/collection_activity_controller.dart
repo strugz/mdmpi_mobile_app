@@ -49,6 +49,9 @@ class CollectionActivityController extends GetxController {
   final RxBool isActivitySelectionMode = false.obs;
   final RxSet<String> selectedActivityInvoiceIds = <String>{}.obs;
 
+  /// Account-level history (for unclaiming/no collection)
+  final RxMap<String, List<CollectionHistoryModel>> clientHistory = <String, List<CollectionHistoryModel>>{}.obs;
+
   // ========================================================================
   // Lifecycle
   // ========================================================================
@@ -267,11 +270,23 @@ class CollectionActivityController extends GetxController {
     final accountItems = allItems.where((item) => item.client.id == clientId).toList();
 
     final List<Map<String, dynamic>> combined = [];
+    
+    // 1. Add invoice-level history
     for (var item in accountItems) {
       for (var history in item.history) {
         combined.add({
           'history': history,
           'item': item,
+        });
+      }
+    }
+
+    // 2. Add account-level history
+    if (clientHistory.containsKey(clientId)) {
+      for (var history in clientHistory[clientId]!) {
+        combined.add({
+          'history': history,
+          'item': null,
         });
       }
     }
@@ -286,10 +301,10 @@ class CollectionActivityController extends GetxController {
   List<Map<String, dynamic>> get allRecentHistory {
     final List<Map<String, dynamic>> combined = [];
     
+    // 1. Add invoice-level history
     final allItems = [...bucketItems, ...activityItems];
     for (var item in allItems) {
       for (var history in item.history) {
-        // We only want to show user activities, or at least identify the account
         combined.add({
           'history': history,
           'accountName': item.client.name,
@@ -298,6 +313,19 @@ class CollectionActivityController extends GetxController {
         });
       }
     }
+
+    // 2. Add account-level history
+    clientHistory.forEach((clientId, historyEntries) {
+      final client = masterAccountList.firstWhere((c) => c.id == clientId, orElse: () => ClientModel.empty());
+      for (var history in historyEntries) {
+        combined.add({
+          'history': history,
+          'accountName': client.name,
+          'invoiceId': null,
+          'item': null,
+        });
+      }
+    });
 
     // Sort by date (Assuming yyyy-MM-dd HH:mm format)
     combined.sort((a, b) => b['history'].date.compareTo(a['history'].date));
@@ -379,6 +407,38 @@ class CollectionActivityController extends GetxController {
       }
     }
     logDebug('[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
+  }
+
+  void unclaimWithReason(String clientId, String reason, String remarks) {
+    // 1. Move all invoices back to bucket without adding history to them
+    final invoices = activityItems.where((item) => item.client.id == clientId).toList();
+    if (invoices.isEmpty) return;
+
+    for (final inv in invoices) {
+      final index = activityItems.indexWhere((e) => e.id == inv.id);
+      if (index != -1) {
+        final item = activityItems[index].copyWith(assignedAt: '');
+        bucketItems.add(item);
+        activityItems.removeAt(index);
+      }
+    }
+
+    // 2. Add a single account-level history entry
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+    final collectorInitials = UserController.instance.user.value.initials;
+
+    final historyEntry = CollectionHistoryModel(
+      date: now,
+      collectorName: collectorInitials,
+      status: reason,
+      remarks: remarks,
+      totalCollected: 0,
+    );
+
+    final historyList = clientHistory[clientId] ?? [];
+    clientHistory[clientId] = [...historyList, historyEntry];
+
+    logDebug('[CollectionActivityController] Account $clientId unclaimed with account-level reason: $reason');
   }
 
   void claimAccount(String clientId) {

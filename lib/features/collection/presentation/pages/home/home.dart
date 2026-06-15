@@ -186,8 +186,8 @@ class CollectionHomeScreen extends StatelessWidget {
                       
                       final historyList = recentThree.map((e) => e['history'] as CollectionHistoryModel).toList();
                       final accountNames = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['accountName'].toString() };
-                      final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId'].toString() };
-                      final items = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['item'] as CollectionItemModel };
+                      final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId']?.toString() };
+                      final items = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['item'] as CollectionItemModel? };
 
                       return ActivityHistoryList(
                         history: historyList,

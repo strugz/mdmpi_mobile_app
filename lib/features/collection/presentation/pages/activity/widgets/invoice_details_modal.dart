@@ -46,9 +46,17 @@ class InvoiceDetailsModal extends StatelessWidget {
             Text('Invoice #${item.id}', style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: BSizes.md),
 
-            _buildDetailRow(context, 'Total Amount Due', BFormatter.formatPesoCurrency(item.toBeCollected), valueColor: BColors.primary, icon: Iconsax.money_send),
-            _buildDetailRow(context, 'Total Collected', BFormatter.formatPesoCurrency(item.totalCollected), valueColor: BColors.success, icon: Iconsax.wallet_money),
-            _buildDetailRow(context, 'Due Date', item.dueDate, valueColor: item.isOverdue ? BColors.error : null, icon: Iconsax.calendar),
+            /// Info Grid
+            Wrap(
+              spacing: BSizes.sm,
+              runSpacing: BSizes.sm,
+              children: [
+                _buildInfoTile(context, 'Amount Due', BFormatter.formatPesoCurrency(item.toBeCollected), Iconsax.money_send, valueColor: BColors.primary),
+                _buildInfoTile(context, 'Collected', BFormatter.formatPesoCurrency(item.totalCollected), Iconsax.wallet_money, valueColor: BColors.success),
+                _buildInfoTile(context, 'Due Date', item.dueDate, Iconsax.calendar, valueColor: item.isOverdue ? BColors.error : null),
+                _buildInfoTile(context, 'BP Code', item.bpCode, Iconsax.user, valueColor: BColors.primary),
+              ],
+            ),
 
             const Padding(
               padding: EdgeInsets.symmetric(vertical: BSizes.md),
@@ -87,28 +95,34 @@ class InvoiceDetailsModal extends StatelessWidget {
                               ),
                               const SizedBox(height: BSizes.sm),
                               
-                              if (history.purposeOfVisit != null)
-                                _buildHistoryItem(context, 'Purpose', history.purposeOfVisit!, Iconsax.info_circle),
-                              
-                              _buildHistoryItem(context, 'Collector', history.collectorName, Iconsax.user),
-                              
-                              if (history.totalCollected > 0)
-                                _buildHistoryItem(
-                                  context, 
-                                  'Collected', 
-                                  BFormatter.formatPesoCurrency(history.totalCollected),
-                                  Iconsax.wallet_money,
-                                  valueColor: BColors.success
-                                ),
+                              Wrap(
+                                spacing: BSizes.xs,
+                                runSpacing: BSizes.xs,
+                                children: [
+                                  if (history.purposeOfVisit != null)
+                                    _buildCompactInfo(context, 'Purpose', history.purposeOfVisit!, Iconsax.info_circle),
+                                  
+                                  _buildCompactInfo(context, 'Collector', history.collectorName, Iconsax.user),
+                                  
+                                  if (history.totalCollected > 0)
+                                    _buildCompactInfo(
+                                      context, 
+                                      'Collected', 
+                                      BFormatter.formatPesoCurrency(history.totalCollected),
+                                      Iconsax.wallet_money,
+                                      valueColor: BColors.success
+                                    ),
 
-                              if (history.bankName != null && history.bankName!.isNotEmpty)
-                                _buildHistoryItem(context, 'Bank', history.bankName!, Iconsax.bank),
+                                  if (history.bankName != null && history.bankName!.isNotEmpty)
+                                    _buildCompactInfo(context, 'Bank', history.bankName!, Iconsax.bank),
 
-                              if (history.checkNumber != null && history.checkNumber!.isNotEmpty)
-                                _buildHistoryItem(context, 'Check #', history.checkNumber!, Iconsax.card_edit),
+                                  if (history.checkNumber != null && history.checkNumber!.isNotEmpty)
+                                    _buildCompactInfo(context, 'Check #', history.checkNumber!, Iconsax.card_edit),
 
-                              if (history.checkDate != null && history.checkDate!.isNotEmpty)
-                                _buildHistoryItem(context, 'Check Date', history.checkDate!, Iconsax.calendar_1),
+                                  if (history.checkDate != null && history.checkDate!.isNotEmpty)
+                                    _buildCompactInfo(context, 'Check Date', history.checkDate!, Iconsax.calendar_1),
+                                ],
+                              ),
 
                               const SizedBox(height: BSizes.xs),
                               Text('Remarks:', style: Theme.of(context).textTheme.labelSmall),
@@ -131,23 +145,48 @@ class InvoiceDetailsModal extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryItem(BuildContext context, String label, String value, IconData icon, {Color? valueColor}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+  Widget _buildInfoTile(
+    BuildContext context, 
+    String label, 
+    String value, 
+    IconData icon, 
+    {bool isBadge = false, Color? valueColor}
+  ) {
+    final width = (MediaQuery.of(context).size.width - (BSizes.defaultSpace * 2) - BSizes.sm) / 2;
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(BSizes.sm),
+      decoration: BoxDecoration(
+        color: BColors.lightGrey,
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.3)),
+      ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: BColors.darkGrey),
-          const SizedBox(width: 8),
-          Text('$label: ', style: Theme.of(context).textTheme.labelSmall),
+          Icon(icon, size: 20, color: BColors.primary),
+          const SizedBox(width: BSizes.sm),
           Expanded(
-            child: Text(
-              value, 
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: valueColor,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.labelSmall),
+                if (isBadge)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: _buildStatusBadge(context, value),
+                  )
+                else
+                  Text(
+                    value, 
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: valueColor,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
           ),
         ],
@@ -155,39 +194,26 @@ class InvoiceDetailsModal extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(
-    BuildContext context, 
-    String label, 
-    String value, 
-    {bool isBadge = false, Color? valueColor, IconData? icon}
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: BSizes.xs),
+  Widget _buildCompactInfo(BuildContext context, String label, String value, IconData icon, {Color? valueColor}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: BColors.white,
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
+      ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 20, color: BColors.darkGrey),
-            const SizedBox(width: BSizes.sm),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: Theme.of(context).textTheme.labelMedium),
-                if (isBadge)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: _buildStatusBadge(context, value),
-                  )
-                else
-                  Text(
-                    value, 
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: valueColor,
-                      fontWeight: FontWeight.bold,
-                    )
-                  ),
-              ],
+          Icon(icon, size: 12, color: BColors.darkGrey),
+          const SizedBox(width: 4),
+          Text('$label: ', style: const TextStyle(fontSize: 10, color: BColors.darkGrey)),
+          Text(
+            value, 
+            style: TextStyle(
+              fontSize: 10, 
+              fontWeight: FontWeight.bold,
+              color: valueColor ?? BColors.black,
             ),
           ),
         ],

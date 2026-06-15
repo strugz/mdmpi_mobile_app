@@ -54,13 +54,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
   void _saveActivity() {
     final controller = CollectionActivityController.instance;
-    
+
     // If "Others" is selected, use the custom remark as both status and remark
-    final String finalStatus = selectedStatus == CollectionStatusColors.statusOthers 
+    final String finalStatus = selectedStatus == CollectionStatusColors.statusOthers
         ? othersRemarkController.text.trim()
         : selectedStatus;
-        
-    final String finalRemarks = selectedStatus == CollectionStatusColors.statusOthers 
+
+    final String finalRemarks = selectedStatus == CollectionStatusColors.statusOthers
         ? othersRemarkController.text.trim()
         : selectedStatus;
 
@@ -101,7 +101,6 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// 1. Invoice Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,50 +120,18 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: BSizes.xs),
-
-            Row(
-              children: [
-                const Icon(Iconsax.timer, size: 18, color: BColors.error),
-                const SizedBox(width: BSizes.xs),
-                Text(
-                  'Due Date: ',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
-                ),
-                Text(
-                  widget.item.dueDate,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: BColors.error,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: BSizes.xs),
-
-            Row(
-              children: [
-                const Icon(Iconsax.calendar, size: 16, color: BColors.darkGrey),
-                const SizedBox(width: BSizes.xs),
-                Text(
-                  'Invoice Date: ${widget.item.postingDate}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
-                ),
-                const SizedBox(width: BSizes.md),
-                const Icon(Iconsax.user, size: 16, color: BColors.darkGrey),
-                const SizedBox(width: BSizes.xs),
-                Text(
-                  'BP: ${widget.item.bpCode}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: BColors.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
             const SizedBox(height: BSizes.sm),
 
-            _buildStatusBadge(context, widget.item.status),
+            Wrap(
+              spacing: BSizes.sm,
+              runSpacing: BSizes.sm,
+              children: [
+                _buildInfoTile(context, 'Due Date', widget.item.dueDate, Iconsax.timer, valueColor: BColors.error),
+                _buildInfoTile(context, 'Invoice Date', widget.item.postingDate, Iconsax.calendar),
+                _buildInfoTile(context, 'BP Code', widget.item.bpCode, Iconsax.user, valueColor: BColors.primary),
+                _buildInfoTile(context, 'Status', widget.item.status, Iconsax.activity, isBadge: true),
+              ],
+            ),
 
             const Padding(
               padding: EdgeInsets.symmetric(vertical: BSizes.spaceBtwSections),
@@ -275,6 +242,55 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoTile(
+    BuildContext context, 
+    String label, 
+    String value, 
+    IconData icon, 
+    {bool isBadge = false, Color? valueColor}
+  ) {
+    final width = (MediaQuery.of(context).size.width - (BSizes.defaultSpace * 2) - BSizes.sm) / 2;
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(BSizes.sm),
+      decoration: BoxDecoration(
+        color: BColors.lightGrey,
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: BColors.primary),
+          const SizedBox(width: BSizes.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: Theme.of(context).textTheme.labelSmall),
+                if (isBadge)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: _buildStatusBadge(context, value),
+                  )
+                else
+                  Text(
+                    value, 
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: valueColor,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

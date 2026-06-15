@@ -23,10 +23,10 @@ class ActivityHistoryList extends StatelessWidget {
   final Map<int, String>? accountNames;
   
   /// Optional: Map of history index to invoice ID (for global lists)
-  final Map<int, String>? invoiceIds;
+  final Map<int, String?>? invoiceIds;
 
   /// Optional: Map of history index to full invoice item
-  final Map<int, CollectionItemModel>? items;
+  final Map<int, CollectionItemModel?>? items;
 
   @override
   Widget build(BuildContext context) {
@@ -110,44 +110,56 @@ class _ActivityHistoryCard extends StatelessWidget {
             ],
 
             if (item != null) ...[
-              _buildDetailRow(context, 'Total Amount', BFormatter.formatPesoCurrency(item!.toBeCollected + item!.totalCollected), icon: Iconsax.money),
-              _buildDetailRow(context, 'Current Balance', BFormatter.formatPesoCurrency(item!.toBeCollected), icon: Iconsax.wallet_money, valueColor: BColors.primary),
-              _buildDetailRow(context, 'Due Date', item!.dueDate, icon: Iconsax.calendar, valueColor: item!.isOverdue ? BColors.error : null),
-              if (item!.documentReferences.isNotEmpty)
-                _buildDetailRow(context, 'References', item!.documentReferences.join(', '), icon: Iconsax.document_text),
+              Wrap(
+                spacing: BSizes.sm,
+                runSpacing: BSizes.sm,
+                children: [
+                  _buildInfoTile(context, 'Total Amount', BFormatter.formatPesoCurrency(item!.toBeCollected + item!.totalCollected), Iconsax.money),
+                  _buildInfoTile(context, 'Current Balance', BFormatter.formatPesoCurrency(item!.toBeCollected), Iconsax.wallet_money, valueColor: BColors.primary),
+                  _buildInfoTile(context, 'Due Date', item!.dueDate, Iconsax.calendar, valueColor: item!.isOverdue ? BColors.error : null),
+                  if (item!.documentReferences.isNotEmpty)
+                    _buildInfoTile(context, 'References', item!.documentReferences.join(', '), Iconsax.document_text),
+                ],
+              ),
               const Divider(height: BSizes.lg),
             ],
 
-            if (history.purposeOfVisit != null)
-              _buildDetailRow(context, 'Purpose of Visit', history.purposeOfVisit!, icon: Iconsax.info_circle),
+            Wrap(
+              spacing: BSizes.sm,
+              runSpacing: BSizes.sm,
+              children: [
+                if (history.purposeOfVisit != null)
+                  _buildInfoTile(context, 'Purpose of Visit', history.purposeOfVisit!, Iconsax.info_circle),
 
-            _buildDetailRow(context, 'Date', history.date, icon: Iconsax.calendar),
-            _buildDetailRow(context, 'Collector', collectorName, icon: Iconsax.user),
-            _buildDetailRow(
-              context, 
-              'Status', 
-              history.status, 
-              isBadge: true,
-              icon: Iconsax.activity
+                _buildInfoTile(context, 'Date', history.date, Iconsax.calendar),
+                _buildInfoTile(context, 'Collector', collectorName, Iconsax.user),
+                _buildInfoTile(
+                  context, 
+                  'Status', 
+                  history.status, 
+                  Iconsax.activity,
+                  isBadge: true,
+                ),
+                
+                if (history.totalCollected > 0)
+                  _buildInfoTile(
+                    context, 
+                    'Amount Collected', 
+                    BFormatter.formatPesoCurrency(history.totalCollected),
+                    Iconsax.wallet_money,
+                    valueColor: BColors.success
+                  ),
+
+                if (history.bankName != null && history.bankName!.isNotEmpty)
+                  _buildInfoTile(context, 'Bank', history.bankName!, Iconsax.bank),
+
+                if (history.checkNumber != null && history.checkNumber!.isNotEmpty)
+                  _buildInfoTile(context, 'Check Number', history.checkNumber!, Iconsax.card_edit),
+
+                if (history.checkDate != null && history.checkDate!.isNotEmpty)
+                  _buildInfoTile(context, 'Check Date', history.checkDate!, Iconsax.calendar_1),
+              ],
             ),
-            
-            if (history.totalCollected > 0)
-              _buildDetailRow(
-                context, 
-                'Amount Collected', 
-                BFormatter.formatPesoCurrency(history.totalCollected),
-                valueColor: BColors.success,
-                icon: Iconsax.wallet_money
-              ),
-
-            if (history.bankName != null && history.bankName!.isNotEmpty)
-              _buildDetailRow(context, 'Bank', history.bankName!, icon: Iconsax.bank),
-
-            if (history.checkNumber != null && history.checkNumber!.isNotEmpty)
-              _buildDetailRow(context, 'Check Number', history.checkNumber!, icon: Iconsax.card_edit),
-
-            if (history.checkDate != null && history.checkDate!.isNotEmpty)
-              _buildDetailRow(context, 'Check Date', history.checkDate!, icon: Iconsax.calendar_1),
 
             const SizedBox(height: BSizes.md),
             Text('Remarks', style: Theme.of(context).textTheme.titleSmall),
@@ -173,37 +185,46 @@ class _ActivityHistoryCard extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(
+  Widget _buildInfoTile(
     BuildContext context, 
     String label, 
     String value, 
-    {bool isBadge = false, Color? valueColor, IconData? icon}
+    IconData icon, 
+    {bool isBadge = false, Color? valueColor}
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: BSizes.xs),
+    final width = (MediaQuery.of(context).size.width - (BSizes.defaultSpace * 2) - BSizes.sm) / 2;
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(BSizes.sm),
+      decoration: BoxDecoration(
+        color: BColors.lightGrey,
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.3)),
+      ),
       child: Row(
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 20, color: BColors.darkGrey),
-            const SizedBox(width: BSizes.sm),
-          ],
+          Icon(icon, size: 20, color: BColors.primary),
+          const SizedBox(width: BSizes.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: Theme.of(context).textTheme.labelMedium),
+                Text(label, style: Theme.of(context).textTheme.labelSmall),
                 if (isBadge)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 2),
                     child: _ActivityHistoryBadge(status: value),
                   )
                 else
                   Text(
                     value, 
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: valueColor,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.bold,
-                    )
+                      color: valueColor,
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),
@@ -242,7 +263,9 @@ class _ActivityHistoryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Invoice #${invoiceId ?? item?.id ?? 'Unknown'}',
+                          invoiceId != null || item != null 
+                              ? 'Invoice #${invoiceId ?? item?.id}' 
+                              : 'Account Activity',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),

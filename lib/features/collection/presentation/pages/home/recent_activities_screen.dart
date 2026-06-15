@@ -52,8 +52,8 @@ class RecentActivitiesScreen extends StatelessWidget {
 
               final historyList = filteredItems.map((e) => e['history'] as CollectionHistoryModel).toList();
               final accountNames = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['accountName'].toString() };
-              final invoiceIds = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['invoiceId'].toString() };
-              final items = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['item'] as CollectionItemModel };
+              final invoiceIds = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['invoiceId']?.toString() };
+              final items = { for (var i = 0; i < filteredItems.length; i++) i : filteredItems[i]['item'] as CollectionItemModel? };
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),

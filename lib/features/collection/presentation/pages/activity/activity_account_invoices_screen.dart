@@ -10,6 +10,7 @@ import 'batch_activity_detail_screen.dart';
 import 'widgets/activity_filter_modal.dart';
 import 'widgets/activity_list_tile.dart';
 import 'widgets/invoice_details_modal.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:iconsax/iconsax.dart';
 
@@ -30,6 +31,82 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
     controller.invoiceSearchQuery.value = ''; // Reset search on leave
     controller.exitActivitySelectionMode();   // Exit selection on leave
     super.dispose();
+  }
+
+  void _showUnclaimWithReasonDialog() {
+    final reasons = [
+      CollectionStatusColors.statusFollowUp,
+      CollectionStatusColors.statusUnavailable,
+      CollectionStatusColors.statusRefused,
+      CollectionStatusColors.statusOthers,
+    ];
+
+    final RxString selectedReason = CollectionStatusColors.statusFollowUp.obs;
+    final othersController = TextEditingController();
+
+    Get.defaultDialog(
+      title: 'Unclaim Account',
+      content: Obx(() => ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: Get.height * 0.5),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select reason for no collection:', textAlign: TextAlign.center),
+              const SizedBox(height: BSizes.md),
+              ...reasons.map((reason) => RadioListTile<String>(
+                title: Text(reason),
+                value: reason,
+                groupValue: selectedReason.value,
+                onChanged: (val) => selectedReason.value = val!,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              )),
+              if (selectedReason.value == CollectionStatusColors.statusOthers)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: BSizes.md),
+                  child: TextField(
+                    controller: othersController,
+                    decoration: const InputDecoration(hintText: 'Enter custom reason...'),
+                    maxLines: 2,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      )),
+      textConfirm: 'Confirm',
+      textCancel: 'Cancel',
+      confirmTextColor: BColors.white,
+      buttonColor: BColors.error,
+      onConfirm: () {
+        final rawReason = selectedReason.value;
+        final customRemark = othersController.text.trim();
+        
+        if (rawReason == CollectionStatusColors.statusOthers && customRemark.isEmpty) {
+          Get.snackbar('Required', 'Please enter a reason', backgroundColor: BColors.warning);
+          return;
+        }
+
+        final status = rawReason == CollectionStatusColors.statusOthers ? 'Others' : rawReason;
+        final remarks = rawReason == CollectionStatusColors.statusOthers 
+            ? customRemark 
+            : 'No collection done: $rawReason';
+
+        controller.unclaimWithReason(widget.client.id, status, remarks);
+        
+        Get.back(); // Close dialog
+        Get.back(); // Return to Activity list
+        
+        Get.snackbar(
+          'Account Unclaimed', 
+          '${widget.client.name} moved back to bucket.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: BColors.success,
+          colorText: Colors.white,
+        );
+      },
+    );
   }
 
   @override
@@ -68,21 +145,7 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
             )
           else
             TextButton(
-              onPressed: () {
-                Get.defaultDialog(
-                  title: 'Unclaim Account',
-                  middleText: 'Move all invoices back to the bucket?',
-                  textConfirm: 'Unclaim',
-                  textCancel: 'Cancel',
-                  confirmTextColor: BColors.white,
-                  buttonColor: BColors.error,
-                  onConfirm: () {
-                    controller.unclaimAccount(widget.client.id);
-                    Get.back(); // Close dialog
-                    Get.back(); // Return to Activity list
-                  },
-                );
-              },
+              onPressed: _showUnclaimWithReasonDialog,
               child: const Text('Unclaim', style: TextStyle(color: BColors.error)),
             ),
         ],

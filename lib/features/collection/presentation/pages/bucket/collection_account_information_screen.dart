@@ -151,7 +151,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   else
                     ActivityHistoryList(
                       history: history.map((e) => e['history'] as CollectionHistoryModel).toList(),
-                      items: { for (var i = 0; i < history.length; i++) i : history[i]['item'] as CollectionItemModel },
+                      items: { for (var i = 0; i < history.length; i++) i : history[i]['item'] as CollectionItemModel? },
                     ),
                 ],
               ),
