@@ -35,7 +35,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     } else {
       selectedStatus = widget.item.status;
     }
-    totalCollectedController = TextEditingController(text: widget.item.totalCollected.toString());
+    totalCollectedController = TextEditingController(); // Start empty
     bankNameController = TextEditingController();
     checkNumberController = TextEditingController();
     checkDateController = TextEditingController();
@@ -258,9 +258,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       width: width,
       padding: const EdgeInsets.all(BSizes.sm),
       decoration: BoxDecoration(
-        color: BColors.lightGrey,
+        color: BColors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-        border: Border.all(color: BColors.grey.withValues(alpha: 0.3)),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [

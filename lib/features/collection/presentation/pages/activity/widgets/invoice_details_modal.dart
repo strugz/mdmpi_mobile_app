@@ -99,9 +99,6 @@ class InvoiceDetailsModal extends StatelessWidget {
                                 spacing: BSizes.xs,
                                 runSpacing: BSizes.xs,
                                 children: [
-                                  if (history.purposeOfVisit != null)
-                                    _buildCompactInfo(context, 'Purpose', history.purposeOfVisit!, Iconsax.info_circle),
-                                  
                                   _buildCompactInfo(context, 'Collector', history.collectorName, Iconsax.user),
                                   
                                   if (history.totalCollected > 0)
@@ -157,9 +154,9 @@ class InvoiceDetailsModal extends StatelessWidget {
       width: width,
       padding: const EdgeInsets.all(BSizes.sm),
       decoration: BoxDecoration(
-        color: BColors.lightGrey,
+        color: BColors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-        border: Border.all(color: BColors.grey.withValues(alpha: 0.3)),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -198,9 +195,9 @@ class InvoiceDetailsModal extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: BColors.white,
+        color: BColors.grey.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.15)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

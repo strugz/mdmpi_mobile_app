@@ -128,9 +128,6 @@ class _ActivityHistoryCard extends StatelessWidget {
               spacing: BSizes.sm,
               runSpacing: BSizes.sm,
               children: [
-                if (history.purposeOfVisit != null)
-                  _buildInfoTile(context, 'Purpose of Visit', history.purposeOfVisit!, Iconsax.info_circle),
-
                 _buildInfoTile(context, 'Date', history.date, Iconsax.calendar),
                 _buildInfoTile(context, 'Collector', collectorName, Iconsax.user),
                 _buildInfoTile(
@@ -197,9 +194,9 @@ class _ActivityHistoryCard extends StatelessWidget {
       width: width,
       padding: const EdgeInsets.all(BSizes.sm),
       decoration: BoxDecoration(
-        color: BColors.lightGrey,
+        color: BColors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-        border: Border.all(color: BColors.grey.withValues(alpha: 0.3)),
+        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -265,7 +262,7 @@ class _ActivityHistoryCard extends StatelessWidget {
                         Text(
                           invoiceId != null || item != null 
                               ? 'Invoice #${invoiceId ?? item?.id}' 
-                              : 'Account Activity',
+                              : (accountName ?? 'Account Activity'),
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),

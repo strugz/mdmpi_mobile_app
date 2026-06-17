@@ -52,6 +52,9 @@ class CollectionActivityController extends GetxController {
   /// Account-level history (for unclaiming/no collection)
   final RxMap<String, List<CollectionHistoryModel>> clientHistory = <String, List<CollectionHistoryModel>>{}.obs;
 
+  /// Global activities (Deposit, CWT Pick-up, Reconciliation)
+  final RxList<Map<String, dynamic>> globalActivities = <Map<String, dynamic>>[].obs;
+
   // ========================================================================
   // Lifecycle
   // ========================================================================
@@ -326,6 +329,9 @@ class CollectionActivityController extends GetxController {
         });
       }
     });
+
+    // 3. Add global activities
+    combined.addAll(globalActivities);
 
     // Sort by date (Assuming yyyy-MM-dd HH:mm format)
     combined.sort((a, b) => b['history'].date.compareTo(a['history'].date));
@@ -657,6 +663,38 @@ class CollectionActivityController extends GetxController {
 
     exitActivitySelectionMode();
     logDebug('[CollectionActivityController] Batch activity saved for ${ids.length} items');
+  }
+
+  void saveGlobalActivity({
+    required String type,
+    required String accountName,
+    required String remarks,
+    double totalCollected = 0,
+    String? bankName,
+    String? receiptNumber,
+  }) {
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+    final collectorInitials = UserController.instance.user.value.initials;
+
+    final historyEntry = CollectionHistoryModel(
+      date: now,
+      collectorName: collectorInitials,
+      status: type,
+      remarks: remarks,
+      totalCollected: totalCollected,
+      bankName: bankName,
+      checkNumber: receiptNumber, // Using checkNumber field for receipt number for now
+    );
+
+    globalActivities.add({
+      'history': historyEntry,
+      'accountName': accountName,
+      'invoiceId': null,
+      'item': null,
+    });
+    
+    globalActivities.refresh();
+    logDebug('[CollectionActivityController] Global activity saved: $type');
   }
 
   // ========================================================================

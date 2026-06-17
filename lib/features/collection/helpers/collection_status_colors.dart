@@ -19,6 +19,11 @@ class CollectionStatusColors {
   static const String statusRefused = 'Refused to Pay';
   static const String statusOthers = 'Others';
 
+  // ─── Global Process Statuses ────────────────────────────────────────
+  static const String statusDeposit = 'Deposit';
+  static const String statusCWTPickup = 'CWT Pick-up';
+  static const String statusReconciliation = 'Reconciliation';
+
   static const List<String> allStatuses = [
     statusCollected,
     statusPartial,
@@ -27,6 +32,9 @@ class CollectionStatusColors {
     statusUnavailable,
     statusRefused,
     statusOthers,
+    statusDeposit,
+    statusCWTPickup,
+    statusReconciliation,
   ];
 
   /// Statuses that a user can manually select in the update screen.
@@ -34,9 +42,6 @@ class CollectionStatusColors {
     statusCollected,
     statusPartial,
     statusPreCollection,
-    statusFollowUp,
-    statusUnavailable,
-    statusRefused,
     statusOthers,
   ];
 
@@ -67,6 +72,15 @@ class CollectionStatusColors {
         break;
       case statusOthers:
         bg = BColors.darkGrey;
+        break;
+      case statusDeposit:
+        bg = Colors.blue;
+        break;
+      case statusCWTPickup:
+        bg = Colors.orange;
+        break;
+      case statusReconciliation:
+        bg = Colors.purple;
         break;
       default:
         bg = darkMode ? BColors.darkerGrey : BColors.light;
@@ -102,6 +116,12 @@ class CollectionStatusColors {
         return Iconsax.clock;
       case statusOthers:
         return Iconsax.edit;
+      case statusDeposit:
+        return Iconsax.bank;
+      case statusCWTPickup:
+        return Iconsax.document_text;
+      case statusReconciliation:
+        return Iconsax.status_up;
       default:
         return Iconsax.info_circle;
     }

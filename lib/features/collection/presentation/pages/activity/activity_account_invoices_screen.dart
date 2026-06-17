@@ -142,11 +142,6 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
                     : 'Select All',
                 style: const TextStyle(color: BColors.primary),
               ),
-            )
-          else
-            TextButton(
-              onPressed: _showUnclaimWithReasonDialog,
-              child: const Text('Unclaim', style: TextStyle(color: BColors.error)),
             ),
         ],
       ),
@@ -180,6 +175,47 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
 
         return Column(
           children: [
+            /// Action Buttons
+            if (!controller.isActivitySelectionMode.value)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(BSizes.defaultSpace, BSizes.defaultSpace, BSizes.defaultSpace, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _showUnclaimWithReasonDialog,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: BColors.error,
+                          side: const BorderSide(color: BColors.error),
+                        ),
+                        child: const Text('No Collection'),
+                      ),
+                    ),
+                    const SizedBox(width: BSizes.spaceBtwItems),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          controller.unclaimAccount(widget.client.id);
+                          Get.back();
+                          Get.snackbar(
+                            'Success',
+                            'Collection marked as done for ${widget.client.name}',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Colors.blue,
+                            colorText: Colors.white,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          side: const BorderSide(color: Colors.blue),
+                        ),
+                        child: const Text('Done Collection'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             /// Search and Filter Bar
             if (!controller.isActivitySelectionMode.value)
               Obx(() {

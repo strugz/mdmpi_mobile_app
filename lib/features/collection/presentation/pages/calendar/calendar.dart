@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/widgets/activity_type_modal.dart';
 
 class CollectionCalendarScreen extends StatefulWidget {
   const CollectionCalendarScreen({super.key});
@@ -123,6 +124,37 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                 ),
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
+
+              // Add Activity Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
+                        ),
+                        builder: (_) => const ActivityTypeModal(),
+                      );
+                    },
+                    icon: const Icon(Iconsax.add_circle, size: 20),
+                    label: const Text('Add Activity'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: BSizes.md),
+                      backgroundColor: BColors.primary.withValues(alpha: 0.1),
+                      foregroundColor: BColors.primary,
+                      side: const BorderSide(color: BColors.primary),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: BSizes.spaceBtwItems),
               const Divider(),
               
               _buildEventList(),
@@ -178,8 +210,8 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
 
     final historyList = dayActivities.map((e) => e['history'] as CollectionHistoryModel).toList();
     final accountNames = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['accountName'].toString() };
-    final invoiceIds = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['invoiceId'].toString() };
-    final items = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['item'] as CollectionItemModel };
+    final invoiceIds = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['invoiceId']?.toString() };
+    final items = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['item'] as CollectionItemModel? };
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
