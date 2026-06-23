@@ -594,30 +594,23 @@ class CollectionActivityController extends GetxController {
   void saveBatchActivity({
     required List<String> ids,
     required Map<String, String> statuses,
-    required String remarks,
+    required Map<String, String> remarks,
+    required Map<String, double> amounts,
     required double totalAmountReceived,
     String? bankName,
     String? checkNumber,
     String? checkDate,
     String? purposeOfVisit,
   }) {
-    // 1. Sort items by due date (oldest first) to apply waterfall logic correctly
     final selectedItems = activityItems.where((item) => ids.contains(item.id)).toList();
-    selectedItems.sort((a, b) {
-      if (a.dueDate == 'N/A') return 1;
-      if (b.dueDate == 'N/A') return -1;
-      return a.dueDate.compareTo(b.dueDate);
-    });
-
-    double remainingPool = totalAmountReceived;
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
     for (var item in selectedItems) {
-      final double canApply = min(remainingPool, item.toBeCollected);
-      remainingPool -= canApply;
-
-      final double updatedTotalCollected = item.totalCollected + canApply;
-      final double updatedToBeCollected = (item.toBeCollected - canApply).clamp(0, double.infinity);
+      final double manualAmount = amounts[item.id] ?? 0;
+      final String itemRemarks = remarks[item.id] ?? 'Batch Recording';
+      
+      final double updatedTotalCollected = item.totalCollected + manualAmount;
+      final double updatedToBeCollected = (item.toBeCollected - manualAmount).clamp(0, double.infinity);
 
       final bool isFullyPaid = updatedToBeCollected == 0;
       
@@ -628,8 +621,8 @@ class CollectionActivityController extends GetxController {
         date: now,
         collectorName: UserController.instance.user.value.initials,
         status: itemStatus,
-        remarks: '$remarks (Batch Payment)',
-        totalCollected: canApply,
+        remarks: itemRemarks,
+        totalCollected: manualAmount,
         bankName: bankName,
         checkNumber: checkNumber,
         checkDate: checkDate,
@@ -639,12 +632,10 @@ class CollectionActivityController extends GetxController {
       final updatedItem = item.copyWith(
         status: isFullyPaid ? CollectionStatusColors.statusCollected : '',
         lastOutcome: itemStatus,
-        remarks: remarks,
+        remarks: itemRemarks,
         toBeCollected: updatedToBeCollected,
         totalCollected: updatedTotalCollected,
         history: [...item.history, historyEntry],
-        // If fully paid, move to bucket and reset assignment. 
-        // If NOT fully paid, keep current assignment.
         assignedAt: isFullyPaid ? '' : item.assignedAt,
         collectorName: isFullyPaid ? 'Unassigned' : item.collectorName,
       );
@@ -671,7 +662,7 @@ class CollectionActivityController extends GetxController {
     required String remarks,
     double totalCollected = 0,
     String? bankName,
-    String? receiptNumber,
+    String? checkNumber,
   }) {
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final collectorInitials = UserController.instance.user.value.initials;
@@ -683,7 +674,7 @@ class CollectionActivityController extends GetxController {
       remarks: remarks,
       totalCollected: totalCollected,
       bankName: bankName,
-      checkNumber: receiptNumber, // Using checkNumber field for receipt number for now
+      checkNumber: checkNumber,
     );
 
     globalActivities.add({

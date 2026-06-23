@@ -23,12 +23,14 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   late TextEditingController checkNumberController;
   late TextEditingController checkDateController;
 
+  // Track amounts and remarks per invoice ID
+  final Map<String, TextEditingController> itemAmountControllers = {};
+  final Map<String, TextEditingController> itemRemarkControllers = {};
+  
   // Track statuses per invoice ID
   final Map<String, String> itemStatuses = {};
-  // Track custom remarks for "Others" status
+  // Track custom remarks for "Others" status specifically if needed, but we now have general remarks per item
   final Map<String, String> itemOthersRemarks = {};
-  // Track manually overridden statuses to prevent waterfall from overwriting them
-  final Set<String> manualStatusOverrides = {};
 
   @override
   void initState() {
@@ -38,42 +40,21 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     checkNumberController = TextEditingController();
     checkDateController = TextEditingController();
 
-    // Initialize statuses to a default
     for (var item in widget.items) {
-      itemStatuses[item.id] = CollectionStatusColors.statusFollowUp;
+      itemAmountControllers[item.id] = TextEditingController();
+      itemRemarkControllers[item.id] = TextEditingController();
+      // Defaulting to Collected instead of Follow Up
+      itemStatuses[item.id] = CollectionStatusColors.statusCollected;
+      
+      // Listen to amount changes for live validation
+      itemAmountControllers[item.id]!.addListener(() {
+        setState(() {});
+      });
     }
 
-    // Listener for waterfall logic visualization and smart defaults
     totalAmountController.addListener(() {
-      _updateSmartDefaults();
       setState(() {});
     });
-  }
-
-  void _updateSmartDefaults() {
-    final double inputAmount = double.tryParse(totalAmountController.text) ?? 0;
-    
-    for (int i = 0; i < widget.items.length; i++) {
-      final item = widget.items[i];
-      
-      // Don't auto-update if the user manually picked a status for this item
-      if (manualStatusOverrides.contains(item.id)) continue;
-
-      double amountBeforeThis = 0;
-      for (int j = 0; j < i; j++) {
-        amountBeforeThis += widget.items[j].toBeCollected;
-      }
-      
-      double remainingForThis = (inputAmount - amountBeforeThis).clamp(0.0, item.toBeCollected);
-      
-      if (remainingForThis >= item.toBeCollected && item.toBeCollected > 0) {
-        itemStatuses[item.id] = CollectionStatusColors.statusCollected;
-      } else if (remainingForThis > 0) {
-        itemStatuses[item.id] = CollectionStatusColors.statusPartial;
-      } else {
-        itemStatuses[item.id] = CollectionStatusColors.statusFollowUp;
-      }
-    }
   }
 
   @override
@@ -82,37 +63,72 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     bankNameController.dispose();
     checkNumberController.dispose();
     checkDateController.dispose();
+    for (var controller in itemAmountControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in itemRemarkControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
+  double get _allocatedTotal {
+    double total = 0;
+    for (var controller in itemAmountControllers.values) {
+      total += double.tryParse(controller.text) ?? 0;
+    }
+    return total;
+  }
+
+  double get _targetTotal => double.tryParse(totalAmountController.text) ?? 0;
+
+  bool get _isBalanced {
+    final target = _targetTotal;
+    if (target <= 0) return false;
+    // Allow for small rounding differences if necessary, but usually exact for currency
+    return (_allocatedTotal - target).abs() < 0.01;
+  }
+
   void _saveBatch() {
-    final controller = CollectionActivityController.instance;
-    final total = double.tryParse(totalAmountController.text) ?? 0;
-    
-    if (total < 0) {
-      Get.snackbar('Error', 'Please enter a valid amount collected.', backgroundColor: BColors.error, colorText: Colors.white);
+    if (!_isBalanced) {
+      Get.snackbar(
+        'Imbalance', 
+        'Total allocated amount (${BFormatter.formatPesoCurrency(_allocatedTotal)}) must equal total check amount (${BFormatter.formatPesoCurrency(_targetTotal)}).',
+        backgroundColor: BColors.error,
+        colorText: Colors.white
+      );
       return;
     }
 
-    // Finalize statuses: replace 'Others' with the custom remark
+    final controller = CollectionActivityController.instance;
+    
     final Map<String, String> finalStatuses = Map.from(itemStatuses);
-    for (var entry in finalStatuses.entries) {
-      if (entry.value == CollectionStatusColors.statusOthers) {
-        finalStatuses[entry.key] = itemOthersRemarks[entry.key]?.isNotEmpty == true 
-            ? itemOthersRemarks[entry.key]! 
-            : 'Others';
+    final Map<String, double> finalAmounts = {};
+    final Map<String, String> finalRemarks = {};
+
+    for (var item in widget.items) {
+      finalAmounts[item.id] = double.tryParse(itemAmountControllers[item.id]!.text) ?? 0;
+      
+      // Combine status remarks with manual remarks
+      String remark = itemRemarkControllers[item.id]!.text.trim();
+      if (itemStatuses[item.id] == CollectionStatusColors.statusOthers) {
+        finalStatuses[item.id] = itemOthersRemarks[item.id]?.isNotEmpty == true ? itemOthersRemarks[item.id]! : 'Others';
+        final String statusValue = finalStatuses[item.id]!;
+        remark = remark.isEmpty ? statusValue : '$remark ($statusValue)';
       }
+      finalRemarks[item.id] = remark.isEmpty ? 'Batch Recording' : remark;
     }
 
     controller.saveBatchActivity(
       ids: widget.items.map((e) => e.id).toList(),
       statuses: finalStatuses,
-      remarks: 'Batch Recording',
-      totalAmountReceived: total,
+      remarks: finalRemarks,
+      amounts: finalAmounts,
+      totalAmountReceived: _targetTotal,
       bankName: bankNameController.text.trim().isEmpty ? null : bankNameController.text.trim(),
       checkNumber: checkNumberController.text.trim().isEmpty ? null : checkNumberController.text.trim(),
       checkDate: checkDateController.text.trim().isEmpty ? null : checkDateController.text.trim(),
-      purposeOfVisit: 'Collection', // Defaulting since dropdown was removed
+      purposeOfVisit: 'Collection',
     );
 
     Get.back();
@@ -153,7 +169,6 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                   });
                   setState(() {
                     itemStatuses[itemId] = status;
-                    manualStatusOverrides.add(itemId);
                   });
                   if (status != CollectionStatusColors.statusOthers) {
                     Navigator.pop(context);
@@ -190,7 +205,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final double totalSelectedDue = widget.items.fold(0, (sum, item) => sum + item.toBeCollected);
-    final double inputAmount = double.tryParse(totalAmountController.text) ?? 0;
+    final double remaining = _targetTotal - _allocatedTotal;
 
     return Scaffold(
       appBar: AppBar(
@@ -219,7 +234,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            /// 2. Purpose & Bank Details (Shared)
+            /// 2. Visit & Bank Details
             Text('Visit & Bank Details', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
             
@@ -254,7 +269,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
 
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            /// 3. Total Amount Received (The Waterfall Input)
+            /// 3. Total Amount Received
             Text('Total Amount Received', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.spaceBtwItems),
             TextField(
@@ -267,86 +282,111 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
               ),
             ),
 
+            const SizedBox(height: BSizes.spaceBtwItems),
+            
+            /// Validation Banner
+            if (_targetTotal > 0)
+              Container(
+                padding: const EdgeInsets.all(BSizes.md),
+                decoration: BoxDecoration(
+                  color: _isBalanced ? BColors.success.withOpacity(0.1) : BColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                  border: Border.all(color: _isBalanced ? BColors.success : BColors.error),
+                ),
+                child: Row(
+                  children: [
+                    Icon(_isBalanced ? Iconsax.tick_circle : Iconsax.warning_2, color: _isBalanced ? BColors.success : BColors.error),
+                    const SizedBox(width: BSizes.sm),
+                    Expanded(
+                      child: Text(
+                        _isBalanced 
+                          ? 'Balanced! Ready to save.' 
+                          : remaining > 0 
+                            ? '${BFormatter.formatPesoCurrency(remaining)} left to distribute.'
+                            : '${BFormatter.formatPesoCurrency(remaining.abs())} over distributed.',
+                        style: TextStyle(
+                          color: _isBalanced ? BColors.success : BColors.error,
+                          fontWeight: FontWeight.bold
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            /// 4. Preview of Distribution (Waterfall)
-            Text('Distribution Preview (Oldest First)', style: Theme.of(context).textTheme.titleMedium),
-            Text('Tap a card to override its status', style: Theme.of(context).textTheme.labelSmall),
+            /// 4. Manual Distribution
+            Text('Distribute Manually', style: Theme.of(context).textTheme.titleMedium),
+            Text('Specify amount and remarks for each invoice', style: Theme.of(context).textTheme.labelSmall),
             const SizedBox(height: BSizes.spaceBtwItems),
             
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: widget.items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: BSizes.sm),
+              separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
               itemBuilder: (context, index) {
                 final item = widget.items[index];
                 final currentStatus = itemStatuses[item.id] ?? '';
-                
-                // Calculate how much applies to this item based on previous items
-                double amountBeforeThis = 0;
-                for (int i = 0; i < index; i++) {
-                  amountBeforeThis += widget.items[i].toBeCollected;
-                }
-                
-                double remainingForThis = (inputAmount - amountBeforeThis).clamp(0.0, item.toBeCollected);
-                bool isFull = remainingForThis >= item.toBeCollected && item.toBeCollected > 0;
+                final amountAllocated = double.tryParse(itemAmountControllers[item.id]!.text) ?? 0;
 
-                return InkWell(
-                  onTap: () => _showStatusPicker(item.id),
-                  borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                  child: Container(
-                    padding: const EdgeInsets.all(BSizes.md),
-                    decoration: BoxDecoration(
-                      color: BColors.white,
-                      border: Border.all(color: remainingForThis > 0 ? BColors.primary : BColors.grey),
-                      borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Invoice #${item.id}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  Text('Due: ${item.dueDate}', style: Theme.of(context).textTheme.labelSmall),
-                                ],
+                return Container(
+                  padding: const EdgeInsets.all(BSizes.md),
+                  decoration: BoxDecoration(
+                    color: BColors.white,
+                    border: Border.all(color: amountAllocated > 0 ? BColors.primary : BColors.grey),
+                    borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Invoice #${item.id}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Total Due: ${BFormatter.formatPesoCurrency(item.toBeCollected)}', style: Theme.of(context).textTheme.labelSmall),
+                            ],
+                          ),
+                          GestureDetector(
+                            onTap: () => _showStatusPicker(item.id),
+                            child: _buildStatusBadge(context, currentStatus),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: BSizes.lg),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: TextField(
+                              controller: itemAmountControllers[item.id],
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              decoration: const InputDecoration(
+                                labelText: 'Amount',
+                                prefixText: '₱ ',
+                                isDense: true,
                               ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  BFormatter.formatPesoCurrency(remainingForThis),
-                                  style: TextStyle(
-                                    color: remainingForThis > 0 ? BColors.success : BColors.darkGrey,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  isFull ? 'FULLY PAID' : (remainingForThis > 0 ? 'PARTIAL' : 'UNPAID'),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: remainingForThis > 0 ? BColors.success : BColors.darkGrey,
-                                  ),
-                                ),
-                              ],
+                          ),
+                          const SizedBox(width: BSizes.sm),
+                          Expanded(
+                            flex: 5,
+                            child: TextField(
+                              controller: itemRemarkControllers[item.id],
+                              decoration: const InputDecoration(
+                                labelText: 'Remarks',
+                                isDense: true,
+                              ),
                             ),
-                          ],
-                        ),
-                        const Divider(height: BSizes.md),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Result Status:', style: Theme.of(context).textTheme.labelMedium),
-                            _buildStatusBadge(context, currentStatus),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 );
               },
@@ -357,7 +397,11 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saveBatch,
+                onPressed: _isBalanced ? _saveBatch : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isBalanced ? BColors.primary : BColors.grey,
+                  side: BorderSide(color: _isBalanced ? BColors.primary : BColors.grey),
+                ),
                 child: const Text('Save Batch Activity'),
               ),
             ),
@@ -377,9 +421,16 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         color: bg.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
       ),
-      child: Text(
-        status,
-        style: TextStyle(color: bg, fontSize: 10, fontWeight: FontWeight.bold),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            status,
+            style: TextStyle(color: bg, fontSize: 10, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 4),
+          Icon(Iconsax.edit, size: 10, color: bg),
+        ],
       ),
     );
   }

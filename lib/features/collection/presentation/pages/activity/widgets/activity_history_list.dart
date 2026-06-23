@@ -75,6 +75,7 @@ class _ActivityHistoryCard extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: const BoxDecoration(
@@ -86,6 +87,18 @@ class _ActivityHistoryCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// Drag Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: BSizes.md),
+                decoration: BoxDecoration(
+                  color: BColors.grey.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

@@ -266,6 +266,7 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
                             showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
+                              showDragHandle: false,
                               backgroundColor: Colors.transparent,
                               builder: (context) => InvoiceDetailsModal(item: item),
                             );

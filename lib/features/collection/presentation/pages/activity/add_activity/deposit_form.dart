@@ -16,7 +16,7 @@ class DepositFormScreen extends StatefulWidget {
 class _DepositFormScreenState extends State<DepositFormScreen> {
   final bankNameController = TextEditingController();
   final amountController = TextEditingController();
-  final receiptNumberController = TextEditingController();
+  final checkNumberController = TextEditingController();
   final remarksController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
@@ -24,7 +24,7 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
   void dispose() {
     bankNameController.dispose();
     amountController.dispose();
-    receiptNumberController.dispose();
+    checkNumberController.dispose();
     remarksController.dispose();
     super.dispose();
   }
@@ -39,7 +39,7 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
       remarks: remarksController.text,
       totalCollected: double.tryParse(amountController.text) ?? 0,
       bankName: bankNameController.text,
-      receiptNumber: receiptNumberController.text,
+      checkNumber: checkNumberController.text,
     );
 
     Get.back(); // Close form first
@@ -83,12 +83,12 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 
                 TextFormField(
-                  controller: receiptNumberController,
+                  controller: checkNumberController,
                   decoration: const InputDecoration(
-                    labelText: 'Receipt Number',
-                    prefixIcon: Icon(Iconsax.document_text),
+                    labelText: 'Check Number',
+                    prefixIcon: Icon(Iconsax.card_edit),
                   ),
-                  validator: (value) => value == null || value.isEmpty ? 'Receipt number is required' : null,
+                  validator: (value) => value == null || value.isEmpty ? 'Check number is required' : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 

@@ -14,9 +14,9 @@ class InvoiceDetailsModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
+      initialChildSize: 0.8,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
       builder: (_, scrollController) => Container(
         decoration: const BoxDecoration(
           color: BColors.white,
@@ -26,6 +26,18 @@ class InvoiceDetailsModal extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            /// Drag Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: BSizes.md),
+                decoration: BoxDecoration(
+                  color: BColors.grey.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
