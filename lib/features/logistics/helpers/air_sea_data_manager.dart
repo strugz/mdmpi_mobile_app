@@ -97,7 +97,7 @@ class AirSeaDataManager {
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());
     } catch (e) {
       controller.errorMessage.value = e.toString();
-      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+      logDebug('AirSeaDataManager.fetchAirSeaRequests failed: $e');
     } finally {
       controller.isLoading.value = false;
     }
@@ -116,7 +116,10 @@ class AirSeaDataManager {
 
     try {
       await _repository.clearLocalData();
-      final results = await _repository.getAll(forceRefresh: true);
+      final results = await _repository.getAll(
+        forceRefresh: true,
+        allowLocalFallback: false,
+      );
 
       controller.airSeaRequests.assignAll(results);
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());

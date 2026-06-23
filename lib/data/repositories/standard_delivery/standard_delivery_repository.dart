@@ -5,7 +5,9 @@ import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
+import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/standard_delivery_mapper.dart';
 import 'dart:convert';
@@ -163,8 +165,21 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  Future<List<StandardDeliveryModel>> getAllPending() async {
+  Future<List<StandardDeliveryModel>> getAllPending({
+    bool allowLocalFallback = true,
+  }) async {
     try {
+      final dbHelper = DatabaseHelper.instance;
+      final isConnected = await NetworkManager.instance.isConnected();
+
+      if (!isConnected) {
+        if (!allowLocalFallback) {
+          throw Exception('No internet connection');
+        }
+        logDebug('StandardDeliveryRepository: Offline, returning local data');
+        return await dbHelper.getRequests();
+      }
+
       final response =
           await http.get(Uri.parse("${dotenv.env['API_URL']}/api4/request"));
       if (response.statusCode == 200) {
@@ -200,11 +215,11 @@ class StandardDeliveryRepository extends GetxController {
                 : Map<String, dynamic>.from(item);
             parsed.add(StandardDeliveryModel.fromJson(map));
           } catch (e) {
-            print('Failed to parse request item: $e');
+            logDebug('Failed to parse request item: $e');
             try {
-              print('Item data: ${json.encode(item)}');
+              logDebug('Item data: ${json.encode(item)}');
             } catch (_) {
-              print('Item data: $item');
+              logDebug('Item data: $item');
             }
           }
         }
@@ -214,6 +229,20 @@ class StandardDeliveryRepository extends GetxController {
         throw Exception('Failed to load pending request');
       }
     } catch (e, st) {
+      logDebug('StandardDeliveryRepository.getAllPending error: $e\n$st');
+      if (!allowLocalFallback) {
+        throw Exception('Something went wrong. Please try again: $e\n$st');
+      }
+      try {
+        final localData = await DatabaseHelper.instance.getRequests();
+        if (localData.isNotEmpty) {
+          logDebug(
+              'StandardDeliveryRepository: API failed, returning ${localData.length} local rows');
+          return localData;
+        }
+      } catch (dbError) {
+        logDebug('StandardDeliveryRepository: Local fallback failed: $dbError');
+      }
       throw Exception('Something went wrong. Please try again: $e\n$st');
     }
   }

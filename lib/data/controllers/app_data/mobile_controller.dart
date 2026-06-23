@@ -1,8 +1,8 @@
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 import '../../local/database_helper.dart';
@@ -46,7 +46,7 @@ class MobileController extends GetxController {
 
       if (localMobiles.isNotEmpty) {
         mobile.assignAll(localMobiles);
-      } else {
+      } else if (await NetworkManager.instance.isConnected()) {
         final mobiles = await mobileRepository.getAllMobile();
 
         await _dbHelper.insertMobiles(mobiles);
@@ -54,7 +54,7 @@ class MobileController extends GetxController {
         mobile.assignAll(mobiles);
       }
     } catch (e) {
-      BLoaders.errorSnackBar(title: "Oh Snap!", message: e.toString());
+      logDebug('MobileController.getAllMobile failed: $e');
     } finally {
       isLoading.value = false;
     }
@@ -64,7 +64,7 @@ class MobileController extends GetxController {
     final isConnected = await NetworkManager.instance.isConnected();
 
     if (!isConnected) {
-      BLoaders.errorSnackBar(
+      BLoaders.warningSnackBar(
           title: "Internet", message: "No Internet Connection");
       return;
     }
@@ -91,7 +91,7 @@ class MobileController extends GetxController {
     final isConnected = await NetworkManager.instance.isConnected();
 
     if (!isConnected) {
-      BLoaders.errorSnackBar(
+      BLoaders.warningSnackBar(
           title: "Internet", message: "No Internet Connection");
       return;
     }

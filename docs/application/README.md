@@ -7,6 +7,7 @@ This folder contains practical Logistics Department documentation for the MDMPI 
 | Audience | Guide | Use this when |
 |---|---|---|
 | Logistics Users | [User Guide](USER_GUIDE.md) | You create, view, update, deliver, or monitor Logistics requests. |
+| Logistics Users by Role | [Role-Based User Manual](LOGISTICS_ROLE_USER_MANUAL.md) | You need to know what each Logistics role can do. |
 | Logistics Operations Admins | [Admin Guide](ADMIN_GUIDE.md) | You support Logistics users, local sync, request data refresh, outboxes, and troubleshooting. |
 | Logistics Developers | [Developer Guide](DEVELOPER_GUIDE.md) | You maintain or extend Logistics request modules, data flows, and support tooling. |
 
@@ -19,6 +20,7 @@ This documentation focuses on:
 - Logistics authentication and onboarding context.
 - Logistics navigation: Home, Request, Location, and Settings.
 - Request categories: Standard Delivery, Pull Out / Return, Pick Up, Air / Sea, Hotline Direct, Stock Receive, and BackLoad.
+- Role-based user workflows for Request, Release, Courier, Provincial, Viewer, and Admin users.
 - Request list usage, filtering, creation, status updates, cancellation, proof capture, and delivery location workflows.
 - Logistics support tools: Upload Data, Hard Reset Refresh, Realtime Location Saver, Contact Directory, Local Storage Viewer, Signature Outbox, and Image Outbox.
 - Developer architecture for Logistics controllers, repositories, DAOs, mappers, routes, and bindings.
@@ -37,6 +39,7 @@ Collection, Service, and InHouse are mentioned only where they affect shared rou
 - [Hotline Direct Module](../modules/hotline-direct/README.md)
 - [Stock Receive Module](../modules/stock-receive/README.md)
 - [BackLoad Module](../modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md)
+- [Role-Based User Manual](LOGISTICS_ROLE_USER_MANUAL.md)
 - [Local Storage Data Viewer README](../../lib/features/logistics/screens/data_test/README.md)
 
 ## Maintenance Notes

@@ -337,7 +337,6 @@ class StockReceiveDataManager {
     } catch (e) {
       controller.errorMessage.value = e.toString();
       logDebug('StockReceiveDataManager.fetchStockReceives error: $e');
-      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;
     }
@@ -355,7 +354,10 @@ class StockReceiveDataManager {
     controller.errorMessage.value = null;
 
     try {
-      final results = await _repository.getAll(forceRefresh: true);
+      final results = await _repository.getAll(
+        forceRefresh: true,
+        allowLocalFallback: false,
+      );
       final stockReceiveRequests =
           results.where((r) => r.formCategoryId == '9').toList();
 

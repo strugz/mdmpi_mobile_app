@@ -40,7 +40,7 @@ class PickUpController extends GetxController {
   /// Storage preference flag for data source selection.
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
-  final RxBool useLocalStorage = false.obs;
+  final RxBool useLocalStorage = true.obs;
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
@@ -183,8 +183,6 @@ class PickUpController extends GetxController {
     filterManager.selectFilter(filter, pickUps);
   }
 
-
-
   void selectDateFrom(DateTime? date) {
     filterManager.selectDateFrom(date, pickUps);
   }
@@ -201,9 +199,8 @@ class PickUpController extends GetxController {
     filterManager.setClientNameQuery(query, pickUps);
   }
 
-
   void setDocumentReferenceQuery(String query) {
-    filterManager.setDocumentReferenceQuery(query,pickUps);
+    filterManager.setDocumentReferenceQuery(query, pickUps);
   }
   // ========================================================================
   // CRUD OPERATIONS
@@ -286,4 +283,3 @@ class PickUpController extends GetxController {
     loadPickUps();
   }
 }
-

@@ -126,8 +126,7 @@ class UserController extends GetxController {
     final isConnected = await NetworkManager.instance.isConnected();
 
     if (!isConnected) {
-      BLoaders.errorSnackBar(
-          title: "Internet", message: "No Internet Connection");
+      await dbHelper.getUsers();
       return;
     }
     try {
@@ -166,7 +165,7 @@ class UserController extends GetxController {
     final isConnected = await NetworkManager.instance.isConnected();
 
     if (!isConnected) {
-      BLoaders.errorSnackBar(
+      BLoaders.warningSnackBar(
           title: "Internet", message: "No Internet Connection");
       return;
     }

@@ -12,6 +12,7 @@ docs/
   application/
     README.md                        # Application documentation landing page
     USER_GUIDE.md                    # Daily app usage guide
+    LOGISTICS_ROLE_USER_MANUAL.md    # Logistics user manual by role
     ADMIN_GUIDE.md                   # Operations admin support guide
     DEVELOPER_GUIDE.md               # Developer setup and architecture guide
   modules/
@@ -37,6 +38,7 @@ docs/
 |---|---|
 | Logistics documentation landing page | [application/](application/) |
 | Logistics Users | [application/USER_GUIDE.md](application/USER_GUIDE.md) |
+| Logistics Users by Role | [application/LOGISTICS_ROLE_USER_MANUAL.md](application/LOGISTICS_ROLE_USER_MANUAL.md) |
 | Logistics Operations Admins | [application/ADMIN_GUIDE.md](application/ADMIN_GUIDE.md) |
 | Logistics Developers | [application/DEVELOPER_GUIDE.md](application/DEVELOPER_GUIDE.md) |
 

@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/offline_data_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
@@ -543,20 +544,13 @@ class StandardDeliveryDataManager {
     try {
       List<StandardDeliveryModel> results;
 
-      if (!useLocalStorage) {
-        // Force API fetch
-        final apiRequests = await _repository.getAllPending();
-        results = apiRequests;
-        await _dbHelper.insertRequests(apiRequests);
-      } else {
-        // Try local DB first
-        results = await _dbHelper.getRequests();
-        if (results.isEmpty) {
-          final apiRequests = await _repository.getAllPending();
-          results = apiRequests;
-          await _dbHelper.insertRequests(apiRequests);
-        }
-      }
+      results = await OfflineDataLoader.loadLocalThenRemoteIfOnline(
+        loadLocal: _dbHelper.getRequests,
+        loadRemote: _repository.getAllPending,
+        cacheRemote: _dbHelper.insertRequests,
+        sourceName: 'StandardDeliveryDataManager.fetchStandardDeliveryRequests',
+        forceRemote: !useLocalStorage,
+      );
 
       // Filter for Standard Delivery category only (formCategoryID = '6')
       final standardDeliveryRequests =
@@ -577,7 +571,8 @@ class StandardDeliveryDataManager {
       controller.updateRequestCounts();
     } catch (e) {
       controller.errorMessage.value = e.toString();
-      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+      logDebug(
+          'StandardDeliveryDataManager.fetchStandardDeliveryRequests failed: $e');
     } finally {
       controller.isLoading.value = false;
     }
@@ -596,7 +591,8 @@ class StandardDeliveryDataManager {
     controller.errorMessage.value = null;
 
     try {
-      final apiRequests = await _repository.getAllPending();
+      final apiRequests =
+          await _repository.getAllPending(allowLocalFallback: false);
 
       await _dbHelper.deleteRequest();
       await _dbHelper.insertRequests(apiRequests);

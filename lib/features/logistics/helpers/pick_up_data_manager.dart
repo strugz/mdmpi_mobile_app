@@ -92,7 +92,6 @@ class PickUpDataManager {
     } catch (e) {
       controller.errorMessage.value = e.toString();
       logDebug('PickUpDataManager.fetchPickUps error: $e');
-      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;
     }
@@ -111,7 +110,10 @@ class PickUpDataManager {
 
     try {
       await _repository.clearLocalData();
-      final results = await _repository.getAll(forceRefresh: true);
+      final results = await _repository.getAll(
+        forceRefresh: true,
+        allowLocalFallback: false,
+      );
 
       controller.pickUps.assignAll(results);
       controller.filterManager.applyFilter(controller.pickUps.toList());

@@ -60,7 +60,7 @@ class HotlineDirectController extends GetxController
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
   @override
-  final RxBool useLocalStorage = false.obs;
+  final RxBool useLocalStorage = true.obs;
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
@@ -269,8 +269,6 @@ class HotlineDirectController extends GetxController
     filterManager.selectFilter(filter, allPendingRequests);
   }
 
-
-
   void selectDateFrom(DateTime? date) {
     filterManager.selectDateFrom(date, allPendingRequests);
   }
@@ -287,9 +285,8 @@ class HotlineDirectController extends GetxController
     filterManager.setClientNameQuery(query, allPendingRequests);
   }
 
-
   void setDocumentReferenceQuery(String query) {
-    filterManager.setDocumentReferenceQuery(query,allPendingRequests);
+    filterManager.setDocumentReferenceQuery(query, allPendingRequests);
   }
   // ========================================================================
   // CRUD OPERATIONS

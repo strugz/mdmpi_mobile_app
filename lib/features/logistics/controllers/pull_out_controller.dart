@@ -28,7 +28,7 @@ class PullOutController extends GetxController {
   /// Storage preference flag for data source selection.
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
-  final RxBool useLocalStorage = false.obs;
+  final RxBool useLocalStorage = true.obs;
 
   /// Last error message, if any.
   final RxnString errorMessage = RxnString();
@@ -62,7 +62,7 @@ class PullOutController extends GetxController {
     formState = PullOutFormState();
     formState.initializeDefaultDate();
     dataManager.loadCategories(this);
-    dataManager.fetchPullOuts(this);
+    dataManager.fetchPullOuts(this, useLocalStorage.value);
 
     userController = Get.find<UserController>();
     createdBy = userController.user.value.initial;
@@ -97,10 +97,10 @@ class PullOutController extends GetxController {
     filterManager.setClientNameQuery(query, pullOuts);
   }
 
-
   void setDocumentReferenceQuery(String query) {
-    filterManager.setDocumentReferenceQuery(query,pullOuts);
+    filterManager.setDocumentReferenceQuery(query, pullOuts);
   }
+
   /// Fetch all pull-out requests from repository.
   Future<void> loadPullOuts() async {
     await dataManager.fetchPullOuts(this, useLocalStorage.value);

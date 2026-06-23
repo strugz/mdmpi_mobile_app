@@ -42,7 +42,7 @@ class AirSeaController extends GetxController {
   /// Storage preference flag for data source selection.
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
-  final RxBool useLocalStorage = false.obs;
+  final RxBool useLocalStorage = true.obs;
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
@@ -53,7 +53,8 @@ class AirSeaController extends GetxController {
   final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
 
   /// Status/history stages for the currently selected request.
-  final RxList<AirSeaStatusStagesModel> historyStages = <AirSeaStatusStagesModel>[].obs;
+  final RxList<AirSeaStatusStagesModel> historyStages =
+      <AirSeaStatusStagesModel>[].obs;
 
   /// Statuses for the currently selected request, extracted from history stages for display.
   final RxList<String> stagesStatus = <String>[].obs;
@@ -168,7 +169,6 @@ class AirSeaController extends GetxController {
   /// [requestId] The Air/Sea request ID to fetch history for.
   Future<void> loadHistory(String requestId, {bool silent = false}) async {
     try {
-
       isHistoryLoading.value = true;
 
       final results = await dataManager.fetchHistory(requestId, silent: silent);
@@ -178,7 +178,6 @@ class AirSeaController extends GetxController {
       historyStages.addAll(results);
 
       stagesStatus.value = results.map((stage) => stage.status).toList();
-
     } catch (e) {
       logDebug('AirSeaController.loadHistory error: $e');
     } finally {
@@ -213,8 +212,6 @@ class AirSeaController extends GetxController {
     filterManager.selectFilter(filter, airSeaRequests);
   }
 
-
-
   void selectDateFrom(DateTime? date) {
     filterManager.selectDateFrom(date, airSeaRequests);
   }
@@ -231,9 +228,8 @@ class AirSeaController extends GetxController {
     filterManager.setClientNameQuery(query, airSeaRequests);
   }
 
-
   void setDocumentReferenceQuery(String query) {
-    filterManager.setDocumentReferenceQuery(query,airSeaRequests);
+    filterManager.setDocumentReferenceQuery(query, airSeaRequests);
   }
   // ========================================================================
   // CRUD OPERATIONS

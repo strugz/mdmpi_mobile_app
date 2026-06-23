@@ -56,6 +56,8 @@ Open the Request tab to work with Logistics request categories. The app loads ca
 
 BackLoad is opened from a Standard Delivery request when a backload transaction is needed.
 
+For role-specific permissions and status actions, see the [Logistics Role-Based User Manual](LOGISTICS_ROLE_USER_MANUAL.md).
+
 ## View and Filter Requests
 
 1. Open Request.

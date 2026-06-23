@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../models/item_category_model.dart';
@@ -59,6 +60,14 @@ class ItemCategoryRepository extends GetxController {
       } catch (e) {
         logDebug('ItemCategoryRepository.getAll: Local DB error: $e');
       }
+    }
+
+    final canCheckNetwork = Get.isRegistered<NetworkManager>();
+    if (client == null &&
+        canCheckNetwork &&
+        !await NetworkManager.instance.isConnected()) {
+      logDebug('ItemCategoryRepository.getAll: Offline with no local data');
+      return <ItemCategoryModel>[];
     }
 
     // Fetch from API

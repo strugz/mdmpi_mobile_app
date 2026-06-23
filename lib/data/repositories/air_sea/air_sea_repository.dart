@@ -97,13 +97,19 @@ class AirSeaRepository extends GetxController {
 
   /// Fetch all Air/Sea requests with local DB + API sync.
   /// Tries local DB first; if empty, fetches from API and caches locally.
-  Future<List<AirSeaModel>> getAll({bool forceRefresh = false}) async {
+  Future<List<AirSeaModel>> getAll({
+    bool forceRefresh = false,
+    bool allowLocalFallback = true,
+  }) async {
     try {
       final dao = await _dao;
       final isConnected = await NetworkManager.instance.isConnected();
 
       // If offline, return local data only
       if (!isConnected) {
+        if (!allowLocalFallback) {
+          throw Exception('No internet connection');
+        }
         return await dao.getAirSeaRequests();
       }
 
@@ -146,6 +152,9 @@ class AirSeaRepository extends GetxController {
           'Failed to load Air/Sea requests (${response.statusCode})');
     } catch (e, st) {
       logDebug('AirSeaRepository.getAll error: $e\n$st');
+      if (!allowLocalFallback) {
+        throw Exception('getAll Air/Sea error: $e\n$st');
+      }
       // If API fails, try returning local data as fallback
       try {
         final dao = await _dao;
@@ -158,7 +167,6 @@ class AirSeaRepository extends GetxController {
       } catch (dbError) {
         logDebug('AirSeaRepository: Local DB also failed: $dbError');
       }
-      _showError('Failed to fetch Air/Sea list');
       throw Exception('getAll Air/Sea error: $e\n$st');
     }
   }

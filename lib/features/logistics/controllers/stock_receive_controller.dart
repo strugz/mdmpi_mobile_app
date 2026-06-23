@@ -37,7 +37,7 @@ class StockReceiveController extends GetxController {
   /// Storage preference flag for data source selection.
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
-  final RxBool useLocalStorage = false.obs;
+  final RxBool useLocalStorage = true.obs;
 
   /// Last error message, if any.
   final RxnString errorMessage = RxnString();
@@ -71,14 +71,15 @@ class StockReceiveController extends GetxController {
     formState = PullOutFormState();
     formState.initializeDefaultDate();
     dataManager.loadCategories(this);
-    dataManager.fetchStockReceives(this);
+    dataManager.fetchStockReceives(this, useLocalStorage.value);
 
     userController = Get.find<UserController>();
     createdBy = userController.user.value.initial;
   }
 
   /// Convenience access to filtered list.
-  List<PullOutModel> get filteredStockReceives => filterManager.filteredStockReceives;
+  List<PullOutModel> get filteredStockReceives =>
+      filterManager.filteredStockReceives;
 
   /// Update status filter.
   void selectStatusFilter(PullOutStatusFilter statusFilter) {
@@ -89,8 +90,6 @@ class StockReceiveController extends GetxController {
   void selectDateFilter(RequestFilter filter) {
     filterManager.selectFilter(filter, stockReceives);
   }
-
-
 
   void selectDateFrom(DateTime? date) {
     filterManager.selectDateFrom(date, stockReceives);
@@ -190,4 +189,3 @@ class StockReceiveController extends GetxController {
     super.onClose();
   }
 }
-

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../models/form_category_model.dart';
@@ -32,6 +33,12 @@ class FormCategoryRepository extends GetxController {
       }
     }
 
+    if (Get.isRegistered<NetworkManager>() &&
+        !await NetworkManager.instance.isConnected()) {
+      logDebug('FormCategoryRepository.getAll: Offline with no local data');
+      return <FormCategoryModel>[];
+    }
+
     // Fetch from API
     final url = _uri(_resource);
     logDebug('FormCategoryRepository.getAll: GET $url');
@@ -54,8 +61,10 @@ class FormCategoryRepository extends GetxController {
     if (decoded is List) {
       list = decoded;
     } else if (decoded is Map<String, dynamic>) {
-      list = (decoded['data'] as List?) ?? (decoded['items'] as List?) ??
-          (decoded.values.firstWhere((v) => v is List, orElse: () => const []) as List);
+      list = (decoded['data'] as List?) ??
+          (decoded['items'] as List?) ??
+          (decoded.values.firstWhere((v) => v is List, orElse: () => const [])
+              as List);
     } else {
       list = const [];
     }
@@ -75,7 +84,8 @@ class FormCategoryRepository extends GetxController {
       final dao = await DatabaseHelper.instance.formCategoryDao;
       await dao.deleteAll();
       await dao.insertFormCategories(forms);
-      logDebug('FormCategoryRepository.getAll: Cached ${forms.length} forms to local DB');
+      logDebug(
+          'FormCategoryRepository.getAll: Cached ${forms.length} forms to local DB');
     } catch (e) {
       logDebug('FormCategoryRepository.getAll: Failed to cache: $e');
     }
@@ -111,11 +121,13 @@ class FormCategoryRepository extends GetxController {
       final localForm = await dao.getById(id);
 
       if (localForm != null) {
-        logDebug('FormCategoryRepository.fetchFormCategory: Found ID=$id in local DB');
+        logDebug(
+            'FormCategoryRepository.fetchFormCategory: Found ID=$id in local DB');
         return localForm;
       }
 
-      logDebug('FormCategoryRepository.fetchFormCategory: ID=$id not in local DB, fetching from API');
+      logDebug(
+          'FormCategoryRepository.fetchFormCategory: ID=$id not in local DB, fetching from API');
 
       // Not in local DB, fetch all from API and cache
       final forms = await getAll(forceRefresh: true);
@@ -124,11 +136,13 @@ class FormCategoryRepository extends GetxController {
       try {
         return forms.firstWhere((form) => form.id == id);
       } catch (_) {
-        logDebug('FormCategoryRepository.fetchFormCategory: ID=$id not found even after API fetch');
+        logDebug(
+            'FormCategoryRepository.fetchFormCategory: ID=$id not found even after API fetch');
         return null;
       }
     } catch (e) {
-      logDebug('FormCategoryRepository.fetchFormCategory: Error fetching ID=$id: $e');
+      logDebug(
+          'FormCategoryRepository.fetchFormCategory: Error fetching ID=$id: $e');
       return null;
     }
   }

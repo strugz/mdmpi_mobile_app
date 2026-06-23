@@ -94,13 +94,19 @@ class PickUpRepository extends GetxController {
 
   /// Fetch all pick-up requests with local DB + API sync.
   /// Tries local DB first; if empty, fetches from API and caches locally.
-  Future<List<PickUpModel>> getAll({bool forceRefresh = false}) async {
+  Future<List<PickUpModel>> getAll({
+    bool forceRefresh = false,
+    bool allowLocalFallback = true,
+  }) async {
     try {
       final dao = await _dao;
       final isConnected = await NetworkManager.instance.isConnected();
 
       // If offline, return local data only
       if (!isConnected) {
+        if (!allowLocalFallback) {
+          throw Exception('No internet connection');
+        }
         logDebug('PickUpRepository: Offline, returning local data');
         return await dao.getPickUps();
       }
@@ -133,7 +139,8 @@ class PickUpRepository extends GetxController {
         try {
           await dao.deleteAll();
           await dao.insertPickUps(pickUps);
-          logDebug('PickUpRepository: Cached ${pickUps.length} pick-ups to local DB');
+          logDebug(
+              'PickUpRepository: Cached ${pickUps.length} pick-ups to local DB');
         } catch (dbError) {
           logDebug('PickUpRepository: Failed to cache to local DB: $dbError');
         }
@@ -145,18 +152,21 @@ class PickUpRepository extends GetxController {
           'Failed to load pick-up requests (${response.statusCode})');
     } catch (e, st) {
       logDebug('PickUpRepository.getAll error: $e\n$st');
+      if (!allowLocalFallback) {
+        throw Exception('getAll pick-up error: $e\n$st');
+      }
       // If API fails, try returning local data as fallback
       try {
         final dao = await _dao;
         final localData = await dao.getPickUps();
         if (localData.isNotEmpty) {
-          logDebug('PickUpRepository: API failed, returning ${localData.length} items from local DB');
+          logDebug(
+              'PickUpRepository: API failed, returning ${localData.length} items from local DB');
           return localData;
         }
       } catch (dbError) {
         logDebug('PickUpRepository: Local DB also failed: $dbError');
       }
-      _showError('Failed to fetch pick-up list');
       throw Exception('getAll pick-up error: $e\n$st');
     }
   }
@@ -180,7 +190,8 @@ class PickUpRepository extends GetxController {
           final dao = await _dao;
           await dao.deleteAll();
           await dao.insertPickUps(pickUps);
-          logDebug('PickUpRepository: Background sync completed, ${pickUps.length} records');
+          logDebug(
+              'PickUpRepository: Background sync completed, ${pickUps.length} records');
         }
       }
     } catch (e) {
@@ -191,7 +202,6 @@ class PickUpRepository extends GetxController {
 
   /// Insert a new pick-up request to API and local DB.
   Future<void> insert(PickUpModel data, {bool silent = false}) async {
-
     try {
       final dto = PickUpMapper.toInsertDto(data);
       final payload = dto.toJson();
@@ -206,17 +216,20 @@ class PickUpRepository extends GetxController {
 
           if (decoded is Map && decoded.containsKey('requestID')) {
             updatedData = data.copyWith(id: decoded['requestID'].toString());
-            logDebug('PickUpRepository: Got RequestID from server: ${updatedData.id}');
+            logDebug(
+                'PickUpRepository: Got RequestID from server: ${updatedData.id}');
           }
         } catch (parseError) {
-          logDebug('PickUpRepository: Could not parse RequestID from response: $parseError');
+          logDebug(
+              'PickUpRepository: Could not parse RequestID from response: $parseError');
         }
 
         // Save to local DB with the correct ID
         try {
           final dao = await _dao;
           await dao.insertPickUp(updatedData);
-          logDebug('PickUpRepository: Saved to local DB with ID: ${updatedData.id}');
+          logDebug(
+              'PickUpRepository: Saved to local DB with ID: ${updatedData.id}');
         } catch (dbError) {
           logDebug('PickUpRepository: Failed to save to local DB: $dbError');
           // Don't fail the whole operation if local DB save fails
@@ -325,9 +338,11 @@ class PickUpRepository extends GetxController {
           final model = PickUpModel.fromJson(payload);
           final dao = await _dao;
           await dao.updatePickUp(pickUpModel: model);
-          logDebug('PickUpRepository: Payload update successful, saved to local DB');
+          logDebug(
+              'PickUpRepository: Payload update successful, saved to local DB');
         } catch (e) {
-          logDebug('PickUpRepository: Could not update local DB from payload: $e');
+          logDebug(
+              'PickUpRepository: Could not update local DB from payload: $e');
         }
 
         dynamic decoded;
@@ -380,8 +395,8 @@ class PickUpRepository extends GetxController {
   Future<void> cancelPickUpAPI(String requestID, String remarks, String user,
       {bool silent = false}) async {
     try {
-      final url =
-          Uri.parse("${dotenv.env['API_URL']!}$_resource/cancel/$requestID/$user");
+      final url = Uri.parse(
+          "${dotenv.env['API_URL']!}$_resource/cancel/$requestID/$user");
       final response = await http
           .patch(url,
               headers: const {
@@ -398,7 +413,8 @@ class PickUpRepository extends GetxController {
           await getAll(forceRefresh: true);
           logDebug('PickUpRepository: Cancel successful, refreshed local DB');
         } catch (e) {
-          logDebug('PickUpRepository: Could not update local DB after cancel: $e');
+          logDebug(
+              'PickUpRepository: Could not update local DB after cancel: $e');
         }
 
         _showSuccess('Success saving...', silent: silent);
@@ -478,4 +494,3 @@ class PickUpRepository extends GetxController {
     }
   }
 }
-

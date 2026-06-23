@@ -1,4 +1,6 @@
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 import '../../local/database_helper.dart';
@@ -19,23 +21,34 @@ class UserMdmpiController extends GetxController {
       //  Show loader while loading user
       isLoading.value = true;
 
-      List<CNTMSTModel> apiUser = await _userMdmpiRepository.getAllClientAPI();
-
-      if (apiUser.isNotEmpty) {
-        final dbHelper = DatabaseHelper.instance;
-        await dbHelper.insertCntmsts(apiUser);
-      } else {
-        BLoaders.errorSnackBar(
-            title: 'Oh Snap!', message: 'No User fetched from API');
+      final dbHelper = DatabaseHelper.instance;
+      final localUsers = await dbHelper.getCntmstRequesters();
+      if (localUsers.isNotEmpty) {
+        userList.assignAll(localUsers);
+      } else if (await NetworkManager.instance.isConnected()) {
+        final apiUser = await _userMdmpiRepository.getAllClientAPI();
+        if (apiUser.isNotEmpty) {
+          await dbHelper.insertCntmsts(apiUser);
+          userList.assignAll(apiUser);
+        } else {
+          BLoaders.errorSnackBar(
+              title: 'Oh Snap!', message: 'No User fetched from API');
+        }
       }
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      logDebug('UserMdmpiController.fetchUserMdmpiFromDb failed: $e');
     } finally {
       isLoading.value = false;
     }
   }
 
   Future<void> hardResetUserMdmpiList(bool isDisplay) async {
+    if (!await NetworkManager.instance.isConnected()) {
+      BLoaders.warningSnackBar(
+          title: "Internet", message: "No Internet Connection");
+      return;
+    }
+
     try {
       isLoading.value = true;
 
@@ -64,8 +77,7 @@ class UserMdmpiController extends GetxController {
     try {
       isLoading.value = true;
       final dbHelper = DatabaseHelper.instance;
-      final userListFromDb =
-          await dbHelper.getCntmstRequesters();
+      final userListFromDb = await dbHelper.getCntmstRequesters();
       userList.assignAll(userListFromDb);
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
