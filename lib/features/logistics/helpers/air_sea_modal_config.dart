@@ -223,7 +223,7 @@ class AirSeaModalConfig {
     if (formState.receiverSignatureBytes.value == null ||
         formState.receiverSignatureBytes.value!.isEmpty) {
       BLoaders.errorSnackBar(
-        title: 'Validation Error',
+        title: 'Validation Error1',
         message: 'Please capture Receiver Signature',
       );
       return false;

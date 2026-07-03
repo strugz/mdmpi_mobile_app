@@ -221,7 +221,8 @@ class AirSeaPageStages extends StatelessWidget {
             // Footer section with request summary / quick actions that
             // are common to Air/Sea requests.
 
-            if (requestModel.status == BTexts.statusItemPacked && config.role == BTexts.roleRelease) ...[
+            if (requestModel.status == BTexts.statusItemPacked &&
+                config.role == BTexts.roleRelease) ...[
               AirSeaItemPackedSection(requestModel: requestModel),
             ],
 

@@ -695,16 +695,16 @@ class AirSeaDataManager {
     }
 
     if (newStatus == BTexts.statusReceived) {
-      if (!_validateNamedSignature(
-        name: request.receivedBy.trim().isNotEmpty
-            ? request.receivedBy
-            : formState.receivedByController.text,
-        nameMessage: 'Please enter Receiver Name',
-        signatureMessage: 'Please capture Receiver Signature',
-        formState: formState,
-      )) {
-        return false;
-      }
+      // if (!_validateNamedSignature(
+      //   name: request.receivedBy.trim().isNotEmpty
+      //       ? request.receivedBy
+      //       : formState.receivedByController.text,
+      //   nameMessage: 'Please enter Receiver Name',
+      //   signatureMessage: 'Please capture Receiver Signature',
+      //   formState: formState,
+      // )) {
+      //   return false;
+      // }
       final waybill = request.waybillNumber.trim().isNotEmpty
           ? request.waybillNumber
           : formState.waybillNumberController.text;
