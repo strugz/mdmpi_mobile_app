@@ -8,6 +8,7 @@ This folder contains practical Logistics Department documentation for the MDMPI 
 |---|---|---|
 | Logistics Users | [User Guide](USER_GUIDE.md) | You create, view, update, deliver, or monitor Logistics requests. |
 | Logistics Users by Role | [Role-Based User Manual](LOGISTICS_ROLE_USER_MANUAL.md) | You need to know what each Logistics role can do. |
+| Android Workflow Training | [Workflow Presentation](ANDROID_LOGISTICS_WORKFLOW_PRESENTATION.md) | You need presentation-ready process diagrams, role matrices, and exercises. |
 | Logistics Operations Admins | [Admin Guide](ADMIN_GUIDE.md) | You support Logistics users, local sync, request data refresh, outboxes, and troubleshooting. |
 | Logistics Developers | [Developer Guide](DEVELOPER_GUIDE.md) | You maintain or extend Logistics request modules, data flows, and support tooling. |
 
@@ -40,6 +41,7 @@ Collection, Service, and InHouse are mentioned only where they affect shared rou
 - [Stock Receive Module](../modules/stock-receive/README.md)
 - [BackLoad Module](../modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md)
 - [Role-Based User Manual](LOGISTICS_ROLE_USER_MANUAL.md)
+- [Android Logistics Workflow Presentation](ANDROID_LOGISTICS_WORKFLOW_PRESENTATION.md)
 - [Local Storage Data Viewer README](../../lib/features/logistics/screens/data_test/README.md)
 
 ## Maintenance Notes
