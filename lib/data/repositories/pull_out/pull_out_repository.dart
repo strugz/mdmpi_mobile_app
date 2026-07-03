@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -17,7 +17,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 class PullOutRepository extends GetxController {
   static PullOutRepository get instance => Get.find();
 
-  String get _baseUrl => dotenv.env['API_URL'] ?? '';
+  String get _baseUrl => BApiEnvironment.api4BaseUrl;
   Uri _uri(String path) => Uri.parse("$_baseUrl$path");
 
   static const String _resource = '/api4/RequestPullOutReturnPickUp';
@@ -373,8 +373,7 @@ class PullOutRepository extends GetxController {
   Future<void> cancelPullOutAPI(String requestID, String remarks, String user,
       {bool silent = false}) async {
     try {
-      final url = Uri.parse(
-          "${dotenv.env['API_URL']!}$_resource/cancel/$requestID/$user");
+      final url = _uri('$_resource/cancel/$requestID/$user');
       final response = await http
           .patch(url,
               headers: const {

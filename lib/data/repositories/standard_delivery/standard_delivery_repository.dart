@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -28,7 +29,7 @@ class StandardDeliveryRepository extends GetxController {
       final payload = dto.toJson();
 
       final response = await http.post(
-        Uri.parse("${dotenv.env['API_URL']!}/api4/request"),
+        BApiEnvironment.api4Uri('/api4/request'),
         headers: <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
@@ -60,10 +61,10 @@ class StandardDeliveryRepository extends GetxController {
           StandardDeliveryMapper.toUpdateDto(requestData, actionBy);
       final payload = updateDto.toJson();
 
-      final url = "${dotenv.env['API_URL']!}/api4/request";
+      final url = BApiEnvironment.api4Uri('/api4/request');
 
       final response = await http
-          .patch(Uri.parse(url),
+          .patch(url,
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -117,8 +118,7 @@ class StandardDeliveryRepository extends GetxController {
     try {
       final response = await http
           .patch(
-            Uri.parse(
-                "${dotenv.env['API_URL']!}/api4/request/cancel/$requestID/$user"),
+            BApiEnvironment.api4Uri('/api4/request/cancel/$requestID/$user'),
             headers: <String, String>{
               'Content-Type': 'application/json; charset=UTF-8',
             },
@@ -180,8 +180,7 @@ class StandardDeliveryRepository extends GetxController {
         return await dbHelper.getRequests();
       }
 
-      final response =
-          await http.get(Uri.parse("${dotenv.env['API_URL']}/api4/request"));
+      final response = await http.get(BApiEnvironment.api4Uri('/api4/request'));
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
         List<dynamic> jsonResponse;

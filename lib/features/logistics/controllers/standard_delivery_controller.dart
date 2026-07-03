@@ -67,7 +67,7 @@ class StandardDeliveryController extends GetxController
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
   @override
-  final RxBool useLocalStorage = true.obs;
+  final RxBool useLocalStorage = false.obs;
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.

@@ -9,6 +9,25 @@ flutter pub get
 flutter run
 ```
 
+## API Environments
+
+This application currently uses separate backends depending on the API route:
+
+- `mdmpi_mobile_app` is the Flutter client in this repository.
+- The sibling `MDMPI.App` ASP.NET repository implements `/api4/*` endpoints. This backend and its `/api4/*` routes are currently intended only for production testing.
+- `/api3/*` endpoints and all API integrations outside `/api4/*` continue to use the existing live production backend.
+- Firebase Authentication and other external integrations also remain connected to their live services.
+
+Do not redirect `/api3/*` or other non-`/api4/*` traffic to `MDMPI.App`. When changing API configuration, preserve this routing boundary unless the backend deployment strategy is explicitly changed.
+
+### Full-stack workspace
+
+Open `../MDMPI.FullStack.code-workspace` to work with the Flutter client and the sibling `MDMPI.App` repository together. The workspace includes tasks for Flutter package restore, analysis and tests, plus ASP.NET build, tests and local startup.
+
+Debug Flutter runs use `API4_URL_WINDOWS=http://localhost:5177` on Windows and `API4_URL_ANDROID=http://10.0.2.2:5177` on the Android emulator. Release builds ignore these local overrides. The overrides affect only locally implemented `/api4/*` routes; `/api3/*`, `/api4/CNTMST/initial` (not currently implemented by the local `MDMPI.App` source), and all other integrations continue using `API_URL` and their live services.
+
+The local ASP.NET task prompts for production-database approval. Enter `true` only when production testing is intentional and the machine has LAN/VPN access to the production SQL Server and PostgreSQL services. `MDMPI.App` refuses to start in Development unless `ALLOW_PRODUCTION_DB=true` is explicitly supplied, and it does not redirect or implement `/api3/*` traffic.
+
 ---
 
 ## Project Guidelines

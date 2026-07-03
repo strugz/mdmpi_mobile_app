@@ -17,12 +17,12 @@ Quick start (commands)
  - Inspect DB images: `dart run bin/inspect_db_images.dart`
  - In-app DB inspection: Use the Local Storage Data Viewer (see below for details)
 
-Important architectural notes
+-Important architectural notes
 ----------------------------
-- State & DI: GetX is used everywhere. Repositories extend `GetxController` and are registered in `lib/bindings/general_bindings.dart` via `Get.lazyPut(..., fenix: true)`.
-  - Example: `Get.lazyPut(() => RoleRepository(), fenix: true);`
-  - Controllers resolve deps with `Get.find()` — do not instantiate repos inside controllers.
-- **Firebase guard in GeneralBindings:** All Firestore-backed repositories are wrapped in `if (Firebase.apps.isNotEmpty) { ... }`. On desktop platforms without FlutterFire configuration, these registrations are skipped to avoid runtime errors. Repositories that use REST + local DB only (e.g., `BackLoadRepository`) are registered **outside** the guard so they work on all targets. See `lib/bindings/general_bindings.dart` lines 120–159.
+- State & DI: GetX is used everywhere. Repositories extend `GetxController` and are registered in `lib/bindings/app/general_bindings.dart` via `Get.lazyPut(..., fenix: true)`.
+-  - Example: `Get.lazyPut(() => RoleRepository(), fenix: true);`
+-  - Controllers resolve deps with `Get.find()` — do not instantiate repos inside controllers.
+ - **Firebase guard in GeneralBindings:** All Firestore-backed repositories are wrapped in `if (Firebase.apps.isNotEmpty) { ... }`. On desktop platforms without FlutterFire configuration, these registrations are skipped to avoid runtime errors. Repositories that use REST + local DB only (e.g., `BackLoadRepository`) are registered **outside** the guard so they work on all targets. See `lib/bindings/app/general_bindings.dart`.
 - Early/ eager registration: some platform services are registered in `lib/main.dart` using `Get.put(...)` before bindings run (notably `PermissionService`, `NotificationService`, and `AuthenticationRepository` after Firebase init). See `lib/main.dart`.
 - Navigation: Named routes via `BRoutes` + `AppRoutes.pages` (under `lib/base/utils/routes`). Department-specific post-auth routing is handled by `lib/app_router.dart`. Use GetX routing for app-level screen transitions; keep raw `Navigator.push` limited to low-level helpers such as `BHelperFunctions.navigateToScreen`.
 - AppRouter cold-start routing now depends on cached user state as well as live controller state: `lib/app_router.dart` first reads `UserController.user.department`, then falls back to `GetStorage` key `CurrentUser` (with legacy `UserDepartment` as a migration fallback). Department onboarding completion flags currently stored in `GetStorage` are `LogisticsOnboardingComplete`, `CollectionOnboardingComplete`, `ServiceOnboardingComplete`, and `InHouseOnboardingComplete`. See also `lib/features/personalization/controller/user_controller.dart` for the `CurrentUser` cache writer.
@@ -30,10 +30,10 @@ Important architectural notes
 
  - NavigationController / NavigationMenu updates: The bottom-tab shell (`lib/navigation_menu.dart`) instantiates `NavigationController` via `Get.put(NavigationController())` (acceptable for the shell). The controller now stores screen route names and exposes a computed `screens` getter that selects widgets by user department (see `lib/data/controllers/navigation_controller.dart`). When adding or modifying tab behavior prefer updating `NavigationController.screenRoutes`, `screens`, and `changeScreen` rather than wiring tab logic directly in widgets.
 
- - Text extraction service: The repository now registers an `ITextExtractor` implementation (`DocumentReferenceExtractor`) in `GeneralBindings` and composes it into camera-related controllers. Camera/text composition example:
-   - `lib/bindings/general_bindings.dart` registers `Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(), fenix: true);`
-   - `CameraHandlerController` / `CameraController` instances obtain `ICameraService`, `ITextRecognitionService`, and `ITextExtractor` via `Get.find()` (see `CameraHandlerController` registration in `GeneralBindings`).
-   - Use `Get.find<ITextExtractor>()` in controllers/widgets when you need the extractor. Implement new extractors under `lib/common/services/abstracts/` and register them in `GeneralBindings` following the existing pattern.
+  - Text extraction service: The repository now registers an `ITextExtractor` implementation (`DocumentReferenceExtractor`) in `GeneralBindings` and composes it into camera-related controllers. Camera/text composition example:
+    - `lib/bindings/app/general_bindings.dart` registers `Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(), fenix: true);`
+    - `CameraHandlerController` / `CameraController` instances obtain `ICameraService`, `ITextRecognitionService`, and `ITextExtractor` via `Get.find()` (see `CameraHandlerController` registration in `GeneralBindings`).
+    - Use `Get.find<ITextExtractor>()` in controllers/widgets when you need the extractor. Implement new extractors under `lib/common/services/abstracts/` and register them in `GeneralBindings` following the existing pattern.
 
 - **Local Storage Data Viewer:** A developer-only tool for inspecting and managing SQLite database tables is available under `lib/features/logistics/screens/data_test/`. It is accessible from the Settings screen ("Developer Tools" section) and via the `/local-storage-viewer` route. This tool is for debugging and should not be exposed in production builds. See the feature's `README.md` for details.
 
@@ -41,7 +41,7 @@ Important architectural notes
 
 - Platform initialization helper: `lib/base/utils/platform_init.dart` centralizes several early-start concerns used by `main.dart` (sqflite FFI initialization on desktop, conditional Firebase initialization, eager NotificationService init, and eager registration of `AuthenticationRepository` via `Get.put` when Firebase is available). Inspect `initPlatform(...)` when auditing early/eager registrations and desktop vs mobile platform behavior.
 
-- Note: several core services/controllers are registered eagerly via `Get.put` in `lib/bindings/general_bindings.dart` (not only in `main.dart`). Examples: `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering used by the app.
+ - Note: several core services/controllers are registered eagerly via `Get.put` in `lib/bindings/app/general_bindings.dart` (not only in `main.dart`). Examples: `Get.put(NetworkManager())`, `Get.put(WebSocketNotificationController())`, `Get.put(MessagingController())`, and `Get.put(UserController(), permanent: true)`. Always inspect `GeneralBindings` for the exact registration style and ordering used by the app.
 - Delivery-location integrations are also DI-managed in `GeneralBindings`: `ILocationAlternativeService`, `IMapsService`, `IPlacesService`, and `ILocationTrackingService` are lazy-registered there. When touching map/location flows, resolve these abstractions with `Get.find()` instead of calling geolocation/maps APIs directly from widgets or controllers.
 
 - Recently added repositories and controllers (all registered in `GeneralBindings`):
@@ -70,14 +70,14 @@ DI / registration gotchas
 - Repositories are expected to be registered before controllers that use them. `GeneralBindings` lists this ordering explicitly.
 - Many services are registered with `fenix: true` so they are recreated as needed; only use `Get.put(..., permanent: true)` for singletons with clear justification (the project already uses `Get.put(UserController(), permanent: true)` in `GeneralBindings`).
 
-- Authentication DI note: the project registers the authentication repository via its interface and wires use-cases in `GeneralBindings`. See `lib/bindings/general_bindings.dart` for examples:
+-- Authentication DI note: the project registers the authentication repository via its interface and wires use-cases in `GeneralBindings`. See `lib/bindings/app/general_bindings.dart` for examples:
   - `Get.lazyPut<IAuthenticationRepository>(() => AuthenticationRepository(), fenix: true);`
   - `Get.lazyPut(() => LoginWithEmailPasswordUseCase(...), fenix: true);`
   - `Get.lazyPut(() => LoginWithGoogleUseCase(...), fenix: true);` — resolves `IAuthenticationRepository`, `UserRepository`, and `NetworkManager` via `Get.find()`.
 
-  - Note: the `LoginWithEmailPasswordUseCase` is constructed with a `GetStorage()` instance for local caching (see `lib/bindings/general_bindings.dart` where `GetStorage()` is passed into the usecase). Agents should be aware that some use-cases expect `GetStorage` to be available at construction time.
+  - Note: the `LoginWithEmailPasswordUseCase` is constructed with a `GetStorage()` instance for local caching (see `lib/bindings/app/general_bindings.dart` where `GetStorage()` is passed into the usecase). Agents should be aware that some use-cases expect `GetStorage` to be available at construction time.
 
-- Binding exceptions: some registrations intentionally differ from the default `fenix: true` pattern. For example `UserRepository` is registered without `fenix` in `GeneralBindings` (`Get.lazyPut(() => UserRepository());`). Check `lib/bindings/general_bindings.dart` before adding new bindings to match existing intent.
+-- Binding exceptions: some registrations intentionally differ from the default `fenix: true` pattern. For example `UserRepository` is registered without `fenix` in `GeneralBindings` (`Get.lazyPut(() => UserRepository());`). Check `lib/bindings/app/general_bindings.dart` before adding new bindings to match existing intent.
 
   - Implementation note: `SignupController` is intentionally lazy-registered (`fenix: true`) to avoid instantiating Firebase-backed repositories during app startup on platforms where Firebase is not initialized. Keep this pattern when adding new auth-related controllers to avoid unexpected Firebase initializations on desktop.
 
@@ -85,8 +85,8 @@ DI / registration gotchas
 
 Where to look for examples (key files)
 -------------------------------------
-- DI & ordering: `lib/bindings/general_bindings.dart` (the canonical registration list)
-  - See `lib/bindings/general_bindings.dart` for additional wiring examples agents should reuse:
+- DI & ordering: `lib/bindings/app/general_bindings.dart` (the canonical registration list)
+  - See `lib/bindings/app/general_bindings.dart` for additional wiring examples agents should reuse:
     - The `CameraHandlerController` is constructed with explicit dependencies resolved via `Get.find()` (ICameraService, ITextRecognitionService, ITextExtractor) — review its registration to mirror constructor injection when creating similar controllers.
     - `GetStorage()` is provided directly into the `LoginWithEmailPasswordUseCase` at registration time; use the same pattern for use-cases that require lightweight local storage access.
 - App start & early services: `lib/main.dart` (Firebase init, permission/notification registration, HttpOverrides)
@@ -170,22 +170,17 @@ What NOT to change / common pitfalls
 - Do not expose the Local Storage Data Viewer to production users; it is for development/debugging only.
 - Do not expose the Signature Outbox developer page to production users; it is for development/debugging only.
 
-- NOTE: There are a few legacy `print()` calls still present in the codebase (used for quick debugging). Replace these with `logDebug()` or `BloggerHelper` when making changes. Notable instances include:
-  - `lib/data/repositories/inventory/inventory_item_repository.dart` (debug `print("HeHim: ...")` in Gemini integration)
-  - `lib/features/logistics/controllers/standard_delivery_controller.dart` (debug prints when handling API results)
-  - `lib/features/logistics/controllers/home_controller.dart` (debug prints in init/refresh)
-  - `lib/features/logistics/helpers/hotline_direct_data_manager.dart` (debug `print('HEY2: ...')`)
-  - `lib/features/logistics/screens/request_forms/widgets/pull_out_form.dart` and `lib/features/logistics/screens/common/b_request_form.dart` (UI debug prints)
-  - `lib/features/authentication/domain/usecases/login_with_google_usecase.dart` (debug `print('Warning: ...')` in Google sign-in user record save)
-  - `lib/common/widgets/form/b_autocomplete_text_field.dart` (debug print when contact person save fails)
-  - `lib/debug/reset_database.dart` (intentional console utility — safe in debug tool)
+-- NOTE: Most legacy `print()` debug calls referenced previously have been removed or refactored. Current `print()` occurrences discovered in the repository (intended or dev-only tools) are:
+  - `bin/inspect_db_images.dart` — development DB/image inspection utility (prints are expected)
+  - `tool/check_braces.dart` — tooling utility (prints are expected)
+  - `lib/common/widgets/form/b_autocomplete_text_field.dart` — a remaining in-widget debug print around the contact-person save flow (file: line ~193); consider replacing with `logDebug()` or structured logging when fixing related behavior.
 
   When replacing prints, prefer `logDebug()` from `lib/base/utils/logger.dart` for simple messages and `BloggerHelper` for structured logs.
 
 How to contribute code changes as an agent
 ----------------------------------------
 1. Search for existing shared utilities before adding new widgets: `lib/base/utils/` and `lib/common/widgets/`.
-2. Follow the feature-generation order; add a binding entry in `lib/bindings/general_bindings.dart`.
+2. Follow the feature-generation order; add a binding entry in `lib/bindings/app/general_bindings.dart`.
 3. Use `Get.lazyPut(..., fenix: true)` for new controllers/repositories unless you have a reason for eager `Get.put`.
 4. Update `BRoutes` and `AppRoutes.pages` for new screens.
 5. Run `flutter analyze` and `flutter test` (where applicable) before submitting changes.
@@ -197,17 +192,21 @@ The project normally keeps docs in `docs/`. This `AGENTS.md` was created at the 
 Contact points in repo (where agents should look first)
 -----------------------------------------------------
 - `.github/copilot-instructions.md` — project-specific AI guidelines (read first). The file is present in the repository and contains the authoritative coding conventions and folder layout.
-- `lib/bindings/general_bindings.dart` — DI and registration order
+- `lib/bindings/app/general_bindings.dart` — DI and registration order
 - `lib/main.dart` — early initializers and platform registration
 - `lib/base/utils/result.dart` and `lib/base/utils/logger.dart` — error & logging APIs
 
 Agent integration (use the platform-provided subagents)
 -----------------------------------------------------
-- The environment exposes a small set of specialized subagents. When a task matches a subagent's role (for example: research, plan, or outline), prefer delegating using the `run_subagent` tool.
-- Available example: `Plan` — use `run_subagent(agentName: "Plan", task: "<detailed task...>")` to produce step-by-step research or implementation plans before making changes. This helps with multi-step refactors, large edits, or complex design decisions.
-- Example usage pattern: for multi-step work, first call the `Plan` agent to produce an ordered checklist, then proceed to make edits and tests following that checklist.
+- The environment exposes a small set of specialized subagents. When a task matches a subagent's role (for example: research, search, plan, or outline), prefer delegating using the `run_subagent` tool so the heavy discovery work runs isolated from the main agent.
 
-Note: In this workspace the only provided subagent is named exactly `Plan`. When calling `run_subagent` you must use the exact `agentName` string `"Plan"`.
+- Available subagents (exact names):
+  - `Plan` — Use `run_subagent(agentName: "Plan", task: "<detailed task...>")` to produce step-by-step research or implementation plans before making changes. Best for multi-step refactors, design, and checklists.
+  - `Search` — Use `run_subagent(agentName: "Search", task: "<what to find...>")` when you need to locate code, files, or symbols but don't know where they live. The Search agent will run repository-wide grep/file searches and read files to return concise pointers and candidate snippets.
+
+- Example usage pattern: for multi-step work, first call the `Plan` agent to produce an ordered checklist; for discovery tasks, call the `Search` agent to locate relevant files and code snippets. Prefer delegating these tasks instead of doing large repository scans in the main agent thread.
+
+Note: In this workspace the provided subagents include `Plan` and `Search`. When calling `run_subagent` you must use the exact `agentName` string (for example `"Plan"` or `"Search"`).
 
 End of guidance
 

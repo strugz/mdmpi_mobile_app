@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
@@ -13,7 +13,7 @@ import '../../local/database_helper.dart';
 class FormCategoryRepository extends GetxController {
   static FormCategoryRepository get instance => Get.find();
 
-  String get _baseUrl => dotenv.env['API_URL'] ?? '';
+  String get _baseUrl => BApiEnvironment.api4BaseUrl;
   Uri _uri(String path) => Uri.parse("$_baseUrl$path");
 
   static const String _resource = '/api4/Category';

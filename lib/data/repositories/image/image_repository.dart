@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import "package:http_parser/http_parser.dart" show MediaType;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../../base/utils/exceptions/format_exceptions.dart';
@@ -25,13 +25,11 @@ class ImageRepository extends GetxController {
     bool showFeedback = true,
   }) async {
     try {
-
       final parts = base64Image.split(',');
       final payload = parts.length > 1 ? parts.last : base64Image;
       final Uint8List bytes = base64Decode(payload);
 
-      final baseUrl = dotenv.env['API_URL'] ?? '';
-      final uri = Uri.parse("$baseUrl/api4/request/upload-image");
+      final uri = BApiEnvironment.api4Uri('/api4/request/upload-image');
       final multipart = http.MultipartRequest('POST', uri);
 
       multipart.fields['RequestID'] = requestId;
@@ -44,7 +42,6 @@ class ImageRepository extends GetxController {
         filename: filename,
         contentType: MediaType('image', 'png'),
       ));
-
 
       final streamed =
           await multipart.send().timeout(const Duration(seconds: 90));
@@ -114,8 +111,7 @@ class ImageRepository extends GetxController {
     bool showErrorSnackbar = true,
   }) async {
     try {
-      final base = dotenv.env['API_URL'] ?? '';
-      var uri = Uri.parse('$base$endpoint');
+      var uri = BApiEnvironment.api4Uri(endpoint);
 
       if (queryParameters != null && queryParameters.isNotEmpty) {
         uri = uri.replace(queryParameters: queryParameters);

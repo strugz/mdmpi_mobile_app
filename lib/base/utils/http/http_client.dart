@@ -2,18 +2,18 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-class BHttpHelper {
-  static const String _baseUrl2 = 'https://inventory.mdmpi.com.ph';
+import '../constants/api_environment.dart';
 
+class BHttpHelper {
   static Future<Map<String, dynamic>> get(String endpoint) async {
-    final response = await http.get(Uri.parse('$_baseUrl2/$endpoint'));
+    final response = await http.get(BApiEnvironment.api4Uri(endpoint));
     return _handleResponse(response);
   }
 
   static Future<Map<String, dynamic>> post(
       String endpoint, dynamic data) async {
     final response = await http.post(
-      Uri.parse('$_baseUrl2/$endpoint'),
+      BApiEnvironment.api4Uri(endpoint),
       headers: {'Content-Type': 'application/json'},
       body: json.encode(data),
     );
@@ -22,7 +22,7 @@ class BHttpHelper {
 
   static Future<Map<String, dynamic>> put(String endpoint, dynamic data) async {
     final response = await http.put(
-      Uri.parse('$_baseUrl2/$endpoint'),
+      BApiEnvironment.api4Uri(endpoint),
       headers: {'Content-Type': 'application/json'},
       body: json.encode(data),
     );
@@ -30,7 +30,7 @@ class BHttpHelper {
   }
 
   static Future<Map<String, dynamic>> delete(String endpoint) async {
-    final response = await http.delete(Uri.parse('$_baseUrl2/$endpoint'));
+    final response = await http.delete(BApiEnvironment.api4Uri(endpoint));
     return _handleResponse(response);
   }
 

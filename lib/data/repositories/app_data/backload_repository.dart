@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
@@ -25,7 +25,7 @@ class BackLoadRepository extends GetxController {
   // API helpers
   // ---------------------------------------------------------------------------
 
-  String get _baseUrl => '${dotenv.env['API_URL']!}/api4/RequestBackload';
+  String get _baseUrl => '${BApiEnvironment.api4BaseUrl}/api4/RequestBackload';
 
   // ---------------------------------------------------------------------------
   // CREATE — submit a new back-load entry
@@ -67,7 +67,6 @@ class BackLoadRepository extends GetxController {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final dynamic body = jsonDecode(response.body);
 
-
         final BackLoadModel saved = body is Map<String, dynamic>
             ? BackLoadModel.fromJson(body)
             : BackLoadModel(
@@ -84,7 +83,8 @@ class BackLoadRepository extends GetxController {
         // single overwritten row). Use requestId + timestamp for uniqueness.
         BackLoadModel toInsert = saved;
         if (toInsert.backLoadId.isEmpty) {
-          final generatedId = '${requestId}_${DateTime.now().millisecondsSinceEpoch}';
+          final generatedId =
+              '${requestId}_${DateTime.now().millisecondsSinceEpoch}';
           toInsert = toInsert.copyWith(backLoadId: generatedId);
         }
 
@@ -199,4 +199,3 @@ class BackLoadRepository extends GetxController {
     return dao.getAll();
   }
 }
-

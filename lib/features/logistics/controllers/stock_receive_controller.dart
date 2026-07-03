@@ -37,7 +37,7 @@ class StockReceiveController extends GetxController {
   /// Storage preference flag for data source selection.
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
-  final RxBool useLocalStorage = true.obs;
+  final RxBool useLocalStorage = false.obs;
 
   /// Last error message, if any.
   final RxnString errorMessage = RxnString();

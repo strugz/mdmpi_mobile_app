@@ -39,7 +39,7 @@ class BackLoadController extends GetxController {
     'Unavailable customer',
     'Refused delivery',
     'Reroute',
-    'Expiry not expected',
+    'Expiry not Accepted',
   ];
 
   // ---------------------------------------------------------------------------

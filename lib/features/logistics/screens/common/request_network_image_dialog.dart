@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/b_proof_image.dart';
 
@@ -20,17 +20,7 @@ class RequestNetworkImageDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = dotenv.env['API_URL'];
-    if (base == null || base.isEmpty) {
-      return Dialog(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text('API_URL not configured'),
-        ),
-      );
-    }
-
-    final apiBase = Uri.parse(base);
+    final apiBase = Uri.parse(BApiEnvironment.api4BaseUrl);
     final imageUri = apiBase.replace(
       path: '/api4/$apiController/image',
       queryParameters: {'requestid': requestId, 'type': type},
@@ -135,8 +125,7 @@ class RequestNetworkImageDialog extends StatelessWidget {
                                                       MainAxisAlignment
                                                           .spaceBetween,
                                                   children: [
-                                                    Text(
-                                                        title,
+                                                    Text(title,
                                                         style: Theme.of(context)
                                                             .textTheme
                                                             .titleMedium),

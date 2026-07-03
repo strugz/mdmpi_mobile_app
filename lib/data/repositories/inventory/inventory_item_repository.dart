@@ -9,6 +9,7 @@ import 'package:http_parser/http_parser.dart' show MediaType;
 
 import '../../../base/utils/exceptions/format_exceptions.dart';
 import '../../../base/utils/exceptions/platform_exceptions.dart';
+import '../../../base/utils/constants/api_environment.dart';
 import '../../../base/utils/popups/loaders.dart';
 import '../../../base/utils/result.dart';
 import '../../models/inventory_item_model.dart';
@@ -18,8 +19,7 @@ import '../../models/inventory_item_model.dart';
 class InventoryItemRepository extends GetxController {
   static InventoryItemRepository get instance => Get.find();
 
-  String get _baseUrl =>
-      dotenv.env['API_URL'] ?? 'https://inventory.mdmpi.com.ph';
+  String get _baseUrl => BApiEnvironment.api4BaseUrl;
   Uri _uri(String path) => Uri.parse('$_baseUrl$path');
 
   /// Uploads [file] using multipart/form-data with form key `imageFile`.
@@ -344,8 +344,6 @@ class InventoryItemRepository extends GetxController {
       }
 
       final decoded = jsonDecode(resp.body);
-
-
 
       List<dynamic>? items;
       if (decoded is List) {

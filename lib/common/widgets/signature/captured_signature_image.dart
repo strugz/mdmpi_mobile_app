@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'dart:typed_data';
 
@@ -16,13 +16,7 @@ class CapturedSignatureImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base = dotenv.env['API_URL'];
-    if (base == null || base.isEmpty) {
-      return const Center(
-        child: Icon(Icons.broken_image, color: Colors.grey, size: 50),
-      );
-    }
-    final uri = Uri.parse(base).replace(
+    final uri = Uri.parse(BApiEnvironment.api4BaseUrl).replace(
       path: '/api4/Request/image',
       queryParameters: {'requestid': requestId, 'type': type},
     );
@@ -99,4 +93,3 @@ class CapturedSignatureImage extends StatelessWidget {
     );
   }
 }
-
