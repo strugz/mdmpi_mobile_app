@@ -24,11 +24,18 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  String? _selectedAccountFilter;
 
   @override
   void initState() {
     super.initState();
     _selectedDay = _focusedDay;
+    _selectedAccountFilter = null; // Start with no filter selected
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    if (mounted) super.setState(fn);
   }
 
   List<Map<String, dynamic>> _getEventsForDay(DateTime day) {
@@ -69,6 +76,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                     setState(() {
                       _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
+                      _selectedAccountFilter = null; // Reset filter when day changes
                     });
                   }
                 },
@@ -142,7 +150,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                       );
                     },
                     icon: const Icon(Iconsax.add_circle, size: 20),
-                    label: const Text('Add Activity'),
+                    label: const Text('Add Field Engagement'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: BSizes.md),
                       backgroundColor: BColors.primary.withValues(alpha: 0.1),
@@ -199,7 +207,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
               Icon(Icons.calendar_today_outlined, size: 48, color: BColors.darkGrey),
               SizedBox(height: BSizes.sm),
               Text(
-                'No activities recorded for this day.',
+                'No engagements recorded for this day.',
                 style: TextStyle(color: BColors.darkGrey),
               ),
             ],
@@ -208,10 +216,13 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
       );
     }
 
-    final historyList = dayActivities.map((e) => e['history'] as CollectionHistoryModel).toList();
-    final accountNames = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['accountName'].toString() };
-    final invoiceIds = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['invoiceId']?.toString() };
-    final items = { for (var i = 0; i < dayActivities.length; i++) i : dayActivities[i]['item'] as CollectionItemModel? };
+    // Get unique account names for the dropdown
+    final List<String> accountNamesList = ['All'];
+    final Set<String> uniqueAccounts = {};
+    for (var entry in dayActivities) {
+      uniqueAccounts.add(entry['accountName'].toString());
+    }
+    accountNamesList.addAll(uniqueAccounts.toList()..sort());
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
@@ -221,19 +232,74 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: BSizes.md),
             child: Text(
-              'Activities on ${DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day).toString().split(' ')[0]}',
+              'Engagements on ${DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day).toString().split(' ')[0]}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
-          ActivityHistoryList(
-            history: historyList,
-            accountNames: accountNames,
-            invoiceIds: invoiceIds,
-            items: items,
+
+          /// Account Filter Dropdown
+          DropdownButtonFormField<String>(
+            value: _selectedAccountFilter,
+            decoration: const InputDecoration(
+              labelText: 'Select Account to view engagements',
+              prefixIcon: Icon(Iconsax.user_tag),
+            ),
+            hint: const Text('Select an account...'),
+            items: accountNamesList.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (newValue) {
+              setState(() {
+                _selectedAccountFilter = newValue;
+              });
+            },
           ),
+          
+          const SizedBox(height: BSizes.spaceBtwItems),
+
+          if (_selectedAccountFilter == null)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: BSizes.lg),
+                child: Column(
+                  children: [
+                    Icon(Iconsax.info_circle, color: BColors.darkGrey),
+                    SizedBox(height: BSizes.sm),
+                    Text(
+                      'Please select an account to view engagements.',
+                      style: TextStyle(color: BColors.darkGrey),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else 
+            _buildFilteredHistory(dayActivities),
+          
           const SizedBox(height: BSizes.spaceBtwSections),
         ],
       ),
+    );
+  }
+
+  Widget _buildFilteredHistory(List<Map<String, dynamic>> dayActivities) {
+    final filteredActivities = _selectedAccountFilter == 'All'
+        ? dayActivities
+        : dayActivities.where((e) => e['accountName'].toString() == _selectedAccountFilter).toList();
+
+    final historyList = filteredActivities.map((e) => e['history'] as CollectionHistoryModel).toList();
+    final accountNames = { for (var i = 0; i < filteredActivities.length; i++) i : filteredActivities[i]['accountName'].toString() };
+    final invoiceIds = { for (var i = 0; i < filteredActivities.length; i++) i : filteredActivities[i]['invoiceId']?.toString() };
+    final items = { for (var i = 0; i < filteredActivities.length; i++) i : filteredActivities[i]['item'] as CollectionItemModel? };
+
+    return ActivityHistoryList(
+      history: historyList,
+      accountNames: accountNames,
+      invoiceIds: invoiceIds,
+      items: items,
     );
   }
 }

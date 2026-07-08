@@ -35,7 +35,7 @@ class CollectionActivityScreen extends StatelessWidget {
               const BPrimaryHeaderContainer(
                 child: Column(
                   children: [
-                    BHomeAppBar(title: 'Activity'),
+                    BHomeAppBar(title: 'Field Engagement'),
                     SizedBox(height: BSizes.spaceBtwSections),
                   ],
                 ),
@@ -78,7 +78,7 @@ class CollectionActivityScreen extends StatelessWidget {
                               controller.activitySearchQuery.value.isEmpty && 
                                controller.activityMinAmount.value == 0 && 
                                controller.activityMinInvoices.value == 0
-                                  ? 'No activities yet'
+                                  ? 'No field engagements yet'
                                   : 'No accounts match your criteria',
                               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                     color: BColors.darkGrey,
@@ -102,7 +102,7 @@ class CollectionActivityScreen extends StatelessWidget {
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: BSizes.lg),
                                 child: Text(
-                                  'Select items from the Collection Bucket\nto start your activity.',
+                                  'Select items from the Collection Bucket\nto start your field engagement.',
                                   textAlign: TextAlign.center,
                                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
                                 ),

@@ -34,7 +34,7 @@ class ActivityHistoryList extends StatelessWidget {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: BSizes.lg),
-          child: Text('No history available.'),
+          child: Text('No engagement history available.'),
         ),
       );
     }
@@ -102,7 +102,7 @@ class _ActivityHistoryCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Activity Details', style: Theme.of(context).textTheme.headlineSmall),
+                Text('Engagement Details', style: Theme.of(context).textTheme.headlineSmall),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
@@ -275,7 +275,7 @@ class _ActivityHistoryCard extends StatelessWidget {
                         Text(
                           invoiceId != null || item != null 
                               ? 'Invoice #${invoiceId ?? item?.id}' 
-                              : (accountName ?? 'Account Activity'),
+                              : (accountName ?? 'Account Engagement'),
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),

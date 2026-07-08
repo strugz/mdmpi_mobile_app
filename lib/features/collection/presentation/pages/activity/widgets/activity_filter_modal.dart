@@ -41,7 +41,7 @@ class ActivityFilterModal extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Filter Activity', style: Theme.of(context).textTheme.headlineSmall),
+                Text('Filter Field Engagement', style: Theme.of(context).textTheme.headlineSmall),
                 IconButton(onPressed: () => Get.back(), icon: const Icon(Icons.close)),
               ],
             ),

@@ -45,14 +45,14 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
     final othersController = TextEditingController();
 
     Get.defaultDialog(
-      title: 'Unclaim Account',
+      title: 'Release Account',
       content: Obx(() => ConstrainedBox(
         constraints: BoxConstraints(maxHeight: Get.height * 0.5),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Select reason for no collection:', textAlign: TextAlign.center),
+              const Text('Select reason for deferred engagement:', textAlign: TextAlign.center),
               const SizedBox(height: BSizes.md),
               ...reasons.map((reason) => RadioListTile<String>(
                 title: Text(reason),
@@ -99,7 +99,7 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
         Get.back(); // Return to Activity list
         
         Get.snackbar(
-          'Account Unclaimed', 
+          'Account Released', 
           '${widget.client.name} moved back to bucket.',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: BColors.success,
@@ -188,7 +188,7 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
                           backgroundColor: BColors.error,
                           side: const BorderSide(color: BColors.error),
                         ),
-                        child: const Text('No Collection'),
+                        child: const Text('Deferred Engagement'),
                       ),
                     ),
                     const SizedBox(width: BSizes.spaceBtwItems),
@@ -199,7 +199,7 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
                           Get.back();
                           Get.snackbar(
                             'Success',
-                            'Collection marked as done for ${widget.client.name}',
+                            'Engagement marked as clear for ${widget.client.name}',
                             snackPosition: SnackPosition.BOTTOM,
                             backgroundColor: Colors.blue,
                             colorText: Colors.white,
@@ -209,7 +209,7 @@ class _CollectionActivityAccountInvoicesScreenState extends State<CollectionActi
                           backgroundColor: Colors.blue,
                           side: const BorderSide(color: Colors.blue),
                         ),
-                        child: const Text('Done Collection'),
+                        child: const Text('Clear Engagement'),
                       ),
                     ),
                   ],

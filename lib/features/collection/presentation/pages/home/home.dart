@@ -25,7 +25,7 @@ class CollectionHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(CollectionActivityController());
+    final controller = Get.find<CollectionActivityController>();
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -85,13 +85,13 @@ class CollectionHomeScreen extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Obx(() => CollectionSummaryCard(
-                              title: 'Completed',
+                              title: 'Settled',
                               value: controller.completedItems.length.toString(),
                               icon: Iconsax.tick_circle,
                               color: BColors.success,
                               onTap: () {
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Completed', color: BColors.success),
+                                  () => const CategoryDetailScreen(title: 'Settled', color: BColors.success),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
@@ -173,7 +173,7 @@ class CollectionHomeScreen extends StatelessWidget {
                               const Icon(Iconsax.clock, size: 48, color: BColors.darkGrey),
                               const SizedBox(height: BSizes.sm),
                               Text(
-                                'No recent activities yet',
+                                'No engagement history yet',
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
                               ),
                             ],

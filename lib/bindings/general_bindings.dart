@@ -68,6 +68,8 @@ import '../features/logistics/controllers/stock_receive_controller.dart';
 import '../features/logistics/controllers/request_controller.dart';
 import '../data/repositories/common/item_category_repository.dart';
 import '../data/repositories/common/form_category_repository.dart';
+import '../data/repositories/collection/collection_repository.dart';
+import '../features/collection/helpers/sync_manager.dart';
 import '../features/collection/presentation/controllers/collection_onboarding_controller.dart';
 import '../features/collection/presentation/controllers/collection_activity_controller.dart';
 import '../features/collection/presentation/controllers/total_collected_controller.dart';
@@ -82,6 +84,7 @@ class GeneralBindings extends Bindings {
     Get.put(WebSocketNotificationController());
     Get.put(MessagingController());
     Get.put(UserController(), permanent: true);
+    Get.lazyPut(() => SyncManager(), fenix: true);
 
     // ========================================================================
     // Authentication - Repository Interface & Use Cases (NEW - Phase 2)
@@ -130,6 +133,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => AirSeaRepository(), fenix: true);
     Get.lazyPut(() => ItemCategoryRepository(), fenix: true);
     Get.lazyPut(() => FormCategoryRepository(), fenix: true);
+    Get.lazyPut(() => CollectionRepository(), fenix: true);
 
     // ========================================================================
     // Controllers

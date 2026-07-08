@@ -274,4 +274,65 @@ Future<void> createAllTables(Database db) async {
       lastUsedAt TEXT NOT NULL
     )
   ''');
+
+  // Table: a_tblCollectionItems
+  // Stores collection invoice items (bucket and activity)
+  await db.execute('''
+    CREATE TABLE a_tblCollectionItems (
+      id TEXT PRIMARY KEY,
+      clientId TEXT NOT NULL,
+      clientName TEXT,
+      clientAddress TEXT,
+      documentReferences TEXT,
+      bankName TEXT,
+      toBeCollected REAL DEFAULT 0,
+      totalCollected REAL DEFAULT 0,
+      remarks TEXT,
+      documentDate TEXT,
+      bpCode TEXT,
+      postingDate TEXT,
+      dueDate TEXT,
+      status TEXT,
+      lastOutcome TEXT,
+      assignedAt TEXT,
+      collectorName TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      FOREIGN KEY (clientId) REFERENCES ACCMST_ (ACCMID) ON DELETE CASCADE
+    )
+  ''');
+
+  // Table: a_tblCollectionHistory
+  // Stores history records for collection items
+  await db.execute('''
+    CREATE TABLE a_tblCollectionHistory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      itemId TEXT NOT NULL,
+      date TEXT NOT NULL,
+      collectorName TEXT,
+      status TEXT,
+      remarks TEXT,
+      totalCollected REAL DEFAULT 0,
+      bankName TEXT,
+      checkNumber TEXT,
+      checkDate TEXT,
+      purposeOfVisit TEXT,
+      FOREIGN KEY (itemId) REFERENCES a_tblCollectionItems (id) ON DELETE CASCADE
+    )
+  ''');
+
+  // Table: a_tblCollectionPending
+  // Stores pending changes to be synced to the server
+  await db.execute('''
+    CREATE TABLE a_tblCollectionPending (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      operation TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      itemId TEXT,
+      createdAt TEXT NOT NULL,
+      retryCount INTEGER DEFAULT 0,
+      lastRetryAt TEXT,
+      FOREIGN KEY (itemId) REFERENCES a_tblCollectionItems (id) ON DELETE CASCADE
+    )
+  ''');
 }

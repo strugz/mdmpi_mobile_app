@@ -54,7 +54,7 @@ class CategoryDetailScreen extends StatelessWidget {
               List<CollectionItemModel> items = [];
 
               switch (title) {
-                case 'Completed':
+                case 'Settled':
                   items = controller.completedItems;
                   break;
                 case 'Due Date':

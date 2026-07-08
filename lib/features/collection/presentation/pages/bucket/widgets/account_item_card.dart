@@ -143,7 +143,7 @@ class AccountItemCard extends StatelessWidget {
                                 ),
                               ),
                               child: Text(
-                                'Claim Account',
+                                'Acquire Account',
                                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                       color: BColors.primary,
                                       fontWeight: FontWeight.bold,

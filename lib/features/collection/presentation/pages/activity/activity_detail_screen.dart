@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
@@ -36,9 +37,20 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       selectedStatus = widget.item.status;
     }
     totalCollectedController = TextEditingController(); // Start empty
-    bankNameController = TextEditingController();
-    checkNumberController = TextEditingController();
-    checkDateController = TextEditingController();
+
+    // Pre-fill bank details from the most recent history entry that contains them
+    CollectionHistoryModel? lastBankInfo;
+    for (var h in widget.item.history.reversed) {
+      if (h.bankName != null && h.bankName!.isNotEmpty) {
+        lastBankInfo = h;
+        break;
+      }
+    }
+
+    bankNameController = TextEditingController(text: lastBankInfo?.bankName ?? '');
+    checkNumberController = TextEditingController(text: lastBankInfo?.checkNumber ?? '');
+    checkDateController = TextEditingController(text: lastBankInfo?.checkDate ?? '');
+
     othersRemarkController = TextEditingController();
   }
 
@@ -83,7 +95,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     Get.back();
     Get.snackbar(
       'Success',
-      'Activity updated',
+      'Engagement updated',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: BColors.success.withValues(alpha: 0.8),
       colorText: Colors.white,
@@ -94,7 +106,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Activity Details'),
+        title: const Text('Engagement Details'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(BSizes.defaultSpace),

@@ -10,7 +10,7 @@ class BTexts {
 
   //Collection Home Texts
   static const String collectionHomeTitle1 = "MDMPI Collection";
-  static const String collectionHomeSubTitle1 = "Recent Activities:";
+  static const String collectionHomeSubTitle1 = "Engagement History:";
 
   // Home Texts
   static const String homeTitle1 = "Dispatch an Item";

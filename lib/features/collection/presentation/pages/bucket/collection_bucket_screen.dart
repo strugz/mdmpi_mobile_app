@@ -43,8 +43,8 @@ class CollectionBucketScreen extends StatelessWidget {
                 final count = controller.selectedAccountIds.length;
                 controller.claimSelectedAccounts();
                 Get.snackbar(
-                  'Accounts Claimed',
-                  '$count account(s) moved to Activity.',
+                  'Accounts Acquired',
+                  '$count account(s) moved to Field Engagement.',
                   snackPosition: SnackPosition.BOTTOM,
                   backgroundColor: BColors.success,
                   colorText: BColors.white,
@@ -62,15 +62,15 @@ class CollectionBucketScreen extends StatelessWidget {
                   final count = controller.selectedAccountIds.length;
                   controller.claimSelectedAccounts();
                   Get.snackbar(
-                    'Accounts Claimed',
-                    '$count account(s) moved to Activity.',
+                    'Accounts Acquired',
+                    '$count account(s) moved to Field Engagement.',
                     snackPosition: SnackPosition.BOTTOM,
                     backgroundColor: BColors.success,
                     colorText: BColors.white,
                   );
                 },
                 icon: const Icon(Iconsax.tick_circle),
-                label: Text('Claim ${controller.selectedAccountIds.length} Account(s)'),
+                label: Text('Acquire ${controller.selectedAccountIds.length} Account(s)'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BColors.primary,
                   foregroundColor: BColors.white,
@@ -169,8 +169,8 @@ class CollectionBucketScreen extends StatelessWidget {
                           onClaimTap: () {
                             controller.claimAccount(client.id);
                             Get.snackbar(
-                              'Account Claimed',
-                              'All invoices for ${client.name} moved to Activity.',
+                              'Account Acquired',
+                              'All invoices for ${client.name} moved to Field Engagement.',
                               snackPosition: SnackPosition.BOTTOM,
                               backgroundColor: BColors.success,
                               colorText: BColors.white,

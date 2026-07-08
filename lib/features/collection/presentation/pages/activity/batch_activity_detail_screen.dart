@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
@@ -36,9 +37,37 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   void initState() {
     super.initState();
     totalAmountController = TextEditingController();
-    bankNameController = TextEditingController();
-    checkNumberController = TextEditingController();
-    checkDateController = TextEditingController();
+    
+    // Find the most recent bank info across all selected items
+    CollectionHistoryModel? latestBankInfo;
+    DateTime? latestDate;
+
+    for (var item in widget.items) {
+      CollectionHistoryModel? lastInfo;
+      for (var h in item.history.reversed) {
+        if (h.bankName != null && h.bankName!.isNotEmpty) {
+          lastInfo = h;
+          break;
+        }
+      }
+      
+      if (lastInfo != null) {
+        try {
+          final entryDate = DateTime.parse(lastInfo.date.replaceFirst(' ', 'T'));
+          if (latestDate == null || entryDate.isAfter(latestDate)) {
+            latestDate = entryDate;
+            latestBankInfo = lastInfo;
+          }
+        } catch (_) {
+          // If parse fails, just take it if we don't have one yet
+          latestBankInfo ??= lastInfo;
+        }
+      }
+    }
+
+    bankNameController = TextEditingController(text: latestBankInfo?.bankName ?? '');
+    checkNumberController = TextEditingController(text: latestBankInfo?.checkNumber ?? '');
+    checkDateController = TextEditingController(text: latestBankInfo?.checkDate ?? '');
 
     for (var item in widget.items) {
       itemAmountControllers[item.id] = TextEditingController();
@@ -134,7 +163,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     Get.back();
     Get.snackbar(
       'Success',
-      'Batch activity recorded for ${widget.items.length} invoices.',
+      'Batch engagement recorded for ${widget.items.length} invoices.',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: BColors.success,
       colorText: Colors.white,
@@ -209,7 +238,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Batch Activity Recording'),
+        title: const Text('Batch Engagement Recording'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(BSizes.defaultSpace),
@@ -402,7 +431,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                   backgroundColor: _isBalanced ? BColors.primary : BColors.grey,
                   side: BorderSide(color: _isBalanced ? BColors.primary : BColors.grey),
                 ),
-                child: const Text('Save Batch Activity'),
+                child: const Text('Save Batch Engagement'),
               ),
             ),
             const SizedBox(height: BSizes.spaceBtwSections),

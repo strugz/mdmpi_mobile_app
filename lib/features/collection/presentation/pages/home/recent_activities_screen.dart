@@ -16,7 +16,7 @@ class RecentActivitiesScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recent Activities'),
+        title: const Text('Engagement History'),
       ),
       body: Column(
         children: [
@@ -38,7 +38,7 @@ class RecentActivitiesScreen extends StatelessWidget {
               final recentItems = controller.allRecentHistory;
               
               if (recentItems.isEmpty) {
-                return const Center(child: Text('No recent activities found.'));
+                return const Center(child: Text('No engagement history found.'));
               }
 
               // Apply status filter if not "All"

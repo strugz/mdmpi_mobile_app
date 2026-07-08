@@ -8,10 +8,18 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_history_m
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
 
-/// Manages the Collection Bucket → Activity flow with a simplified status model.
+  /// Manages the Collection Bucket → Activity flow with a simplified status model.
 class CollectionActivityController extends GetxController {
   static CollectionActivityController get instance => Get.find();
+
+  // ========================================================================
+  // Dependencies
+  // ========================================================================
+  late final CollectionRepository repository;
+  late final SyncManager syncManager;
 
   // ========================================================================
   // Observable state
@@ -21,6 +29,9 @@ class CollectionActivityController extends GetxController {
   final RxList<CollectionItemModel> activityItems = <CollectionItemModel>[].obs;
   final RxSet<String> selectedBucketIds = <String>{}.obs;
   final RxBool isLoading = false.obs;
+
+  /// Error message observable for UI feedback
+  final RxnString errorMessage = RxnString();
 
   /// Search and Filter state
   final RxString bucketSearchQuery = ''.obs;
@@ -62,7 +73,51 @@ class CollectionActivityController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _loadSampleBucketItems();
+    // Initialize repository and sync manager from DI
+    repository = Get.find<CollectionRepository>();
+    syncManager = Get.find<SyncManager>();
+    // Load data
+    loadBucket();
+  }
+
+  /// Load collection bucket items from repository.
+  /// Attempts to fetch from API or returns local cached data if offline.
+  Future<void> loadBucket() async {
+    try {
+      isLoading.value = true;
+      errorMessage.value = null;
+
+      final items = await repository.getAll();
+      bucketItems.assignAll(items);
+
+      // Extract unique clients for account list
+      final clientMap = <String, ClientModel>{};
+      for (final item in items) {
+        clientMap[item.client.id] = item.client;
+      }
+      masterAccountList.assignAll(clientMap.values.toList());
+
+      logDebug('[CollectionActivityController] Loaded ${items.length} bucket items');
+      isLoading.value = false;
+    } catch (e) {
+      logDebug('[CollectionActivityController] loadBucket error: $e');
+      errorMessage.value = 'Failed to load collection items: $e';
+      isLoading.value = false;
+
+      // Fallback to sample data if available, or empty list
+      _loadSampleBucketItemsAsFallback();
+    }
+  }
+
+  /// Fallback to sample data if real data fails to load.
+  /// This is only for development/demo purposes.
+  void _loadSampleBucketItemsAsFallback() {
+    try {
+      logDebug('[CollectionActivityController] Loading sample data as fallback...');
+      _loadSampleBucketItems();
+    } catch (e) {
+      logDebug('[CollectionActivityController] Fallback also failed: $e');
+    }
   }
 
   // ========================================================================
@@ -447,32 +502,43 @@ class CollectionActivityController extends GetxController {
     logDebug('[CollectionActivityController] Account $clientId unclaimed with account-level reason: $reason');
   }
 
-  void claimAccount(String clientId) {
-    final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
-    if (invoices.isEmpty) return;
+   void claimAccount(String clientId) {
+     final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
+     if (invoices.isEmpty) return;
 
-    final ids = invoices.map((e) => e.id).toList();
-    claimItemsByIds(ids);
-    logDebug('[CollectionActivityController] Account $clientId claimed (${invoices.length} invoices)');
-  }
+     final ids = invoices.map((e) => e.id).toList();
+     claimItemsByIds(ids);
+     logDebug('[CollectionActivityController] Account $clientId claimed (${invoices.length} invoices)');
+   }
 
-  void claimItemsByIds(List<String> ids) {
-    if (ids.isEmpty) return;
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    for (final id in ids) {
-      final index = bucketItems.indexWhere((e) => e.id == id);
-      if (index == -1) continue;
-      // Do not assign a system-managed 'On-going' status; keep status empty and set assignedAt.
-      final item = bucketItems[index].copyWith(
-        status: '',
-        assignedAt: now,
-      );
-      activityItems.add(item);
-      bucketItems.removeAt(index);
-    }
-    selectedBucketIds.removeWhere((id) => ids.contains(id));
-    logDebug('[CollectionActivityController] Claimed ${ids.length} items');
-  }
+   /// Claim items by IDs (move to activity).
+   /// Updates both UI and calls repository for persistence.
+   Future<void> claimItemsByIds(List<String> ids) async {
+     if (ids.isEmpty) return;
+
+     try {
+       // Update UI optimistically
+       final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+       for (final id in ids) {
+         final index = bucketItems.indexWhere((e) => e.id == id);
+         if (index == -1) continue;
+         final item = bucketItems[index].copyWith(
+           status: '',
+           assignedAt: now,
+         );
+         activityItems.add(item);
+         bucketItems.removeAt(index);
+       }
+       selectedBucketIds.removeWhere((id) => ids.contains(id));
+
+       // Persist to repository
+       await repository.claimItemsByIds(ids, silent: true);
+       logDebug('[CollectionActivityController] Claimed ${ids.length} items');
+     } catch (e) {
+       logDebug('[CollectionActivityController] claimItemsByIds error: $e');
+       errorMessage.value = 'Failed to claim items: $e';
+     }
+   }
 
   // ========================================================================
   // Multi-select Account logic
@@ -511,64 +577,84 @@ class CollectionActivityController extends GetxController {
     exitSelectionMode();
   }
 
-  void saveActivity({
-    required String id,
-    required String status,
-    required String remarks,
-    double? totalCollected,
-    String? bankName,
-    String? checkNumber,
-    String? checkDate,
-    String? purposeOfVisit,
-  }) {
-    final index = activityItems.indexWhere((e) => e.id == id);
-    if (index == -1) return;
+   /// Save activity for an invoice item.
+   /// Updates UI optimistically and persists to repository.
+   Future<void> saveActivity({
+     required String id,
+     required String status,
+     required String remarks,
+     double? totalCollected,
+     String? bankName,
+     String? checkNumber,
+     String? checkDate,
+     String? purposeOfVisit,
+   }) async {
+     try {
+       final index = activityItems.indexWhere((e) => e.id == id);
+       if (index == -1) {
+         errorMessage.value = 'Item not found';
+         return;
+       }
 
-    final oldItem = activityItems[index];
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    final double newlyCollected = totalCollected ?? 0;
-    final double updatedTotalCollected = oldItem.totalCollected + newlyCollected;
-    final double updatedToBeCollected = (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
+       final oldItem = activityItems[index];
+       final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+       final double newlyCollected = totalCollected ?? 0;
+       final double updatedTotalCollected = oldItem.totalCollected + newlyCollected;
+       final double updatedToBeCollected = (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
 
-    // If fully paid, status is Collected. 
-    // If not fully paid, status is Pending (moving back to bucket) but with the outcome recorded.
-    final bool isFullyPaid = updatedToBeCollected == 0;
-    // When not fully paid, avoid reintroducing the removed 'Pending' status. Use empty status and rely on lastOutcome.
-    final String finalStatus = isFullyPaid ? CollectionStatusColors.statusCollected : '';
+       final bool isFullyPaid = updatedToBeCollected == 0;
+       final String finalStatus = isFullyPaid ? CollectionStatusColors.statusCollected : '';
 
-    final historyEntry = CollectionHistoryModel(
-      date: now,
-      collectorName: UserController.instance.user.value.initials,
-      status: status,
-      remarks: remarks,
-      totalCollected: newlyCollected,
-      bankName: bankName,
-      checkNumber: checkNumber,
-      checkDate: checkDate,
-      purposeOfVisit: purposeOfVisit,
-    );
+       final historyEntry = CollectionHistoryModel(
+         date: now,
+         collectorName: UserController.instance.user.value.initials,
+         status: status,
+         remarks: remarks,
+         totalCollected: newlyCollected,
+         bankName: bankName,
+         checkNumber: checkNumber,
+         checkDate: checkDate,
+         purposeOfVisit: purposeOfVisit,
+       );
 
-    final updatedItem = oldItem.copyWith(
-      status: finalStatus,
-      lastOutcome: status, // Always store the selected status as the last outcome
-      remarks: remarks,
-      toBeCollected: updatedToBeCollected,
-      totalCollected: updatedTotalCollected,
-      history: [...oldItem.history, historyEntry],
-      // If fully paid, move to bucket and reset assignment. 
-      // If NOT fully paid, keep current assignment.
-      assignedAt: isFullyPaid ? '' : oldItem.assignedAt,
-      collectorName: isFullyPaid ? 'Unassigned' : oldItem.collectorName,
-    );
+       final updatedItem = oldItem.copyWith(
+         status: finalStatus,
+         lastOutcome: status,
+         remarks: remarks,
+         toBeCollected: updatedToBeCollected,
+         totalCollected: updatedTotalCollected,
+         history: [...oldItem.history, historyEntry],
+         assignedAt: isFullyPaid ? '' : oldItem.assignedAt,
+         collectorName: isFullyPaid ? 'Unassigned' : oldItem.collectorName,
+       );
 
-    if (isFullyPaid) {
-      bucketItems.add(updatedItem);
-      activityItems.removeAt(index);
-    } else {
-      activityItems[index] = updatedItem;
-    }
-    logDebug('[CollectionActivityController] Activity $id saved. Move to bucket: $isFullyPaid');
-  }
+       // Update UI optimistically
+       if (isFullyPaid) {
+         bucketItems.add(updatedItem);
+         activityItems.removeAt(index);
+       } else {
+         activityItems[index] = updatedItem;
+       }
+
+       // Persist to repository
+       await repository.saveActivity(
+         id: id,
+         status: status,
+         remarks: remarks,
+         totalCollected: totalCollected,
+         bankName: bankName,
+         checkNumber: checkNumber,
+         checkDate: checkDate,
+         purposeOfVisit: purposeOfVisit,
+         silent: true,
+       );
+
+       logDebug('[CollectionActivityController] Activity $id saved. Move to bucket: $isFullyPaid');
+     } catch (e) {
+       logDebug('[CollectionActivityController] saveActivity error: $e');
+       errorMessage.value = 'Failed to save activity: $e';
+     }
+   }
 
   // ========================================================================
   // Multi-select Activity Invoice logic
@@ -591,70 +677,90 @@ class CollectionActivityController extends GetxController {
     selectedActivityInvoiceIds.clear();
   }
 
-  void saveBatchActivity({
-    required List<String> ids,
-    required Map<String, String> statuses,
-    required Map<String, String> remarks,
-    required Map<String, double> amounts,
-    required double totalAmountReceived,
-    String? bankName,
-    String? checkNumber,
-    String? checkDate,
-    String? purposeOfVisit,
-  }) {
-    final selectedItems = activityItems.where((item) => ids.contains(item.id)).toList();
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+   /// Save batch activity for multiple items.
+   /// Updates UI optimistically and persists to repository.
+   Future<void> saveBatchActivity({
+     required List<String> ids,
+     required Map<String, String> statuses,
+     required Map<String, String> remarks,
+     required Map<String, double> amounts,
+     required double totalAmountReceived,
+     String? bankName,
+     String? checkNumber,
+     String? checkDate,
+     String? purposeOfVisit,
+   }) async {
+     try {
+       final selectedItems = activityItems.where((item) => ids.contains(item.id)).toList();
+       final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
-    for (var item in selectedItems) {
-      final double manualAmount = amounts[item.id] ?? 0;
-      final String itemRemarks = remarks[item.id] ?? 'Batch Recording';
-      
-      final double updatedTotalCollected = item.totalCollected + manualAmount;
-      final double updatedToBeCollected = (item.toBeCollected - manualAmount).clamp(0, double.infinity);
+       for (var item in selectedItems) {
+         final double manualAmount = amounts[item.id] ?? 0;
+         final String itemRemarks = remarks[item.id] ?? 'Batch Recording';
 
-      final bool isFullyPaid = updatedToBeCollected == 0;
-      
-      // Use the status provided for this specific item ID
-      final String itemStatus = statuses[item.id] ?? (isFullyPaid ? CollectionStatusColors.statusCollected : '');
+         final double updatedTotalCollected = item.totalCollected + manualAmount;
+         final double updatedToBeCollected = (item.toBeCollected - manualAmount).clamp(0, double.infinity);
 
-      final historyEntry = CollectionHistoryModel(
-        date: now,
-        collectorName: UserController.instance.user.value.initials,
-        status: itemStatus,
-        remarks: itemRemarks,
-        totalCollected: manualAmount,
-        bankName: bankName,
-        checkNumber: checkNumber,
-        checkDate: checkDate,
-        purposeOfVisit: purposeOfVisit,
-      );
+         final bool isFullyPaid = updatedToBeCollected == 0;
 
-      final updatedItem = item.copyWith(
-        status: isFullyPaid ? CollectionStatusColors.statusCollected : '',
-        lastOutcome: itemStatus,
-        remarks: itemRemarks,
-        toBeCollected: updatedToBeCollected,
-        totalCollected: updatedTotalCollected,
-        history: [...item.history, historyEntry],
-        assignedAt: isFullyPaid ? '' : item.assignedAt,
-        collectorName: isFullyPaid ? 'Unassigned' : item.collectorName,
-      );
+         final String itemStatus = statuses[item.id] ?? (isFullyPaid ? CollectionStatusColors.statusCollected : '');
 
-      // Update in lists
-      final idx = activityItems.indexWhere((e) => e.id == item.id);
-      if (idx != -1) {
-        if (isFullyPaid) {
-          activityItems.removeAt(idx);
-          bucketItems.add(updatedItem);
-        } else {
-          activityItems[idx] = updatedItem;
-        }
-      }
-    }
+         final historyEntry = CollectionHistoryModel(
+           date: now,
+           collectorName: UserController.instance.user.value.initials,
+           status: itemStatus,
+           remarks: itemRemarks,
+           totalCollected: manualAmount,
+           bankName: bankName,
+           checkNumber: checkNumber,
+           checkDate: checkDate,
+           purposeOfVisit: purposeOfVisit,
+         );
 
-    exitActivitySelectionMode();
-    logDebug('[CollectionActivityController] Batch activity saved for ${ids.length} items');
-  }
+         final updatedItem = item.copyWith(
+           status: isFullyPaid ? CollectionStatusColors.statusCollected : '',
+           lastOutcome: itemStatus,
+           remarks: itemRemarks,
+           toBeCollected: updatedToBeCollected,
+           totalCollected: updatedTotalCollected,
+           history: [...item.history, historyEntry],
+           assignedAt: isFullyPaid ? '' : item.assignedAt,
+           collectorName: isFullyPaid ? 'Unassigned' : item.collectorName,
+         );
+
+         // Update in lists
+         final idx = activityItems.indexWhere((e) => e.id == item.id);
+         if (idx != -1) {
+           if (isFullyPaid) {
+             activityItems.removeAt(idx);
+             bucketItems.add(updatedItem);
+           } else {
+             activityItems[idx] = updatedItem;
+           }
+         }
+       }
+
+       // Persist to repository
+       await repository.saveBatchActivity(
+         ids: ids,
+         statuses: statuses,
+         remarks: remarks,
+         amounts: amounts,
+         totalAmountReceived: totalAmountReceived,
+         bankName: bankName,
+         checkNumber: checkNumber,
+         checkDate: checkDate,
+         purposeOfVisit: purposeOfVisit,
+         silent: true,
+       );
+
+       exitActivitySelectionMode();
+       logDebug('[CollectionActivityController] Batch activity saved for ${ids.length} items');
+     } catch (e) {
+       logDebug('[CollectionActivityController] saveBatchActivity error: $e');
+       errorMessage.value = 'Failed to save batch activity: $e';
+     }
+   }
 
   void saveGlobalActivity({
     required String type,
