@@ -148,8 +148,15 @@ class CollectionActivityController extends GetxController {
       bucketItems.isNotEmpty &&
       selectedBucketIds.length == bucketItems.length;
 
+  final RxString selectedArea = ''.obs;
+
   List<ClientModel> get bucketAccounts {
     return masterAccountList.where((client) {
+      // Territory Filter
+      if (selectedArea.value.isNotEmpty) {
+        if (!client.code.startsWith(selectedArea.value)) return false;
+      }
+
       final invoiceCount = getAccountInvoiceCount(client.id);
       if (invoiceCount == 0) return false;
 
@@ -431,17 +438,22 @@ class CollectionActivityController extends GetxController {
 
   // Core and Outcomes summary getters removed per UI requirements.
 
-  /// Completed: invoice reach 0 total amount due
+  /// Completed: invoices that reach 0 total amount due, filtered by area
   List<CollectionItemModel> get completedItems {
     final allItems = [...bucketItems, ...activityItems];
-    return allItems.where((item) => item.toBeCollected == 0).toList();
+    return allItems.where((item) {
+      if (item.toBeCollected != 0) return false;
+      if (selectedArea.value.isNotEmpty && !item.bpCode.startsWith(selectedArea.value)) return false;
+      return true;
+    }).toList();
   }
 
-  /// Due Date: invoices past their due date
+  /// Due Date: invoices past their due date, filtered by area
   List<CollectionItemModel> get overdueItems {
     final allItems = [...bucketItems, ...activityItems];
     final now = DateTime.now();
     return allItems.where((item) {
+      if (selectedArea.value.isNotEmpty && !item.bpCode.startsWith(selectedArea.value)) return false;
       try {
         final dueDate = DateTime.parse(item.dueDate);
         return dueDate.isBefore(now);
@@ -449,6 +461,28 @@ class CollectionActivityController extends GetxController {
         return false;
       }
     }).toList();
+  }
+
+  /// Returns accounts that have settled invoices
+  List<ClientModel> get settledAccounts {
+    final settledInvoiceIds = completedItems.map((e) => e.client.id).toSet();
+    return masterAccountList.where((c) => settledInvoiceIds.contains(c.id)).toList();
+  }
+
+  /// Returns accounts that have overdue invoices
+  List<ClientModel> get overdueAccounts {
+    final overdueInvoiceIds = overdueItems.map((e) => e.client.id).toSet();
+    return masterAccountList.where((c) => overdueInvoiceIds.contains(c.id)).toList();
+  }
+
+  /// Returns settled invoices for a specific account
+  List<CollectionItemModel> getSettledInvoicesByAccount(String clientId) {
+    return completedItems.where((item) => item.client.id == clientId).toList();
+  }
+
+  /// Returns overdue invoices for a specific account
+  List<CollectionItemModel> getOverdueInvoicesByAccount(String clientId) {
+    return overdueItems.where((item) => item.client.id == clientId).toList();
   }
 
   // ========================================================================
@@ -800,14 +834,14 @@ class CollectionActivityController extends GetxController {
 
   void _loadSampleBucketItems() {
     final List<ClientModel> clients = [
-      ClientModel(id: 'C001', code: 'MD-C001', name: 'ABC Corporation', address: '123 Main St, Makati', contact: '09171234567', emailAddress: 'abc@corp.com'),
-      ClientModel(id: 'C002', code: 'MD-C002', name: 'XYZ Trading', address: '456 Rizal Ave, Quezon City', contact: '09189876543', emailAddress: 'xyz@trading.ph'),
-      ClientModel(id: 'C003', code: 'MD-C003', name: 'LMN Enterprises', address: '789 EDSA, Mandaluyong', contact: '09201112233', emailAddress: 'lmn@ent.com'),
-      ClientModel(id: 'C004', code: 'MD-C004', name: 'PQR Industries', address: '321 Ayala Blvd, Makati', contact: '09334455667', emailAddress: 'pqr@ind.com'),
-      ClientModel(id: 'C005', code: 'MD-C005', name: 'STU Holdings', address: '654 Shaw Blvd, Pasig', contact: '09557788990', emailAddress: 'stu@hold.com'),
-      ClientModel(id: 'C006', code: 'MD-C006', name: 'VWX Solutions', address: '987 Aurora Blvd, Cubao', contact: '09664433221', emailAddress: 'vwx@sol.com'),
-      ClientModel(id: 'C007', code: 'MD-C007', name: 'Global Logistics Inc.', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
-      ClientModel(id: 'C008', code: 'MD-C008', name: 'Prime Manufacturing', address: '222 Industrial Ave, Cavite', contact: '09885551234', emailAddress: 'prime@mfg.com'),
+      ClientModel(id: 'C001', code: 'NLN-001', name: 'ABC Corporation (North)', address: '123 Main St, Laoag', contact: '09171234567', emailAddress: 'abc@corp.com'),
+      ClientModel(id: 'C002', code: 'SLN-001', name: 'XYZ Trading (South)', address: '456 Rizal Ave, Batangas', contact: '09189876543', emailAddress: 'xyz@trading.ph'),
+      ClientModel(id: 'C003', code: 'CLN-001', name: 'LMN Enterprises (Central)', address: '789 EDSA, Pampanga', contact: '09201112233', emailAddress: 'lmn@ent.com'),
+      ClientModel(id: 'C004', code: 'VIS-001', name: 'PQR Industries (Visayas)', address: '321 Ayala Blvd, Cebu', contact: '09334455667', emailAddress: 'pqr@ind.com'),
+      ClientModel(id: 'C005', code: 'MIN-001', name: 'STU Holdings (Mindanao)', address: '654 Shaw Blvd, Davao', contact: '09557788990', emailAddress: 'stu@hold.com'),
+      ClientModel(id: 'C006', code: 'RAD-001', name: 'VWX Solutions (Medical)', address: '987 Aurora Blvd, QC', contact: '09664433221', emailAddress: 'vwx@sol.com'),
+      ClientModel(id: 'C007', code: 'NLN-002', name: 'Global Logistics Inc. (North)', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
+      ClientModel(id: 'C008', code: 'VIS-002', name: 'Prime Manufacturing (Visayas)', address: '222 Industrial Ave, Iloilo', contact: '09885551234', emailAddress: 'prime@mfg.com'),
     ];
     masterAccountList.assignAll(clients);
 

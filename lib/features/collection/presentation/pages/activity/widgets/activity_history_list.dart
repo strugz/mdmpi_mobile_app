@@ -264,7 +264,7 @@ class _ActivityHistoryCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              /// Header: Invoice ID and BP Code + Status Badge
+              /// Header: Invoice ID and Account Name + Status Badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -284,7 +284,7 @@ class _ActivityHistoryCard extends StatelessWidget {
                         ),
                         if (item != null)
                           Text(
-                            'BP: ${item!.bpCode}',
+                            item!.client.name,
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   color: BColors.primary,
                                   fontWeight: FontWeight.bold,
@@ -311,7 +311,7 @@ class _ActivityHistoryCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            'Posted: ${item?.postingDate ?? 'N/A'}',
+                            'Invoice Date: ${item?.postingDate ?? 'N/A'}',
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   color: BColors.darkGrey,
                                 ),

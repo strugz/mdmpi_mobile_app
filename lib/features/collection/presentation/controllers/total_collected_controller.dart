@@ -61,6 +61,21 @@ class TotalCollectedController extends GetxController {
   /// Sum of collected amounts for the selected month
   double get monthlyTotal => monthlyEntries.fold(0.0, (p, e) => p + e.amount);
 
+  /// Sum of deposits for the selected month (Actual Collection)
+  double get actualCollectionTotal {
+    double total = 0;
+    for (final entry in _activityController.globalActivities) {
+      final history = entry['history'];
+      if (entry['type'] == 'Deposit' || history.status == 'Deposit') {
+        final dt = _parseDateSafe(history.date);
+        if (dt != null && dt.year == selectedMonth.value.year && dt.month == selectedMonth.value.month) {
+          total += (history.totalCollected ?? 0.0);
+        }
+      }
+    }
+    return total;
+  }
+
   /// Helper to parse a date string safely using BFormatter normalization
   DateTime? _parseDateSafe(String? s) {
     if (s == null) return null;

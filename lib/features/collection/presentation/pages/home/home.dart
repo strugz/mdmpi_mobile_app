@@ -10,6 +10,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/c
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/total_collected_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/actual_collection_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_selection_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/total_collected_month_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
@@ -44,6 +46,18 @@ class CollectionHomeScreen extends StatelessWidget {
                   ),
                 ),
 
+                // Actual Collection Card
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                  child: ActualCollectionCard(
+                    color: Colors.indigo,
+                    onTap: () {
+                      // Navigate to details if needed
+                    },
+                  ),
+                ),
+                const SizedBox(height: BSizes.sm),
+
                 // Total Collected Card
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
@@ -65,7 +79,10 @@ class CollectionHomeScreen extends StatelessWidget {
                     return CollectionBucketButton(
                       itemCount: controller.bucketItems.length,
                       onTap: () => Get.to(
-                        () => const CollectionBucketScreen(),
+                        () => AreaSelectionScreen(
+                          title: 'Bucket',
+                          targetScreenBuilder: () => const CollectionBucketScreen(),
+                        ),
                         transition: Transition.cupertino,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -91,7 +108,10 @@ class CollectionHomeScreen extends StatelessWidget {
                               color: BColors.success,
                               onTap: () {
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Settled', color: BColors.success),
+                                  () => AreaSelectionScreen(
+                                    title: 'Settled',
+                                    targetScreenBuilder: () => const CategoryDetailScreen(title: 'Settled', color: BColors.success),
+                                  ),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
@@ -108,7 +128,10 @@ class CollectionHomeScreen extends StatelessWidget {
                               expand: false,
                               onTap: () {
                                 Get.to(
-                                  () => const CategoryDetailScreen(title: 'Due Date', color: BColors.error),
+                                  () => AreaSelectionScreen(
+                                    title: 'Due Date',
+                                    targetScreenBuilder: () => const CategoryDetailScreen(title: 'Due Date', color: BColors.error),
+                                  ),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );

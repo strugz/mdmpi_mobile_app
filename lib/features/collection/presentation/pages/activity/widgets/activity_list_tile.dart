@@ -86,7 +86,7 @@ class ActivityListTile extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            'BP: ${item.bpCode}',
+                            item.client.name,
                             style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                   color: BColors.primary,
                                   fontWeight: FontWeight.bold,
@@ -136,7 +136,7 @@ class ActivityListTile extends StatelessWidget {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              'Posted: ${item.postingDate}',
+                              'Invoice Date: ${item.postingDate}',
                               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                                     color: BColors.darkGrey,
                                   ),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/invoice_details_modal.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_list_tile.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_chips.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/invoice_item_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/due_date_helper.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
@@ -18,19 +19,53 @@ class CategoryDetailScreen extends StatelessWidget {
   final String title;
   final Color color;
 
-  void _showInvoiceDetail(BuildContext context, CollectionItemModel item) {
+  void _showAccountInvoices(BuildContext context, ClientModel client, List<CollectionItemModel> invoices) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => InvoiceDetailsModal(item: item),
+      backgroundColor: BColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollController) => Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(BSizes.md),
+              child: Text(
+                'Invoices for ${client.name}',
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                controller: scrollController,
+                padding: const EdgeInsets.all(BSizes.defaultSpace),
+                itemCount: invoices.length,
+                separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
+                itemBuilder: (context, index) {
+                  return InvoiceItemCard(
+                    item: invoices[index],
+                    isSelected: false,
+                    onTap: () {},
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final controller = CollectionActivityController.instance;
-    final RxString selectedFilter = 'All'.obs;
 
     return Scaffold(
       appBar: AppBar(
@@ -41,48 +76,44 @@ class CategoryDetailScreen extends StatelessWidget {
       body: Column(
         children: [
           const SizedBox(height: BSizes.spaceBtwItems),
-          if (title == 'Due Date') ...[
-            ActivityFilterChips(
-              filters: DueDateHelper.labelsWithAll,
-              activeColor: color,
-              onFilterChanged: (filter) => selectedFilter.value = filter,
-            ),
-            const SizedBox(height: BSizes.spaceBtwItems),
-          ],
           Expanded(
             child: Obx(() {
-              List<CollectionItemModel> items = [];
+              List<ClientModel> accounts = [];
 
               switch (title) {
                 case 'Settled':
-                  items = controller.completedItems;
+                  accounts = controller.settledAccounts;
                   break;
                 case 'Due Date':
-                  items = controller.overdueItems;
-                  if (selectedFilter.value != 'All') {
-                    final bucket = DueDateHelper.fromLabel(selectedFilter.value)!;
-                    items = items.where((i) => DueDateHelper.inBucket(i.daysPastDue, bucket)).toList();
-                  }
+                  accounts = controller.overdueAccounts;
                   break;
                 default:
-                  items = [];
+                  accounts = [];
               }
 
-              if (items.isEmpty) {
+              if (accounts.isEmpty) {
                 return const Center(
-                  child: Text('No items found for this category.'),
+                  child: Text('No accounts found for this category.'),
                 );
               }
 
               return ListView.separated(
                 padding: const EdgeInsets.all(BSizes.defaultSpace),
-                itemCount: items.length,
+                itemCount: accounts.length,
                 separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
                 itemBuilder: (context, index) {
-                  final item = items[index];
-                  return ActivityListTile(
-                    item: item,
-                    onTap: () => _showInvoiceDetail(context, item),
+                  final client = accounts[index];
+                  final invoices = title == 'Settled' 
+                      ? controller.getSettledInvoicesByAccount(client.id)
+                      : controller.getOverdueInvoicesByAccount(client.id);
+
+                  return AccountItemCard(
+                    client: client,
+                    invoiceCount: invoices.length,
+                    totalAmount: invoices.fold(0, (sum, i) => sum + i.toBeCollected),
+                    totalCollected: invoices.fold(0, (sum, i) => sum + i.totalCollected),
+                    onTap: () => _showAccountInvoices(context, client, invoices),
+                    onInfoTap: () {},
                   );
                 },
               );

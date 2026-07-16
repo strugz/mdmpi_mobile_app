@@ -140,7 +140,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               children: [
                 _buildInfoTile(context, 'Due Date', widget.item.dueDate, Iconsax.timer, valueColor: BColors.error),
                 _buildInfoTile(context, 'Invoice Date', widget.item.postingDate, Iconsax.calendar),
-                _buildInfoTile(context, 'BP Code', widget.item.bpCode, Iconsax.user, valueColor: BColors.primary),
+                _buildInfoTile(context, 'Account Name', widget.item.client.name, Iconsax.user, valueColor: BColors.primary),
                 _buildInfoTile(context, 'Status', widget.item.status, Iconsax.activity, isBadge: true),
               ],
             ),

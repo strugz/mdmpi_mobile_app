@@ -5,12 +5,11 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
 
-/// Feature-scoped card showing Total Collected this Month.
-class TotalCollectedCard extends StatelessWidget {
+class ActualCollectionCard extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
-  const TotalCollectedCard({super.key, this.color = Colors.green, this.onTap});
+  const ActualCollectionCard({super.key, this.color = Colors.indigo, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -31,26 +30,42 @@ class TotalCollectedCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Obx(() {
-          final total = controller.monthlyTotal;
+          final actual = controller.actualCollectionTotal;
+          final target = controller.targetAmount.value;
 
           return Row(
             children: [
-              Icon(Iconsax.money, color: color, size: 28),
+              Icon(Iconsax.bank, color: color, size: 28),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Total Collected this Month', style: Theme.of(context).textTheme.bodyLarge),
+                    Text('Actual Collection', style: Theme.of(context).textTheme.bodyLarge),
                     const SizedBox(height: 6),
                     Text(
-                      BFormatter.formatPesoCurrency(total),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: BSizes.fontSizeLg * 1.4),
+                      BFormatter.formatPesoCurrency(actual),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold, 
+                        fontSize: BSizes.fontSizeLg * 1.4,
+                        color: color,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Iconsax.arrow_right_3, size: 16),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('Target', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 6),
+                  Text(
+                    target > 0 ? BFormatter.formatPesoCurrency(target) : '—',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
             ],
           );
         }),

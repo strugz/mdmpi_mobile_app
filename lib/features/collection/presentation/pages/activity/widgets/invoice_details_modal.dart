@@ -66,7 +66,7 @@ class InvoiceDetailsModal extends StatelessWidget {
                 _buildInfoTile(context, 'Amount Due', BFormatter.formatPesoCurrency(item.toBeCollected), Iconsax.money_send, valueColor: BColors.primary),
                 _buildInfoTile(context, 'Collected', BFormatter.formatPesoCurrency(item.totalCollected), Iconsax.wallet_money, valueColor: BColors.success),
                 _buildInfoTile(context, 'Due Date', item.dueDate, Iconsax.calendar, valueColor: item.isOverdue ? BColors.error : null),
-                _buildInfoTile(context, 'BP Code', item.bpCode, Iconsax.user, valueColor: BColors.primary),
+                _buildInfoTile(context, 'Account Name', item.client.name, Iconsax.user, valueColor: BColors.primary),
               ],
             ),
 
