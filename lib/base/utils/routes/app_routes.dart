@@ -20,7 +20,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/settings/setti
 
 import '../../../features/logistics/screens/request.dart';
 import '../../../features/logistics/screens/data_test/local_storage_data_viewer.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/total_collected_month_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 
 class AppRoutes {
   static final pages = [
@@ -37,7 +37,7 @@ class AppRoutes {
     GetPage(name: BRoutes.location, page: () => const LocationPageGoogle()),
     GetPage(name: BRoutes.pullOutForm, page: () => const PullOutForm()),
     GetPage(name: BRoutes.localStorageViewer, page: () => const LocalStorageDataViewer()),
-    GetPage(name: BRoutes.totalCollected, page: () => const TotalCollectedMonthScreen()),
+    GetPage(name: BRoutes.totalCollected, page: () => const MonthlySummaryScreen(type: 'Collection')),
   ];
 
   // Pages to navigate to

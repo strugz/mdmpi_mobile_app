@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/invoice_item_card.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/due_date_helper.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:get/get.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
@@ -76,8 +79,56 @@ class CategoryDetailScreen extends StatelessWidget {
       body: Column(
         children: [
           const SizedBox(height: BSizes.spaceBtwItems),
+          const BFilterByAreaButton(),
+          const SizedBox(height: BSizes.spaceBtwItems),
           Expanded(
             child: Obx(() {
+              if (title == 'Advanced Payment') {
+                final unassigned = controller.filteredUnassignedAdvancedPayments;
+                final resolvedAccounts = controller.advancedPaymentAccounts;
+
+                if (unassigned.isEmpty && resolvedAccounts.isEmpty) {
+                  return const Center(child: Text('No advanced payments found.'));
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.all(BSizes.defaultSpace),
+                  children: [
+                    if (unassigned.isNotEmpty) ...[
+                      Text('Unassigned Payments', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: BSizes.sm),
+                      ...unassigned.map((pay) {
+                        final client = controller.masterAccountList.firstWhere((c) => c.id == pay['clientId'], orElse: () => ClientModel.empty());
+                        return Card(
+                          child: ListTile(
+                            title: Text(client.name),
+                            subtitle: Text('Amount: ${BFormatter.formatPesoCurrency(pay['amount'])}\nDate: ${pay['date']}'),
+                            trailing: const Icon(Iconsax.add_circle),
+                            onTap: () => _showAssignInvoiceDialog(context, controller, pay),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: BSizes.spaceBtwSections),
+                    ],
+                    if (resolvedAccounts.isNotEmpty) ...[
+                      Text('Assigned Payments', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: BSizes.sm),
+                      ...resolvedAccounts.map((client) {
+                        final invoices = controller.bucketItems.where((i) => i.client.id == client.id && i.history.any((h) => h.status == 'Advanced Payment Applied')).toList();
+                        return AccountItemCard(
+                          client: client,
+                          invoiceCount: invoices.length,
+                          totalAmount: invoices.fold(0.0, (sum, i) => sum + i.toBeCollected),
+                          totalCollected: invoices.fold(0.0, (sum, i) => sum + i.totalCollected),
+                          onTap: () => _showAccountInvoices(context, client, invoices),
+                          onInfoTap: () {},
+                        );
+                      }),
+                    ],
+                  ],
+                );
+              }
+
               List<ClientModel> accounts = [];
 
               switch (title) {
@@ -86,6 +137,9 @@ class CategoryDetailScreen extends StatelessWidget {
                   break;
                 case 'Due Date':
                   accounts = controller.overdueAccounts;
+                  break;
+                case 'Reconciliation':
+                  accounts = controller.reconciliationAccounts;
                   break;
                 default:
                   accounts = [];
@@ -103,21 +157,103 @@ class CategoryDetailScreen extends StatelessWidget {
                 separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
                 itemBuilder: (context, index) {
                   final client = accounts[index];
-                  final invoices = title == 'Settled' 
-                      ? controller.getSettledInvoicesByAccount(client.id)
-                      : controller.getOverdueInvoicesByAccount(client.id);
+                  List<CollectionItemModel> invoices = [];
+                  switch (title) {
+                    case 'Settled':
+                      invoices = controller.getSettledInvoicesByAccount(client.id);
+                      break;
+                    case 'Due Date':
+                      invoices = controller.getOverdueInvoicesByAccount(client.id);
+                      break;
+                    case 'Reconciliation':
+                      invoices = controller.getReconciliationInvoicesByAccount(client.id);
+                      break;
+                  }
 
                   return AccountItemCard(
                     client: client,
                     invoiceCount: invoices.length,
-                    totalAmount: invoices.fold(0, (sum, i) => sum + i.toBeCollected),
-                    totalCollected: invoices.fold(0, (sum, i) => sum + i.totalCollected),
+                    totalAmount: invoices.fold(0.0, (sum, i) => sum + i.toBeCollected),
+                    totalCollected: invoices.fold(0.0, (sum, i) => sum + i.totalCollected),
                     onTap: () => _showAccountInvoices(context, client, invoices),
                     onInfoTap: () {},
+                    onClaimTap: title == 'Reconciliation' ? () => controller.claimAccount(client.id) : null,
                   );
                 },
               );
             }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAssignInvoiceDialog(BuildContext context, CollectionActivityController controller, Map<String, dynamic> payment) {
+    final invoiceNumberController = TextEditingController();
+    final amountDueController = TextEditingController();
+    final dueDateController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    Get.dialog(
+      AlertDialog(
+        title: const Text('Assign Invoice'),
+        content: Form(
+          key: formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: invoiceNumberController,
+                  decoration: const InputDecoration(labelText: 'Invoice Number'),
+                  validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                ),
+                const SizedBox(height: BSizes.spaceBtwInputFields),
+                TextFormField(
+                  controller: amountDueController,
+                  decoration: const InputDecoration(labelText: 'Amount Due'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                ),
+                const SizedBox(height: BSizes.spaceBtwInputFields),
+                TextFormField(
+                  controller: dueDateController,
+                  decoration: const InputDecoration(
+                    labelText: 'Due Date',
+                    hintText: 'YYYY-MM-DD',
+                  ),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (date != null) {
+                      dueDateController.text = DateFormat('yyyy-MM-dd').format(date);
+                    }
+                  },
+                  validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                controller.assignInvoiceToPayment(
+                  paymentId: payment['id'],
+                  invoiceNumber: invoiceNumberController.text,
+                  amountDue: double.parse(amountDueController.text),
+                  dueDate: dueDateController.text,
+                );
+                Get.back();
+              }
+            },
+            child: const Text('Assign'),
           ),
         ],
       ),

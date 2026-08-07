@@ -5,8 +5,14 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
 
-class TotalCollectedMonthScreen extends StatelessWidget {
-  const TotalCollectedMonthScreen({super.key});
+class MonthlySummaryScreen extends StatelessWidget {
+  const MonthlySummaryScreen({
+    super.key,
+    required this.type,
+  });
+
+  /// 'Collection' or 'Deposit'
+  final String type;
 
   List<DateTime> _lastNMonths(int n) {
     final now = DateTime.now();
@@ -19,12 +25,12 @@ class TotalCollectedMonthScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<TotalCollectedController>();
-
     final months = _lastNMonths(12);
+    final isDeposit = type == 'Deposit';
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Total Collected this Month'),
+        title: Text(isDeposit ? 'Actual Collection' : 'Total Collected this Month'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(BSizes.defaultSpace),
@@ -33,6 +39,8 @@ class TotalCollectedMonthScreen extends StatelessWidget {
             // Month selector + total display
             Obx(() {
               final selected = controller.selectedMonth.value;
+              final total = isDeposit ? controller.actualCollectionTotal : controller.monthlyTotal;
+              
               return Row(
                 children: [
                   Expanded(
@@ -58,7 +66,7 @@ class TotalCollectedMonthScreen extends StatelessWidget {
                       const Text('Total'),
                       const SizedBox(height: 6),
                       Text(
-                        BFormatter.formatPesoCurrency(controller.monthlyTotal),
+                        BFormatter.formatPesoCurrency(total),
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -71,7 +79,10 @@ class TotalCollectedMonthScreen extends StatelessWidget {
 
             // Search bar
             TextField(
-              decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Search collections'),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.search), 
+                hintText: isDeposit ? 'Search deposits' : 'Search collections'
+              ),
               onChanged: (v) => controller.searchQuery.value = v,
             ),
 
@@ -80,7 +91,7 @@ class TotalCollectedMonthScreen extends StatelessWidget {
             // List header
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('Collections', style: Theme.of(context).textTheme.bodyLarge),
+              child: Text(isDeposit ? 'Deposits' : 'Collections', style: Theme.of(context).textTheme.bodyLarge),
             ),
 
             const SizedBox(height: BSizes.spaceBtwItems),
@@ -88,9 +99,9 @@ class TotalCollectedMonthScreen extends StatelessWidget {
             // Entries list
             Expanded(
               child: Obx(() {
-                final entries = controller.monthlyEntries;
+                final entries = isDeposit ? controller.actualEntries : controller.monthlyEntries;
                 if (entries.isEmpty) {
-                  return const Center(child: Text('No collections for this month'));
+                  return Center(child: Text(isDeposit ? 'No deposits for this month' : 'No collections for this month'));
                 }
 
                 return ListView.separated(
@@ -104,8 +115,8 @@ class TotalCollectedMonthScreen extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Account: ${e.accountName}'),
-                          Text('Invoice: ${e.invoiceNumber}'),
-                          Text('Collector: ${e.collectorName}'),
+                          if (!isDeposit) Text('Invoice: ${e.invoiceNumber}'),
+                          Text('${isDeposit ? 'Collector' : 'Collector'}: ${e.collectorName}'),
                         ],
                       ),
                       trailing: Text(DateFormat('MMM d, yyyy').format(e.date)),
@@ -117,14 +128,13 @@ class TotalCollectedMonthScreen extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: Obx(() {
-        final controller = Get.find<TotalCollectedController>();
+      floatingActionButton: isDeposit ? Obx(() {
         final hasTarget = controller.targetAmount.value > 0;
         return FloatingActionButton(
           onPressed: () => _showSetTargetDialog(context, controller),
           child: Icon(hasTarget ? Icons.edit : Icons.add),
         );
-      }),
+      }) : null,
     );
   }
 
@@ -137,7 +147,7 @@ class TotalCollectedMonthScreen extends StatelessWidget {
       title: const Text('Set Target Collection'),
       content: TextField(
         controller: tc,
-        keyboardType: TextInputType.numberWithOptions(decimal: true),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
         decoration: const InputDecoration(prefixText: '₱ '),
       ),
       actions: [
@@ -154,4 +164,3 @@ class TotalCollectedMonthScreen extends StatelessWidget {
     ));
   }
 }
-

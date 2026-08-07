@@ -32,17 +32,46 @@ class TotalCollectedController extends GetxController {
         if (dt == null) continue;
         if (dt.year == selectedMonth.value.year && dt.month == selectedMonth.value.month) {
           final amount = h.totalCollected ?? 0.0;
+          if (amount > 0) {
+            entries.add(MonthlyEntry(
+              date: dt,
+              amount: amount,
+              accountName: item.client.name,
+              invoiceNumber: item.id,
+              collectorName: h.collectorName ?? item.collectorName ?? 'Unknown',
+            ));
+          }
+        }
+      }
+    }
+
+    return _filterAndSortEntries(entries);
+  }
+
+  /// Returns a list of deposit entries for the selected month (Actual Collection)
+  List<MonthlyEntry> get actualEntries {
+    final List<MonthlyEntry> entries = [];
+
+    for (final entry in _activityController.globalActivities) {
+      final history = entry['history'];
+      if (entry['type'] == 'Deposit' || history.status == 'Deposit') {
+        final dt = _parseDateSafe(history.date);
+        if (dt != null && dt.year == selectedMonth.value.year && dt.month == selectedMonth.value.month) {
           entries.add(MonthlyEntry(
             date: dt,
-            amount: amount,
-            accountName: item.client.name,
-            invoiceNumber: item.id,
-            collectorName: h.collectorName ?? item.collectorName ?? 'Unknown',
+            amount: history.totalCollected ?? 0.0,
+            accountName: entry['accountName'] ?? 'N/A',
+            invoiceNumber: 'Deposit',
+            collectorName: history.collectorName ?? 'Unknown',
           ));
         }
       }
     }
 
+    return _filterAndSortEntries(entries);
+  }
+
+  List<MonthlyEntry> _filterAndSortEntries(List<MonthlyEntry> entries) {
     // Apply search filter
     final q = searchQuery.value.trim().toLowerCase();
     if (q.isEmpty) return entries..sort((a, b) => b.date.compareTo(a.date));

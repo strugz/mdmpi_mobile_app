@@ -11,8 +11,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/rec
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/total_collected_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/actual_collection_card.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_selection_screen.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/total_collected_month_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 
@@ -51,9 +50,11 @@ class CollectionHomeScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
                   child: ActualCollectionCard(
                     color: Colors.indigo,
-                    onTap: () {
-                      // Navigate to details if needed
-                    },
+                    onTap: () => Get.to(
+                      () => const MonthlySummaryScreen(type: 'Deposit'),
+                      transition: Transition.cupertino,
+                      duration: const Duration(milliseconds: 300),
+                    ),
                   ),
                 ),
                 const SizedBox(height: BSizes.sm),
@@ -64,7 +65,7 @@ class CollectionHomeScreen extends StatelessWidget {
                   child: TotalCollectedCard(
                     color: Colors.green,
                     onTap: () => Get.to(
-                      () => const TotalCollectedMonthScreen(),
+                      () => const MonthlySummaryScreen(type: 'Collection'),
                       transition: Transition.cupertino,
                       duration: const Duration(milliseconds: 300),
                     ),
@@ -79,10 +80,7 @@ class CollectionHomeScreen extends StatelessWidget {
                     return CollectionBucketButton(
                       itemCount: controller.bucketItems.length,
                       onTap: () => Get.to(
-                        () => AreaSelectionScreen(
-                          title: 'Bucket',
-                          targetScreenBuilder: () => const CollectionBucketScreen(),
-                        ),
+                        () => const CollectionBucketScreen(),
                         transition: Transition.cupertino,
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -93,7 +91,7 @@ class CollectionHomeScreen extends StatelessWidget {
 
                 const SizedBox(height: BSizes.spaceBtwSections),
 
-                // Summary cards grid (Core and Outcomes removed)
+                // Summary cards grid
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
                   child: Column(
@@ -108,10 +106,7 @@ class CollectionHomeScreen extends StatelessWidget {
                               color: BColors.success,
                               onTap: () {
                                 Get.to(
-                                  () => AreaSelectionScreen(
-                                    title: 'Settled',
-                                    targetScreenBuilder: () => const CategoryDetailScreen(title: 'Settled', color: BColors.success),
-                                  ),
+                                  () => const CategoryDetailScreen(title: 'Settled', color: BColors.success),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );
@@ -128,10 +123,44 @@ class CollectionHomeScreen extends StatelessWidget {
                               expand: false,
                               onTap: () {
                                 Get.to(
-                                  () => AreaSelectionScreen(
-                                    title: 'Due Date',
-                                    targetScreenBuilder: () => const CategoryDetailScreen(title: 'Due Date', color: BColors.error),
-                                  ),
+                                  () => const CategoryDetailScreen(title: 'Due Date', color: BColors.error),
+                                  transition: Transition.cupertino,
+                                  duration: const Duration(milliseconds: 300),
+                                );
+                              },
+                            )),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Obx(() => CollectionSummaryCard(
+                              title: 'Reconciliation',
+                              value: controller.reconciliationItems.length.toString(),
+                              icon: Iconsax.status_up,
+                              color: Colors.purple,
+                              onTap: () {
+                                Get.to(
+                                  () => const CategoryDetailScreen(title: 'Reconciliation', color: Colors.purple),
+                                  transition: Transition.cupertino,
+                                  duration: const Duration(milliseconds: 300),
+                                );
+                              },
+                            )),
+                          ),
+                          const SizedBox(width: BSizes.spaceBtwItems),
+                          Expanded(
+                            child: Obx(() => CollectionSummaryCard(
+                              title: 'Advanced Payment',
+                              value: (controller.advancedPaymentAccounts.length + controller.filteredUnassignedAdvancedPayments.length).toString(),
+                              icon: Iconsax.card_send,
+                              color: Colors.orange,
+                              expand: false,
+                              onTap: () {
+                                Get.to(
+                                  () => const CategoryDetailScreen(title: 'Advanced Payment', color: Colors.orange),
                                   transition: Transition.cupertino,
                                   duration: const Duration(milliseconds: 300),
                                 );

@@ -10,6 +10,8 @@ import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'collection_account_information_screen.dart';
 import 'widgets/collection_search_filter_bar.dart';
 
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
+
 /// Collection Bucket Screen (Account-Centric)
 ///
 /// Displays unique accounts in the bucket.
@@ -90,20 +92,26 @@ class CollectionBucketScreen extends StatelessWidget {
           children: [
             /// Search and Filter Bar (Hidden in selection mode for cleaner UI)
             if (!controller.isSelectionMode.value)
-              Obx(() {
-                final hasFilter = controller.bucketMinAmount.value > 0 || 
-                                 controller.bucketMaxAmount.value > 0 ||
-                                 controller.bucketMinInvoices.value > 0 ||
-                                 controller.bucketMaxInvoices.value > 0;
-                
-                  return CollectionSearchFilterBar(
-                  searchHint: 'Search by account name...',
-                  initialValue: controller.bucketSearchQuery.value,
-                  onSearchChanged: (value) => controller.bucketSearchQuery.value = value,
-                  hasActiveFilter: hasFilter,
-                      onFilterTap: () => showSideFilter(BucketFilterModal()),
-                );
-              }),
+              Column(
+                children: [
+                  Obx(() {
+                    final hasFilter = controller.bucketMinAmount.value > 0 || 
+                                     controller.bucketMaxAmount.value > 0 ||
+                                     controller.bucketMinInvoices.value > 0 ||
+                                     controller.bucketMaxInvoices.value > 0;
+                    
+                      return CollectionSearchFilterBar(
+                      searchHint: 'Search by account name...',
+                      initialValue: controller.bucketSearchQuery.value,
+                      onSearchChanged: (value) => controller.bucketSearchQuery.value = value,
+                      hasActiveFilter: hasFilter,
+                          onFilterTap: () => showSideFilter(BucketFilterModal()),
+                    );
+                  }),
+                  const BFilterByAreaButton(),
+                  const SizedBox(height: BSizes.spaceBtwItems),
+                ],
+              ),
 
             Expanded(
               child: accounts.isEmpty

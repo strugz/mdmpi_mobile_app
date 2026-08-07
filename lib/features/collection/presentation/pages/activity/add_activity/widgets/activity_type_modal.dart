@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import '../deposit_form.dart';
 import '../cwt_pickup_form.dart';
 import '../reconciliation_form.dart';
+
+import '../advanced_payment_form.dart';
 
 class ActivityTypeModal extends StatelessWidget {
   const ActivityTypeModal({super.key});
@@ -68,6 +69,19 @@ class ActivityTypeModal extends StatelessWidget {
             onTap: () {
               Get.back();
               Get.to(() => const ReconciliationFormScreen());
+            },
+          ),
+          const SizedBox(height: BSizes.spaceBtwItems),
+
+          _buildOption(
+            context,
+            title: 'Advanced Payment',
+            subtitle: 'Record payment without an invoice',
+            icon: Iconsax.card_send,
+            color: Colors.orange,
+            onTap: () {
+              Get.back();
+              Get.to(() => const AdvancedPaymentFormScreen());
             },
           ),
           const SizedBox(height: BSizes.spaceBtwSections),

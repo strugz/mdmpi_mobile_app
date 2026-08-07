@@ -66,6 +66,9 @@ class CollectionActivityController extends GetxController {
   /// Global activities (Deposit, CWT Pick-up, Reconciliation)
   final RxList<Map<String, dynamic>> globalActivities = <Map<String, dynamic>>[].obs;
 
+  /// Advanced payments without an invoice yet
+  final RxList<Map<String, dynamic>> unassignedAdvancedPayments = <Map<String, dynamic>>[].obs;
+
   // ========================================================================
   // Lifecycle
   // ========================================================================
@@ -485,6 +488,161 @@ class CollectionActivityController extends GetxController {
     return overdueItems.where((item) => item.client.id == clientId).toList();
   }
 
+  /// Reconciliation: invoices marked for reconciliation, filtered by area
+  List<CollectionItemModel> get reconciliationItems {
+    final allItems = [...bucketItems, ...activityItems];
+    return allItems.where((item) {
+      if (item.status != 'Reconciliation') return false;
+      if (item.toBeCollected <= 0) return false;
+      if (selectedArea.value.isNotEmpty && !item.bpCode.startsWith(selectedArea.value)) return false;
+      return true;
+    }).toList();
+  }
+
+  /// Advanced Payment: unassigned payments, filtered by area (based on client code)
+  List<Map<String, dynamic>> get filteredUnassignedAdvancedPayments {
+    return unassignedAdvancedPayments.where((entry) {
+      final clientId = entry['clientId'];
+      final client = masterAccountList.firstWhere((c) => c.id == clientId, orElse: () => ClientModel.empty());
+      if (selectedArea.value.isNotEmpty && !client.code.startsWith(selectedArea.value)) return false;
+      return true;
+    }).toList();
+  }
+
+  /// Returns accounts that have reconciliation invoices
+  List<ClientModel> get reconciliationAccounts {
+    final clientIds = reconciliationItems.map((e) => e.client.id).toSet();
+    return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
+  }
+
+  /// Returns accounts that have unassigned advanced payments
+  List<ClientModel> get advancedPaymentAccounts {
+    final clientIds = unassignedAdvancedPayments.map((e) => e['clientId'] as String).toSet();
+    return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
+  }
+
+  /// Returns reconciliation invoices for a specific account
+  List<CollectionItemModel> getReconciliationInvoicesByAccount(String clientId) {
+    return reconciliationItems.where((item) => item.client.id == clientId).toList();
+  }
+
+  // ========================================================================
+  // Process Logic
+  // ========================================================================
+
+  void markInvoicesForReconciliation(String clientId, List<String> invoiceIds, String remarks) {
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+    final collectorInitials = UserController.instance.user.value.initials;
+
+    for (final id in invoiceIds) {
+      // Find in bucket or activity
+      int idx = bucketItems.indexWhere((e) => e.id == id);
+      if (idx != -1) {
+        final item = bucketItems[idx];
+        final updated = item.copyWith(
+          status: 'Reconciliation',
+          history: [
+            ...item.history,
+            CollectionHistoryModel(
+              date: now,
+              collectorName: collectorInitials,
+              status: 'Reconciliation',
+              remarks: remarks,
+            )
+          ],
+        );
+        bucketItems[idx] = updated;
+        continue;
+      }
+
+      idx = activityItems.indexWhere((e) => e.id == id);
+      if (idx != -1) {
+        final item = activityItems[idx];
+        final updated = item.copyWith(
+          status: 'Reconciliation',
+          history: [
+            ...item.history,
+            CollectionHistoryModel(
+              date: now,
+              collectorName: collectorInitials,
+              status: 'Reconciliation',
+              remarks: remarks,
+            )
+          ],
+        );
+        activityItems[idx] = updated;
+      }
+    }
+    logDebug('[CollectionActivityController] Marked ${invoiceIds.length} invoices for Reconciliation');
+  }
+
+  void saveAdvancedPayment({
+    required String clientId,
+    required double amount,
+    required String remarks,
+  }) {
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+    final collectorInitials = UserController.instance.user.value.initials;
+
+    unassignedAdvancedPayments.add({
+      'id': 'AP-${DateTime.now().millisecondsSinceEpoch}',
+      'clientId': clientId,
+      'amount': amount,
+      'remarks': remarks,
+      'date': now,
+      'collectorName': collectorInitials,
+    });
+    logDebug('[CollectionActivityController] Saved Advanced Payment for $clientId: ₱$amount');
+  }
+
+  void assignInvoiceToPayment({
+    required String paymentId,
+    required String invoiceNumber,
+    required double amountDue,
+    required String dueDate,
+  }) {
+    final paymentIdx = unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
+    if (paymentIdx == -1) return;
+
+    final payment = unassignedAdvancedPayments[paymentIdx];
+    final clientId = payment['clientId'] as String;
+    final paidAmount = payment['amount'] as double;
+    final client = masterAccountList.firstWhere((c) => c.id == clientId, orElse: () => ClientModel.empty());
+
+    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+    final collectorInitials = payment['collectorName'] ?? UserController.instance.user.value.initials;
+
+    final remainingDue = (amountDue - paidAmount).clamp(0.0, double.infinity);
+    final isFullyPaid = remainingDue == 0;
+
+    final historyEntry = CollectionHistoryModel(
+      date: now,
+      collectorName: collectorInitials,
+      status: 'Advanced Payment Applied',
+      remarks: 'Applied from advanced payment: ${payment['remarks']}',
+      totalCollected: paidAmount > amountDue ? amountDue : paidAmount,
+    );
+
+    final newItem = CollectionItemModel(
+      id: invoiceNumber,
+      client: client,
+      bpCode: client.code,
+      toBeCollected: remainingDue,
+      totalCollected: paidAmount > amountDue ? amountDue : paidAmount,
+      dueDate: dueDate,
+      status: isFullyPaid ? 'Collected' : '',
+      history: [historyEntry],
+    );
+
+    // Add to bucket (if fully paid it shows in settled, if not it waits for next collection)
+    bucketItems.add(newItem);
+    
+    // Remove from unassigned
+    unassignedAdvancedPayments.removeAt(paymentIdx);
+    
+    logDebug('[CollectionActivityController] Assigned invoice $invoiceNumber to payment. Fully paid: $isFullyPaid');
+  }
+
   // ========================================================================
   // Claims
   // ========================================================================
@@ -834,14 +992,14 @@ class CollectionActivityController extends GetxController {
 
   void _loadSampleBucketItems() {
     final List<ClientModel> clients = [
-      ClientModel(id: 'C001', code: 'NLN-001', name: 'ABC Corporation (North)', address: '123 Main St, Laoag', contact: '09171234567', emailAddress: 'abc@corp.com'),
-      ClientModel(id: 'C002', code: 'SLN-001', name: 'XYZ Trading (South)', address: '456 Rizal Ave, Batangas', contact: '09189876543', emailAddress: 'xyz@trading.ph'),
-      ClientModel(id: 'C003', code: 'CLN-001', name: 'LMN Enterprises (Central)', address: '789 EDSA, Pampanga', contact: '09201112233', emailAddress: 'lmn@ent.com'),
-      ClientModel(id: 'C004', code: 'VIS-001', name: 'PQR Industries (Visayas)', address: '321 Ayala Blvd, Cebu', contact: '09334455667', emailAddress: 'pqr@ind.com'),
-      ClientModel(id: 'C005', code: 'MIN-001', name: 'STU Holdings (Mindanao)', address: '654 Shaw Blvd, Davao', contact: '09557788990', emailAddress: 'stu@hold.com'),
-      ClientModel(id: 'C006', code: 'RAD-001', name: 'VWX Solutions (Medical)', address: '987 Aurora Blvd, QC', contact: '09664433221', emailAddress: 'vwx@sol.com'),
-      ClientModel(id: 'C007', code: 'NLN-002', name: 'Global Logistics Inc. (North)', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
-      ClientModel(id: 'C008', code: 'VIS-002', name: 'Prime Manufacturing (Visayas)', address: '222 Industrial Ave, Iloilo', contact: '09885551234', emailAddress: 'prime@mfg.com'),
+      ClientModel(id: 'C001', code: 'NLN-001', name: 'ABC Corporation', address: '123 Main St, Laoag', contact: '09171234567', emailAddress: 'abc@corp.com'),
+      ClientModel(id: 'C002', code: 'SLN-001', name: 'XYZ Trading', address: '456 Rizal Ave, Batangas', contact: '09189876543', emailAddress: 'xyz@trading.ph'),
+      ClientModel(id: 'C003', code: 'CLN-001', name: 'LMN Enterprises', address: '789 EDSA, Pampanga', contact: '09201112233', emailAddress: 'lmn@ent.com'),
+      ClientModel(id: 'C004', code: 'VIS-001', name: 'PQR Industries', address: '321 Ayala Blvd, Cebu', contact: '09334455667', emailAddress: 'pqr@ind.com'),
+      ClientModel(id: 'C005', code: 'MIN-001', name: 'STU Holdings', address: '654 Shaw Blvd, Davao', contact: '09557788990', emailAddress: 'stu@hold.com'),
+      ClientModel(id: 'C006', code: 'RAD-001', name: 'VWX Solutions', address: '987 Aurora Blvd, QC', contact: '09664433221', emailAddress: 'vwx@sol.com'),
+      ClientModel(id: 'C007', code: 'NLN-002', name: 'Global Logistics Inc.', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
+      ClientModel(id: 'C008', code: 'VIS-002', name: 'Prime Manufacturing', address: '222 Industrial Ave, Iloilo', contact: '09885551234', emailAddress: 'prime@mfg.com'),
     ];
     masterAccountList.assignAll(clients);
 

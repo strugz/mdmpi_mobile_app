@@ -75,13 +75,6 @@ class AccountItemCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          Text(
-                            'Code: ${client.code}',
-                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                  color: BColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
                         ],
                       ),
                     ),

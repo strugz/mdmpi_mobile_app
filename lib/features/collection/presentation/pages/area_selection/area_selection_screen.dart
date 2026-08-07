@@ -7,13 +7,15 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
 class AreaSelectionScreen extends StatefulWidget {
-  final Widget Function() targetScreenBuilder;
+  final Widget Function()? targetScreenBuilder;
   final String title;
+  final bool isFilterMode;
 
   const AreaSelectionScreen({
     super.key,
-    required this.targetScreenBuilder,
+    this.targetScreenBuilder,
     required this.title,
+    this.isFilterMode = false,
   });
 
   @override
@@ -39,15 +41,28 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
   void _onSelect(String code) {
     final controller = CollectionActivityController.instance;
     controller.selectedArea.value = code;
-    Get.off(() => widget.targetScreenBuilder());
+    if (widget.isFilterMode) {
+      Get.back();
+    } else if (widget.targetScreenBuilder != null) {
+      Get.off(() => widget.targetScreenBuilder!());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: BAppBar(
-        title: Text('Select Area - ${widget.title}'),
+        title: Text(widget.isFilterMode ? 'Filter by Area' : 'Select Area - ${widget.title}'),
         showBackArrow: true,
+        actions: widget.isFilterMode ? [
+          TextButton(
+            onPressed: () {
+              CollectionActivityController.instance.selectedArea.value = '';
+              Get.back();
+            },
+            child: const Text('Clear', style: TextStyle(color: BColors.primary)),
+          ),
+        ] : null,
       ),
       body: Padding(
         padding: const EdgeInsets.all(BSizes.defaultSpace),
@@ -64,8 +79,8 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
             
             Expanded(
               child: selectedMainCategory == null 
-                  ? _buildMainCategories() 
-                  : _buildSubCategories(),
+                  ? _buildMainGrid() 
+                  : _buildSubGrid(),
             ),
           ],
         ),
@@ -73,20 +88,20 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
     );
   }
 
-  Widget _buildMainCategories() {
-    return ListView.separated(
+  Widget _buildMainGrid() {
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: BSizes.spaceBtwItems,
+        mainAxisSpacing: BSizes.spaceBtwItems,
+        childAspectRatio: 1.1,
+      ),
       itemCount: mainCategories.length,
-      separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
       itemBuilder: (context, index) {
         final item = mainCategories[index];
-        return ListTile(
-          leading: Icon(item['icon'], color: BColors.primary),
-          title: Text(item['name']),
-          trailing: const Icon(Iconsax.arrow_right_3),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(color: BColors.grey),
-            borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-          ),
+        return _buildAreaCard(
+          name: item['name'],
+          icon: item['icon'],
           onTap: () {
             if (item['hasSub'] == true) {
               setState(() => selectedMainCategory = item['name']);
@@ -99,28 +114,64 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
     );
   }
 
-  Widget _buildSubCategories() {
+  Widget _buildSubGrid() {
     return Column(
       children: [
-        ...luzonSubCategories.map((sub) => Padding(
-          padding: const EdgeInsets.only(bottom: BSizes.spaceBtwItems),
-          child: ListTile(
-            title: Text(sub['name']!),
-            trailing: const Icon(Iconsax.arrow_right_3),
-            shape: RoundedRectangleBorder(
-              side: const BorderSide(color: BColors.grey),
-              borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+        Expanded(
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: BSizes.spaceBtwItems,
+              mainAxisSpacing: BSizes.spaceBtwItems,
+              childAspectRatio: 1.1,
             ),
-            onTap: () => _onSelect(sub['code']!),
+            itemCount: luzonSubCategories.length,
+            itemBuilder: (context, index) {
+              final sub = luzonSubCategories[index];
+              return _buildAreaCard(
+                name: sub['name']!,
+                icon: Iconsax.location,
+                onTap: () => _onSelect(sub['code']!),
+              );
+            },
           ),
-        )),
-        const Spacer(),
+        ),
         TextButton.icon(
           onPressed: () => setState(() => selectedMainCategory = null),
           icon: const Icon(Icons.arrow_back),
           label: const Text('Back to Main Categories'),
         ),
       ],
+    );
+  }
+
+  Widget _buildAreaCard({required String name, required IconData icon, required VoidCallback onTap}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BSizes.borderRadiusLg)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(BSizes.md),
+              decoration: BoxDecoration(
+                color: BColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: BColors.primary, size: 32),
+            ),
+            const SizedBox(height: BSizes.sm),
+            Text(
+              name,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -5,24 +5,24 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
-
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
-class ReconciliationFormScreen extends StatefulWidget {
-  const ReconciliationFormScreen({super.key});
+class AdvancedPaymentFormScreen extends StatefulWidget {
+  const AdvancedPaymentFormScreen({super.key});
 
   @override
-  State<ReconciliationFormScreen> createState() => _ReconciliationFormScreenState();
+  State<AdvancedPaymentFormScreen> createState() => _AdvancedPaymentFormScreenState();
 }
 
-class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
+class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
   ClientModel? selectedAccount;
-  final List<String> selectedInvoiceIds = [];
+  final amountController = TextEditingController();
   final remarksController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
   @override
   void dispose() {
+    amountController.dispose();
     remarksController.dispose();
     super.dispose();
   }
@@ -33,20 +33,16 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
       BLoaders.errorSnackBar(title: 'Error', message: 'Please select an account');
       return;
     }
-    if (selectedInvoiceIds.isEmpty) {
-      BLoaders.errorSnackBar(title: 'Error', message: 'Please select at least one invoice');
-      return;
-    }
 
     final controller = CollectionActivityController.instance;
-    controller.markInvoicesForReconciliation(
-      selectedAccount!.id,
-      selectedInvoiceIds,
-      remarksController.text,
+    controller.saveAdvancedPayment(
+      clientId: selectedAccount!.id,
+      amount: double.tryParse(amountController.text) ?? 0.0,
+      remarks: remarksController.text,
     );
 
     Get.back(); // Close form
-    BLoaders.successSnackBar(title: 'Success', message: 'Reconciliation activity recorded.');
+    BLoaders.successSnackBar(title: 'Success', message: 'Advanced Payment recorded.');
   }
 
   @override
@@ -55,14 +51,13 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
     final accounts = controller.masterAccountList;
 
     return Scaffold(
-      appBar: const BAppBar(title: Text('Record Reconciliation'), showBackArrow: true),
+      appBar: const BAppBar(title: Text('Record Advanced Payment'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(BSizes.defaultSpace),
           child: Form(
             key: formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<ClientModel>(
                   decoration: const InputDecoration(
@@ -76,47 +71,22 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
                       child: Text(a.name, overflow: TextOverflow.ellipsis),
                     );
                   }).toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      selectedAccount = v;
-                      selectedInvoiceIds.clear();
-                    });
-                  },
+                  onChanged: (v) => setState(() => selectedAccount = v),
                   validator: (value) => value == null ? 'Account is required' : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
 
-                if (selectedAccount != null) ...[
-                  Text('Select Invoices', style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: BSizes.sm),
-                  Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                    ),
-                    constraints: const BoxConstraints(maxHeight: 250),
-                    child: ListView(
-                      shrinkWrap: true,
-                      children: controller.getInvoicesByAccount(selectedAccount!.id).map((inv) {
-                        return CheckboxListTile(
-                          title: Text(inv.id),
-                          subtitle: Text('Posted: ${inv.postingDate} | Due: ${inv.dueDate}\nAmount: ${inv.toBeCollected}'),
-                          value: selectedInvoiceIds.contains(inv.id),
-                          onChanged: (selected) {
-                            setState(() {
-                              if (selected == true) {
-                                selectedInvoiceIds.add(inv.id);
-                              } else {
-                                selectedInvoiceIds.remove(inv.id);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
+                TextFormField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Amount Paid',
+                    prefixIcon: Icon(Iconsax.money_send),
+                    prefixText: '₱ ',
                   ),
-                  const SizedBox(height: BSizes.spaceBtwInputFields),
-                ],
+                  validator: (value) => value == null || value.isEmpty ? 'Amount is required' : null,
+                ),
+                const SizedBox(height: BSizes.spaceBtwInputFields),
                 
                 TextFormField(
                   controller: remarksController,
