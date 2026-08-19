@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 class BFormatter {
 
@@ -174,5 +175,47 @@ class BFormatter {
 
     // Fallback: return original trimmed string
     return trimmed;
+  }
+}
+
+/// Input formatter that adds comma thousand-separators while typing.
+/// Keeps decimal part intact. Works for positive numbers only.
+class ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  final NumberFormat _intFormat = NumberFormat('#,##0', 'en_US');
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) return newValue;
+
+    // Preserve selection index later
+    final selectionIndexFromTheRight = newValue.text.length - newValue.selection.end;
+
+    // Remove all characters except digits and dot
+    final sanitized = newValue.text.replaceAll(RegExp('[^0-9\.]'), '');
+
+    // If more than one dot, keep only first
+    final parts = sanitized.split('.');
+    final intPartRaw = parts[0];
+    final decPartRaw = parts.length > 1 ? parts.sublist(1).join('') : '';
+
+    // Format integer part with commas
+    String formattedInt;
+    try {
+      formattedInt = _intFormat.format(int.parse(intPartRaw.isEmpty ? '0' : intPartRaw));
+    } catch (_) {
+      // Fallback: use raw integer part
+      formattedInt = intPartRaw;
+    }
+
+    final newText = decPartRaw.isNotEmpty ? '$formattedInt.$decPartRaw' : formattedInt;
+
+    // Recalculate selection
+    final selectionIndex = newText.length - selectionIndexFromTheRight;
+    final boundedIndex = selectionIndex.clamp(0, newText.length);
+
+    return TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: boundedIndex),
+    );
   }
 }

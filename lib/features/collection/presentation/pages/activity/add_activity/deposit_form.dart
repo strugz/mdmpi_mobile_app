@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
-import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 
 class DepositFormScreen extends StatefulWidget {
   const DepositFormScreen({super.key});
@@ -23,7 +23,7 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
   final formKey = GlobalKey<FormState>();
 
   ClientModel? selectedClient;
-  CollectionItemModel? selectedInvoice;
+  List<String> selectedInvoiceIds = [];
 
   @override
   void dispose() {
@@ -36,8 +36,8 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
 
   void _save() {
     if (!formKey.currentState!.validate()) return;
-    if (selectedClient == null || selectedInvoice == null) {
-      BLoaders.errorSnackBar(title: 'Required', message: 'Please select an Account and Invoice.');
+    if (selectedClient == null || selectedInvoiceIds.isEmpty) {
+      BLoaders.errorSnackBar(title: 'Required', message: 'Please select an Account and at least one Invoice.');
       return;
     }
 
@@ -45,8 +45,8 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
     controller.saveGlobalActivity(
       type: 'Deposit',
       accountName: selectedClient!.name,
-      remarks: 'Deposit for Invoice #${selectedInvoice!.id}. ${remarksController.text}',
-      totalCollected: double.tryParse(amountController.text) ?? 0,
+      remarks: 'Deposit for Invoice(s) #${selectedInvoiceIds.join(', ')}. ${remarksController.text}',
+      totalCollected: double.tryParse(amountController.text.replaceAll(',', '')) ?? 0,
       bankName: bankNameController.text,
       checkNumber: checkNumberController.text,
     );
@@ -84,31 +84,45 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                   onChanged: (val) {
                     setState(() {
                       selectedClient = val;
-                      selectedInvoice = null;
+                      selectedInvoiceIds.clear();
                     });
                   },
                   validator: (value) => value == null ? 'Account is required' : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
 
-                // Invoice Selection (Filtered by Client)
-                if (selectedClient != null)
-                  DropdownButtonFormField<CollectionItemModel>(
-                    value: selectedInvoice,
-                    decoration: const InputDecoration(
-                      labelText: 'Invoice',
-                      prefixIcon: Icon(Iconsax.document_text),
+                // Invoice Selection (Filtered by Client) - multi-select checklist (matches Reconciliation)
+                if (selectedClient != null) ...[
+                  Text('Select Invoices', style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: BSizes.sm),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
                     ),
-                    items: controller.getInvoicesByAccount(selectedClient!.id).map((inv) {
-                      return DropdownMenuItem(
-                        value: inv,
-                        child: Text('Invoice #${inv.id}'),
-                      );
-                    }).toList(),
-                    onChanged: (val) => setState(() => selectedInvoice = val),
-                    validator: (value) => value == null ? 'Invoice is required' : null,
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: controller.getInvoicesByAccount(selectedClient!.id).map((inv) {
+                        return CheckboxListTile(
+                          title: Text(inv.id),
+                          subtitle: Text('Posted: ${inv.postingDate} | Due: ${inv.dueDate}\nAmount: ${BFormatter.formatPesoCurrency(inv.toBeCollected, includeSymbol: true)}'),
+                          value: selectedInvoiceIds.contains(inv.id),
+                          onChanged: (selected) {
+                            setState(() {
+                              if (selected == true) {
+                                selectedInvoiceIds.add(inv.id);
+                              } else {
+                                selectedInvoiceIds.remove(inv.id);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
                   ),
-                const SizedBox(height: BSizes.spaceBtwInputFields),
+                  const SizedBox(height: BSizes.spaceBtwInputFields),
+                ],
 
                 TextFormField(
                   controller: bankNameController,
@@ -123,13 +137,15 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                 TextFormField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Amount',
                     prefixIcon: Icon(Iconsax.money),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) return 'Amount is required';
-                    if (double.tryParse(value) == null) return 'Enter a valid amount';
+                    final normalized = value.replaceAll(',', '');
+                    if (double.tryParse(normalized) == null) return 'Enter a valid amount';
                     return null;
                   },
                 ),

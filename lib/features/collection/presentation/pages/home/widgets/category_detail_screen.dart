@@ -8,8 +8,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/w
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:get/get.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
@@ -99,31 +99,50 @@ class CategoryDetailScreen extends StatelessWidget {
                       const SizedBox(height: BSizes.sm),
                       ...unassigned.map((pay) {
                         final client = controller.masterAccountList.firstWhere((c) => c.id == pay['clientId'], orElse: () => ClientModel.empty());
-                        return Card(
-                          child: ListTile(
-                            title: Text(client.name),
-                            subtitle: Text('Amount: ${BFormatter.formatPesoCurrency(pay['amount'])}\nDate: ${pay['date']}'),
-                            trailing: const Icon(Iconsax.add_circle),
-                            onTap: () => _showAssignInvoiceDialog(context, controller, pay),
-                          ),
-                        );
-                      }),
+                                              return GestureDetector(
+                                                onTap: () => _showPaymentDetailSheet(context, controller, pay),
+                                                child: Container(
+                                                  margin: const EdgeInsets.symmetric(vertical: 4),
+                                                  padding: const EdgeInsets.all(BSizes.md),
+                                                  decoration: BoxDecoration(
+                                                    color: BColors.white,
+                                                    borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
+                                                    border: Border.all(color: BColors.grey),
+                                                    boxShadow: [BoxShadow(color: BColors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                    children: [
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(client.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                            const SizedBox(height: BSizes.xs),
+                                                            Text('Date: ${pay['date']}', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BColors.darkGrey)),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      Column(
+                                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                                        children: [
+                                                          Text(BFormatter.formatPesoCurrency(pay['amount']), style: Theme.of(context).textTheme.titleMedium?.copyWith(color: BColors.primary, fontWeight: FontWeight.bold)),
+                                                          const SizedBox(height: BSizes.xs),
+                                                          SizedBox(
+                                                            height: 32,
+                                                            child: ElevatedButton(
+                                                              onPressed: () => _showPaymentDetailSheet(context, controller, pay),
+                                                              child: const Text('Assign'),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              );
+                                            }),
                       const SizedBox(height: BSizes.spaceBtwSections),
-                    ],
-                    if (resolvedAccounts.isNotEmpty) ...[
-                      Text('Assigned Payments', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: BSizes.sm),
-                      ...resolvedAccounts.map((client) {
-                        final invoices = controller.bucketItems.where((i) => i.client.id == client.id && i.history.any((h) => h.status == 'Advanced Payment Applied')).toList();
-                        return AccountItemCard(
-                          client: client,
-                          invoiceCount: invoices.length,
-                          totalAmount: invoices.fold(0.0, (sum, i) => sum + i.toBeCollected),
-                          totalCollected: invoices.fold(0.0, (sum, i) => sum + i.totalCollected),
-                          onTap: () => _showAccountInvoices(context, client, invoices),
-                          onInfoTap: () {},
-                        );
-                      }),
                     ],
                   ],
                 );
@@ -188,74 +207,98 @@ class CategoryDetailScreen extends StatelessWidget {
     );
   }
 
-  void _showAssignInvoiceDialog(BuildContext context, CollectionActivityController controller, Map<String, dynamic> payment) {
+  void _showPaymentDetailSheet(BuildContext context, CollectionActivityController controller, Map<String, dynamic> payment) {
     final invoiceNumberController = TextEditingController();
-    final amountDueController = TextEditingController();
+    final amountDueController = TextEditingController(text: payment['amount']?.toString() ?? '');
     final dueDateController = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Assign Invoice'),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: invoiceNumberController,
-                  decoration: const InputDecoration(labelText: 'Invoice Number'),
-                  validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                ),
-                const SizedBox(height: BSizes.spaceBtwInputFields),
-                TextFormField(
-                  controller: amountDueController,
-                  decoration: const InputDecoration(labelText: 'Amount Due'),
-                  keyboardType: TextInputType.number,
-                  validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
-                ),
-                const SizedBox(height: BSizes.spaceBtwInputFields),
-                TextFormField(
-                  controller: dueDateController,
-                  decoration: const InputDecoration(
-                    labelText: 'Due Date',
-                    hintText: 'YYYY-MM-DD',
+    Get.bottomSheet(
+      SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(BSizes.defaultSpace),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Text('Payment Details', style: Theme.of(context).textTheme.headlineSmall)),
+              const SizedBox(height: BSizes.md),
+              Text('Amount: ${BFormatter.formatPesoCurrency(payment['amount'] ?? 0)}', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: BSizes.xs),
+              Text('Date: ${payment['date'] ?? ''}', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: BColors.darkGrey)),
+              const SizedBox(height: BSizes.spaceBtwInputFields),
+              Form(
+              key: formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: invoiceNumberController,
+                    decoration: const InputDecoration(labelText: 'Invoice Number'),
+                    validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
                   ),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (date != null) {
-                      dueDateController.text = DateFormat('yyyy-MM-dd').format(date);
+                  const SizedBox(height: BSizes.spaceBtwInputFields),
+                  TextFormField(
+                    controller: amountDueController,
+                    decoration: const InputDecoration(labelText: 'Amount Due'),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [ThousandsSeparatorInputFormatter()],
+                    validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                  ),
+                  const SizedBox(height: BSizes.spaceBtwInputFields),
+                  TextFormField(
+                    controller: dueDateController,
+                    decoration: const InputDecoration(
+                      labelText: 'Due Date',
+                      hintText: 'YYYY-MM-DD',
+                    ),
+                    readOnly: true,
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (date != null) {
+                        dueDateController.text = DateFormat('yyyy-MM-dd').format(date);
+                      }
+                    },
+                    validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                  ),
+                ],
+              ),
+              ),
+              const SizedBox(height: BSizes.spaceBtwSections),
+              Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+                const SizedBox(width: BSizes.sm),
+                ElevatedButton(
+                  onPressed: () {
+                    if (formKey.currentState?.validate() ?? false) {
+                      controller.assignInvoiceToPayment(
+                        paymentId: payment['id'],
+                        invoiceNumber: invoiceNumberController.text,
+                        amountDue: double.tryParse(amountDueController.text.replaceAll(',', '')) ?? 0,
+                        dueDate: dueDateController.text,
+                      );
+                      Get.back();
+                      BLoaders.successSnackBar(title: 'Assigned', message: 'Invoice assigned to payment.');
                     }
                   },
-                  validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                  child: const Text('Assign'),
                 ),
               ],
-            ),
+              ),
+              const SizedBox(height: BSizes.md),
+            ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() ?? false) {
-                controller.assignInvoiceToPayment(
-                  paymentId: payment['id'],
-                  invoiceNumber: invoiceNumberController.text,
-                  amountDue: double.parse(amountDueController.text),
-                  dueDate: dueDateController.text,
-                );
-                Get.back();
-              }
-            },
-            child: const Text('Assign'),
-          ),
-        ],
+      ),
+      backgroundColor: BColors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
       ),
     );
   }
