@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_dao.dart';
 
 /// Manages syncing of pending collection changes to the server.
-///
+/// 
 /// Responsibilities:
 /// - Queue pending changes (CREATE, UPDATE, CLAIM, SAVE_ACTIVITY)
 /// - Retry with exponential backoff on failure
@@ -93,7 +93,7 @@ class SyncManager extends GetxController {
 
   /// Attempt to sync all pending changes.
   /// Call this when network is restored or manually triggered.
-  ///
+  /// 
   /// Returns true if all changes were synced successfully, false otherwise.
   Future<bool> trySync() async {
     try {

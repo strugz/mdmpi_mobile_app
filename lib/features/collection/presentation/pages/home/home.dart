@@ -154,7 +154,7 @@ class CollectionHomeScreen extends StatelessWidget {
                           Expanded(
                             child: Obx(() => CollectionSummaryCard(
                               title: 'Advanced Payment',
-                              value: (controller.advancedPaymentAccounts.length + controller.filteredUnassignedAdvancedPayments.length).toString(),
+                              value: controller.advancedPaymentsCount.toString(),
                               icon: Iconsax.card_send,
                               color: Colors.orange,
                               expand: false,

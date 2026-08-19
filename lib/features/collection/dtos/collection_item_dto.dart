@@ -1,5 +1,5 @@
 /// Data Transfer Object for Collection Items API responses.
-///
+/// 
 /// Maps between API JSON format and internal domain model.
 /// Use this when API field names differ from the domain model.
 class CollectionItemDto {

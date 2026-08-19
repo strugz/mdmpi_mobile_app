@@ -521,6 +521,18 @@ class CollectionActivityController extends GetxController {
     return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
   }
 
+  /// Number of assigned advanced payments (invoices created from advanced payments)
+  int get assignedAdvancedPaymentCount {
+    final assignedIds = bucketItems
+        .where((item) => item.history.any((h) => h.status == 'Advanced Payment Applied'))
+        .map((i) => i.id)
+        .toSet();
+    return assignedIds.length;
+  }
+
+  /// Total advanced payments: assigned (invoices created) + unassigned payments
+  int get advancedPaymentsCount => assignedAdvancedPaymentCount + unassignedAdvancedPayments.length;
+
   /// Returns reconciliation invoices for a specific account
   List<CollectionItemModel> getReconciliationInvoicesByAccount(String clientId) {
     return reconciliationItems.where((item) => item.client.id == clientId).toList();
