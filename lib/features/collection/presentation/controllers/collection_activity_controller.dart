@@ -511,7 +511,11 @@ class CollectionActivityController extends GetxController {
 
   /// Returns accounts that have reconciliation invoices
   List<ClientModel> get reconciliationAccounts {
-    final clientIds = reconciliationItems.map((e) => e.client.id).toSet();
+    // Only show accounts that have reconciliation invoices currently in the bucket
+    final clientIds = reconciliationItems
+        .where((item) => bucketItems.any((b) => b.id == item.id))
+        .map((e) => e.client.id)
+        .toSet();
     return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
   }
 
@@ -523,14 +527,17 @@ class CollectionActivityController extends GetxController {
 
   /// Number of assigned advanced payments (invoices created from advanced payments)
   int get assignedAdvancedPaymentCount {
-    final assignedIds = bucketItems
-        .where((item) => item.history.any((h) => h.status == 'Advanced Payment Applied'))
-        .map((i) => i.id)
-        .toSet();
+    final fromBucket = bucketItems
+        .where((item) => item.toBeCollected > 0 && item.history.any((h) => h.status == 'Advanced Payment Applied'))
+        .map((i) => i.id);
+    final fromActivity = activityItems
+        .where((item) => item.toBeCollected > 0 && item.history.any((h) => h.status == 'Advanced Payment Applied'))
+        .map((i) => i.id);
+    final assignedIds = {...fromBucket, ...fromActivity};
     return assignedIds.length;
   }
 
-  /// Total advanced payments: assigned (invoices created) + unassigned payments
+  /// Total advanced payments: assigned (invoices created and still unpaid) + unassigned payments
   int get advancedPaymentsCount => assignedAdvancedPaymentCount + unassignedAdvancedPayments.length;
 
   /// Returns reconciliation invoices for a specific account
@@ -649,8 +656,8 @@ class CollectionActivityController extends GetxController {
     // Add to bucket (if fully paid it shows in settled, if not it waits for next collection)
     bucketItems.add(newItem);
     
-    // Remove from unassigned
-    unassignedAdvancedPayments.removeAt(paymentIdx);
+    // Remove from unassigned (use removeWhere to be robust against id type mismatches or duplicates)
+    unassignedAdvancedPayments.removeWhere((e) => e['id'] == paymentId);
     
     logDebug('[CollectionActivityController] Assigned invoice $invoiceNumber to payment. Fully paid: $isFullyPaid');
   }
@@ -666,8 +673,12 @@ class CollectionActivityController extends GetxController {
     for (final inv in invoices) {
       final index = activityItems.indexWhere((e) => e.id == inv.id);
       if (index != -1) {
-        final item = activityItems[index].copyWith(assignedAt: '');
-        bucketItems.add(item);
+        final item = activityItems[index];
+        final restored = item.copyWith(
+          assignedAt: '',
+          status: item.status == 'Reconciliation' ? 'Reconciliation' : '',
+        );
+        bucketItems.add(restored);
         activityItems.removeAt(index);
       }
     }
@@ -682,8 +693,12 @@ class CollectionActivityController extends GetxController {
     for (final inv in invoices) {
       final index = activityItems.indexWhere((e) => e.id == inv.id);
       if (index != -1) {
-        final item = activityItems[index].copyWith(assignedAt: '');
-        bucketItems.add(item);
+        final item = activityItems[index];
+        final restored = item.copyWith(
+          assignedAt: '',
+          status: item.status == 'Reconciliation' ? 'Reconciliation' : '',
+        );
+        bucketItems.add(restored);
         activityItems.removeAt(index);
       }
     }
@@ -707,6 +722,20 @@ class CollectionActivityController extends GetxController {
   }
 
    void claimAccount(String clientId) {
+     // Prefer claiming reconciliation-marked invoices that are still in the bucket.
+     final reconInvoices = getReconciliationInvoicesByAccount(clientId);
+     final bucketReconIds = reconInvoices
+         .where((i) => bucketItems.any((b) => b.id == i.id))
+         .map((i) => i.id)
+         .toList();
+
+     if (bucketReconIds.isNotEmpty) {
+       claimItemsByIds(bucketReconIds);
+       logDebug('[CollectionActivityController] Account $clientId claimed (${bucketReconIds.length} reconciliation invoices)');
+       return;
+     }
+
+     // Fallback: claim all bucket items (legacy behavior)
      final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
      if (invoices.isEmpty) return;
 
@@ -726,11 +755,12 @@ class CollectionActivityController extends GetxController {
        for (final id in ids) {
          final index = bucketItems.indexWhere((e) => e.id == id);
          if (index == -1) continue;
-         final item = bucketItems[index].copyWith(
-           status: '',
+         final item = bucketItems[index];
+         final moved = item.copyWith(
+           status: item.status == 'Reconciliation' ? 'Reconciliation' : '',
            assignedAt: now,
          );
-         activityItems.add(item);
+         activityItems.add(moved);
          bucketItems.removeAt(index);
        }
        selectedBucketIds.removeWhere((id) => ids.contains(id));
@@ -807,7 +837,10 @@ class CollectionActivityController extends GetxController {
        final double updatedToBeCollected = (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
 
        final bool isFullyPaid = updatedToBeCollected == 0;
-       final String finalStatus = isFullyPaid ? CollectionStatusColors.statusCollected : '';
+       final bool wasReconciliation = oldItem.status == CollectionStatusColors.statusReconciliation;
+       final String finalStatus = isFullyPaid
+           ? CollectionStatusColors.statusCollected
+           : (wasReconciliation ? CollectionStatusColors.statusReconciliation : '');
 
        final historyEntry = CollectionHistoryModel(
          date: now,
@@ -906,8 +939,12 @@ class CollectionActivityController extends GetxController {
          final double updatedToBeCollected = (item.toBeCollected - manualAmount).clamp(0, double.infinity);
 
          final bool isFullyPaid = updatedToBeCollected == 0;
+         final bool wasReconciliation = item.status == CollectionStatusColors.statusReconciliation;
 
-         final String itemStatus = statuses[item.id] ?? (isFullyPaid ? CollectionStatusColors.statusCollected : '');
+         final String itemStatus = statuses[item.id] ??
+             (isFullyPaid
+                 ? CollectionStatusColors.statusCollected
+                 : (wasReconciliation ? CollectionStatusColors.statusReconciliation : ''));
 
          final historyEntry = CollectionHistoryModel(
            date: now,
@@ -922,7 +959,9 @@ class CollectionActivityController extends GetxController {
          );
 
          final updatedItem = item.copyWith(
-           status: isFullyPaid ? CollectionStatusColors.statusCollected : '',
+           status: isFullyPaid
+               ? CollectionStatusColors.statusCollected
+               : (wasReconciliation ? CollectionStatusColors.statusReconciliation : ''),
            lastOutcome: itemStatus,
            remarks: itemRemarks,
            toBeCollected: updatedToBeCollected,
