@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
@@ -19,6 +19,11 @@ class StockReceiveFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
 
   final Rx<PullOutStatusFilter> selectedStatusFilter = PullOutStatusFilter.all.obs;
+  final Rxn<DateTime> selectedDateFrom = Rxn<DateTime>();
+  final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
+  final RxString selectedItemCategoryId = ''.obs;
+  final RxString clientNameQuery = ''.obs;
+  final RxString documentReferenceQuery = ''.obs;
 
   final RxList<PullOutModel> filteredStockReceives = <PullOutModel>[].obs;
 
@@ -29,6 +34,11 @@ class StockReceiveFilterManager {
   void reset([List<PullOutModel>? allStockReceives]) {
     selectedFilter.value = RequestFilter.today;
     selectedStatusFilter.value = PullOutStatusFilter.all;
+    selectedDateFrom.value = null;
+    selectedDateTo.value = null;
+    selectedItemCategoryId.value = '';
+    clientNameQuery.value = '';
+    documentReferenceQuery.value = '';
     filteredStockReceives.clear();
     if (allStockReceives != null) {
       applyFilter(allStockReceives);
@@ -47,6 +57,11 @@ class StockReceiveFilterManager {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
+    final dateFrom = selectedDateFrom.value;
+    final dateTo = selectedDateTo.value;
+    final itemCategoryId = selectedItemCategoryId.value;
+    final clientQuery = clientNameQuery.value.trim().toLowerCase();
+    final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allStockReceives.where((item) {
@@ -95,7 +110,23 @@ class StockReceiveFilterManager {
         }
       }
 
-      return dateMatches && statusMatches && userMatches;
+      final dateFromMatches = dateFrom == null ||
+          (targetDate != null && !targetDate.isBefore(DateTime(dateFrom.year, dateFrom.month, dateFrom.day)));
+      final dateToMatches = dateTo == null ||
+          (targetDate != null && !targetDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
+      final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
+      final clientNameMatches = clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
+      final documentReferenceMatches = documentQuery.isEmpty ||
+          item.documentReference.any((ref) => ref.toLowerCase().contains(documentQuery));
+
+      return dateMatches &&
+          statusMatches &&
+          dateFromMatches &&
+          dateToMatches &&
+          itemCategoryMatches &&
+          clientNameMatches &&
+          documentReferenceMatches &&
+          userMatches;
     }).toList();
 
     // Sort by stock receive date (newest first)
@@ -121,6 +152,32 @@ class StockReceiveFilterManager {
   /// Update the active status filter and reapply filters.
   void selectStatusFilter(PullOutStatusFilter statusFilter, RxList<PullOutModel> allStockReceives) {
     selectedStatusFilter.value = statusFilter;
+    applyFilter(allStockReceives.toList());
+  }
+
+
+  void selectDateFrom(DateTime? date, RxList<PullOutModel> allStockReceives) {
+    selectedDateFrom.value = date;
+    applyFilter(allStockReceives.toList());
+  }
+
+  void selectDateTo(DateTime? date, RxList<PullOutModel> allStockReceives) {
+    selectedDateTo.value = date;
+    applyFilter(allStockReceives.toList());
+  }
+
+  void selectItemCategoryId(String categoryId, RxList<PullOutModel> allStockReceives) {
+    selectedItemCategoryId.value = categoryId;
+    applyFilter(allStockReceives.toList());
+  }
+
+  void setClientNameQuery(String query, RxList<PullOutModel> allStockReceives) {
+    clientNameQuery.value = query;
+    applyFilter(allStockReceives.toList());
+  }
+
+  void setDocumentReferenceQuery(String query, RxList<PullOutModel> allStockReceives) {
+    documentReferenceQuery.value = query;
     applyFilter(allStockReceives.toList());
   }
 }

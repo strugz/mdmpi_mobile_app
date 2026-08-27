@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
 /// Central status color mapping for logistics request statuses.
@@ -21,7 +21,9 @@ class LogisticsStatusColors {
       case BTexts.statusGettingSuppliesReady:
         bg = _adjustAlpha(BColors.warning, darkMode, baseAlpha: 0.2); fg = BColors.warning; break;
       case BTexts.statusItemPrepared:
-        bg = _adjustAlpha(BColors.info, darkMode, baseAlpha: 0.15); fg = BColors.info; break;
+        // Use a stronger translucent blue background with white text for readability
+        bg = _adjustAlpha(BColors.info, darkMode, baseAlpha: 0.35);
+        fg = BColors.white; break;
       case BTexts.statusForDelivery:
         bg = darkMode ? BColors.primary.withValues(alpha: 0.25) : BColors.primaryBackground; fg = BColors.primary; break;
       case BTexts.statusInTransit:
@@ -36,6 +38,22 @@ class LogisticsStatusColors {
         bg = BColors.success; fg = BColors.white; break;
       case BTexts.statusReceived:
         bg = BColors.success; fg = BColors.white; break;
+      case BTexts.statusProvincialPickUp:
+        bg = _adjustAlpha(Colors.teal, darkMode, baseAlpha: 0.3); fg = Colors.teal; break;
+      case BTexts.statusProvincialInTransit:
+        bg = _adjustAlpha(Colors.indigo, darkMode, baseAlpha: 0.3); fg = Colors.indigo; break;
+      case BTexts.statusProvincialDelivered:
+        bg = const Color(0xFF1B5E20); fg = BColors.white; break;
+
+      // Preference / Priority values
+      case 'Low':
+        bg = BColors.priorityLow; fg = BColors.white; break;
+      case 'Medium':
+        bg = BColors.priorityMedium; fg = BColors.white; break;
+      case 'High':
+        bg = BColors.priorityHigh; fg = BColors.white; break;
+      case 'Rush':
+        bg = BColors.priorityRush; fg = BColors.white; break;
 
       default:
         bg = darkMode ? BColors.darkerGrey : BColors.light; fg = darkMode ? BColors.light : BColors.darkGrey;

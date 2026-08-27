@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
@@ -29,32 +31,40 @@ class AirSeaRequestModalFooter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// -- Item Packed Status Transition (Release role only) --
-        if (requestModel.status == BTexts.statusItemPacked &&
-            role == BTexts.roleRelease) ...[
-          AirSeaItemPackedSection(requestModel: requestModel),
-        ],
-
-        /// -- Drop Off Status Section (Courier role only) --
-        if (requestModel.status == BTexts.statusDispatch &&
-            role == BTexts.roleCourier) ...[
-          AirSeaDropOffSection(requestModel: requestModel),
-        ],
-
-        /// -- Remarks --
-        if (requestModel.remarks.isNotEmpty) ...[
-          const SizedBox(height: BSizes.sm),
-          const BTextDivider(text: 'Remarks'),
-          BProductTitleText(
-            title: requestModel.remarks,
-            maxLines: 3,
-            smallSize: true,
-            fontColor: textColor,
+        /// -- Receipt Details (use reusable delivery details section) --
+        if (requestModel.status == BTexts.statusReceived ||
+            requestModel.status == BTexts.statusProvincialPickUp ||
+            requestModel.status == BTexts.statusProvincialInTransit ||
+            requestModel.status == BTexts.statusProvincialDelivered) ...[
+          BDeliveryDetailsSection(
+            sectionTitle: 'Receipt Details',
+            driver: requestModel.driver,
+            helper: requestModel.helper,
+            receivedBy: requestModel.receivedBy,
+            receivedByLabel: 'Received By',
+            departedAt: requestModel.dispatchedAt,
+            completedAt: requestModel.updatedAt,
+            completedAtLabel: 'Received At',
+            requestId: requestModel.id,
+            apiController: 'RequestAirSea',
+            viewItemButtonLabel: BTexts.requestModalViewItemReceivedText,
+            dialogTitle: 'Air/Sea Item',
+            showViewItemButton: true,
+            completedAtFormatter: (s) => BFormatter.formatDateTimeCustomizable(
+              s,
+              "yyyy-MM-ddTHH:mm:ss.SSSSSS",
+              "MMM d, yyyy hh:mm a",
+            ),
+            // Render the signature below the Received By value and allow larger size
+            signatureBelowReceivedBy: true,
+            signatureHeight: 50,
+            // Place signature on the left column by default for Air/Sea
+            signatureLeft: true,
           ),
         ],
+
         const SizedBox(height: BSizes.sm),
       ],
     );
   }
 }
-

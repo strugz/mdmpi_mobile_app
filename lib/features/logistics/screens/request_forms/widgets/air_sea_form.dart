@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
@@ -40,12 +40,10 @@ class AirSeaForm extends StatelessWidget {
         controller.formState.datePickUpController.clear();
         controller.formState.remarksController.clear();
 
-        // Reload categories to re-apply defaults (Item Category)
         await controller.loadCategories();
 
-        // Reset shared Standard Delivery form state used by common widgets
         stdController.formState.reset();
-        stdController.addDocumentReferenceField(); // ensure a fresh field
+        stdController.addDocumentReferenceField();
 
         BLoaders.successSnackBar(title: 'Success', message: 'Request created');
       } else {

@@ -1,12 +1,13 @@
-
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pick_up/pick_up_repository.dart';
+import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_form_state.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
@@ -28,6 +29,8 @@ class PickUpDataManager {
   final PickUpRepository _repository = Get.find<PickUpRepository>();
   final CancelRemarksRepository _cancelRemarksRepository =
       Get.find<CancelRemarksRepository>();
+  final MessagingController _messageController =
+      Get.find<MessagingController>();
 
   // ========================================================================
   // VALIDATION METHODS
@@ -89,6 +92,38 @@ class PickUpDataManager {
     } catch (e) {
       controller.errorMessage.value = e.toString();
       logDebug('PickUpDataManager.fetchPickUps error: $e');
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
+  /// Hard reset Pick-Up data by clearing local cache and forcing a fresh API load.
+  Future<void> hardResetPickUps(PickUpController controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      await _repository.clearLocalData();
+      final results = await _repository.getAll(
+        forceRefresh: true,
+        allowLocalFallback: false,
+      );
+
+      controller.pickUps.assignAll(results);
+      controller.filterManager.applyFilter(controller.pickUps.toList());
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Pick-Up data refreshed successfully',
+      );
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
     } finally {
       controller.isLoading.value = false;
@@ -180,6 +215,7 @@ class PickUpDataManager {
 
       // Insert via API (also saves to local DB)
       await _repository.insert(model, silent: true);
+      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model);
 
       // Force refresh from API to ensure we have the latest data with proper IDs
       final refreshedList = await _repository.refreshFromApi();
@@ -240,6 +276,14 @@ class PickUpDataManager {
   /// [formState] Form state containing signature and field values
   Future<void> updateRequestStatus(PickUpModel request, String newStatus,
       PickUpController controller, PickUpFormState formState) async {
+    if (!await _validateRequiredUpdateFields(
+      request: request,
+      newStatus: newStatus,
+      formState: formState,
+    )) {
+      return;
+    }
+
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -294,31 +338,13 @@ class PickUpDataManager {
                 newStatus, request.id);
 
         // ✅ Safe null check - prevents crash
-        if (finalImageBase64!.isNotEmpty) {
-          final isConnectedForUpload =
-              await NetworkManager.instance.isConnected();
-
-          if (isConnectedForUpload) {
-            try {
-              await ImageRepository.instance.uploadFile(
-                requestId: request.id,
-                base64Image: finalImageBase64,
-                type: 'Proof',
-              );
-            } catch (e) {
-              logDebug('PickUpDataManager: Image upload failed: $e');
-              BLoaders.warningSnackBar(
-                title: 'Upload Failed',
-                message:
-                    'Image proof could not be uploaded. It will be synced when connection is available.',
-              );
-            }
-          } else {
-            BLoaders.warningSnackBar(
-                title: 'No Internet',
-                message:
-                    'Image saved locally. It will be uploaded when internet connection is available.');
-          }
+        if (finalImageBase64 != null && finalImageBase64.isNotEmpty) {
+          await ProofImageOutboxUploader.instance.uploadOrQueue(
+            requestId: request.id,
+            imageLookupKey: request.id,
+            base64Image: finalImageBase64,
+            type: 'Proof',
+          );
         } else {
           logDebug(
               'PickUpDataManager: No image to upload (finalImageBase64 is null or empty)');
@@ -328,6 +354,7 @@ class PickUpDataManager {
       final payload = PickUpMapper.toUpdateDto(updated);
 
       await _repository.updateWithPayload(payload.toJson(), silent: true);
+      await _messageController.sendSmsMessage(newStatus, updated);
 
       await controller.loadPickUps();
 
@@ -365,6 +392,11 @@ class PickUpDataManager {
     try {
       await _repository.cancelPickUpAPI(request.id, remarks, user,
           silent: true);
+      await _messageController.sendSmsMessage(
+        BTexts.statusCancelled,
+        request,
+        overrideCancelRemarks: remarks,
+      );
       await fetchPickUps(controller, controller.useLocalStorage.value);
       BLoaders.successSnackBar(
           title: 'Cancelled', message: 'Request cancelled');
@@ -431,5 +463,50 @@ class PickUpDataManager {
           '💡 Tip: Check if GET /api4/RequestPickUp/cancel/$requestId endpoint exists');
       return CancelRemarksModel.empty;
     }
+  }
+
+  static Future<bool> _validateRequiredUpdateFields({
+    required PickUpModel request,
+    required String newStatus,
+    required PickUpFormState formState,
+  }) async {
+    if (newStatus != BTexts.statusReceived) {
+      return true;
+    }
+
+    final receivedBy = request.receivedBy.trim().isNotEmpty
+        ? request.receivedBy
+        : formState.receivedByController.text;
+    final hasSignature =
+        formState.receiverSignatureBase64.value.trim().isNotEmpty ||
+            (formState.receiverSignatureBytes.value?.isNotEmpty ?? false);
+    final proofImage = await BImageHelperFunctions.getDeliveryImageAsBase64(
+          newStatus,
+          request.id,
+        ) ??
+        formState.cameraDropOffPicture.value;
+
+    if (receivedBy.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Received By',
+      );
+      return false;
+    }
+    if (!hasSignature) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture the receiver signature',
+      );
+      return false;
+    }
+    if (proofImage.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture proof image',
+      );
+      return false;
+    }
+    return true;
   }
 }

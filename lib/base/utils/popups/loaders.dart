@@ -5,10 +5,14 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 
 class BLoaders {
-  static void hideSnackBar() =>
-      ScaffoldMessenger.of(Get.context!).hideCurrentSnackBar();
+  static void hideSnackBar() {
+    // In test mode there may be no valid context/overlay
+    if (Get.testMode) return;
+    ScaffoldMessenger.of(Get.context!).hideCurrentSnackBar();
+  }
 
   static void customToast({required String message}) {
+    if (Get.testMode) return;
     ScaffoldMessenger.of(Get.context!).showSnackBar(SnackBar(
       elevation: 0,
       duration: const Duration(seconds: 3),
@@ -30,6 +34,7 @@ class BLoaders {
   }
 
   static void successSnackBar({required String title, String message = '', duration = 3}) {
+    if (Get.testMode) return;
     Get.snackbar(
       title,
       message,
@@ -45,6 +50,7 @@ class BLoaders {
   }
 
   static void warningSnackBar({required String title, String message = '', duration = 3}) {
+    if (Get.testMode) return;
     Get.snackbar(
       title,
       message,
@@ -60,6 +66,7 @@ class BLoaders {
   }
 
   static void errorSnackBar({required String title, String message = '', duration = 3}) {
+    if (Get.testMode) return;
     Get.snackbar(
       title,
       message,

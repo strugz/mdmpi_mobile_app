@@ -1,0 +1,95 @@
+import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
+import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
+import 'dart:typed_data';
+
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
+
+/// Displays a saved or remotely fetched signature image for a request.
+class CapturedSignatureImage extends StatelessWidget {
+  final String requestId;
+  final String type;
+
+  const CapturedSignatureImage(
+      {super.key, required this.requestId, this.type = 'Signature'});
+
+  @override
+  Widget build(BuildContext context) {
+    final uri = Uri.parse(BApiEnvironment.api4BaseUrl).replace(
+      path: '/api4/Request/image',
+      queryParameters: {'requestid': requestId, 'type': type},
+    );
+
+    final imageRequestUrl = uri.toString();
+    // First try to load saved signature bytes from local DB. If found, show it directly.
+    return FutureBuilder<Uint8List?>(
+      future: DatabaseHelper.instance.loadSavedSignatureBytes(requestId),
+      builder: (context, snapshot) {
+        // While waiting, show the same placeholder as CachedNetworkImage would
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: BColors.grey),
+              ),
+              child: const SizedBox(
+                height: 100,
+                width: 150,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          // On DB error, fall back to network image
+          // (we intentionally do not surface DB errors here)
+        }
+
+        final Uint8List? bytes = snapshot.data;
+        if (bytes != null && bytes.isNotEmpty) {
+          return Center(
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: BColors.grey),
+              ),
+              child: Image.memory(
+                bytes,
+                height: 100,
+                width: 150,
+                fit: BoxFit.fill,
+              ),
+            ),
+          );
+        }
+
+        // No local bytes: fall back to network-loaded image (cached)
+        return Center(
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: BColors.grey),
+            ),
+            child: CachedNetworkImage(
+              imageUrl: imageRequestUrl,
+              height: 100,
+              width: 150,
+              fit: BoxFit.fill,
+              placeholder: (context, url) => const SizedBox(
+                height: 100,
+                width: 150,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              errorWidget: (context, url, error) => const SizedBox(
+                height: 100,
+                width: 150,
+                child: Center(
+                    child: Icon(Icons.error, color: Colors.red, size: 40)),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

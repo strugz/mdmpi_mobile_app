@@ -2,23 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_request_card.dart';
-import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/services/implementations/pick_up_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_request_card.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/implementations/pick_up_role_handler.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
+// ============================================================================
+// STATUS-DRIVEN ROLE SELECTION
+// ============================================================================
+// For Pick Up module, only Release has actions. This map defines which role
+// should be preferred based on the request status.
+//
+// Status-Role Capability Matrix:
+// ┌─────────────────────────┬─────────┬─────────┬─────────┐
+// │ Status                  │ Request │ Release │ Courier │
+// ├─────────────────────────┼─────────┼─────────┼─────────┤
+// │ New Request             │ View    │ ✅ Action│ View    │
+// │ Getting Supplies Ready  │ View    │ ✅ Action│ View    │
+// │ Item Packed             │ View    │ ✅ Action│ View    │
+// │ Received                │ View    │ View    │ View    │
+// │ Cancelled               │ View    │ View    │ View    │
+// └─────────────────────────┴─────────┴─────────┴─────────┘
+// ============================================================================
 
-/// Role priority map: Lower number = Higher priority (more capabilities)
-const _rolePriority = {
-  BTexts.roleRelease: 1, // Most powerful - can handle most statuses
-  BTexts.roleCourier: 2, // Handles dispatch/drop-off
-  BTexts.roleRequest: 3, // Can only advance "New Request"
-  BTexts.roleViewer: 4, // View-only access
+/// Maps each status to the preferred role that has action capability.
+/// Returns null if no role has actions for that status (all view-only).
+const _statusToPreferredRole = {
+  BTexts.statusNewRequest: BTexts.roleRelease, // Release: → Getting Supplies Ready
+  BTexts.statusGettingSuppliesReady: BTexts.roleRelease, // Release: → Item Packed
+  BTexts.statusItemPacked: BTexts.roleRelease, // Release: → Received
+  // Received, Cancelled: All roles are view-only (no preferred role)
 };
 
 class PickUpList extends StatelessWidget {
@@ -133,18 +152,15 @@ class PickUpList extends StatelessWidget {
 }
 
 /// Handles tap on PickUp request based on user role.
-/// Selects the highest-priority role handler to avoid multiple dialogs.
+/// Uses status-driven role selection to ensure users with multiple roles
+/// can perform ALL available actions at ANY status.
 void _handlePickUpTap(
   BuildContext context,
   PickUpModel request,
   PickUpController controller,
   UserController userController,
 ) {
-  final roles = userController.user.value.role
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  final roles = RoleResolver.parseRoles(userController.user.value.role);
   final userInitial = userController.user.value.initial;
 
   // Handle cancelled/received status with default handler
@@ -155,6 +171,13 @@ void _handlePickUpTap(
     return;
   }
 
+  // Resolve the best role for this status using RoleResolver
+  final selectedRole = RoleResolver.resolveRoleForStatus(
+    status: request.status,
+    userRoles: roles,
+    statusToPreferredRole: _statusToPreferredRole,
+  );
+
   final handlers = <String, PickUpActionHandler>{
     BTexts.roleRequest: PickUpRequestRoleHandler(),
     BTexts.roleRelease: PickUpReleaseRoleHandler(),
@@ -162,23 +185,13 @@ void _handlePickUpTap(
     BTexts.roleViewer: PickUpViewerRoleHandler(),
   };
 
-  // Find the highest-priority role the user has
-  String? selectedRole;
-  int highestPriority = 999;
-
-  for (final role in roles) {
-    if (handlers.containsKey(role)) {
-      final priority = _rolePriority[role] ?? 999;
-      if (priority < highestPriority) {
-        highestPriority = priority;
-        selectedRole = role;
-      }
-    }
-  }
-
-  // Invoke only the highest-priority handler
-  if (selectedRole != null && handlers.containsKey(selectedRole)) {
+  // Invoke the resolved role handler
+  if (handlers.containsKey(selectedRole)) {
     handlers[selectedRole]!.handleAction(
+        context, request, controller, userController, userInitial);
+  } else {
+    // Fallback to default handler if role not found
+    PickUpDefaultHandler().handleAction(
         context, request, controller, userController, userInitial);
   }
 }

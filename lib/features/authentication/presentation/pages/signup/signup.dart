@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/widgets/signup_form.dart';
 
 import '../../../../../../base/utils/constants/sizes.dart';

@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/request_transport.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
+import '../../../../base/utils/constants/text_strings.dart';
 import '../../../../base/utils/popups/full_screen_loader.dart';
 import '../../../personalization/controller/user_controller.dart';
 import '../../models/standard_delivery_model.dart';

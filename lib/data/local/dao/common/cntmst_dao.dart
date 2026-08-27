@@ -1,5 +1,5 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:mdmpi_mobile_app/data/models/cnstmst_model.dart';
+import 'package:mdmpi_mobile_app/data/models/cntmst_model.dart';
 
 class CntmstDao {
   final Database db;
@@ -11,6 +11,10 @@ class CntmstDao {
       batch.insert('CNTMST', itm.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
+  }
+
+  Future<void> deleteAll() async {
+    await db.delete('CNTMST');
   }
 
   Future<List<CNTMSTModel>> getRequesters() async {
@@ -41,6 +45,8 @@ class CntmstDao {
     if (managerHierarchy == null || managerHierarchy.isEmpty) return phoneNumbers;
 
     final List<String> hierarchySegments = managerHierarchy.split('/');
+
+
     for (final managers in hierarchySegments) {
       if (managers != 'EGL') {
         final List<Map<String, dynamic>> managerMaps = await db.query(

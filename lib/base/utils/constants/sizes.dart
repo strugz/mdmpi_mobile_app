@@ -40,7 +40,8 @@ class BSizes {
   // Product item dimensions
   static const double productImageSize = 100.0;
   static const double productImageRadius = 16.0;
-  static const double productItemHeight = 160.0;
+  static const double productItemHeight = 100.0;
+  static const double productRectangleWidth = 300.0;
   // Input Field
   static const double inputFieldRadius = 12.0;
   static const double spaceBtwInputFields = 16.0;

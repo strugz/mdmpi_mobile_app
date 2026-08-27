@@ -1,3 +1,5 @@
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
+
 class StandardDeliveryInsertDto {
   final String? requestClientID;
   final String? requestShippingMethod;
@@ -7,7 +9,11 @@ class StandardDeliveryInsertDto {
   final String? requestStatus;
   final String? requestBy;
   final String? requestCreatedBy;
+  final String? updatedBy;
+  final String? recipientContactDetails;
+  final String? recipientName;
   final List<String>? documentReference;
+  final List<InventoryItemModel>? items;
   final int? itemCategoryID;  // Changed to int
   final int? formCategoryID;  // Changed to int
 
@@ -20,7 +26,11 @@ class StandardDeliveryInsertDto {
     this.requestStatus,
     this.requestBy,
     this.requestCreatedBy,
+    this.updatedBy,
+    this.recipientContactDetails,
+    this.recipientName,
     this.documentReference,
+    this.items,
     this.itemCategoryID,
     this.formCategoryID,
   });
@@ -40,10 +50,17 @@ class StandardDeliveryInsertDto {
     put('requestStatus', requestStatus);
     put('requestBy', requestBy);
     put('requestCreatedBy', requestCreatedBy);
+    put('updatedBy', updatedBy);
+    put('recipientContactDetails', recipientContactDetails);
+    put('recipientName', recipientName);
     put('documentReference', documentReference);
+    if (items != null) {
+      put('items', items!.map((e) => e.toJson()).toList());
+    } else {
+      put('items', []);
+    }
     put('itemCategoryID', itemCategoryID);
     put('formCategoryID', formCategoryID);
-
     return data;
   }
 }

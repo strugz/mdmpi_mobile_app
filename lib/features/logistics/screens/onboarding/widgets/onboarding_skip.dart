@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/features/logistics/presentation/controllers/logistics_onboarding_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/logistics_onboarding_controller.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import '../../../../../base/utils/devices/device_utility.dart';

@@ -71,14 +71,15 @@ class StockReceiveController extends GetxController {
     formState = PullOutFormState();
     formState.initializeDefaultDate();
     dataManager.loadCategories(this);
-    dataManager.fetchStockReceives(this);
+    dataManager.fetchStockReceives(this, useLocalStorage.value);
 
     userController = Get.find<UserController>();
     createdBy = userController.user.value.initial;
   }
 
   /// Convenience access to filtered list.
-  List<PullOutModel> get filteredStockReceives => filterManager.filteredStockReceives;
+  List<PullOutModel> get filteredStockReceives =>
+      filterManager.filteredStockReceives;
 
   /// Update status filter.
   void selectStatusFilter(PullOutStatusFilter statusFilter) {
@@ -90,9 +91,33 @@ class StockReceiveController extends GetxController {
     filterManager.selectFilter(filter, stockReceives);
   }
 
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, stockReceives);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, stockReceives);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, stockReceives);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, stockReceives);
+  }
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query, stockReceives);
+  }
+
   /// Fetch all Stock Receive requests from repository.
   Future<void> loadStockReceives() async {
     await dataManager.fetchStockReceives(this, useLocalStorage.value);
+  }
+
+  Future<void> hardResetStockReceives() async {
+    await dataManager.hardResetStockReceives(this);
   }
 
   /// Insert a new Stock Receive request and refresh the list.
@@ -149,6 +174,9 @@ class StockReceiveController extends GetxController {
   ///
   /// [value] True to use local storage, false to use API directly
   void toggleStoragePreference(bool value) {
+    if (useLocalStorage.value == value) {
+      return;
+    }
     useLocalStorage.value = value;
     loadStockReceives();
   }
@@ -161,4 +189,3 @@ class StockReceiveController extends GetxController {
     super.onClose();
   }
 }
-

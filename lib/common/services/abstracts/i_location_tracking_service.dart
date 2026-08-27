@@ -21,6 +21,9 @@ abstract class ILocationTrackingService {
   Stream<Position> startTracking({
     LocationAccuracy accuracy = LocationAccuracy.high,
     int distanceFilter = 20,
+    bool useForegroundService = false,
+    String? notificationTitle,
+    String? notificationText,
   });
 
   /// Stops location tracking and cancels the stream.

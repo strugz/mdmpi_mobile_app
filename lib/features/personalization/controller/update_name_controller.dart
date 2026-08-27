@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
@@ -14,11 +15,18 @@ class UpdateNameController extends GetxController {
   final firstName = TextEditingController();
   final lastName = TextEditingController();
   final userController =UserController.instance;
-  final userRepository = Get.put(UserRepository());
+  UserRepository? userRepository;
   GlobalKey<FormState> updateUserNameFormKey = GlobalKey<FormState>();
 
   @override
   void onInit() {
+    // Resolve userRepository lazily if available
+    try {
+      if (Firebase.apps.isNotEmpty && Get.isRegistered<UserRepository>()) {
+        userRepository = Get.find<UserRepository>();
+      }
+    } catch (_) {}
+
     initializeNames();
     super.onInit();
   }
@@ -49,7 +57,11 @@ class UpdateNameController extends GetxController {
 
       // Update user's first & last name in the Firebase Firestore
       Map<String, dynamic> name = {'FirstName': firstName.text.trim(), 'LastName': lastName.text.trim()};
-      await userRepository.updateSingleField(name);
+      if (userRepository == null) {
+        BLoaders.errorSnackBar(title: 'Error', message: 'Operation not available on this platform.');
+        return;
+      }
+      await userRepository!.updateSingleField(name);
 
       //  Update the Rx User value
       userController.user.value.firstName = firstName.text.trim();

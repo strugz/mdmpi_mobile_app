@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 
@@ -13,13 +15,17 @@ class DocumentReferenceList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final uniqueReferences = LinkedHashSet<String>.from(
+      documentReferences.map((reference) => reference.trim()).where((reference) => reference.isNotEmpty),
+    ).toList();
+
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       separatorBuilder: (_, __) => const SizedBox.shrink(),
-      itemCount: documentReferences.length,
+      itemCount: uniqueReferences.length,
       itemBuilder: (_, index) {
-        final String reference = documentReferences[index];
+        final String reference = uniqueReferences[index];
         return BLabelValueText(
           label: 'Doc Ref',
           value: reference,

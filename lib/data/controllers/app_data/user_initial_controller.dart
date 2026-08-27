@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
@@ -14,7 +15,9 @@ class UserInitialController extends GetxController {
 
   /// User Initial
   final userInitialRepository = Get.find<UserInitialRepository>();
-  final userRepository = Get.put(UserRepository());
+  // Resolve UserRepository lazily in onInit to avoid creating Firestore
+  // instances on platforms where Firebase was intentionally not initialized.
+  UserRepository? userRepository;
 
   /// user variables
   final selectedUserInitial = TextEditingController();
@@ -36,6 +39,14 @@ class UserInitialController extends GetxController {
   void onInit() {
     // TODO: implement onInit
     super.onInit();
+
+    // Resolve userRepository only if Firebase has been initialized and the
+    // repository is registered in Get (GeneralBindings).
+    try {
+      if (Firebase.apps.isNotEmpty && Get.isRegistered<UserRepository>()) {
+        userRepository = Get.find<UserRepository>();
+      }
+    } catch (_) {}
 
     /// Fetch User Initial
     getAllUserFromLocal('Logistics');
@@ -66,7 +77,11 @@ class UserInitialController extends GetxController {
       isLoading.value = true;
 
       // Fetch pending request from data source ( API )
-      final initials = await userRepository.fetchAllUsers();
+      if (userRepository == null) {
+        return;
+      }
+
+      final initials = await userRepository!.fetchAllUsers();
 
       initials.where((user) => user.department == department);
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/forget_password_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/login.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/widgets/verification_screen.dart';

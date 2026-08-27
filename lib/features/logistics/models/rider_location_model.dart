@@ -54,17 +54,26 @@ class RiderLocationModel {
 
   factory RiderLocationModel.fromJson(Map<String, dynamic> json) {
     return RiderLocationModel(
-      type: json['Type'] ?? '',
-      requestId: json['RequestID'] ?? '',
-      riderId: json['RiderId'] ?? '',
-      latitude: double.parse(json['Latitude'].toString()),
-      longitude: double.parse(json['Longitude'].toString()),
-      timestamp: DateTime.parse(json['Timestamp']),
-      status: json['Status'] ?? '',
-      riderInitial: json['RiderInitial'] ?? '',
-      eta: json['ETA'] ?? '',
-      distance: json['Distance'] ?? '',
-      client: json['Client'] ?? '',
+      type: json['Type']?.toString() ?? '',
+      requestId: json['RequestID']?.toString() ?? '',
+      riderId: json['RiderId']?.toString() ?? '',
+      latitude: _parseDouble(json['Latitude']),
+      longitude: _parseDouble(json['Longitude']),
+      timestamp: _parseTimestamp(json['Timestamp']),
+      status: json['Status']?.toString() ?? '',
+      riderInitial: json['RiderInitial']?.toString() ?? '',
+      eta: json['ETA']?.toString() ?? '',
+      distance: json['Distance']?.toString() ?? '',
+      client: json['Client']?.toString() ?? '',
     );
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0.0;
+  }
+
+  static DateTime _parseTimestamp(dynamic value) {
+    return DateTime.tryParse(value?.toString() ?? '') ?? DateTime.now();
   }
 }

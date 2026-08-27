@@ -7,7 +7,7 @@ import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/pass
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/signup.dart';
 
 import '../../../../../../../base/utils/constants/sizes.dart';
-import '../../../../../../../base/utils/constants/text_string.dart';
+import '../../../../../../../base/utils/constants/text_strings.dart';
 
 class LoginForm extends StatefulWidget {
   const LoginForm({

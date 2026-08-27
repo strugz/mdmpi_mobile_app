@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 
@@ -21,13 +21,18 @@ class CancelRemarksRepository {
   String _getCancelEndpoint(String requestId, RequestModule module) {
     switch (module) {
       case RequestModule.standardDelivery:
-        return "${dotenv.env['API_URL']!}/api4/request/cancel/$requestId";
+        return BApiEnvironment.api4Uri('/api4/request/cancel/$requestId')
+            .toString();
       case RequestModule.pullOut:
-        return "${dotenv.env['API_URL']!}/api4/RequestPullOutReturnPickUp/cancel/$requestId";
+        return BApiEnvironment.api4Uri(
+                '/api4/RequestPullOutReturnPickUp/cancel/$requestId')
+            .toString();
       case RequestModule.pickUp:
-        return "${dotenv.env['API_URL']!}/api4/RequestPickUp/cancel/$requestId";
+        return BApiEnvironment.api4Uri('/api4/RequestPickUp/cancel/$requestId')
+            .toString();
       case RequestModule.airSea:
-        return "${dotenv.env['API_URL']!}/api4/RequestAirSea/cancel/$requestId";
+        return BApiEnvironment.api4Uri('/api4/RequestAirSea/cancel/$requestId')
+            .toString();
     }
   }
 

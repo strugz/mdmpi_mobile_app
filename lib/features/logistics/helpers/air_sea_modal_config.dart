@@ -1,5 +1,7 @@
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/data/models/realtime_location_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
@@ -10,6 +12,9 @@ import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 /// Carries everything the modal needs: role context, action visibility,
 /// button label, next status, and an optional validator.
 class AirSeaModalConfig {
+  static const String _latestRealtimeLocationKey =
+      'realtime_location_saver_latest';
+
   /// The resolved user role driving this modal instance.
   final String role;
 
@@ -61,8 +66,18 @@ class AirSeaModalConfig {
 
     // Terminal / view-only statuses — any role
     if (status.toLowerCase() == 'cancelled' ||
-        status == BTexts.statusReceived ||
-        status == BTexts.statusDropOff) {
+        status == BTexts.statusProvincialDelivered) {
+      return AirSeaModalConfig.viewOnly(role: role);
+    }
+
+    // Provincial statuses — only actionable by Provincial role
+    if (status == BTexts.statusReceived ||
+        status == BTexts.statusDropOff ||
+        status == BTexts.statusProvincialPickUp ||
+        status == BTexts.statusProvincialInTransit) {
+      if (role == BTexts.roleProvincial) {
+        return _resolveProvincial(status, role, controller);
+      }
       return AirSeaModalConfig.viewOnly(role: role);
     }
 
@@ -208,7 +223,7 @@ class AirSeaModalConfig {
     if (formState.receiverSignatureBytes.value == null ||
         formState.receiverSignatureBytes.value!.isEmpty) {
       BLoaders.errorSnackBar(
-        title: 'Validation Error',
+        title: 'Validation Error1',
         message: 'Please capture Receiver Signature',
       );
       return false;
@@ -247,6 +262,132 @@ class AirSeaModalConfig {
     }
     return true;
   }
+
+  // ========================================================================
+  // PROVINCIAL ROLE CONFIG
+  // ========================================================================
+
+  /// Resolves modal config for the Provincial role based on current status.
+  static AirSeaModalConfig _resolveProvincial(
+      String status, String role, AirSeaController controller) {
+    if (status == BTexts.statusReceived || status == BTexts.statusDropOff) {
+      return AirSeaModalConfig(
+        role: role,
+        nextStatus: BTexts.statusProvincialPickUp,
+        isActionVisible: true,
+        buttonLabel: 'Confirm Pick Up',
+        validate: () => _validateProvincialPickUp(controller.formState),
+      );
+    }
+    if (status == BTexts.statusProvincialPickUp) {
+      return AirSeaModalConfig(
+        role: role,
+        nextStatus: BTexts.statusProvincialInTransit,
+        isActionVisible: true,
+        buttonLabel: 'Start Transit',
+        validate: _validateProvincialInTransitLocation,
+      );
+    }
+    if (status == BTexts.statusProvincialInTransit) {
+      return AirSeaModalConfig(
+        role: role,
+        nextStatus: BTexts.statusProvincialDelivered,
+        isActionVisible: true,
+        buttonLabel: 'Confirm Delivery',
+        validate: () => _validateProvincialDelivery(controller.formState),
+      );
+    }
+    return AirSeaModalConfig.viewOnly(role: role);
+  }
+
+  /// Validates provincial pick-up confirmation: requires pick-up proof image.
+  static Future<bool> _validateProvincialPickUp(
+      AirSeaFormState formState) async {
+    if (formState.cameraPickUpPicture.value.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture or attach pick-up proof image',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  /// Validates that a latest realtime location sample exists before starting transit.
+  static Future<bool> _validateProvincialInTransitLocation() async {
+    final latestRealtimeLocation = _readLatestRealtimeLocation();
+
+    if (latestRealtimeLocation == null) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message:
+            'No realtime location found. Please enable realtime location saver and wait for a location update before starting transit.',
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+  /// Reads and validates the latest realtime location payload from local storage.
+  static RealtimeLocationModel? _readLatestRealtimeLocation() {
+    final dynamic latestRaw = GetStorage().read(_latestRealtimeLocationKey);
+    if (latestRaw is! Map) {
+      return null;
+    }
+
+    final latestMap = Map<String, dynamic>.from(latestRaw);
+    final latitude = _tryParseCoordinate(latestMap['latitude']);
+    final longitude = _tryParseCoordinate(latestMap['longitude']);
+
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
+    if (latitude < -90 || latitude > 90) {
+      return null;
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      return null;
+    }
+
+    return RealtimeLocationModel.fromJson(latestMap);
+  }
+
+  /// Safely parses a coordinate value from dynamic storage data.
+  static double? _tryParseCoordinate(dynamic value) {
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  /// Validates provincial delivery: delivered-to is required, signature and proof image required.
+  static Future<bool> _validateProvincialDelivery(
+      AirSeaFormState formState) async {
+    if (formState.provincialDeliveredToController.text.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter the client contact person name',
+      );
+      return false;
+    }
+    if (formState.receiverSignatureBytes.value == null ||
+        formState.receiverSignatureBytes.value!.isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture recipient signature',
+      );
+      return false;
+    }
+    if (formState.cameraDropOffPicture.value.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture proof image for delivery',
+      );
+      return false;
+    }
+    return true;
+  }
 }
-
-

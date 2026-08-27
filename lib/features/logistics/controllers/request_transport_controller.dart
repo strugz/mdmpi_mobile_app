@@ -1,27 +1,27 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/map_helper.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_maps_service.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/location_alternative_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../base/utils/local_storage/text_storage_service.dart';
-import '../models/rider_location_model.dart';
 
 class RequestTransportController extends GetxController {
   static RequestTransportController get instance => Get.find();
@@ -50,9 +50,8 @@ class RequestTransportController extends GetxController {
   /// Variables for Location Listening
   StreamSubscription<Position>? positionStream;
 
-  /// WebSocket Controller - Lazy getter
-  WebSocketDispatcherController get webSocketController =>
-      Get.find<WebSocketDispatcherController>();
+  RiderRealtimeTrackingController get riderTrackingController =>
+      Get.find<RiderRealtimeTrackingController>();
 
   /// New loading state
   final RxBool isLoadingAction = false.obs;
@@ -71,6 +70,8 @@ class RequestTransportController extends GetxController {
   late final IPlacesService _placesService;
   late final ILocationTrackingService _locationTrackingService;
   late final ILocationAlternativeService _locationAlternativeService;
+
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   /// Reactive fields for location alternatives tracking
   final RxBool hasLocationAlternative = false.obs;
@@ -128,6 +129,12 @@ class RequestTransportController extends GetxController {
   }
 
   Future<void> startLocationTracking() async {
+    final permission = await _permissionService.requireForFeature(
+      PermissionType.location,
+      featureName: 'Delivery tracking',
+    );
+    if (!permission.granted) return;
+
     positionStream = _locationTrackingService
         .startTracking(
       accuracy: LocationAccuracy.high,
@@ -148,23 +155,14 @@ class RequestTransportController extends GetxController {
       if (currentRequest == null) return;
 
       if (currentRequest.status == BTexts.statusForDelivery) {
-        if (webSocketController.isConnected.value) {
-          final riderLocation = RiderLocationModel(
-            type: 'location_update',
-            requestId: currentRequest.id,
-            latitude: position.latitude,
-            longitude: position.longitude,
-            timestamp: position.timestamp,
-            status: 'en_route',
-            riderInitial: currentRequest.deliveredBy,
-            eta: eta.value ?? "Calculating...",
-            distance: distance.value ?? "Calculating...",
-            client: currentRequest.client.name,
-          );
-          webSocketController.sendMessage(jsonEncode(riderLocation.toJson()));
-        } else {
-          webSocketController.reconnectWebSocket();
-        }
+        riderTrackingController.startTrackingForRequest(
+          currentRequest,
+          eta: eta.value,
+          distance: distance.value,
+        );
+      } else if (riderTrackingController.activeRequestId.value ==
+          currentRequest.id) {
+        riderTrackingController.stopTracking();
       }
     });
   }
@@ -328,6 +326,12 @@ class RequestTransportController extends GetxController {
 
   Future<void> getUserLocation() async {
     try {
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.location,
+        featureName: 'Request transport map',
+      );
+      if (!permission.granted) return;
+
       final position = await _locationTrackingService.getCurrentLocation(
         accuracy: LocationAccuracy.high,
       );
@@ -350,6 +354,63 @@ class RequestTransportController extends GetxController {
       destination: destination.value,
       eta: eta.value,
     );
+  }
+
+  Future<void> openExternalNavigation() async {
+    final origin = currentLocation.value;
+    final destinationPoint = _effectiveNavigationDestination();
+
+    if (origin == LatLng(0, 0)) {
+      BLoaders.warningSnackBar(
+        title: 'Navigation',
+        message: 'Current location is not ready yet.',
+      );
+      return;
+    }
+
+    if (destinationPoint == null || destinationPoint == LatLng(0, 0)) {
+      BLoaders.warningSnackBar(
+        title: 'Navigation',
+        message: 'Destination is not ready yet.',
+      );
+      return;
+    }
+
+    final originText = '${origin.latitude},${origin.longitude}';
+    final destinationText =
+        '${destinationPoint.latitude},${destinationPoint.longitude}';
+
+    final launchCandidates = <Uri>[
+      Uri.parse('waze://?ll=$destinationText&navigate=yes'),
+      Uri.parse('google.navigation:q=$destinationText&mode=d'),
+      Uri.parse(
+        'https://www.google.com/maps/dir/?api=1'
+        '&origin=$originText'
+        '&destination=$destinationText'
+        '&travelmode=driving',
+      ),
+    ];
+
+    for (final uri in launchCandidates) {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
+
+    BLoaders.errorSnackBar(
+      title: 'Navigation',
+      message: 'No navigation app is available.',
+    );
+  }
+
+  LatLng? _effectiveNavigationDestination() {
+    final savedLocation = currentLocationAlternative.value;
+    if (hasLocationAlternative.value && savedLocation != null) {
+      return LatLng(savedLocation.latitude, savedLocation.longitude);
+    }
+
+    return destination.value;
   }
 
   /// Handle search here button press
@@ -440,38 +501,6 @@ class RequestTransportController extends GetxController {
     }
   }
 
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> polylineCoordinates = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int shift = 0, result = 0;
-      int byte;
-
-      do {
-        byte = encoded.codeUnitAt(index++) - 63;
-        result |= (byte & 0x1F) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-      int deltaLat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lat += deltaLat;
-
-      shift = 0;
-      result = 0;
-      do {
-        byte = encoded.codeUnitAt(index++) - 63;
-        result |= (byte & 0x1F) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-      int deltaLng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lng += deltaLng;
-
-      polylineCoordinates.add(LatLng(lat / 1E5, lng / 1E5));
-    }
-    return polylineCoordinates;
-  }
-
   Future<void> processRequestDispatchOrDropOff(
     StandardDeliveryModel currentRequest,
     String userInitial,
@@ -492,6 +521,7 @@ class RequestTransportController extends GetxController {
       String newStatus = "";
       if (currentRequest.status == BTexts.statusItemPrepared) {
         newStatus = BTexts.statusForDelivery;
+        currentRequest.deliveredBy = userInitial;
         currentRequest.locationStartedAt =
             '${currentLocation.value.latitude} ${currentLocation.value.longitude}';
 
@@ -510,13 +540,20 @@ class RequestTransportController extends GetxController {
         await clearLocationAlternativesOnDropOff();
         _textStorageService.clearAll();
 
-        webSocketController.onClose();
+        await riderTrackingController.stopTracking();
       } else {
         isLoadingAction.value = false; // <--- Stop loading on error
       }
 
       await requestController.updateRequestStatus(
           currentRequest, newStatus, userInitial);
+      if (newStatus == BTexts.statusForDelivery) {
+        await riderTrackingController.startTrackingForRequest(
+          currentRequest,
+          eta: eta.value,
+          distance: distance.value,
+        );
+      }
     } catch (e) {
       BLoaders.errorSnackBar(
           title: "Error",

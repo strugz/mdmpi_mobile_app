@@ -32,4 +32,8 @@ class BRoutes{
   static const localStorageViewer = '/local-storage-viewer';
   // Collection - total collected
   static const totalCollected = '/collection/total-collected';
+  static const signatureOutbox = '/signature-outbox';
+  static const imageOutbox = '/image-outbox';
+  // Back load routes
+  static const backLoad = '/back-load';
 }

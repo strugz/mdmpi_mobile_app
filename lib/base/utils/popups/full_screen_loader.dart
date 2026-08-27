@@ -5,7 +5,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
@@ -14,12 +14,14 @@ import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick_up_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_modal_config.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
 import '../../../common/widgets/texts/product_title_text.dart';
@@ -406,25 +408,67 @@ class BFullScreenLoader {
     );
   }
 
+  /// @deprecated Use [showStandardDeliveryDialog] with [StandardDeliveryModalConfig] instead.
+  /// Kept for backward compatibility with hotline direct role handlers.
   static void showRequestForReleasingDialog(BuildContext context,
       StandardDeliveryModel requestModel, VoidCallback onPressed, bool status,
       IDeliveryRequestController requestController) {
     final dark = BHelperFunctions.isDarkMode(context);
+
+    // Bridge old parameters to config-driven modal
+    final config = StandardDeliveryModalConfig(
+      role: '',
+      isActionVisible: status,
+      buttonLabel: _legacyButtonLabel(requestModel.status),
+      onAction: onPressed,
+    );
 
     showModalBottomSheet<void>(
       backgroundColor: dark ? BColors.black : BColors.light,
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return SafeArea(
-          child: BModal(
-            requestModel: requestModel,
-            onPressed: onPressed,
-            requestController: requestController,
-            status: status,
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: BModal(
+              requestModel: requestModel,
+              config: config,
+            ),
           ),
         );
       },
+    );
+  }
+
+  /// Maps status to legacy button label for backward-compatible dialog.
+  static String _legacyButtonLabel(String status) {
+    switch (status) {
+      case BTexts.statusNewRequest:
+        return BTexts.requestModalPrepareItemButtonText;
+      case BTexts.statusGettingSuppliesReady:
+        return BTexts.requestModalPackedAndReadyButtonText;
+      default:
+        return '';
+    }
+  }
+
+  /// Show Standard Delivery request modal dialog driven by [StandardDeliveryModalConfig].
+  static void showStandardDeliveryDialog(
+    BuildContext context,
+    StandardDeliveryModel requestModel,
+    StandardDeliveryModalConfig config,
+  ) {
+    // Navigate to a full-screen page implementation instead of showing a bottom sheet.
+    // This preserves the public API while changing the presentation to a whole page.
+    Get.to(
+      () => StandardDeliveryPage(
+        requestModel: requestModel,
+        config: config,
+      ),
+      fullscreenDialog: true,
     );
   }
 

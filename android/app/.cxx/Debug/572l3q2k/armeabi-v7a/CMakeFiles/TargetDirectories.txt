@@ -1,2 +1,0 @@
-D:/VuexJaysWayFile/MDMPIMobileApp/mdmpi_mobile_app/android/app/.cxx/Debug/572l3q2k/armeabi-v7a/CMakeFiles/edit_cache.dir
-D:/VuexJaysWayFile/MDMPIMobileApp/mdmpi_mobile_app/android/app/.cxx/Debug/572l3q2k/armeabi-v7a/CMakeFiles/rebuild_cache.dir

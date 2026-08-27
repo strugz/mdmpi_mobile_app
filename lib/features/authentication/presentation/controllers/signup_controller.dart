@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -47,13 +48,31 @@ class SignupController extends GetxController {
 
   GlobalKey<FormState> signupFormKey = GlobalKey<FormState>();
 
-  final roleRepository = Get.find<RoleRepository>();
-  final departmentRepository = Get.find<DepartmentRepository>();
+  // Do NOT call Get.find<RoleRepository>() or Get.find<DepartmentRepository>()
+  // at field initialization time. Those repositories create Firestore
+  // instances and will throw if Firebase is not initialized. Resolve them
+  // lazily in onInit or when needed.
+  RoleRepository? _roleRepository;
+  DepartmentRepository? _departmentRepository;
 
   @override
   void onInit() {
-    // TODO: implement onInit
     super.onInit();
+
+    // Resolve repositories only if Firebase is initialized and they are
+    // registered in the binding. This prevents creating Firestore instances
+    // on unsupported platforms.
+    try {
+      if (Firebase.apps.isNotEmpty) {
+        if (Get.isRegistered<RoleRepository>()) {
+          _roleRepository = Get.find<RoleRepository>();
+        }
+        if (Get.isRegistered<DepartmentRepository>()) {
+          _departmentRepository = Get.find<DepartmentRepository>();
+        }
+      }
+    } catch (_) {}
+
     fetchAllRoles();
     fetchAllDepartments();
   }
@@ -175,8 +194,23 @@ class SignupController extends GetxController {
   /// -- Load Sign up Components
   Future<void> fetchAllRoles() async {
     try {
-      final role = await roleRepository.getRoles();
-      roles(role);
+      // Attempt to resolve repository lazily if not already available and if
+      // Firebase has been initialized.
+      RoleRepository? repo = _roleRepository;
+      try {
+        if (repo == null && Firebase.apps.isNotEmpty && Get.isRegistered<RoleRepository>()) {
+          repo = Get.find<RoleRepository>();
+          _roleRepository = repo;
+        }
+      } catch (_) {}
+
+      if (repo == null) {
+        roles(List<RoleModel>.empty());
+        return;
+      }
+
+      final roleList = await repo.getRoles();
+      roles(roleList);
     } catch (e) {
       roles(List<RoleModel>.empty());
     } finally {
@@ -186,8 +220,21 @@ class SignupController extends GetxController {
 
   Future<void> fetchAllDepartments() async {
     try {
-      final department = await departmentRepository.getDepartments();
-      departments(department);
+      DepartmentRepository? repo = _departmentRepository;
+      try {
+        if (repo == null && Firebase.apps.isNotEmpty && Get.isRegistered<DepartmentRepository>()) {
+          repo = Get.find<DepartmentRepository>();
+          _departmentRepository = repo;
+        }
+      } catch (_) {}
+
+      if (repo == null) {
+        departments(List<DepartmentModel>.empty());
+        return;
+      }
+
+      final departmentList = await repo.getDepartments();
+      departments(departmentList);
     } catch (e) {
       departments(List<DepartmentModel>.empty());
     } finally {

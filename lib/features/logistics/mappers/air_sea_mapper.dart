@@ -5,6 +5,16 @@ import '../../../base/utils/formatters/formatters.dart';
 
 /// Mapper class for converting AirSeaModel to DTOs for API operations.
 class AirSeaMapper {
+  static String? _nonEmptyOrNull(String? value) {
+    if (value == null) return null;
+    final trimmed = value.trim();
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  static String? _normalizeDateTimeValue(String? value) {
+    return BFormatter.normalizeToIsoDatetime(value, toUtc: true);
+  }
+
   /// Maps AirSeaModel to AirSeaInsertDto for API insert operations
   static AirSeaInsertDto toInsertDto(AirSeaModel m) {
     dynamic parseIntIfPossible(String s) {
@@ -21,26 +31,38 @@ class AirSeaMapper {
       datePickUp: m.datePickUp.isNotEmpty ? m.datePickUp : null,
       status: m.status.isNotEmpty ? m.status : null,
       createdBy: m.createdBy.isNotEmpty ? m.createdBy : null,
+      updatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
     );
   }
 
   /// Maps AirSeaModel to AirSeaUpdateDto for API update operations
-  static AirSeaUpdateDto toUpdateDto(AirSeaModel m) {
+  static AirSeaUpdateDto toUpdateDto(AirSeaModel m, String updatedBy) {
     return AirSeaUpdateDto(
       requestID: m.id.isNotEmpty ? m.id : null,
       mobileID: m.mobileId,
-      preparedBy: m.preparedBy.isNotEmpty ? m.preparedBy : null,
+      preparedBy: _nonEmptyOrNull(m.preparedBy),
       itemPreparedAt: BFormatter.normalizeToIsoDatetime(m.itemPreparedAt),
       itemPreparedEndAt: BFormatter.normalizeToIsoDatetime(m.itemPreparedEndAt),
-      remarks: m.remarks.isNotEmpty ? m.remarks : null,
-      status: m.status.isNotEmpty ? m.status : null,
-      receivedBy: m.receivedBy.isNotEmpty ? m.receivedBy : null,
-      waybillNumber: m.waybillNumber.isNotEmpty ? m.waybillNumber : null,
-      tripTicketNumber: m.tripTicketNumber.isNotEmpty ? m.tripTicketNumber : null,
-      driver: m.driver.isNotEmpty ? m.driver : null,
-      helper: m.helper.isNotEmpty ? m.helper : null,
+      remarks: _nonEmptyOrNull(m.remarks),
+      status: _nonEmptyOrNull(m.status),
+      receivedBy: _nonEmptyOrNull(m.receivedBy),
+      waybillNumber: _nonEmptyOrNull(m.waybillNumber),
+      tripTicketNumber: _nonEmptyOrNull(m.tripTicketNumber),
+      driver: _nonEmptyOrNull(m.driver),
+      helper: _nonEmptyOrNull(m.helper),
       dispatchedAt: BFormatter.normalizeToIsoDatetime(m.dispatchedAt),
       dropOffAt: BFormatter.normalizeToIsoDatetime(m.dropOffAt),
+      provincialReceiverName: _nonEmptyOrNull(m.provincialReceiverName),
+      provincialPickUpBy: _nonEmptyOrNull(m.provincialPickUpBy),
+      provincialPickUpAt: _normalizeDateTimeValue(m.provincialPickUpAt),
+      provincialInTransitAt: _normalizeDateTimeValue(m.provincialInTransitAt),
+      provincialInTransitLocation: _nonEmptyOrNull(m.provincialInTransitLocation),
+      provincialDeliveredEndAt: _normalizeDateTimeValue(
+        m.provincialDeliveredEndAt,
+      ),
+      provincialDeliveredLocation:
+          _nonEmptyOrNull(m.provincialDeliveredLocation),
+      updatedBy: _nonEmptyOrNull(updatedBy),
     );
   }
 
@@ -67,6 +89,19 @@ class AirSeaMapper {
     put('Helper', m.helper);
     put('DispatchedAt', BFormatter.normalizeToIsoDatetime(m.dispatchedAt));
     put('DropOffAt', BFormatter.normalizeToIsoDatetime(m.dropOffAt));
+    put('ProvincialReceiverName', m.provincialReceiverName);
+    put('ProvincialPickUpBy', m.provincialPickUpBy);
+    put('ProvincialPickUpAt', _normalizeDateTimeValue(m.provincialPickUpAt));
+    put(
+      'ProvincialInTransitAt',
+      _normalizeDateTimeValue(m.provincialInTransitAt),
+    );
+    put('ProvincialInTransitLocation', m.provincialInTransitLocation);
+    put(
+      'ProvincialDeliveredEndAt',
+      _normalizeDateTimeValue(m.provincialDeliveredEndAt),
+    );
+    put('ProvincialDeliveredLocation', m.provincialDeliveredLocation);
     put('Remarks', m.remarks);
     put('Status', m.status);
 

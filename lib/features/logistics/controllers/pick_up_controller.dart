@@ -124,6 +124,10 @@ class PickUpController extends GetxController {
     await dataManager.fetchPickUps(this, useLocalStorage.value);
   }
 
+  Future<void> hardResetPickUps() async {
+    await dataManager.hardResetPickUps(this);
+  }
+
   /// Loads item categories from the repository and populates form state.
   /// Safe to call multiple times; will not duplicate data.
   /// Sets default category selection (prefers 'reagent' if available).
@@ -179,6 +183,25 @@ class PickUpController extends GetxController {
     filterManager.selectFilter(filter, pickUps);
   }
 
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, pickUps);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, pickUps);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, pickUps);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, pickUps);
+  }
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query, pickUps);
+  }
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================
@@ -253,8 +276,10 @@ class PickUpController extends GetxController {
   ///
   /// [value] True to use local storage, false to use API directly
   void toggleStoragePreference(bool value) {
+    if (useLocalStorage.value == value) {
+      return;
+    }
     useLocalStorage.value = value;
     loadPickUps();
   }
 }
-

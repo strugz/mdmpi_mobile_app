@@ -11,7 +11,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import 'package:mdmpi_mobile_app/features/logistics/services/implementations/stock_receive_role_handler.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
+import '../../../../base/utils/constants/text_strings.dart';
 
 /// Role priority map: Lower number = Higher priority (more capabilities)
 const _rolePriority = {
@@ -73,7 +73,7 @@ class StockReceiveList extends StatelessWidget {
               absorbing: controller.isLoading.value,
               child: RefreshIndicator(
                 onRefresh: () async {
-                  await controller.loadStockReceives();
+                  await controller.hardResetStockReceives();
                 },
                 child: ListView.separated(
                   shrinkWrap: true,
@@ -117,7 +117,7 @@ class StockReceiveList extends StatelessWidget {
             absorbing: controller.isLoading.value,
             child: RefreshIndicator(
               onRefresh: () async {
-                await controller.loadStockReceives();
+                await controller.hardResetStockReceives();
               },
               child: LayoutBuilder(
                 builder: (context, constraints) {

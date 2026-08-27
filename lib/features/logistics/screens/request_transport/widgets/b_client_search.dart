@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
@@ -58,8 +58,7 @@ class BClientSearch extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             requestTransportController.currentLocationAlternative.value?.address ??
-                            requestTransportController.addressTextController.text ??
-                            'Unknown Location',
+                            requestTransportController.addressTextController.text,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: BColors.light,
                               overflow: TextOverflow.ellipsis,

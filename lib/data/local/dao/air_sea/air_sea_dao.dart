@@ -9,6 +9,11 @@ class AirSeaDao {
 
   AirSeaDao(this.db);
 
+  String _serializeDateTime(DateTime? value) {
+    if (value == null) return '';
+    return value.toUtc().toIso8601String();
+  }
+
   // Local status map for status progression validation
   static const Map<String, int> _statusStringToInt = {
     'New Request': 1,
@@ -19,6 +24,9 @@ class AirSeaDao {
     'Dispatch': 6,
     'Drop Off': 7,
     'Received': 8,
+    'Provincial Pick Up': 9,
+    'Provincial In Transit': 10,
+    'Provincial Delivered': 11,
     'Cancelled': 99,
   };
 
@@ -100,7 +108,7 @@ class AirSeaDao {
       'RequestID': parsedId,
       'ClientID': airSeaModel.clientId,
       'ItemCategoryID': airSeaModel.itemCategoryId,
-            'MobileID': airSeaModel.mobileId,
+      'MobileID': airSeaModel.mobileId,
       'DatePickUp': airSeaModel.datePickUp,
       'ItemPreparedAt': airSeaModel.itemPreparedAt,
       'ItemPreparedEndAt': airSeaModel.itemPreparedEndAt,
@@ -113,6 +121,13 @@ class AirSeaDao {
       'Helper': airSeaModel.helper,
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
+      'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
+      'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
+      'ProvincialInTransitAt': airSeaModel.provincialInTransitAt,
+      'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
+      'ProvincialDeliveredEndAt':airSeaModel.provincialDeliveredEndAt,
+      'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
+      'ProvincialReceiverName': airSeaModel.provincialReceiverName,
       'Status': airSeaModel.status,
       'Remarks': airSeaModel.remarks,
       'CreatedBy': airSeaModel.createdBy,
@@ -176,7 +191,7 @@ class AirSeaDao {
         'RequestID': parsedId,
         'ClientID': airSeaModel.clientId,
         'ItemCategoryID': airSeaModel.itemCategoryId,
-                'MobileID': airSeaModel.mobileId,
+        'MobileID': airSeaModel.mobileId,
         'DatePickUp': airSeaModel.datePickUp,
         'ItemPreparedAt': airSeaModel.itemPreparedAt,
         'ItemPreparedEndAt': airSeaModel.itemPreparedEndAt,
@@ -189,6 +204,14 @@ class AirSeaDao {
         'Helper': airSeaModel.helper,
         'DispatchedAt': airSeaModel.dispatchedAt,
         'DropOffAt': airSeaModel.dropOffAt,
+        'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
+        'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
+        'ProvincialInTransitAt':
+        airSeaModel.provincialInTransitAt,
+        'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
+        'ProvincialDeliveredEndAt':airSeaModel.provincialDeliveredEndAt,
+        'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
+        'ProvincialReceiverName': airSeaModel.provincialReceiverName,
         'Status': airSeaModel.status,
         'Remarks': airSeaModel.remarks,
         'CreatedBy': airSeaModel.createdBy,
@@ -273,7 +296,7 @@ class AirSeaDao {
     Map<String, dynamic> airSeaData = {
       'ClientID': airSeaModel.clientId,
       'ItemCategoryID': airSeaModel.itemCategoryId,
-            'MobileID': airSeaModel.mobileId,
+      'MobileID': airSeaModel.mobileId,
       'DatePickUp': airSeaModel.datePickUp,
       'ItemPreparedAt': airSeaModel.itemPreparedAt,
       'ItemPreparedEndAt': airSeaModel.itemPreparedEndAt,
@@ -286,6 +309,13 @@ class AirSeaDao {
       'Helper': airSeaModel.helper,
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
+      'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
+      'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
+      'ProvincialInTransitAt':airSeaModel.provincialInTransitAt,
+      'ProvincialInTransitLocation': airSeaModel.provincialInTransitLocation,
+      'ProvincialDeliveredEndAt':airSeaModel.provincialDeliveredEndAt,
+      'ProvincialDeliveredLocation': airSeaModel.provincialDeliveredLocation,
+      'ProvincialReceiverName': airSeaModel.provincialReceiverName,
       'Status': airSeaModel.status,
       'Remarks': airSeaModel.remarks,
       'CreatedBy': airSeaModel.createdBy,

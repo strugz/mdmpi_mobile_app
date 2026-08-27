@@ -6,6 +6,7 @@ class AirSeaInsertDto {
   final String? datePickUp;
   final String? status;
   final String? createdBy;
+  final String? updatedBy;
 
   AirSeaInsertDto({
     this.itemCategoryID,
@@ -14,6 +15,7 @@ class AirSeaInsertDto {
     this.datePickUp,
     this.status,
     this.createdBy,
+    this.updatedBy,
   });
 
   Map<String, dynamic> toJson() {
@@ -28,6 +30,7 @@ class AirSeaInsertDto {
     put('DatePickUp', datePickUp);
     put('Status', status);
     put('CreatedBy', createdBy);
+    put('UpdatedBy', updatedBy);
 
     return data;
   }

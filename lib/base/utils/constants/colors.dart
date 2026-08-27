@@ -59,5 +59,9 @@ class BColors {
 
 
   // Priority Colors
+  static const Color priorityLow = Color(0xFF2E7D32);       // deep green
+  static const Color priorityMedium = Color(0xFFF57C00);     // amber-orange
+  static const Color priorityHigh = Color(0xFFC62828);       // deep red
+  static const Color priorityRush = Color(0xFF7B1FA2);       // deep purple
 
 }

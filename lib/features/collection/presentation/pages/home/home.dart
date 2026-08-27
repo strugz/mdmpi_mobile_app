@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
@@ -235,7 +235,7 @@ class CollectionHomeScreen extends StatelessWidget {
 
                       // Limit to the most recent 3 entries
                       final recentThree = recentItems.take(3).toList();
-                      
+
                       final historyList = recentThree.map((e) => e['history'] as CollectionHistoryModel).toList();
                       final accountNames = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['accountName'].toString() };
                       final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId']?.toString() };
@@ -248,7 +248,7 @@ class CollectionHomeScreen extends StatelessWidget {
                         items: items,
                       );
                     }),
-                    
+
                     // Add extra space at the bottom for scrolling comfort
                     const SizedBox(height: BSizes.spaceBtwSections * 2),
                   ],

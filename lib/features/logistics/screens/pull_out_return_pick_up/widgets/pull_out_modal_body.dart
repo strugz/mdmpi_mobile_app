@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
@@ -56,8 +56,9 @@ class PullOutModalBody extends StatelessWidget {
     final UserController userController = Get.find();
 
     final role = userController.user.value.role;
-    final hasRestrictedRole =
-    ['Request', 'Release'].any((r) => role.contains(r));
+    // Show Delivery Info if user has Courier role (Courier can set In Transit)
+    // Even if user has Request/Release roles, Courier capability takes precedence
+    final hasCourierRole = role.contains(BTexts.roleCourier);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +114,7 @@ class PullOutModalBody extends StatelessWidget {
         ],
 
         // ========== BODY: Delivery Info (for new requests) ==========
-        if (requestModel.requestStatus == BTexts.statusNewRequest && !hasRestrictedRole) ...[
+        if (requestModel.requestStatus == BTexts.statusNewRequest && hasCourierRole) ...[
           const SizedBox(height: BSizes.sm),
           const BTextDivider(text: 'Delivery Info'),
           const SizedBox(height: BSizes.spaceBtwItems),

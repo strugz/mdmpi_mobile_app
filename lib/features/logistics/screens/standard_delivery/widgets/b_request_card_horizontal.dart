@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_sms_resend_icon_button.dart';
+import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/icons/b_circular_icon.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
+import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -32,11 +36,27 @@ class BRequestCardHorizontal extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BProductTitleText(
-                title: requestModel.client.name,
-                maxLines: 1,
-                bold: true,
-                fontColor: dark ? BColors.light : BColors.darkerGrey),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: BProductTitleText(
+                    title: requestModel.client.name,
+                    maxLines: 1,
+                    bold: true,
+                    fontColor: dark ? BColors.light : BColors.darkerGrey,
+                  ),
+                ),
+                const SizedBox(width: BSizes.xs),
+                BSmsResendIconButton(
+                  onResend: _handleResend,
+                  icon: Icons.send,
+                  iconSize: 15,
+                  dialogDetails:
+                      'This will use the current request status and recipient list.',
+                ),
+              ],
+            ),
             const SizedBox(height: BSizes.xxs),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -95,26 +115,9 @@ class BRequestCardHorizontal extends StatelessWidget {
             ),
             Row(
               children: [
-                BRoundedContainer(
-                  radius: 100,
-                  width: 90,
-                  backgroundColor: requestModel.preference == "Low"
-                      ? Colors.green
-                      : requestModel.preference == "Medium"
-                          ? Colors.orange
-                          : Colors.red,
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: BSizes.md, vertical: BSizes.xxs),
-                      child: BProductTitleText(
-                        title: requestModel.preference,
-                        maxLines: 1,
-                        smallSize: true,
-                        fontColor: BColors.white,
-                      ),
-                    ),
-                  ),
+                StatusChip(
+                  status: requestModel.status,
+                  compact: true,
                 ),
                 BCircularIcon(
                   backgroundColor: Colors.transparent,
@@ -124,11 +127,9 @@ class BRequestCardHorizontal extends StatelessWidget {
                   width: 20,
                   height: 20,
                 ),
-                BProductTitleText(
-                  title: requestModel.status,
-                  maxLines: 1,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.darkerGrey,
+                StatusChip(
+                  status: requestModel.preference,
+                  compact: true,
                 ),
               ],
             ),
@@ -136,5 +137,34 @@ class BRequestCardHorizontal extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _handleResend() async {
+    final MessagingController controller = Get.find<MessagingController>();
+    final SmsResult result = await controller.sendSmsMessage(
+      requestModel.status,
+      requestModel,
+    );
+
+    switch (result) {
+      case SmsSuccess():
+        BLoaders.successSnackBar(
+          title: 'SMS sent',
+          message: result.message,
+        );
+        return;
+      case SmsPartialSuccess():
+        BLoaders.warningSnackBar(
+          title: 'SMS partially sent',
+          message: result.message,
+        );
+        return;
+      case SmsLikelyNetworkIssue():
+        throw Exception(result.message);
+      case SmsPermissionDenied():
+        throw Exception(result.message);
+      case SmsSendError():
+        throw Exception(result.error);
+    }
   }
 }

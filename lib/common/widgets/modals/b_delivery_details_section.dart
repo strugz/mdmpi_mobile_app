@@ -3,11 +3,14 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/request_image_dialog.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/signature/captured_signature_image.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/b_map_location_link.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_view_delivered_item_button.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_captured_signature_image.dart';
 
 /// Displays delivery details section with driver, helper, receiver info,
 /// timestamps, signature watermark, and view item button.
@@ -19,6 +22,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
     super.key,
     this.sectionTitle = 'Delivery Details',
     this.driver = '',
+    this.driverLabel = 'Driver',
     this.helper = '',
     this.receivedBy = '',
     this.receivedByLabel = 'Released By',
@@ -33,6 +37,22 @@ class BDeliveryDetailsSection extends StatelessWidget {
     this.dialogTitle,
     this.apiController = 'Request',
     this.showViewItemButton = true,
+    this.completedAtFormatter,
+    this.location = '',
+    this.locationLabel = 'Delivered Location',
+    this.signatureBelowReceivedBy = false,
+    // Signature sizing options (new): if null, default behavior preserved
+    this.signatureWidth,
+    this.signatureHeight,
+    this.signatureWidthFactor = 0.35,
+    this.signatureMinWidth = 80.0,
+    this.signatureMaxWidth = 130.0,
+    // Default to left so Received By appears on the left by default
+    this.signatureLeft = false,
+    // If null, the receivedBy placement follows signatureLeft; otherwise explicit
+    this.receivedByLeft,
+    this.imageProofType = 'Proof',
+    this.signatureType = 'Signature',
   });
 
   /// Section header text displayed at the top
@@ -40,6 +60,8 @@ class BDeliveryDetailsSection extends StatelessWidget {
 
   /// Driver name to display
   final String driver;
+
+  final String driverLabel;
 
   /// Helper name to display
   final String helper;
@@ -83,6 +105,44 @@ class BDeliveryDetailsSection extends StatelessWidget {
   /// Whether to show the view item button
   final bool showViewItemButton;
 
+  /// Optional custom formatter for completedAt (returns formatted string)
+  final String Function(String)? completedAtFormatter;
+
+  /// Optional location coordinates/text to show as a map link row.
+  final String location;
+
+  /// Label for the optional location row.
+  final String locationLabel;
+
+  /// If true, display signature below the Received By value instead of a watermark
+  final bool signatureBelowReceivedBy;
+
+  /// If true, render watermark or below-received signature on the left side instead of right
+  final bool signatureLeft;
+
+  /// Optional explicit signature width (overrides computed factor)
+  final double? signatureWidth;
+
+  /// Optional explicit signature height (if not provided, height = width * 0.5 clamped)
+  final double? signatureHeight;
+
+  /// Signature width as factor of available width (default 0.35)
+  final double signatureWidthFactor;
+
+  /// Signature minimum width when computing from factor
+  final double signatureMinWidth;
+
+  /// Signature maximum width when computing from factor
+  final double signatureMaxWidth;
+
+  /// If non-null, explicitly place the Received By block on the left when true,
+  /// or on the right when false. When null, it follows [signatureLeft].
+  final bool? receivedByLeft;
+
+  final String imageProofType;
+
+  final String signatureType;
+
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
@@ -94,13 +154,21 @@ class BDeliveryDetailsSection extends StatelessWidget {
     final hasReceivedBy = receivedBy.isNotEmpty;
     final hasDeparted = departedAt != null && departedAt!.isNotEmpty;
     final hasCompleted = completedAt != null && completedAt!.isNotEmpty;
+    final hasLocation = location.trim().isNotEmpty;
+
+    // Decide which side shows the Received By block. If receivedByLeft is null,
+    // follow signatureLeft; otherwise use the explicit value. Also ensure there
+    // is a receivedBy to show.
+    final bool placeReceivedLeft =
+        (receivedByLeft ?? signatureLeft) && hasReceivedBy;
 
     // Hide entire section if no data
     if (!hasDriver &&
         !hasHelper &&
         !hasReceivedBy &&
         !hasDeparted &&
-        !hasCompleted) {
+        !hasCompleted &&
+        !hasLocation) {
       return const SizedBox.shrink();
     }
 
@@ -114,25 +182,52 @@ class BDeliveryDetailsSection extends StatelessWidget {
         // Signature as watermark behind entire section - responsive
         LayoutBuilder(
           builder: (context, constraints) {
-            // Calculate signature size based on available width
+            // Calculate signature size based on available width or explicit props
             final screenWidth = constraints.maxWidth;
-            final signatureWidth = (screenWidth * 0.35).clamp(80.0, 130.0);
-            final signatureHeight = (signatureWidth * 0.5).clamp(40.0, 65.0);
 
+            double computedSignatureWidth;
+            if (signatureWidth != null) {
+              computedSignatureWidth = signatureWidth!.clamp(0.0, screenWidth);
+            } else {
+              // If only receivedBy is present (no driver/helper), allocate more width
+              final bool soloReceiver =
+                  !hasDriver && !hasHelper && hasReceivedBy;
+              final double effectiveFactor =
+                  soloReceiver ? 0.75 : signatureWidthFactor;
+              // Allow expansion up to 95% of container when solo receiver
+              final double maxAllowed =
+                  soloReceiver ? (screenWidth * 0.95) : signatureMaxWidth;
+              computedSignatureWidth = (screenWidth * effectiveFactor)
+                  .clamp(signatureMinWidth, maxAllowed);
+            }
+
+            double computedSignatureHeight;
+            if (signatureHeight != null) {
+              computedSignatureHeight =
+                  signatureHeight!.clamp(0.0, screenWidth);
+            } else {
+              computedSignatureHeight =
+                  (computedSignatureWidth * 0.5).clamp(40.0, 130.0);
+            }
             return Stack(
               children: [
-                // Signature watermark - right aligned and faded
-                if (hasReceivedBy && showSignatureWatermark)
+                // Signature watermark - right aligned and faded (only when not using below-received placement)
+                if (hasReceivedBy &&
+                    showSignatureWatermark &&
+                    !signatureBelowReceivedBy)
                   Positioned(
                     top: 20,
-                    right: 30,
+                    // position left or right based on signatureLeft flag
+                    left: signatureLeft ? 30 : null,
+                    right: signatureLeft ? null : 30,
                     child: Container(
                       color: Colors.white,
                       child: SizedBox(
-                        width: signatureWidth,
-                        height: signatureHeight,
+                        width: computedSignatureWidth,
+                        height: computedSignatureHeight,
                         child: CapturedSignatureImage(
                           requestId: requestId,
+                          type: signatureType,
                         ),
                       ),
                     ),
@@ -145,14 +240,14 @@ class BDeliveryDetailsSection extends StatelessWidget {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Left column: Driver and Helper
+                        // Left column: Driver/Helper and optionally Received By (if placed left)
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               if (hasDriver)
                                 BProductTitleText(
-                                  title: 'Driver: $driver',
+                                  title: '$driverLabel: $driver',
                                   maxLines: 3,
                                   smallSize: true,
                                   fontColor: textColor,
@@ -166,49 +261,108 @@ class BDeliveryDetailsSection extends StatelessWidget {
                                   smallSize: true,
                                   fontColor: textColor,
                                 ),
+                              if (placeReceivedLeft) ...[
+                                const SizedBox(height: BSizes.xs),
+                                BLabelValueText(
+                                  label: receivedByLabel,
+                                  value: receivedBy,
+                                  showLabel: true,
+                                  maxLines: 3,
+                                  smallSize: true,
+                                  textColor: textColor,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                if (signatureBelowReceivedBy) ...[
+                                  const SizedBox(height: BSizes.sm),
+                                  FractionallySizedBox(
+                                    widthFactor: 0.9,
+                                    child: SizedBox(
+                                      height: computedSignatureHeight,
+                                      child: CapturedSignatureImage(
+                                        requestId: requestId,
+                                        type: signatureType,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ],
                           ),
                         ),
                         const SizedBox(width: BSizes.sm),
-                        // Right column: Receiver (signature overlays here)
-                        if (hasReceivedBy)
-                          Expanded(
-                            child: BProductTitleText(
-                              title: '$receivedByLabel: $receivedBy',
-                              maxLines: 3,
-                              smallSize: true,
-                              fontColor: textColor,
-                            ),
+                        // Right column: show Received By if it's not placed on the left
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (!placeReceivedLeft && hasReceivedBy) ...[
+                                BLabelValueText(
+                                  label: receivedByLabel,
+                                  value: receivedBy,
+                                  showLabel: true,
+                                  maxLines: 3,
+                                  smallSize: true,
+                                  textColor: textColor,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                if (signatureBelowReceivedBy) ...[
+                                  const SizedBox(height: BSizes.sm),
+                                  FractionallySizedBox(
+                                    widthFactor: 0.9,
+                                    child: SizedBox(
+                                      height: computedSignatureHeight,
+                                      child: CapturedSignatureImage(
+                                        requestId: requestId,
+                                        type: signatureType,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ],
                           ),
+                        ),
                       ],
                     ),
                     // Timestamps
                     if (hasDeparted) ...[
                       const SizedBox(height: BSizes.sm),
-                      BProductTitleText(
-                        title:
-                            '$departedAtLabel: ${BFormatter.formatDateTimeCustomizable(
-                          departedAt!,
-                          "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                          "yyyy-MM-dd HH:mm",
-                        )}',
+                      BLabelValueText(
+                        label: departedAtLabel,
+                        value: BFormatter.formatDateWithAmPm(departedAt!),
+                        showLabel: false,
+                        icon: Iconsax.calendar,
                         maxLines: 2,
                         smallSize: true,
-                        fontColor: textColor,
+                        textColor: textColor,
+                        padding: EdgeInsets.zero,
                       ),
                     ],
                     if (hasCompleted) ...[
                       const SizedBox(height: BSizes.sm),
-                      BProductTitleText(
-                        title:
-                            '$completedAtLabel: ${BFormatter.formatDateTimeCustomizable(
-                          completedAt!,
-                          "yyyy-MM-ddTHH:mm:ss.SSSSSS",
-                          "yyyy-MM-dd HH:mm",
-                        )}',
+                      BLabelValueText(
+                        label: completedAtLabel,
+                        value: completedAtFormatter != null
+                            ? completedAtFormatter!(completedAt!)
+                            : BFormatter.formatDateWithAmPm(completedAt!),
+                        showLabel: false,
+                        icon: Iconsax.calendar_1,
                         maxLines: 2,
                         smallSize: true,
-                        fontColor: textColor,
+                        textColor: textColor,
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                    if (hasLocation) ...[
+                      const SizedBox(height: BSizes.sm),
+                      BMapLocationLink(
+                        label: locationLabel,
+                        location: location,
+                        showLabel: true,
+                        icon: Iconsax.location,
+                        padding: EdgeInsets.zero,
+                        mainAlignment: MainAxisAlignment.start,
+                        iconOnly: true,
                       ),
                     ],
                   ],
@@ -229,11 +383,11 @@ class BDeliveryDetailsSection extends StatelessWidget {
                   showRequestImageDialog(
                     context,
                     requestId: requestId,
-                    fetchIfMissing: true,
                     semanticsLabel:
                         'Delivered item image for request $requestId',
                     apiController: apiController,
                     title: dialogTitle,
+                    type: imageProofType
                   );
                 },
           ),

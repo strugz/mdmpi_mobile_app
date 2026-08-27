@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -42,6 +42,11 @@ enum StandardDeliveryStatusFilter {
 class StandardDeliveryFilterManager {
   final Rx<RequestFilter> selectedFilter = RequestFilter.today.obs;
   final Rx<StandardDeliveryStatusFilter> selectedStatusFilter = StandardDeliveryStatusFilter.all.obs;
+  final Rxn<DateTime> selectedDateFrom = Rxn<DateTime>();
+  final Rxn<DateTime> selectedDateTo = Rxn<DateTime>();
+  final RxString selectedItemCategoryId = ''.obs;
+  final RxString clientNameQuery = ''.obs;
+  final RxString documentReferenceQuery = ''.obs;
   final RxList<StandardDeliveryModel> filteredRequests = <StandardDeliveryModel>[].obs;
 
   /// Reset filter manager to default state.
@@ -51,6 +56,11 @@ class StandardDeliveryFilterManager {
   void reset([List<StandardDeliveryModel>? allRequests]) {
     selectedFilter.value = RequestFilter.today;
     selectedStatusFilter.value = StandardDeliveryStatusFilter.all;
+    selectedDateFrom.value = null;
+    selectedDateTo.value = null;
+    selectedItemCategoryId.value = '';
+    clientNameQuery.value = '';
+    documentReferenceQuery.value = '';
     filteredRequests.clear();
     if (allRequests != null) {
       applyFilter(allRequests);
@@ -69,6 +79,11 @@ class StandardDeliveryFilterManager {
     final userController = Get.find<UserController>();
     final filter = selectedFilter.value;
     final statusFilter = selectedStatusFilter.value;
+    final dateFrom = selectedDateFrom.value;
+    final dateTo = selectedDateTo.value;
+    final itemCategoryId = selectedItemCategoryId.value;
+    final clientQuery = clientNameQuery.value.trim().toLowerCase();
+    final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
 
     var tempList = allRequests.where((item) {
@@ -118,7 +133,26 @@ class StandardDeliveryFilterManager {
         }
       }
 
-      return dateMatches && statusMatches && userMatches;
+      final dateFromMatches = dateFrom == null ||
+          (deliveryDate != null && !deliveryDate.isBefore(DateTime(dateFrom.year, dateFrom.month, dateFrom.day)));
+      final dateToMatches = dateTo == null ||
+          (deliveryDate != null && !deliveryDate.isAfter(DateTime(dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
+
+      final itemCategoryMatches = itemCategoryId.isEmpty || item.itemCategoryID == itemCategoryId;
+
+      final clientName = item.client.name.toLowerCase();
+      final clientNameMatches = clientQuery.isEmpty || clientName.contains(clientQuery);
+      final documentReferenceMatches = documentQuery.isEmpty ||
+          item.documentReference.any((ref) => ref.toLowerCase().contains(documentQuery));
+
+      return dateMatches &&
+          dateFromMatches &&
+          dateToMatches &&
+          statusMatches &&
+          itemCategoryMatches &&
+          clientNameMatches &&
+          documentReferenceMatches &&
+          userMatches;
     }).toList();
 
     // Sort by delivery date (newest first)
@@ -146,5 +180,29 @@ class StandardDeliveryFilterManager {
     selectedStatusFilter.value = statusFilter;
     applyFilter(allRequests.toList());
   }
-}
 
+  void selectDateFrom(DateTime? date, RxList<StandardDeliveryModel> allRequests) {
+    selectedDateFrom.value = date;
+    applyFilter(allRequests.toList());
+  }
+
+  void selectDateTo(DateTime? date, RxList<StandardDeliveryModel> allRequests) {
+    selectedDateTo.value = date;
+    applyFilter(allRequests.toList());
+  }
+
+  void selectItemCategoryId(String categoryId, RxList<StandardDeliveryModel> allRequests) {
+    selectedItemCategoryId.value = categoryId;
+    applyFilter(allRequests.toList());
+  }
+
+  void setClientNameQuery(String query, RxList<StandardDeliveryModel> allRequests) {
+    clientNameQuery.value = query;
+    applyFilter(allRequests.toList());
+  }
+
+  void setDocumentReferenceQuery(String query, RxList<StandardDeliveryModel> allRequests) {
+    documentReferenceQuery.value = query;
+    applyFilter(allRequests.toList());
+  }
+}

@@ -1,182 +1,152 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
+import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_mobile.dart';
-import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
-
-import '../../../../../../base/utils/constants/colors.dart';
-import '../../../../../../base/utils/constants/sizes.dart';
-import '../../../../../../common/widgets/texts/product_title_text.dart';
-import '../../../../../../data/controllers/app_data/user_initial_controller.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
+import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
+/// Header widget for the Standard Delivery request modal.
+///
+/// Displays client name, address, status/preference chips,
+/// item category, shipping method, delivery terms, delivery date,
+/// and requested by.
 class RequestModalHeader extends StatelessWidget {
   const RequestModalHeader({
     super.key,
     required this.requestModel,
-    required this.requestController,
   });
 
   final StandardDeliveryModel requestModel;
-  final IDeliveryRequestController requestController;
-
-  String _shortString(String? s, [int length = 16]) {
-    final v = s ?? '';
-    return v.length <= length ? v : v.substring(0, length);
-  }
 
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final userController = Get.find<UserInitialController>();
-
-    final showPreparedBy = requestModel.status != BTexts.statusNewRequest &&
-        requestModel.itemPreparedBy.isNotEmpty;
-    final preparedByTitle =
-        requestModel.status == BTexts.statusGettingSuppliesReady
-            ? 'Preparing By: ${requestModel.itemPreparedBy}'
-            : 'Prepared By: ${requestModel.itemPreparedBy}';
+    final hasAddress = requestModel.client.address.isNotEmpty;
+    final hasShippingMethod = requestModel.shippingMethod.isNotEmpty;
+    final hasDeliveryTerms = requestModel.deliveryTerms.isNotEmpty;
+    final hasDeliveryDate = requestModel.deliveryDate.isNotEmpty;
+    final hasRequestBy = requestModel.requestBy.isNotEmpty;
+    final hasItemCategory = requestModel.itemCategoryID.isNotEmpty;
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        /// Client name
-        BProductTitleText(
+        // Client Name
+        if (requestModel.client.name.isNotEmpty)
+          BProductTitleText(
             title: requestModel.client.name,
-            maxLines: 1,
+            maxLines: 3,
             bold: true,
-            fontColor: dark ? BColors.light : BColors.black),
+            fontColor: dark ? BColors.light : BColors.black,
+          ),
+        // Client Address
+        if (hasAddress) ...[
+          const SizedBox(height: BSizes.xs),
+          BProductTitleText(
+            title: requestModel.client.address,
+            maxLines: 3,
+            smallSize: true,
+            fontColor: dark ? BColors.light : BColors.black,
+          ),
+        ],
+        // Status Chip + Preference Chip
         const SizedBox(height: BSizes.xs),
-
-        /// Client address
-        requestModel.client.address.isEmpty
-            ? Container()
-            : BProductTitleText(
-                title: requestModel.client.address,
-                maxLines: 1,
-                smallSize: true,
-                fontColor: dark ? BColors.light : BColors.black),
-        const SizedBox(height: BSizes.xs),
-
-        /// Request status
-        showPreparedBy
-            ? BProductTitleText(
-                title: preparedByTitle,
-                maxLines: 2,
-                smallSize: true,
-                fontColor: dark ? BColors.light : BColors.black)
-            : const SizedBox.shrink(),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Wrap(
+          spacing: BSizes.sm,
+          runSpacing: BSizes.xs,
           children: [
-            if (requestModel.itemPreparedAt.isNotEmpty)
-              BProductTitleText(
-                  title:
-                      'From: ${_shortString(requestModel.itemPreparedAt, 16)}',
-                  maxLines: 2,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.black),
-            if (requestModel.itemPreparedEndAt.isNotEmpty)
-              BProductTitleText(
-                  title:
-                      'To: ${_shortString(requestModel.itemPreparedEndAt, 16)}',
-                  maxLines: 2,
-                  smallSize: true,
-                  fontColor: dark ? BColors.light : BColors.black)
+            StatusChip(status: requestModel.status, compact: false),
+            StatusChip(status: requestModel.preference, compact: false),
           ],
         ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// Trip ticket number label
-            if (requestModel.tripTicketNumber.isNotEmpty)
-              BLabelValueText(
-                label: 'Trip Ticket No:',
-                value: _shortString(requestModel.tripTicketNumber, 16),
-                copyable: true,
-              ),
-          ],
-        ),
-        if (requestModel.status == BTexts.statusGettingSuppliesReady &&
-            requestModel.itemPreparedBy ==
-                requestController.userController.user.value.initial) ...[
-          Column(
+
+        // Item Category (async lookup)
+        if (hasItemCategory) ...[
+          const SizedBox(height: BSizes.sm),
+          FutureBuilder<String?>(
+            future: ItemCategoryRepository.instance
+                .fetchItemCategory(requestModel.itemCategoryID),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData ||
+                  snapshot.data == null ||
+                  snapshot.data!.isEmpty) {
+                return const SizedBox.shrink();
+              }
+              return BLabelValueText(
+                label: 'Item Category',
+                value: snapshot.data!,
+                showLabel: false,
+                icon: Iconsax.category,
+                padding: EdgeInsets.zero,
+              );
+            },
+          ),
+        ],
+
+        // Shipping Method + Delivery Terms
+        if (hasShippingMethod || hasDeliveryTerms) ...[
+          const SizedBox(height: BSizes.sm),
+          Row(
             children: [
-              /// Trip ticket number text field
-              if (requestModel.tripTicketNumber.isEmpty) ...[
-                TextFormField(
-                  controller: requestController.formState.tripTicketNumber,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Trip Ticket No',
-                    labelStyle: TextStyle(
-                      color: dark ? BColors.light : BColors.black,
-                    ),
-                    border: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: dark ? BColors.light : BColors.black,
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: dark ? BColors.light : BColors.black,
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: dark ? BColors.light : BColors.black,
-                        width: 2.0,
-                      ),
-                    ),
+              if (hasShippingMethod)
+                Expanded(
+                  child: BLabelValueText(
+                    label: 'Shipping Method',
+                    value: requestModel.shippingMethod,
+                    showLabel: false,
+                    icon: Iconsax.ship,
+                    padding: EdgeInsets.zero,
                   ),
-                  style: TextStyle(
-                    color: dark ? BColors.light : BColors.black,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
                 ),
-              ],
-              const SizedBox(height: BSizes.sm),
-              Obx(
-                () => userController.userList.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : DropdownList(
-                        label: 'Driver',
-                        dropdownList: userController.userList,
-                        controller: requestController.formState.selectedDriver,
-                        getValue: (user) => user.initial,
-                        getDisplay: (user) => user.initial,
-                        onChanged: (UserModel? value) {
-                          requestController.formState.selectedDriver.text =
-                              value?.initial ?? '';
-                        },
-                      ),
-              ),
-              const SizedBox(height: BSizes.sm),
-              Obx(
-                () => userController.userList.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : DropdownList(
-                        label: 'Helper',
-                        dropdownList: userController.userList,
-                        controller: requestController.formState.selectedHelper,
-                        getValue: (user) => user.initial,
-                        getDisplay: (user) => user.initial,
-                        onChanged: (UserModel? value) {
-                          requestController.formState.selectedHelper.text =
-                              value?.initial ?? '';
-                        },
-                      ),
-              ),
-              const SizedBox(height: BSizes.sm),
-              BMobile(requestController: requestController)
+              if (hasShippingMethod && hasDeliveryTerms)
+                const SizedBox(width: BSizes.xs),
+              if (hasDeliveryTerms)
+                Expanded(
+                  child: BLabelValueText(
+                    label: 'Delivery Terms',
+                    value: requestModel.deliveryTerms,
+                    showLabel: false,
+                    icon: Iconsax.truck,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+            ],
+          ),
+        ],
+
+        // Delivery Date + Requested By
+        if (hasDeliveryDate || hasRequestBy) ...[
+          const SizedBox(height: BSizes.sm),
+          Row(
+            children: [
+              if (hasDeliveryDate)
+                Expanded(
+                  child: BLabelValueText(
+                    label: 'Delivery Date',
+                    value: BFormatter.formatDate3(requestModel.deliveryDate),
+                    showLabel: false,
+                    icon: Iconsax.calendar_1,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+              if (hasDeliveryDate && hasRequestBy)
+                const SizedBox(width: BSizes.xs),
+              if (hasRequestBy)
+                Expanded(
+                  child: BLabelValueText(
+                    label: 'Requested By',
+                    value: requestModel.requestBy,
+                    showLabel: false,
+                    icon: Iconsax.user,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
             ],
           ),
         ],
@@ -184,3 +154,5 @@ class RequestModalHeader extends StatelessWidget {
     );
   }
 }
+
+

@@ -3,17 +3,27 @@ class BImages {
   static const String darkAppLogo = "assets/logos/mdmpi-logo.png";
   static const String lightAppLogo = "assets/logos/mdmpi-logo.png";
 
-  // On boarding Images
-  static const String onBoardingImage1 = "assets/images/on_boarding_images/cash.gif";
-  static const String onBoardingImage2 = "assets/images/on_boarding_images/payment.gif";
-  static const String onBoardingImage3 = "assets/images/on_boarding_images/bank.gif";
+  // On boarding Images Logistics
+  static const String onBoardingImage1 =
+      "assets/images/on_boarding_images/add-shipments.png";
+  static const String onBoardingImage2 =
+      "assets/images/on_boarding_images/track-shipments.png";
+
+  // On boarding Images Collection
+  static const String onBoardingImage1Collection =
+      "assets/images/on_boarding_images/cash.gif";
+  static const String onBoardingImage2Collection =
+      "assets/images/on_boarding_images/payment.gif";
+  static const String onBoardingImage3Collection =
+      "assets/images/on_boarding_images/bank.gif";
 
   // Social Logos
   static const String google = "assets/logos/google-icon.png";
   static const String facebook = "assets/logos/facebook-icon.png";
 
   /// Categories Icons
-  static const String instrumentIcon= "assets/icons/categories/instrument24.png";
+  static const String instrumentIcon =
+      "assets/icons/categories/instrument24.png";
   static const String reagent = "assets/icons/categories/reagent.png";
   static const String partsIcon = "assets/icons/categories/parts.png";
 
@@ -33,34 +43,61 @@ class BImages {
   static const String product8 = "assets/images/items/product8.jpg";
 
   /// Principals
-  static const String onGoingPackage = "assets/icons/principal/delivery-truck.png";
+  static const String onGoingPackage =
+      "assets/icons/principal/delivery-truck.png";
   static const String completeDelivery = "assets/icons/principal/delivered.png";
   static const String retrieveData = "assets/icons/principal/retrieval.png";
 
   /// Requests
-  static const String requestInstrumentIcon = "assets/icons/request/instrument.png";
+  static const String requestInstrumentIcon =
+      "assets/icons/request/instrument.png";
 
   /// Profile
   static const String user = "assets/images/user/profile.png";
 
   /// Payment
-  static const String successPayment = "assets/icons/payment_methods/payment-check.png";
+  static const String successPayment =
+      "assets/icons/payment_methods/payment-check.png";
 
   /// Animations
-  static const String deliveredEmailIllustration = "assets/images/animations/sammy-line-man-receives-a-mail.png";
+  static const String deliveredEmailIllustration =
+      "assets/images/animations/sammy-line-man-receives-a-mail.png";
 
   /// Lottie Animations
-  static String docerAnimation = "assets/images/animations/141594-animation-of-docer.json";
-  static String successfullyRegisterAnimation ="assets/images/animations/72462-check-register.json";
+  static String docerAnimation =
+      "assets/images/animations/141594-animation-of-docer.json";
+  static String successfullyRegisterAnimation =
+      "assets/images/animations/72462-check-register.json";
 
   /// Request Icons
-  static String clientIcon ="assets/icons/request/customer.png";
+  static String clientIcon = "assets/icons/request/customer.png";
   static String searchClient = "assets/icons/request/zoom.png";
   static String deliveryTermsIcon = "assets/icons/request/terms.png";
 
   /// Google Map Icons
-  static String riderCar = "assets/icons/principal/car.png";
+  static String riderCar1 = "assets/icons/principal/car1.png";
+  static String riderCar2 = "assets/icons/principal/car2.png";
+  static String riderCar3 = "assets/icons/principal/car3.png";
+  static String riderCar4 = "assets/icons/principal/car4.png";
+  static String riderCar5 = "assets/icons/principal/car5.png";
+  static String riderCar6 = "assets/icons/principal/car6.png";
+  static String riderCar7 = "assets/icons/principal/car7.png";
+  static String riderCar8 = "assets/icons/principal/car8.png";
+  static String riderCar9 = "assets/icons/principal/car9.png";
+  static String riderCar10 = "assets/icons/principal/car10.png";
 
+  static List<String> riderCarVariants = [
+    riderCar1,
+    riderCar2,
+    riderCar3,
+    riderCar4,
+    riderCar5,
+    riderCar6,
+    riderCar7,
+    riderCar8,
+    riderCar9,
+    riderCar10,
+  ];
 
   // Icon paths
   static List<String> requestFormIconPaths = [
@@ -72,4 +109,3 @@ class BImages {
     'assets/icons/request/inventoryStock.png',
   ];
 }
-

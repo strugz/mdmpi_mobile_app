@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 import '../../models/item_category_model.dart';
@@ -12,12 +14,7 @@ import '../../local/database_helper.dart';
 class ItemCategoryRepository extends GetxController {
   static ItemCategoryRepository get instance => Get.find();
 
-  String get _baseUrl {
-    try {
-      if (dotenv.isInitialized) return dotenv.env['API_URL'] ?? '';
-    } catch (_) {}
-    return '';
-  }
+  String get _baseUrl => BApiEnvironment.api4BaseUrl;
 
   Uri _uri(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -59,6 +56,14 @@ class ItemCategoryRepository extends GetxController {
       } catch (e) {
         logDebug('ItemCategoryRepository.getAll: Local DB error: $e');
       }
+    }
+
+    final canCheckNetwork = Get.isRegistered<NetworkManager>();
+    if (client == null &&
+        canCheckNetwork &&
+        !await NetworkManager.instance.isConnected()) {
+      logDebug('ItemCategoryRepository.getAll: Offline with no local data');
+      return <ItemCategoryModel>[];
     }
 
     // Fetch from API

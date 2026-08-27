@@ -5,7 +5,7 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
-import '../../../../../base/utils/constants/text_string.dart';
+import '../../../../../base/utils/constants/text_strings.dart';
 
 class BHomeAppBar extends StatelessWidget {
   const BHomeAppBar({

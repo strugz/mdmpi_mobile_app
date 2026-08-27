@@ -9,10 +9,18 @@ class FlutterCameraService implements ICameraService {
 
   @override
   Future<void> initialize() async {
+    if (_cameraController != null && _cameraController!.value.isInitialized) {
+      return;
+    }
+
     final cameras = await availableCameras();
     if (cameras.isNotEmpty) {
-      _cameraController =
-          CameraController(cameras.first, ResolutionPreset.high);
+      await _cameraController?.dispose();
+      _cameraController = CameraController(
+        cameras.first,
+        ResolutionPreset.high,
+        enableAudio: false,
+      );
       await _cameraController!.initialize();
     } else {
       // Handle no cameras

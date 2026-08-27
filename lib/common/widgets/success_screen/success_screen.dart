@@ -3,7 +3,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/styles/spacing_styles.dart';
 
-import '../../../base/utils/constants/text_string.dart';
+import '../../../base/utils/constants/text_strings.dart';
 
 class BSuccessScreen extends StatelessWidget {
   const BSuccessScreen(

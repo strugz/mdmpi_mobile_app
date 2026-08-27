@@ -62,7 +62,7 @@ class PullOutController extends GetxController {
     formState = PullOutFormState();
     formState.initializeDefaultDate();
     dataManager.loadCategories(this);
-    dataManager.fetchPullOuts(this);
+    dataManager.fetchPullOuts(this, useLocalStorage.value);
 
     userController = Get.find<UserController>();
     createdBy = userController.user.value.initial;
@@ -81,9 +81,33 @@ class PullOutController extends GetxController {
     filterManager.selectFilter(filter, pullOuts);
   }
 
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, pullOuts);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, pullOuts);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, pullOuts);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, pullOuts);
+  }
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query, pullOuts);
+  }
+
   /// Fetch all pull-out requests from repository.
   Future<void> loadPullOuts() async {
     await dataManager.fetchPullOuts(this, useLocalStorage.value);
+  }
+
+  Future<void> hardResetPullOuts() async {
+    await dataManager.hardResetPullOuts(this);
   }
 
   /// Insert a new pull-out request and refresh the list.
@@ -100,8 +124,6 @@ class PullOutController extends GetxController {
   /// Build a PullOutModel from the controllers and submit.
   Future<void> submitFromForm() async {
     await dataManager.saveRequestFromForm(this);
-    // Do not reset here; the screen's onSave handles visual clearing to keep
-    // behavior localized to the widget as requested.
   }
 
   /// Update status using data manager to merge UI inputs.
@@ -142,6 +164,9 @@ class PullOutController extends GetxController {
   ///
   /// [value] True to use local storage, false to use API directly
   void toggleStoragePreference(bool value) {
+    if (useLocalStorage.value == value) {
+      return;
+    }
     useLocalStorage.value = value;
     loadPullOuts();
   }

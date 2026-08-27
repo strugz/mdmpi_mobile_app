@@ -16,7 +16,6 @@ class RouteLoadingOverlay extends StatefulWidget {
 }
 
 class _RouteLoadingOverlayState extends State<RouteLoadingOverlay> {
-  late Timer _retryTimer;
   late Timer _countdownTimer;
   int _retryCount = 0;
   int _remainingSeconds = 15;

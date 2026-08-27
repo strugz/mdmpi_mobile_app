@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/app_routes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';

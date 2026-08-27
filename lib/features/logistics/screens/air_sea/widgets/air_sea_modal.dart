@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
@@ -15,6 +15,9 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal_header.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_waybill_input_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_in_transit_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_pick_up_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_provincial_delivery_section.dart';
 
 /// Modal widget displaying Air/Sea request details.
 ///
@@ -42,7 +45,10 @@ class AirSeaModal extends StatelessWidget {
     }
 
     return RequestModalScaffold(
-      header: AirSeaRequestModalHeader(requestModel: requestModel),
+      header: AirSeaRequestModalHeader(
+        requestModel: requestModel,
+        role: config.role,
+      ),
       documentReferences: requestModel.documentReference,
       bottomAction: StatusActionButton(
         status: requestModel.status,
@@ -54,8 +60,8 @@ class AirSeaModal extends StatelessWidget {
           }
 
           // For Item Packed → dynamic next status from dropdown
-          final effectiveNextStatus = config.nextStatus ??
-              _resolveItemPackedNextStatus(controller);
+          final effectiveNextStatus =
+              config.nextStatus ?? _resolveItemPackedNextStatus(controller);
 
           if (effectiveNextStatus != null) {
             await controller.updateStatusWithInputs(
@@ -71,6 +77,7 @@ class AirSeaModal extends StatelessWidget {
         statusToTextMapper: (_) => config.buttonLabel,
       ),
       children: [
+        // Waybill number (read-only, shown when filled)
         if (requestModel.waybillNumber.isNotEmpty) ...[
           BLabelValueText(
             label: 'Waybill Number',
@@ -89,8 +96,12 @@ class AirSeaModal extends StatelessWidget {
           AirSeaWaybillInputSection(requestModel: requestModel),
         ],
 
-        // Dispatch Information Section (shown when dispatch fields are populated)
-        AirSeaDispatchInfoSection(requestModel: requestModel),
+        if (requestModel.mobileId != null) ...[
+          // Dispatch Information Section (shown when dispatch fields are populated)
+          AirSeaDispatchInfoSection(requestModel: requestModel),
+        ],
+
+        ..._buildProvincialSections(),
 
         if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
         Obx(
@@ -122,5 +133,46 @@ class AirSeaModal extends StatelessWidget {
     if (selected == 'Received') return BTexts.statusReceived;
     if (selected == BTexts.statusForDispatch) return BTexts.statusForDispatch;
     return null;
+  }
+
+  List<Widget> _buildProvincialSections() {
+    final status = requestModel.status;
+    final bool canEditProvincial = config.role == BTexts.roleProvincial;
+    final bool showPickUpSection =
+        ((status == BTexts.statusReceived || status == BTexts.statusDropOff) &&
+                canEditProvincial) ||
+            status == BTexts.statusProvincialPickUp ||
+            status == BTexts.statusProvincialInTransit ||
+            status == BTexts.statusProvincialDelivered;
+
+    final bool showInTransitSection = status == BTexts.statusProvincialPickUp ||
+        status == BTexts.statusProvincialInTransit ||
+        status == BTexts.statusProvincialDelivered;
+
+    final bool showDeliverySection =
+        status == BTexts.statusProvincialInTransit ||
+            status == BTexts.statusProvincialDelivered;
+
+    return [
+      if (showPickUpSection)
+        AirSeaProvincialPickUpSection(
+          requestModel: requestModel,
+          isEditable: canEditProvincial &&
+              (status == BTexts.statusReceived ||
+                  status == BTexts.statusDropOff),
+        ),
+      if (showInTransitSection)
+        AirSeaProvincialInTransitSection(
+          requestModel: requestModel,
+          isActive:
+              canEditProvincial && status == BTexts.statusProvincialPickUp,
+        ),
+      if (showDeliverySection)
+        AirSeaProvincialDeliverySection(
+          requestModel: requestModel,
+          isEditable:
+              canEditProvincial && status == BTexts.statusProvincialInTransit,
+        ),
+    ];
   }
 }

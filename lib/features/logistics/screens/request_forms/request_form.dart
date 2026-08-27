@@ -4,7 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/routes/app_routes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_request_form.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
+import '../../../../base/utils/constants/text_strings.dart';
 
 class RequestForm extends StatelessWidget {
   const RequestForm({super.key});

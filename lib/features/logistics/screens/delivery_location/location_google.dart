@@ -46,6 +46,54 @@ class _LocationPageState extends State<LocationPageGoogle> {
                   ),
                 ),
               ),
+              if (delLocCon.webSocketController.riderLocationUpdates.isEmpty)
+                ListTile(
+                  leading: const Icon(Icons.local_shipping_outlined),
+                  title: Text(
+                    'Waiting for dispatched deliveries',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall!
+                        .apply(color: dark ? BColors.light : BColors.black),
+                  ),
+                  subtitle: const Text('Live riders will appear here.'),
+                ),
+              ...delLocCon.webSocketController.riderLocationUpdates.values.map(
+                (delivery) {
+                  final color = delLocCon.webSocketController
+                          .riderMarkerColors[delivery.requestId] ??
+                      WebSocketDeliveryController.colorForRequestId(
+                          delivery.requestId);
+
+                  return ListTile(
+                    leading: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    onTap: () {
+                      Get.back();
+                      delLocCon.centerDispatch(delivery.requestId);
+                    },
+                    title: Text(
+                      delivery.requestId,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall!
+                          .apply(color: dark ? BColors.light : BColors.black),
+                    ),
+                    subtitle: Text(
+                      '${delivery.client}\nRider: ${delivery.riderInitial} - ETA: ${delivery.eta} - ${delivery.distance}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  );
+                },
+              ),
+              if (delVehCon.allVehicleDelivery.isNotEmpty) const Divider(),
               ...delVehCon.allVehicleDelivery.map(
                 (vehicle) => ListTile(
                   onTap: () {
@@ -74,33 +122,48 @@ class _LocationPageState extends State<LocationPageGoogle> {
         ),
       ),
       body: Obx(
-        () => Stack(
-          children: [
-            GoogleMap(
-              initialCameraPosition: delLocCon.lastCameraPosition.value ??
-                  const CameraPosition(
-                    target: LatLng(12.8797, 121.7740), // Updated to PH
-                    zoom: 13,
-                  ),
-              myLocationEnabled: true,
-              myLocationButtonEnabled: false,
-              zoomControlsEnabled: true,
-              onMapCreated: (controller) {
-                delLocCon.mapController.value = controller;
-                if (delLocCon.lastCameraPosition.value != null) {
-                  delLocCon.mapController.value!.animateCamera(
-                      CameraUpdate.newCameraPosition(
-                          delLocCon.lastCameraPosition.value!));
-                }
-              },
-              onCameraMove: (position) {
-                delLocCon.lastCameraPosition.value = position;
-              },
-              markers: delLocCon.riderBuildMarkers(),
-              polylines: delLocCon.polylines.value,
-            ),
-          ],
-        ),
+        () {
+          delLocCon.markerIconsReady.value;
+
+          return Stack(
+            children: [
+              GoogleMap(
+                initialCameraPosition: delLocCon.lastCameraPosition.value ??
+                    const CameraPosition(
+                      target: LatLng(12.8797, 121.7740), // Updated to PH
+                      zoom: 13,
+                    ),
+                myLocationEnabled: true,
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: true,
+                onMapCreated: (controller) {
+                  delLocCon.mapController.value = controller;
+                  if (delLocCon.lastCameraPosition.value != null) {
+                    delLocCon.mapController.value!.animateCamera(
+                        CameraUpdate.newCameraPosition(
+                            delLocCon.lastCameraPosition.value!));
+                  }
+                },
+                onCameraMove: (position) {
+                  delLocCon.lastCameraPosition.value = position;
+                },
+                markers: delLocCon.riderBuildMarkers(),
+                polylines: delLocCon.polylines.value,
+              ),
+              Positioned(
+                right: 8,
+                bottom: 100,
+                child: FloatingActionButton.small(
+                  heroTag: 'center-active-deliveries',
+                  backgroundColor: BColors.primary,
+                  foregroundColor: BColors.white,
+                  onPressed: delLocCon.centerActiveDeliveries,
+                  child: const Icon(Icons.my_location),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

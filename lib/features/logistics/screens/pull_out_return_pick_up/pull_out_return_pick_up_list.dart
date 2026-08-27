@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
@@ -12,15 +14,32 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
 
-/// Role priority map: Lower number = Higher priority (more capabilities)
-const _rolePriority = {
-  BTexts.roleRelease: 1, // Most powerful - can handle most statuses
-  BTexts.roleCourier: 2, // Handles dispatch/drop-off
-  BTexts.roleRequest: 3, // Can only advance "New Request"
-  BTexts.roleViewer: 4, // View-only access
+// ============================================================================
+// STATUS-DRIVEN ROLE SELECTION
+// ============================================================================
+// For Pull Out module, only Courier has actions. This map defines which role
+// should be preferred based on the request status.
+//
+// Status-Role Capability Matrix:
+// ┌──────────────┬─────────┬─────────┬─────────┐
+// │ Status       │ Request │ Release │ Courier │
+// ├──────────────┼─────────┼─────────┼─────────┤
+// │ New Request  │ View    │ View    │ ✅ Action│
+// │ In Transit   │ View    │ View    │ ✅ Action│
+// │ Taken Out    │ View    │ View    │ View    │
+// │ Cancelled    │ View    │ View    │ View    │
+// └──────────────┴─────────┴─────────┴─────────┘
+// ============================================================================
+
+/// Maps each status to the preferred role that has action capability.
+/// Returns null if no role has actions for that status (all view-only).
+const _statusToPreferredRole = {
+  BTexts.statusNewRequest: BTexts.roleCourier, // Courier: Set In Transit
+  BTexts.statusInTransit: BTexts.roleCourier, // Courier: Mark Taken Out
+  // Taken Out, Cancelled, Picked-up: All roles are view-only (no preferred role)
 };
+
 
 class PullOutReturnPickUpList extends StatelessWidget {
   const PullOutReturnPickUpList({super.key});
@@ -134,45 +153,22 @@ class PullOutReturnPickUpList extends StatelessWidget {
 }
 
 /// Handles tap on PullOut request based on user role.
-/// Resolves a single [PullOutModalConfig] from the highest-priority role and
-/// opens the modal — no handler classes needed.
+/// Uses status-driven role selection to ensure users with multiple roles
+/// can perform ALL available actions at ANY status.
 void _handlePullOutTap(
   BuildContext context,
   PullOutModel request,
   PullOutController controller,
   UserController userController,
 ) {
-  final roles = userController.user.value.role
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
+  final roles = RoleResolver.parseRoles(userController.user.value.role);
 
-  // Force Courier for New Request (New Request → In Transit)
-  // and In Transit (In Transit → Taken Out)
-  if ((request.requestStatus == BTexts.statusNewRequest ||
-          request.requestStatus == BTexts.statusInTransit) &&
-      roles.contains(BTexts.roleCourier)) {
-    final config = PullOutModalConfig.resolve(
-      request: request,
-      role: BTexts.roleCourier,
-      controller: controller,
-    );
-    BFullScreenLoader.showPullOutDialog(context, request, config);
-    return;
-  }
-
-  // Find the highest-priority role the user has
-  String selectedRole = BTexts.roleViewer;
-  int highestPriority = 999;
-
-  for (final role in roles) {
-    final priority = _rolePriority[role] ?? 999;
-    if (priority < highestPriority) {
-      highestPriority = priority;
-      selectedRole = role;
-    }
-  }
+  // Resolve the best role for this status using RoleResolver
+  final selectedRole = RoleResolver.resolveRoleForStatus(
+    status: request.requestStatus,
+    userRoles: roles,
+    statusToPreferredRole: _statusToPreferredRole,
+  );
 
   final config = PullOutModalConfig.resolve(
     request: request,
@@ -181,3 +177,4 @@ void _handlePullOutTap(
   );
   BFullScreenLoader.showPullOutDialog(context, request, config);
 }
+

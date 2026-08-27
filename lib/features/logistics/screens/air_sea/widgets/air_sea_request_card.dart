@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_sms_resend_icon_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
+import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 
 /// Card widget displaying Air/Sea request summary.
 /// Shows client name, item category, pick-up date, and status.
@@ -108,6 +112,14 @@ class AirSeaRequestCard extends StatelessWidget {
                   fontColor: textColorPrimary,
                 ),
               ),
+              const SizedBox(width: BSizes.xxs),
+              BSmsResendIconButton(
+                onResend: _handleResend,
+                icon: Icons.send,
+                iconSize: 15,
+                dialogDetails:
+                    'This will use the current air/sea request status and recipient list.',
+              ),
               if (trailing != null) ...[
                 const SizedBox(width: BSizes.xxs),
                 trailing!,
@@ -177,5 +189,31 @@ class AirSeaRequestCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
       child: card,
     );
+  }
+
+  Future<void> _handleResend() async {
+    final MessagingController controller = Get.find<MessagingController>();
+    final SmsResult result = await controller.sendSmsMessage(
+      item.status,
+      item,
+    );
+
+    switch (result) {
+      case SmsSuccess():
+        BLoaders.successSnackBar(title: 'SMS sent', message: result.message);
+        return;
+      case SmsPartialSuccess():
+        BLoaders.warningSnackBar(
+          title: 'SMS partially sent',
+          message: result.message,
+        );
+        return;
+      case SmsLikelyNetworkIssue():
+        throw Exception(result.message);
+      case SmsPermissionDenied():
+        throw Exception(result.message);
+      case SmsSendError():
+        throw Exception(result.error);
+    }
   }
 }

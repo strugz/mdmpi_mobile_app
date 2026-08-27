@@ -22,6 +22,36 @@ class BFormatter {
     }
   }
 
+  static String formatDate3(String value) {
+    if (value.isEmpty) return '';
+    final norm = BFormatter.normalizeToIsoDatetime(value);
+    if (norm == null) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+    try {
+      final dt = DateTime.parse(norm);
+      return DateFormat('MMM d, yyyy').format(dt);
+    } catch (_) {
+      return value.length >= 10 ? value.substring(0, 10) : value;
+    }
+  }
+
+  /// Formats datetime strings to a readable form with AM/PM.
+  /// Example output: "Mar 5, 2026 04:31 PM"
+  /// Accepts ISO-like strings, epoch (seconds/millis) or already-ISO; falls back
+  /// to the original value on parse failure.
+  static String formatDateWithAmPm(String value) {
+    if (value.isEmpty) return '';
+    final norm = BFormatter.normalizeToIsoDatetime(value);
+    if (norm == null) return value;
+    try {
+      final dt = DateTime.parse(norm);
+      return DateFormat('MMM d, yyyy hh:mm a').format(dt);
+    } catch (_) {
+      return value;
+    }
+  }
+
   static String formatCurrency(double amount) {
     return NumberFormat.currency(locale: 'en_US', symbol: '\$').format(amount);
   }
@@ -37,6 +67,12 @@ class BFormatter {
       symbol: includeSymbol ? '₱' : '',
       decimalDigits: 2,
     ).format(amount);
+  }
+
+  /// Formats a numeric value as an integer string (no decimals, no currency symbol).
+  /// Uses locale-aware grouping (commas) and rounds the value to nearest integer.
+  static String formatIntegerNoDecimal(double value) {
+    return NumberFormat('#,##0', 'en_US').format(value.round());
   }
 
   static String formatPhoneNumber(String phoneNumber) {
@@ -175,6 +211,21 @@ class BFormatter {
 
     // Fallback: return original trimmed string
     return trimmed;
+  }
+
+  /// Formats picked-up / received datetime strings to 'MMM d, yyyy hh:mm a'.
+  /// Example output: "Mar 5, 2026 04:31 PM".
+  /// Returns original value if parsing fails.
+  static String formatPickedUpAt(String value) {
+    if (value.isEmpty) return '';
+    final norm = BFormatter.normalizeToIsoDatetime(value);
+    if (norm == null) return value;
+    try {
+      final dt = DateTime.parse(norm);
+      return DateFormat('MMM d, yyyy hh:mm a').format(dt);
+    } catch (_) {
+      return value;
+    }
   }
 }
 

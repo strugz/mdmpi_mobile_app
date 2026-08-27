@@ -3,23 +3,25 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/air_sea_page.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/air_sea_page_stages.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
-import '../../../../base/utils/constants/text_string.dart';
+import '../../../../base/utils/constants/text_strings.dart';
+import '../../../../base/utils/popups/shimmer.dart';
 
 /// Role priority map: Lower number = Higher priority (more capabilities)
 const _rolePriority = {
   BTexts.roleRelease: 1,
   BTexts.roleCourier: 2,
-  BTexts.roleRequest: 3,
-  BTexts.roleViewer: 4,
+  BTexts.roleProvincial: 3,
+  BTexts.roleRequest: 4,
+  BTexts.roleViewer: 5,
 };
 
 /// Main list screen for Air/Sea requests.
@@ -63,7 +65,8 @@ class AirSeaList extends StatelessWidget {
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
-                        if (item.status != BTexts.statusReceived &&
+                        if (item.status != BTexts.statusProvincialDelivered &&
+                            item.status != BTexts.statusReceived &&
                             item.status != BTexts.statusDropOff &&
                             item.status.toLowerCase() != 'cancelled') {
                           controller.currentSelectedAirSea.value = item;
@@ -97,7 +100,7 @@ class AirSeaList extends StatelessWidget {
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: ConstrainedBox(
                       constraints:
-                      BoxConstraints(minHeight: constraints.maxHeight),
+                          BoxConstraints(minHeight: constraints.maxHeight),
                       child: Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -110,16 +113,24 @@ class AirSeaList extends StatelessWidget {
                             const SizedBox(height: BSizes.spaceBtwItems),
                             Text(
                               'No Air / Sea requests found',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                color: dark ? BColors.light : BColors.darkGrey,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    color:
+                                        dark ? BColors.light : BColors.darkGrey,
+                                  ),
                             ),
                             const SizedBox(height: BSizes.sm),
                             Text(
                               'Try adjusting your filters',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: dark ? BColors.light : BColors.darkGrey,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color:
+                                        dark ? BColors.light : BColors.darkGrey,
+                                  ),
                             ),
                           ],
                         ),
@@ -156,11 +167,32 @@ void _handleAirSeaTap(
           request.status == BTexts.statusDispatch) &&
       roles.contains(BTexts.roleCourier)) {
     final config = AirSeaModalConfig.resolve(
+        request: request, role: BTexts.roleCourier, controller: controller);
+    BHelperFunctions.navigateWithSlide(
+      context,
+      AirSeaPageStages(requestModel: request, config: config),
+      duration: const Duration(milliseconds: 350),
+    );
+    return;
+  }
+
+  // Force Provincial for provincial-leg statuses
+  if ((request.status == BTexts.statusReceived ||
+          request.status == BTexts.statusDropOff ||
+          request.status == BTexts.statusProvincialPickUp ||
+          request.status == BTexts.statusProvincialInTransit ||
+          request.status == BTexts.statusProvincialDelivered) &&
+      roles.contains(BTexts.roleProvincial)) {
+    final config = AirSeaModalConfig.resolve(
       request: request,
-      role: BTexts.roleCourier,
+      role: BTexts.roleProvincial,
       controller: controller,
     );
-    BFullScreenLoader.showAirSeaDialog(context, request, config);
+    BHelperFunctions.navigateWithSlide(
+      context,
+      AirSeaPageStages(requestModel: request, config: config),
+      duration: const Duration(milliseconds: 350),
+    );
     return;
   }
 
@@ -181,6 +213,9 @@ void _handleAirSeaTap(
     role: selectedRole,
     controller: controller,
   );
-  BFullScreenLoader.showAirSeaDialog(context, request, config);
+  BHelperFunctions.navigateWithSlide(
+    context,
+    AirSeaPageStages(requestModel: request, config: config),
+    duration: const Duration(milliseconds: 350),
+  );
 }
-

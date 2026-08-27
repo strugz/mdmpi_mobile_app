@@ -29,6 +29,14 @@ class AirSeaModel {
   String dispatchedAt;
   String dropOffAt;
 
+  String provincialPickUpBy;
+  String provincialPickUpAt;
+  String provincialInTransitAt;
+  String provincialInTransitLocation;
+  String provincialDeliveredEndAt;
+  String provincialDeliveredLocation;
+  String provincialReceiverName;
+
   String status;
   String remarks;
   String createdBy;
@@ -58,6 +66,13 @@ class AirSeaModel {
     this.helper = '',
     this.dispatchedAt = '',
     this.dropOffAt = '',
+    this.provincialPickUpBy = '',
+    this.provincialPickUpAt = '',
+    this.provincialInTransitAt = '',
+    this.provincialInTransitLocation = '',
+    this.provincialDeliveredEndAt = '',
+    this.provincialDeliveredLocation = '',
+    this.provincialReceiverName = '',
     this.status = '',
     this.remarks = '',
     this.createdBy = '',
@@ -72,6 +87,93 @@ class AirSeaModel {
 
   /// Convenience empty factory
   static AirSeaModel empty() => AirSeaModel();
+
+  static String _firstPresent(
+    Map<String, dynamic> map,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      if (!map.containsKey(key)) continue;
+
+      final value = map[key];
+      if (value == null) continue;
+
+      final normalized = value.toString();
+      if (normalized.isNotEmpty) return normalized;
+    }
+
+    return fallback;
+  }
+
+  static dynamic _firstPresentValue(
+    Map<String, dynamic> map,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      if (!map.containsKey(key)) continue;
+
+      final value = map[key];
+      if (value == null) continue;
+
+      if (value is String && value.trim().isEmpty) continue;
+
+      return value;
+    }
+
+    return null;
+  }
+
+  static int? _parseIntOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static DateTime? _parseDateTimeOrNull(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty) return null;
+
+    try {
+      return DateTime.tryParse(normalized);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String _normalizeDateTimeString(
+    dynamic value, {
+    String fallback = '',
+  }) {
+    if (value == null) return fallback;
+    if (value is DateTime) return value.toUtc().toIso8601String();
+
+    final normalized = value.toString().trim();
+    if (normalized.isEmpty || normalized.toLowerCase() == 'null') {
+      return fallback;
+    }
+
+    return normalized;
+  }
+
+  /// Legacy compatibility alias. Prefer using [provincialDeliveredEndAt].
+  String get provincialDeliveredAt => provincialDeliveredEndAt;
+
+  set provincialDeliveredAt(String value) {
+    provincialDeliveredEndAt = _normalizeDateTimeString(value);
+  }
+
+  /// Legacy compatibility alias. Prefer using [provincialDeliveredEndAt].
+  DateTime? get provincialDeliveredAtDateTime =>
+      _parseDateTimeOrNull(provincialDeliveredEndAt);
+
+  set provincialDeliveredAtDateTime(DateTime? value) {
+    provincialDeliveredEndAt = _normalizeDateTimeString(value);
+  }
 
   AirSeaModel copyWith({
     String? id,
@@ -91,6 +193,15 @@ class AirSeaModel {
     String? helper,
     String? dispatchedAt,
     String? dropOffAt,
+
+    String? provincialPickUpBy,
+    String? provincialPickUpAt,
+    String? provincialInTransitAt,
+    String? provincialInTransitLocation,
+    String? provincialDeliveredEndAt,
+    String? provincialDeliveredLocation,
+    String? provincialReceiverName,
+
     String? status,
     String? remarks,
     String? createdBy,
@@ -118,6 +229,18 @@ class AirSeaModel {
       helper: helper ?? this.helper,
       dispatchedAt: dispatchedAt ?? this.dispatchedAt,
       dropOffAt: dropOffAt ?? this.dropOffAt,
+      provincialPickUpBy: provincialPickUpBy ?? this.provincialPickUpBy,
+      provincialPickUpAt: provincialPickUpAt ?? this.provincialPickUpAt,
+      provincialInTransitAt:
+          provincialInTransitAt ?? this.provincialInTransitAt,
+      provincialInTransitLocation:
+          provincialInTransitLocation ?? this.provincialInTransitLocation,
+      provincialDeliveredEndAt:
+          provincialDeliveredEndAt ?? this.provincialDeliveredEndAt,
+      provincialDeliveredLocation:
+          provincialDeliveredLocation ?? this.provincialDeliveredLocation,
+      provincialReceiverName:
+          provincialReceiverName ?? this.provincialReceiverName,
       status: status ?? this.status,
       remarks: remarks ?? this.remarks,
       createdBy: createdBy ?? this.createdBy,
@@ -148,6 +271,15 @@ class AirSeaModel {
       'Helper': helper,
       'DispatchedAt': dispatchedAt,
       'DropOffAt': dropOffAt,
+      'ProvincialPickUpBy': provincialPickUpBy,
+      'ProvincialPickUpAt': provincialPickUpAt,
+      'ProvincialInTransitAt': provincialInTransitAt,
+      'ProvincialInTransitLocation': provincialInTransitLocation,
+      'ProvincialDeliveredEndAt': provincialDeliveredEndAt,
+      'ProvincialDeliveredLocation': provincialDeliveredLocation,
+      'ProvincialReceiverName': provincialReceiverName,
+      'ProvincialDeliveredTo': provincialDeliveredLocation,
+      'ProvincialDeliveredAt': provincialDeliveredEndAt,
       'Status': status,
       'Remarks': remarks,
       'CreatedBy': createdBy,
@@ -160,100 +292,125 @@ class AirSeaModel {
 
   /// Parse from API JSON
   factory AirSeaModel.fromJson(Map<String, dynamic> json) {
-    String firstPresent(Map<String, dynamic> m, List<String> keys,
-        {String fallback = ''}) {
-      for (final k in keys) {
-        if (m.containsKey(k) && m[k] != null) return m[k].toString();
-      }
-      return fallback;
-    }
+    final provincialReceiverNameValue = _firstPresent(json, [
+      'ProvincialReceiverName',
+      'provincialReceiverName',
+      'provincial_receiver_name',
+      'ProvincialDeliveredReceiverName',
+      'provincialDeliveredReceiverName',
+      'provincial_delivered_receiver_name',
+    ]);
 
-    int? parseIntOrNull(dynamic value) {
-      if (value == null) return null;
-      if (value is int) return value;
-      if (value is String) return int.tryParse(value);
-      return null;
-    }
+    final provincialPickUpAtValue = _firstPresentValue(json, [
+      'ProvincialPickUpAt',
+      'provincialPickUpAt',
+      'provincial_pick_up_at',
+    ]);
+    final provincialInTransitAtValue = _firstPresentValue(json, [
+      'ProvincialInTransitAt',
+      'provincialInTransitAt',
+      'provincial_in_transit_at',
+    ]);
+    final provincialDeliveredEndAtValue = _firstPresentValue(json, [
+      'ProvincialDeliveredEndAt',
+      'provincialDeliveredEndAt',
+      'provincial_delivered_end_at',
+      'ProvincialDeliveredAt',
+      'provincialDeliveredAt',
+      'provincial_delivered_at',
+    ]);
+    final provincialDeliveredLocationValue = _firstPresent(json, [
+      'ProvincialDeliveredLocation',
+      'provincialDeliveredLocation',
+      'provincial_delivered_location',
+      'ProvincialDeliveredTo',
+      'provincialDeliveredTo',
+      'provincial_delivered_to',
+    ]);
 
     return AirSeaModel(
-      id: firstPresent(json,
+      id: _firstPresent(json,
           ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
-      clientId: firstPresent(
-          json, ['ClientID', 'clientID', 'clientId', 'ClientId']),
-      itemCategoryId: firstPresent(json, [
+      clientId:
+          _firstPresent(json, ['ClientID', 'clientID', 'clientId', 'ClientId']),
+      itemCategoryId: _firstPresent(json, [
         'ItemCategoryID',
         'itemCategoryID',
         'ItemCategoryId',
         'itemCategoryId'
       ]),
-      mobileId: parseIntOrNull(
+      mobileId: _parseIntOrNull(
           json['MobileID'] ?? json['mobileID'] ?? json['mobileId']),
-      datePickUp: firstPresent(json, [
-        'DatePickUp',
-        'datePickUp',
-        'Datepickup',
-        'datepickup'
-      ]),
-      itemPreparedAt: firstPresent(json, [
+      datePickUp: _firstPresent(
+          json, ['DatePickUp', 'datePickUp', 'Datepickup', 'datepickup']),
+      itemPreparedAt: _firstPresent(json, [
         'ItemPreparedAt',
         'itemPreparedAt',
         'Itempreparedat',
         'itempreparedat'
       ]),
-      itemPreparedEndAt: firstPresent(json, [
+      itemPreparedEndAt: _firstPresent(json, [
         'ItemPreparedEndAt',
         'itemPreparedEndAt',
         'Itempreparedendat',
         'itempreparedendat'
       ]),
-      preparedBy: firstPresent(
+      preparedBy: _firstPresent(
           json, ['PreparedBy', 'preparedBy', 'Preparedby', 'preparedby']),
-      receivedBy: firstPresent(
+      receivedBy: _firstPresent(
           json, ['ReceivedBy', 'receivedBy', 'Receivedby', 'receivedby']),
-      waybillNumber: firstPresent(json, [
-        'WaybillNumber',
-        'waybillNumber',
-        'Waybillnumber',
-        'waybillnumber'
-      ]),
-      receivedAt: firstPresent(
+      waybillNumber: _firstPresent(json,
+          ['WaybillNumber', 'waybillNumber', 'Waybillnumber', 'waybillnumber']),
+      receivedAt: _firstPresent(
           json, ['ReceivedAt', 'receivedAt', 'Receivedat', 'receivedat']),
-      tripTicketNumber: firstPresent(json, [
+      tripTicketNumber: _firstPresent(json, [
         'TripTicketNumber',
         'tripTicketNumber',
         'Tripticketnumber',
         'tripticketnumber'
       ]),
-      driver: firstPresent(json, ['Driver', 'driver']),
-      helper: firstPresent(json, ['Helper', 'helper']),
-      dispatchedAt: firstPresent(json, [
-        'DispatchedAt',
-        'dispatchedAt',
-        'Dispatchedat',
-        'dispatchedat'
+      driver: _firstPresent(json, ['Driver', 'driver']),
+      helper: _firstPresent(json, ['Helper', 'helper']),
+      dispatchedAt: _firstPresent(json,
+          ['DispatchedAt', 'dispatchedAt', 'Dispatchedat', 'dispatchedat']),
+      dropOffAt: _firstPresent(
+          json, ['DropOffAt', 'dropOffAt', 'Dropoffat', 'dropoffat']),
+      provincialPickUpBy: _firstPresent(json, [
+        'ProvincialPickUpBy',
+        'provincialPickUpBy',
+        'provincial_pick_up_by'
       ]),
-      dropOffAt: firstPresent(json, [
-        'DropOffAt',
-        'dropOffAt',
-        'Dropoffat',
-        'dropoffat'
+      provincialPickUpAt: _normalizeDateTimeString(provincialPickUpAtValue),
+      provincialInTransitAt:
+          _normalizeDateTimeString(provincialInTransitAtValue),
+      provincialInTransitLocation: _firstPresent(json, [
+        'ProvincialInTransitLocation',
+        'provincialInTransitLocation',
+        'provincial_in_transit_location',
       ]),
-      status: firstPresent(json, ['Status', 'status']),
-      remarks: firstPresent(json, ['Remarks', 'remarks']),
-      createdBy: firstPresent(
+      provincialDeliveredEndAt:
+          _normalizeDateTimeString(provincialDeliveredEndAtValue),
+      provincialDeliveredLocation: provincialDeliveredLocationValue,
+      provincialReceiverName: provincialReceiverNameValue,
+      status: _firstPresent(json, ['Status', 'status']),
+      remarks: _firstPresent(json, ['Remarks', 'remarks']),
+      createdBy: _firstPresent(
           json, ['CreatedBy', 'createdBy', 'Createdby', 'createdby']),
-      createdAt: firstPresent(
+      createdAt: _firstPresent(
           json, ['CreatedAt', 'createdAt', 'Createdat', 'createdat']),
-      updatedAt: firstPresent(
+      updatedAt: _firstPresent(
           json, ['UpdatedAt', 'updatedAt', 'Updatedat', 'updatedat']),
       client: json['Client'] != null
           ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
           : ClientModel.empty(),
-      documentReference:
-          json['documentReference'] != null && json['documentReference'] is List
-              ? List<String>.from((json['documentReference'] as List)
+      documentReference: (json['DocumentReference'] ??
+                      json['documentReference']) !=
+                  null &&
+              (json['DocumentReference'] ?? json['documentReference']) is List
+          ? List<String>.from(
+              ((json['DocumentReference'] ?? json['documentReference']) as List)
                   .map((e) => e?.toString() ?? ''))
-              : <String>[],
+          : <String>[],
       cancelRemarks: json['CancelRemarks'] != null
           ? CancelRemarksModel.fromJson(
               Map<String, dynamic>.from(json['CancelRemarks']))
@@ -269,20 +426,29 @@ class AirSeaModel {
       lower[k.toString().toLowerCase()] = v;
     });
 
-    String idValue = (lower['requestid'] ?? lower['id'] ?? '').toString();
+    final idValue = (lower['requestid'] ?? lower['id'] ?? '').toString();
+    final provincialReceiverNameValue = _firstPresent(lower, [
+      'provincialreceivername',
+      'provincialdeliveredreceivername',
+    ]);
 
-    int? parseIntOrNull(dynamic value) {
-      if (value == null) return null;
-      if (value is int) return value;
-      if (value is String) return int.tryParse(value);
-      return null;
-    }
+    final provincialPickUpAtValue = lower['provincialpickupat'];
+
+    final provincialInTransitAtValue = lower['provincialintransitat'];
+    final provincialDeliveredEndAtValue = _firstPresentValue(lower, [
+      'provincialdeliveredendat',
+      'provincialdeliveredat',
+    ]);
+    final provincialDeliveredLocationValue = _firstPresent(lower, [
+      'provincialdeliveredlocation',
+      'provincialdeliveredto',
+    ]);
 
     return AirSeaModel(
       id: idValue,
       clientId: (lower['clientid'] ?? '').toString(),
       itemCategoryId: (lower['itemcategoryid'] ?? '').toString(),
-      mobileId: parseIntOrNull(lower['mobileid']),
+      mobileId: _parseIntOrNull(lower['mobileid']),
       datePickUp: (lower['datepickup'] ?? '').toString(),
       itemPreparedAt: (lower['itempreparedat'] ?? '').toString(),
       itemPreparedEndAt: (lower['itempreparedendat'] ?? '').toString(),
@@ -296,6 +462,18 @@ class AirSeaModel {
       helper: (lower['helper'] ?? '').toString(),
       dispatchedAt: (lower['dispatchedat'] ?? '').toString(),
       dropOffAt: (lower['dropoffat'] ?? '').toString(),
+      provincialPickUpBy: (lower['provincialpickupby'] ?? '').toString(),
+      provincialPickUpAt: _normalizeDateTimeString(provincialPickUpAtValue),
+      provincialInTransitAt:
+          _normalizeDateTimeString(provincialInTransitAtValue),
+      provincialInTransitLocation:
+          (lower['provincialintransitlocation'] ?? '').toString(),
+      provincialDeliveredEndAt:
+          _normalizeDateTimeString(provincialDeliveredEndAtValue),
+      provincialDeliveredLocation: provincialDeliveredLocationValue,
+      provincialReceiverName: provincialReceiverNameValue.isNotEmpty
+          ? provincialReceiverNameValue
+          : '',
       status: (lower['status'] ?? '').toString(),
       remarks: (lower['remarks'] ?? '').toString(),
       createdBy: (lower['createdby'] ?? '').toString(),
@@ -305,4 +483,3 @@ class AirSeaModel {
     );
   }
 }
-

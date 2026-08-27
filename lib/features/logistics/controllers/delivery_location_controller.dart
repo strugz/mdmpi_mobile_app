@@ -9,6 +9,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/call_functions.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/delivery_vehicle_model.dart';
 
 import '../../../base/utils/helpers/helper_functions.dart';
@@ -34,14 +36,25 @@ class DeliveryLocationController extends GetxController {
   final RxSet<Marker> markers = <Marker>{}.obs;
   final Map<String, LatLng> previousPositions = {};
   final Map<String, Marker> updatedMarkers = {};
+  final Map<String, double> markerBearings = {};
+  final Map<String, BitmapDescriptor> _dispatchMarkerIcons = {};
+  final markerIconsReady = false.obs;
+  Worker? _riderLocationWorker;
+  bool _hasCenteredInitialRiders = false;
 
   final userController = Get.find<UserController>();
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   @override
   void onInit() {
     // TODO: implement onInit
     super.onInit();
     getUserLocation();
+    loadDispatchMarkerIcons();
+    _riderLocationWorker = ever(
+      webSocketController.riderLocations,
+      (_) => _handleRiderLocationsChanged(),
+    );
   }
 
   Future<void> getRoute(LatLng location, LatLng destination) async {
@@ -84,20 +97,58 @@ class DeliveryLocationController extends GetxController {
     return LatLngBounds(southwest: southwest, northeast: northeast);
   }
 
+  Future<void> loadDispatchMarkerIcons() async {
+    for (final assetPath in BImages.riderCarVariants) {
+      try {
+        _dispatchMarkerIcons[assetPath] = await _loadAssetMarkerIcon(assetPath);
+      } catch (e) {
+        logDebug(
+            'DeliveryLocation: Rider car variant "$assetPath" failed to load. Fallback car icon will be used. $e');
+      }
+    }
+
+    markerIconsReady.value = true;
+  }
+
+  Future<BitmapDescriptor> _loadAssetMarkerIcon(String assetPath) {
+    return BitmapDescriptor.asset(
+      const ImageConfiguration(size: Size(100, 100)),
+      assetPath,
+      width: 48,
+      height: 48,
+    );
+  }
+
   Set<Marker> riderBuildMarkers() {
-    webSocketController.riderLocations.forEach((riderId, position) async {
-      LatLng previousPosition = previousPositions[riderId] ?? LatLng(0, 0);
-      double bearing = calculateBearing(previousPosition, position);
+    final nextMarkers = <String, Marker>{};
+
+    webSocketController.riderLocations.forEach((requestId, position) {
+      if (position.latitude == 0.0 || position.longitude == 0.0) return;
+
+      final previousPosition = previousPositions[requestId];
+      final movementMeters = previousPosition == null
+          ? 0.0
+          : Geolocator.distanceBetween(
+              previousPosition.latitude,
+              previousPosition.longitude,
+              position.latitude,
+              position.longitude,
+            );
+      final bearing = previousPosition != null && movementMeters >= 2
+          ? calculateBearing(previousPosition, position)
+          : markerBearings[requestId] ?? 0.0;
+      markerBearings[requestId] = bearing;
+      final update = webSocketController.riderLocationUpdates[requestId];
       final marker = Marker(
-        markerId: MarkerId(riderId),
+        markerId: MarkerId(requestId),
         position: position,
         infoWindow: InfoWindow(
-            title: webSocketController.riderDestination.value,
-            snippet: 'Rider: ${webSocketController.riderInitial} ETA: ${webSocketController.riderEta.value}, Distance: ${webSocketController.riderDistance.value}',
+            title: '${update?.client ?? 'Dispatch'} - $requestId',
+            snippet:
+                'Rider: ${update?.riderInitial ?? ''} ETA: ${update?.eta ?? ''}, Distance: ${update?.distance ?? ''}, Status: ${update?.status ?? ''}',
             onTap: () async {
               final String phoneNumber = await userController
-                  .fetchUserPhoneNumberForDriver(webSocketController
-                      .riderInitial.value); // Replace with your actual field
+                  .fetchUserPhoneNumberForDriver(update?.riderInitial ?? '');
 
               if (phoneNumber.isNotEmpty) {
                 CallFunctions.makePhoneCall(phoneNumber);
@@ -106,20 +157,103 @@ class DeliveryLocationController extends GetxController {
                     'Dispatcher phone number not available.');
               }
             }),
-        // ignore: deprecated_member_use
-        icon: await BitmapDescriptor.fromAssetImage(
-          ImageConfiguration(size: Size(100, 100)),
-          BImages.riderCar,
-        ),
+        icon: _iconForRequest(requestId),
         rotation: bearing,
       );
-      updatedMarkers[riderId] = marker;
-      previousPositions[riderId] = position;
+      nextMarkers[requestId] = marker;
+      previousPositions[requestId] = position;
     });
+
+    updatedMarkers
+      ..clear()
+      ..addAll(nextMarkers);
+
     return updatedMarkers.values.toSet();
   }
 
+  BitmapDescriptor _iconForRequest(String requestId) {
+    final assetPath = _assetPathForRequest(requestId);
+
+    return _dispatchMarkerIcons[assetPath] ??
+        BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
+  }
+
+  String _assetPathForRequest(String requestId) {
+    final index = WebSocketDeliveryController.dispatchMarkerIndexForRequestId(
+      requestId,
+      BImages.riderCarVariants.length,
+    );
+
+    return BImages.riderCarVariants[index];
+  }
+
+  void _handleRiderLocationsChanged() {
+    if (!_hasCenteredInitialRiders &&
+        selectedVehicle.value == null &&
+        webSocketController.riderLocations.isNotEmpty) {
+      _hasCenteredInitialRiders = true;
+      Future.delayed(const Duration(milliseconds: 300), centerActiveDeliveries);
+    }
+  }
+
+  Future<void> centerActiveDeliveries() async {
+    final controller = mapController.value;
+    final positions = webSocketController.riderLocations.values
+        .where(
+            (position) => position.latitude != 0.0 && position.longitude != 0.0)
+        .toList();
+
+    if (controller == null || positions.isEmpty) return;
+
+    if (positions.length == 1) {
+      await controller.animateCamera(
+        CameraUpdate.newLatLngZoom(positions.first, 15),
+      );
+      return;
+    }
+
+    await controller.animateCamera(
+      CameraUpdate.newLatLngBounds(_boundsForPositions(positions), 80),
+    );
+  }
+
+  Future<void> centerDispatch(String requestId) async {
+    final controller = mapController.value;
+    final position = webSocketController.riderLocations[requestId];
+
+    if (controller == null || position == null) return;
+
+    await controller.animateCamera(
+      CameraUpdate.newLatLngZoom(position, 16),
+    );
+  }
+
+  LatLngBounds _boundsForPositions(List<LatLng> positions) {
+    var minLat = positions.first.latitude;
+    var maxLat = positions.first.latitude;
+    var minLng = positions.first.longitude;
+    var maxLng = positions.first.longitude;
+
+    for (final position in positions.skip(1)) {
+      minLat = math.min(minLat, position.latitude);
+      maxLat = math.max(maxLat, position.latitude);
+      minLng = math.min(minLng, position.longitude);
+      maxLng = math.max(maxLng, position.longitude);
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+  }
+
   Future<void> getUserLocation() async {
+    final permissionCheck = await _permissionService.requireForFeature(
+      PermissionType.location,
+      featureName: 'Delivery location map',
+    );
+    if (!permissionCheck.granted) return;
+
     bool serviceEnabled;
     LocationPermission permission;
 
@@ -141,7 +275,8 @@ class DeliveryLocationController extends GetxController {
     }
 
     Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high));
+        locationSettings:
+            const LocationSettings(accuracy: LocationAccuracy.high));
     currentLocation.value = LatLng(position.latitude, position.longitude);
 
     mapController.value
@@ -216,5 +351,11 @@ class DeliveryLocationController extends GetxController {
       polylineCoordinates.add(LatLng(lat / 1E5, lng / 1E5));
     }
     return polylineCoordinates;
+  }
+
+  @override
+  void onClose() {
+    _riderLocationWorker?.dispose();
+    super.onClose();
   }
 }

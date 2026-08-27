@@ -2,8 +2,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
+import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/standard_delivery_mapper.dart';
 import 'dart:convert';
@@ -14,13 +19,17 @@ import '../../../features/logistics/models/cancel_remarks_model.dart';
 class StandardDeliveryRepository extends GetxController {
   static StandardDeliveryRepository get instance => Get.find();
 
-  Future<void> insertDelivery(StandardDeliveryModel requestData) async {
+  Future<void> insertDelivery(StandardDeliveryModel requestData,
+      [List<InventoryItemModel>? items]) async {
     try {
-      final dto = StandardDeliveryMapper.toInsertDto(requestData);
+      // Map request + scanned items into DTO
+      // Prefer explicitly provided items parameter; otherwise, try to read
+      // `items` from the requestData (some callers may attach items there).
+      final dto = StandardDeliveryMapper.toInsertDto(requestData, items);
       final payload = dto.toJson();
 
       final response = await http.post(
-        Uri.parse("${dotenv.env['API_URL']!}/api4/request"),
+        BApiEnvironment.api4Uri('/api4/request'),
         headers: <String, String>{'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
@@ -42,15 +51,20 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  Future<void> updateDelivery(StandardDeliveryModel requestData) async {
+  Future<void> updateDelivery(
+    StandardDeliveryModel requestData,
+    String actionBy, {
+    bool showSuccessSnackBar = true,
+  }) async {
     try {
-      final updateDto = StandardDeliveryMapper.toUpdateDto(requestData);
+      final updateDto =
+          StandardDeliveryMapper.toUpdateDto(requestData, actionBy);
       final payload = updateDto.toJson();
 
-      final url = "${dotenv.env['API_URL']!}/api4/request";
+      final url = BApiEnvironment.api4Uri('/api4/request');
 
       final response = await http
-          .patch(Uri.parse(url),
+          .patch(url,
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -75,8 +89,11 @@ class StandardDeliveryRepository extends GetxController {
           message = rawBody.toString();
         }
 
-        if (message == 'Request updated successfully.' || message.contains('updated successfully')) {
-          BLoaders.successSnackBar(title: 'Information', message: message);
+        if (message == 'Request updated successfully.' ||
+            message.contains('updated successfully')) {
+          if (showSuccessSnackBar) {
+            BLoaders.successSnackBar(title: 'Information', message: message);
+          }
           return;
         } else {
           BLoaders.warningSnackBar(title: 'Information', message: message);
@@ -96,11 +113,12 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  Future<void> cancelDelivery(String requestID, String remarks, String user) async {
+  Future<void> cancelDelivery(
+      String requestID, String remarks, String user) async {
     try {
       final response = await http
           .patch(
-            Uri.parse("${dotenv.env['API_URL']!}/api4/request/cancel/$requestID/$user"),
+            BApiEnvironment.api4Uri('/api4/request/cancel/$requestID/$user'),
             headers: <String, String>{
               'Content-Type': 'application/json; charset=UTF-8',
             },
@@ -147,10 +165,22 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
-  Future<List<StandardDeliveryModel>> getAllPending() async {
+  Future<List<StandardDeliveryModel>> getAllPending({
+    bool allowLocalFallback = true,
+  }) async {
     try {
-      final response =
-          await http.get(Uri.parse("${dotenv.env['API_URL']}/api4/request"));
+      final dbHelper = DatabaseHelper.instance;
+      final isConnected = await NetworkManager.instance.isConnected();
+
+      if (!isConnected) {
+        if (!allowLocalFallback) {
+          throw Exception('No internet connection');
+        }
+        logDebug('StandardDeliveryRepository: Offline, returning local data');
+        return await dbHelper.getRequests();
+      }
+
+      final response = await http.get(BApiEnvironment.api4Uri('/api4/request'));
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
         List<dynamic> jsonResponse;
@@ -162,13 +192,14 @@ class StandardDeliveryRepository extends GetxController {
           } else if (decoded.containsKey('items') && decoded['items'] is List) {
             jsonResponse = decoded['items'];
           } else {
-            final List<dynamic>? found = decoded.values.firstWhere(
-                (v) => v is List,
-                orElse: () => null) as List<dynamic>?;
+            final List<dynamic>? found =
+                decoded.values.firstWhere((v) => v is List, orElse: () => null)
+                    as List<dynamic>?;
             if (found != null) {
               jsonResponse = found;
             } else {
-              throw Exception('Unexpected API response format: ${response.body}');
+              throw Exception(
+                  'Unexpected API response format: ${response.body}');
             }
           }
         } else {
@@ -178,14 +209,16 @@ class StandardDeliveryRepository extends GetxController {
         final List<StandardDeliveryModel> parsed = [];
         for (var item in jsonResponse) {
           try {
-            final map = item is Map<String, dynamic> ? item : Map<String, dynamic>.from(item);
+            final map = item is Map<String, dynamic>
+                ? item
+                : Map<String, dynamic>.from(item);
             parsed.add(StandardDeliveryModel.fromJson(map));
           } catch (e) {
-            print('Failed to parse request item: $e');
+            logDebug('Failed to parse request item: $e');
             try {
-              print('Item data: ${json.encode(item)}');
+              logDebug('Item data: ${json.encode(item)}');
             } catch (_) {
-              print('Item data: $item');
+              logDebug('Item data: $item');
             }
           }
         }
@@ -195,6 +228,20 @@ class StandardDeliveryRepository extends GetxController {
         throw Exception('Failed to load pending request');
       }
     } catch (e, st) {
+      logDebug('StandardDeliveryRepository.getAllPending error: $e\n$st');
+      if (!allowLocalFallback) {
+        throw Exception('Something went wrong. Please try again: $e\n$st');
+      }
+      try {
+        final localData = await DatabaseHelper.instance.getRequests();
+        if (localData.isNotEmpty) {
+          logDebug(
+              'StandardDeliveryRepository: API failed, returning ${localData.length} local rows');
+          return localData;
+        }
+      } catch (dbError) {
+        logDebug('StandardDeliveryRepository: Local fallback failed: $dbError');
+      }
       throw Exception('Something went wrong. Please try again: $e\n$st');
     }
   }

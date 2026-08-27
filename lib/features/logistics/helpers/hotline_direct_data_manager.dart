@@ -2,9 +2,10 @@ import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/offline_data_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
@@ -18,6 +19,8 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_notification_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
@@ -147,32 +150,12 @@ class HotlineDirectDataManager {
             title: 'New', body: 'New Hotline Direct Request Received!'),
       );
 
-      final managersPhoneNumber = await _dbHelper
-          .getUserAndManagerPhoneNumbers(formState.requestedBy.text);
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (newRequest.createdBy == 'MEO') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('LNA'));
-      }
-
-      if (newRequest.createdBy == 'AVS') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('RPT'));
-      }
-
-      if (newRequest.createdBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
       await _messageController.sendSmsMessage(
-          managersPhoneNumber, BTexts.statusNewRequest, newRequest);
+          BTexts.statusNewRequest, newRequest);
 
-      // Save to repository
-      await _repository.insertDelivery(newRequest);
+      // Save to repository - include scanned items from form state
+      await _repository.insertDelivery(
+          newRequest, formState.scannedInventoryItems.toList());
 
       // Reload requests
       await fetchHotlineDirectRequests(
@@ -206,6 +189,14 @@ class HotlineDirectDataManager {
     String userInitial,
     HotlineDirectController controller,
   ) async {
+    if (!await _validateRequiredUpdateFields(
+      request: request,
+      newStatus: newStatus,
+      formState: controller.formState,
+    )) {
+      return;
+    }
+
     try {
       controller.isSaving.value = true;
       controller.errorMessage.value = null;
@@ -282,7 +273,8 @@ class HotlineDirectDataManager {
             : request.tripTicketNumber,
       );
 
-      print('HEY2: ${jsonEncode(updatedRequest)}');
+      logDebug(
+          'HotlineDirectDataManager.updateRequestStatus: ${jsonEncode(updatedRequest)}');
 
       // Handle signature upload
       final bool signatureWasAdded = newStatus == BTexts.statusDoneDelivery &&
@@ -312,28 +304,12 @@ class HotlineDirectDataManager {
           finalImageBase64.isNotEmpty;
 
       if (imageProofWasAdded) {
-        final isConnectedForUpload =
-            await NetworkManager.instance.isConnected();
-        if (isConnectedForUpload) {
-          try {
-            await ImageRepository.instance.uploadFile(
-              requestId: request.id,
-              base64Image: finalImageBase64,
-              type: 'Proof',
-            );
-          } catch (e) {
-            BLoaders.warningSnackBar(
-              title: 'Upload Failed',
-              message:
-                  'Image proof could not be uploaded. It will be synced when connection is available.',
-            );
-          }
-        } else {
-          BLoaders.warningSnackBar(
-              title: 'No Internet',
-              message:
-                  'Image saved locally. It will be uploaded when internet connection is available.');
-        }
+        await ProofImageOutboxUploader.instance.uploadOrQueue(
+          requestId: request.id,
+          imageLookupKey: request.id,
+          base64Image: finalImageBase64,
+          type: 'Proof',
+        );
       }
 
       if (controller.useLocalStorage.value) {
@@ -341,7 +317,7 @@ class HotlineDirectDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _repository.updateDelivery(updatedRequest);
+          await _repository.updateDelivery(updatedRequest, userInitial);
           await _dbHelper.updateRequest(requestModel: updatedRequest);
         } else {
           await _dbHelper.updateRequest(requestModel: updatedRequest);
@@ -368,26 +344,7 @@ class HotlineDirectDataManager {
             title: 'Hotline Direct Update', body: updatedRequest.status),
       );
 
-      final managersPhoneNumber = await _dbHelper
-          .getUserAndManagerPhoneNumbers(updatedRequest.requestBy);
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (newStatus == BTexts.statusItemPrepared &&
-          request.itemPreparedBy == 'LNA') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('MEO'));
-      }
-
-      if (newStatus == BTexts.statusItemPrepared &&
-          request.itemPreparedBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
-      await _messageController.sendSmsMessage(
-          managersPhoneNumber, newStatus, updatedRequest);
+      await _messageController.sendSmsMessage(newStatus, updatedRequest);
 
       // Force reactive update by nullifying first, then setting the new value
       // This ensures GetX Obx widgets detect the change
@@ -477,23 +434,7 @@ class HotlineDirectDataManager {
             title: 'Hotline Direct Cancelled!', body: 'Reason: $remarks'),
       );
 
-      List<String> managersPhoneNumber = [];
-
-      managersPhoneNumber
-          .add(await _dbHelper.getUserPhoneNumberByUsername('RLD'));
-
-      if (request.itemPreparedBy == 'LNA') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('MEO'));
-      }
-
-      if (request.itemPreparedBy == 'RPT') {
-        managersPhoneNumber
-            .add(await _dbHelper.getUserPhoneNumberByUsername('AVS'));
-      }
-
-      await _messageController.sendSmsMessage(
-          managersPhoneNumber, BTexts.statusCancelled, request);
+      await _messageController.sendSmsMessage(BTexts.statusCancelled, request);
 
       await fetchHotlineDirectRequests(
           controller, controller.useLocalStorage.value);
@@ -528,20 +469,13 @@ class HotlineDirectDataManager {
     try {
       List<StandardDeliveryModel> results;
 
-      if (!useLocalStorage) {
-        // Force API fetch
-        final apiRequests = await _repository.getAllPending();
-        results = apiRequests;
-        await _dbHelper.insertRequests(apiRequests);
-      } else {
-        // Try local DB first
-        results = await _dbHelper.getRequests();
-        if (results.isEmpty) {
-          final apiRequests = await _repository.getAllPending();
-          results = apiRequests;
-          await _dbHelper.insertRequests(apiRequests);
-        }
-      }
+      results = await OfflineDataLoader.loadLocalThenRemoteIfOnline(
+        loadLocal: _dbHelper.getRequests,
+        loadRemote: _repository.getAllPending,
+        cacheRemote: _dbHelper.insertRequests,
+        sourceName: 'HotlineDirectDataManager.fetchHotlineDirectRequests',
+        forceRemote: !useLocalStorage,
+      );
 
       // Filter for Hotline Direct category only (formCategoryID = '8')
       final hotlineDirectRequests =
@@ -553,6 +487,46 @@ class HotlineDirectDataManager {
           .applyFilter(controller.allPendingRequests.toList());
 
       controller.updateRequestCounts();
+    } catch (e) {
+      controller.errorMessage.value = e.toString();
+      logDebug(
+          'HotlineDirectDataManager.fetchHotlineDirectRequests failed: $e');
+    } finally {
+      controller.isLoading.value = false;
+    }
+  }
+
+  /// Hard reset Hotline Direct data by clearing local request tables and forcing a fresh API load.
+  Future<void> hardResetHotlineDirectRequests(
+      HotlineDirectController controller) async {
+    if (controller.isLoading.value) return;
+
+    if (!await validateConnectivity()) {
+      return;
+    }
+
+    controller.isLoading.value = true;
+    controller.errorMessage.value = null;
+
+    try {
+      final apiRequests =
+          await _repository.getAllPending(allowLocalFallback: false);
+
+      await _dbHelper.deleteRequest();
+      await _dbHelper.insertRequests(apiRequests);
+
+      final hotlineDirectRequests =
+          apiRequests.where((r) => r.formCategoryID == '8').toList();
+
+      controller.allPendingRequests.assignAll(hotlineDirectRequests);
+      controller.filterManager
+          .applyFilter(controller.allPendingRequests.toList());
+      controller.updateRequestCounts();
+
+      BLoaders.successSnackBar(
+        title: 'Success',
+        message: 'Hotline Direct data refreshed successfully',
+      );
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
@@ -664,6 +638,7 @@ class HotlineDirectDataManager {
   /// Use case: Manual sync when connectivity is restored after offline changes.
   Future<void> uploadModifiedRequest() async {
     try {
+      final userCtrl = Get.find<UserController>();
       final requests = await _dbHelper.getRequests();
       // Filter for Hotline Direct category (formCategoryID = '8')
       final hotlineDirectRequests =
@@ -671,7 +646,8 @@ class HotlineDirectDataManager {
 
       for (var request in hotlineDirectRequests) {
         if (request.status != BTexts.statusNewRequest) {
-          await _repository.updateDelivery(request);
+          await _repository.updateDelivery(
+              request, userCtrl.user.value.initial);
         }
       }
       BLoaders.successSnackBar(
@@ -682,5 +658,101 @@ class HotlineDirectDataManager {
           title: 'Upload Failed',
           message: "Could not upload requests: ${e.toString()}");
     }
+  }
+
+  static Future<bool> _validateRequiredUpdateFields({
+    required StandardDeliveryModel request,
+    required String newStatus,
+    required StandardDeliveryFormState formState,
+  }) async {
+    if (newStatus == BTexts.statusItemPrepared) {
+      return _validateDeliveryInfo(request, formState);
+    }
+
+    if (newStatus == BTexts.statusDoneDelivery) {
+      return _validateCompletionInfo(request, newStatus, formState);
+    }
+
+    return true;
+  }
+
+  static bool _validateDeliveryInfo(
+    StandardDeliveryModel request,
+    StandardDeliveryFormState formState,
+  ) {
+    final tripTicket = request.tripTicketNumber.trim().isNotEmpty
+        ? request.tripTicketNumber
+        : formState.tripTicketNumber.text;
+    final driver = request.deliveredBy.trim().isNotEmpty
+        ? request.deliveredBy
+        : formState.selectedDriver.text;
+    final hasVehicle = (request.mobileID != null && request.mobileID != 0) ||
+        formState.mobile.text.trim().isNotEmpty;
+
+    if (tripTicket.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please enter Trip Ticket Number',
+      );
+      return false;
+    }
+    if (driver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Driver',
+      );
+      return false;
+    }
+    if (!hasVehicle) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    return true;
+  }
+
+  static Future<bool> _validateCompletionInfo(
+    StandardDeliveryModel request,
+    String newStatus,
+    StandardDeliveryFormState formState,
+  ) async {
+    final receiver = request.receiver.trim().isNotEmpty
+        ? request.receiver
+        : formState.receiver.text;
+    final hasSignature = request.signature.trim().isNotEmpty ||
+        formState.receiverSignatureBase64.value.trim().isNotEmpty ||
+        (formState.receiverSignatureBytes.value?.isNotEmpty ?? false);
+    final proofImage = request.image.trim().isNotEmpty
+        ? request.image
+        : await BImageHelperFunctions.getDeliveryImageAsBase64(
+              newStatus,
+              request.id,
+            ) ??
+            formState.cameraPickUpPicture.value;
+
+    if (receiver.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: "Please enter the receiver's name.",
+      );
+      return false;
+    }
+    if (!hasSignature) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: "Please capture the receiver's signature.",
+      );
+      return false;
+    }
+    if (proofImage.trim().isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please capture the delivery proof image.',
+      );
+      return false;
+    }
+    return true;
   }
 }

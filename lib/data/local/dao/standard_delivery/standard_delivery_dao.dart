@@ -1,7 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/client_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/document_reference_dao.dart';
 
@@ -83,6 +83,7 @@ class RequestDao {
       'MobileID': requestModel.mobileID ?? 0,
       'RequestDriverHelper': requestModel.helper,
       'Receiver': requestModel.receiver,
+      'RecipientContactDetails': requestModel.recipientContactDetails,
       'TripTicketNumber': requestModel.tripTicketNumber,
       'ItemCategoryID': requestModel.itemCategoryID,
       'FormCategoryID': requestModel.formCategoryID,
@@ -125,73 +126,11 @@ class RequestDao {
   }
 
   Future<void> insertRequests(List<StandardDeliveryModel> requestModels) async {
-    Batch batch = db.batch();
     for (StandardDeliveryModel requestModel in requestModels) {
-      // Prepare DB-mapped row (Request-prefixed keys)
-      final parsedId = int.tryParse(requestModel.id) ?? requestModel.id;
-      Map<String, dynamic> requestData = {
-        'RequestID': parsedId,
-        'RequestClientID': requestModel.clientId,
-        'RequestShippingMethod': requestModel.shippingMethod,
-        'RequestDeliveryTerms': requestModel.deliveryTerms,
-        'RequestDeliveryDate': requestModel.deliveryDate,
-        'RequestPreference': requestModel.preference,
-        'RequestStatus': requestModel.status,
-        'RequestBy': requestModel.requestBy,
-        'RequestCreatedBy': requestModel.createdBy,
-        'RequestCreatedAt': requestModel.createdAt,
-        'RequestItemPreparedBy': requestModel.itemPreparedBy,
-        'RequestDeliveredBy': requestModel.deliveredBy,
-        'RequestItemPreparedAt': requestModel.itemPreparedAt,
-        'RequestItemPreparedEndAt': requestModel.itemPreparedEndAt,
-        'RequestDeliveredAt': requestModel.deliveredAt,
-        'RequestDeliveredEndAt': requestModel.deliveredEndAt,
-        'LocationStartedAt': requestModel.locationStartedAt,
-        'LocationEndAt': requestModel.locationEndAt,
-        'MobileID': requestModel.mobileID ?? 0,
-        'RequestDriverHelper': requestModel.helper,
-        'Receiver': requestModel.receiver,
-        'TripTicketNumber': requestModel.tripTicketNumber,
-        'ItemCategoryID': requestModel.itemCategoryID,
-        'FormCategoryID': requestModel.formCategoryID,
-      };
-
-      batch.insert('a_tblRequest', requestData, conflictAlgorithm: ConflictAlgorithm.replace);
-
-      // Also insert document references into their table
-      if (requestModel.documentReference.isNotEmpty) {
-        for (var ref in requestModel.documentReference) {
-          if (ref.isNotEmpty) {
-            // Skip inserting if an entry with the same RequestID and Reference already exists
-            final List<Map<String, dynamic>> existing = await db.query(
-              'a_tblRequestDocumentReference',
-              where: 'RequestID = ? AND Reference = ?',
-              whereArgs: [parsedId, ref],
-              limit: 1,
-            );
-            if (existing.isEmpty) {
-              batch.insert('a_tblRequestDocumentReference', {
-                'RequestID': parsedId,
-                'Reference': ref,
-                'RequestCreatedAt': requestModel.createdAt,
-              }, conflictAlgorithm: ConflictAlgorithm.replace);
-            }
-          }
-        }
-      }
-
-      // Also persist client info (ACCMST_) so client lookup later can find the client
-      // Use ClientModel.toJson() and replace on conflict to keep latest data
-      try {
-        final client = requestModel.client;
-        if (client.id.isNotEmpty) {
-          batch.insert('ACCMST_', client.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
-        }
-      } catch (_) {
-        // ignore if client is missing or malformed; we don't want batch to fail entirely
-      }
+      // Reuse the single-request upsert logic so an API refresh cannot
+      // overwrite a newer local status with an older server value.
+      await insertRequest(requestModel);
     }
-    await batch.commit(noResult: true);
   }
 
   Future<void> updateRequest({required StandardDeliveryModel requestModel}) async {
@@ -288,22 +227,13 @@ class RequestDao {
     return value == null || value.isEmpty ? null : value;
   }
 
-  /// Convenience checks
-  Future<bool> hasReceiverSignature(dynamic requestID) async {
-    final sig = await getReceiverSignatureByRequestId(requestID);
-    return sig != null;
-  }
-
   Future<bool> hasRequestImage(dynamic requestID) async {
     final img = await getRequestImageByRequestId(requestID);
     return img != null;
   }
 
   /// Return all receiver signature rows (RequestID, RequestReceiverSignature)
-  Future<List<Map<String, dynamic>>> getAllReceiverSignatures() async {
-    final List<Map<String, dynamic>> maps = await db.query('a_tblRequestReceiverSignature');
-    return maps;
-  }
+  // getAllReceiverSignatures moved to SignatureDao
 
   /// Return all request image rows (RequestID, RequestImage)
   Future<List<Map<String, dynamic>>> getAllRequestImages() async {
@@ -331,6 +261,8 @@ class RequestDao {
       );
     }
   }
+
+  // insertReceiverSignature and deleteReceiverSignatureByRequestId moved to SignatureDao
 
   // Remarks helpers
   Future<int> _insertRemark(String requestID, String remarks, String date) async {

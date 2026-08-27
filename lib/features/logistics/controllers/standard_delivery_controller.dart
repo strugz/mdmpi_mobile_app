@@ -1,11 +1,16 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/inventory/inventory_item_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -13,6 +18,9 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_fi
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_data_manager.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:iconsax/iconsax.dart';
 
 /// Controller for managing Standard Delivery requests lifecycle, state, and business operations.
 ///
@@ -26,6 +34,8 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 class StandardDeliveryController extends GetxController
     implements IDeliveryRequestController {
   static StandardDeliveryController get instance => Get.find();
+
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
 
   // ========================================================================
   // STATE PROPERTIES
@@ -87,6 +97,16 @@ class StandardDeliveryController extends GetxController
   String createdBy = '';
 
   // ========================================================================
+  // INVENTORY OCR STATE
+  // ========================================================================
+
+  /// Whether an analyze-file request is currently in flight.
+  final RxBool isAnalyzingFile = false.obs;
+
+  /// Last error from an analyze-file attempt. Null when no error.
+  final RxnString analyzeError = RxnString();
+
+  // ========================================================================
   // MANAGERS & DEPENDENCIES
   // ========================================================================
 
@@ -121,7 +141,7 @@ class StandardDeliveryController extends GetxController
     formState.initializeDefaultDate();
 
     // Load initial data
-    dataManager.loadCategories(this);
+    await dataManager.loadCategories(this);
     await loadRequests();
 
     // Set up user context
@@ -195,6 +215,10 @@ class StandardDeliveryController extends GetxController
     await dataManager.fetchStandardDeliveryRequests(this, false);
   }
 
+  Future<void> hardResetRequests() async {
+    await dataManager.hardResetRequests(this);
+  }
+
   // ========================================================================
   // REQUEST COUNT TRACKING
   // ========================================================================
@@ -254,6 +278,25 @@ class StandardDeliveryController extends GetxController
     filterManager.selectFilter(filter, allPendingRequests);
   }
 
+  void selectDateFrom(DateTime? date) {
+    filterManager.selectDateFrom(date, allPendingRequests);
+  }
+
+  void selectDateTo(DateTime? date) {
+    filterManager.selectDateTo(date, allPendingRequests);
+  }
+
+  void selectItemCategoryId(String categoryId) {
+    filterManager.selectItemCategoryId(categoryId, allPendingRequests);
+  }
+
+  void setClientNameQuery(String query) {
+    filterManager.setClientNameQuery(query, allPendingRequests);
+  }
+
+  void setDocumentReferenceQuery(String query) {
+    filterManager.setDocumentReferenceQuery(query, allPendingRequests);
+  }
   // ========================================================================
   // CRUD OPERATIONS
   // ========================================================================
@@ -376,7 +419,336 @@ class StandardDeliveryController extends GetxController
   /// [value] True to use local storage, false to use API directly
   @override
   void toggleStoragePreference(bool value) {
+    if (useLocalStorage.value == value) {
+      return;
+    }
     useLocalStorage.value = value;
     loadRequests();
+  }
+
+  // ========================================================================
+  // INVENTORY OCR OPERATIONS
+  // ========================================================================
+
+  /// Sends [file] (picture or PDF) to the Gemini analyze-file endpoint via
+  /// [InventoryItemRepository] and populates [scannedInventoryItems] with the
+  /// parsed results.
+  ///
+  /// Sets [isAnalyzingFile] while the request is in flight and updates
+  /// [analyzeError] on failure.
+  Future<void> analyzeFileForInventory(File file) async {
+    try {
+      isAnalyzingFile.value = true;
+      analyzeError.value = null;
+
+      final repo = Get.find<InventoryItemRepository>();
+      final result = await repo.analyzeFile(file);
+
+      if (result.isSuccess) {
+        // Merge / deduplicate incoming items with existing scanned items to
+        // prevent duplicates when the same file is processed more than once
+        // or when multiple UI controls trigger analysis.
+        _mergeScannedItems(result.value);
+        logDebug(
+            'StandardDeliveryController: Parsed ${result.value.length} inventory items (merged)');
+      } else {
+        analyzeError.value = result.error;
+        logDebug(
+            'StandardDeliveryController: analyzeFile failed – ${result.error}');
+      }
+    } catch (e) {
+      analyzeError.value = e.toString();
+      logDebug(
+          'StandardDeliveryController: analyzeFileForInventory error – $e');
+    } finally {
+      isAnalyzingFile.value = false;
+    }
+  }
+
+  /// Opens the device camera (or camera UI) and forwards the captured image
+  /// file to [analyzeFileForInventory]. This method centralizes permission and
+  /// platform handling so the UI widget stays pure.
+  Future<void> pickAndAnalyzeFromCamera() async {
+    try {
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.camera,
+        featureName: 'Inventory camera scanner',
+      );
+      if (!permission.granted) return;
+
+      final picker = ImagePicker();
+      final XFile? picked =
+          await picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (picked == null) return;
+      final file = File(picked.path);
+      await analyzeFileWithAiToolkit(file);
+      return;
+    } catch (e, st) {
+      analyzeError.value = 'Camera error: ${e.toString()}';
+      try {
+        logDebug('pickAndAnalyzeFromCamera error: $e\n$st');
+      } catch (_) {}
+    }
+  }
+
+  /// Presents a gallery/file chooser and forwards the selected file to
+  /// [analyzeFileForInventory]. Handles bytes-only platforms by writing a
+  /// temporary file when necessary.
+  Future<void> pickAndAnalyzeFromFile() async {
+    try {
+      final context =
+          Get.context ?? Get.rootDelegate.navigatorKey.currentContext;
+      if (context == null) {
+        analyzeError.value = 'Unable to access context for file picker.';
+        return;
+      }
+
+      final choice = await showModalBottomSheet<String?>(
+        context: context,
+        builder: (ctx) {
+          return SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Iconsax.image),
+                  title: const Text('Pick image from gallery'),
+                  onTap: () => Navigator.of(ctx).pop('gallery'),
+                ),
+                ListTile(
+                  leading: const Icon(Iconsax.folder_2),
+                  title: const Text('Pick any file'),
+                  onTap: () => Navigator.of(ctx).pop('file'),
+                ),
+                ListTile(
+                  leading: const Icon(Iconsax.close_circle),
+                  title: const Text('Cancel'),
+                  onTap: () => Navigator.of(ctx).pop(null),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (choice == null) return;
+
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.storage,
+        featureName: 'Inventory file scanner',
+      );
+      if (!permission.granted) return;
+
+      if (choice == 'gallery') {
+        final picker = ImagePicker();
+        final XFile? picked = await picker.pickImage(
+            source: ImageSource.gallery, imageQuality: 85);
+        if (picked == null) return;
+        final file = File(picked.path);
+        await analyzeFileWithAiToolkit(file);
+        return;
+      }
+
+      if (choice == 'file') {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowMultiple: false,
+          allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+          withData: true,
+        );
+
+        if (result == null || result.files.isEmpty) return;
+        final picked = result.files.single;
+
+        String? path = picked.path;
+        if (path == null && picked.bytes != null) {
+          final tempDir = Directory.systemTemp;
+          final tempFile = File('${tempDir.path}/${picked.name}');
+          await tempFile.writeAsBytes(picked.bytes!);
+          path = tempFile.path;
+        }
+
+        if (path == null) {
+          analyzeError.value = 'Unable to resolve selected file path.';
+          return;
+        }
+
+        final file = File(path);
+        if (!await file.exists()) {
+          analyzeError.value = 'Selected file does not exist.';
+          return;
+        }
+
+        await analyzeFileWithAiToolkit(file);
+        return;
+      }
+    } catch (e, st) {
+      analyzeError.value = 'File picker error: ${e.toString()}';
+      try {
+        logDebug('pickAndAnalyzeFromFile error: $e\n$st');
+      } catch (_) {}
+    }
+  }
+
+  /// Removes a single scanned inventory item at [index].
+  void removeScannedItem(int index) {
+    final items = formState.scannedInventoryItems;
+    if (index >= 0 && index < items.length) {
+      items.removeAt(index);
+    }
+  }
+
+  /// Clears all scanned inventory items.
+  void clearScannedItems() {
+    formState.scannedInventoryItems.clear();
+    analyzeError.value = null;
+  }
+
+  /// Update a scanned inventory item by a stable key and notify observers.
+  ///
+  /// [keyValue] — the identification value to find the item. By default this
+  /// matches `itemCode`. If your model has a stable `id`, set `byId: true` and
+  /// pass the id string instead.
+  ///
+  /// The method is defensive:
+  /// - finds the current index using the key (safer than trusting a captured index)
+  /// - updates the list element in-place and refreshes the RxList to notify observers
+  /// Returns true if an existing item was found and updated, false otherwise.
+  bool updateScannedItemByKey(String keyValue, InventoryItemModel updated,
+      {bool byId = false}) {
+    try {
+      final items = formState.scannedInventoryItems;
+      final int idx = byId
+          ? items.indexWhere((it) {
+              try {
+                final val = (it as dynamic).id;
+                return val != null && val.toString() == keyValue;
+              } catch (_) {
+                return false;
+              }
+            })
+          : items.indexWhere((it) => it.itemCode == keyValue);
+
+      if (idx != -1) {
+        items[idx] = updated;
+        // If it's an RxList this will notify Obx listeners.
+        try {
+          (items as dynamic).refresh();
+        } catch (_) {
+          // ignore if not RxList; caller can handle UI refresh if needed
+        }
+        return true;
+      }
+      return false;
+    } catch (e, st) {
+      // non-fatal: log for debugging
+      try {
+        logDebug('updateScannedItemByKey error: $e\n$st');
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  /// Update a scanned inventory item by object identity (exact instance match).
+  /// Returns true if found and updated, false otherwise.
+  bool updateScannedItemByIdentity(
+      InventoryItemModel original, InventoryItemModel updated) {
+    try {
+      final items = formState.scannedInventoryItems;
+      final idx = items.indexWhere((it) => identical(it, original));
+      if (idx != -1) {
+        items[idx] = updated;
+        try {
+          (items as dynamic).refresh();
+        } catch (_) {}
+        return true;
+      }
+    } catch (e, st) {
+      try {
+        logDebug('updateScannedItemByIdentity error: $e\n$st');
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  /// Analyze [file] using Google Generative Language (gemini) by sending the
+  /// file bytes and prompt in the `contents` -> `parts` -> `inlineData` + `text`
+  /// request body and extracting the first candidate content text from the
+  /// response. This is a minimal, direct implementation (no retries/fallbacks).
+  Future<void> analyzeFileWithAiToolkit(File file, {String? prompt}) async {
+    isAnalyzingFile.value = true;
+    analyzeError.value = null;
+    try {
+      final repo = Get.find<InventoryItemRepository>();
+      final result = await repo.analyzeFileWithGemini(file, prompt: prompt);
+
+      logDebug(jsonEncode(result.value));
+
+      if (result.isSuccess) {
+        _mergeScannedItems(result.value);
+        logDebug(
+            'analyzeFileWithAiToolkit: Parsed ${result.value.length} inventory items via repository (merged)');
+      } else {
+        analyzeError.value = result.error;
+        logDebug(
+            'analyzeFileWithAiToolkit: repository error – ${result.error}');
+      }
+    } catch (e, st) {
+      analyzeError.value = e.toString();
+      logDebug('analyzeFileWithAiToolkit error – $e\n$st');
+    } finally {
+      isAnalyzingFile.value = false;
+    }
+  }
+
+  /// Merge incoming scanned items into [formState.scannedInventoryItems].
+  ///
+  /// Merge strategy:
+  /// - If an incoming item has the same `itemCode` as an existing item, sum
+  ///   the quantities and merge batches. This prevents duplicate rows when
+  ///   the same file is processed twice or when different UI controls invoke
+  ///   analysis for the same file.
+  void _mergeScannedItems(List<InventoryItemModel> incoming) {
+    try {
+      final items = formState.scannedInventoryItems;
+
+      for (final inc in incoming) {
+        final idx = items.indexWhere((it) => it.itemCode == inc.itemCode);
+        if (idx != -1) {
+          final existing = items[idx];
+          final mergedQty = existing.qty + inc.qty;
+          // Merge batches by appending and de-duplicating by batchSerial
+          final Map<String, InventoryBatchModel> batchMap = {
+            for (final b in existing.batches) b.batchSerial: b
+          };
+          for (final b in inc.batches) {
+            batchMap[b.batchSerial] = b;
+          }
+
+          final merged = InventoryItemModel(
+            itemCode: existing.itemCode,
+            description: existing.description.isNotEmpty
+                ? existing.description
+                : inc.description,
+            qty: mergedQty,
+            unit: existing.unit.isNotEmpty ? existing.unit : inc.unit,
+            batches: batchMap.values.toList(),
+          );
+
+          items[idx] = merged;
+        } else {
+          items.add(inc);
+        }
+      }
+
+      // If RxList, refresh to notify listeners
+      try {
+        (items as dynamic).refresh();
+      } catch (_) {}
+    } catch (e, st) {
+      try {
+        logDebug('mergeScannedItems error: $e\n$st');
+      } catch (_) {}
+    }
   }
 }

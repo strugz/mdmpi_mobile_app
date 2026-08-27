@@ -13,10 +13,27 @@ class AirSeaDto {
   final String? itemPreparedAt;
   final String? itemPreparedEndAt;
   final String? preparedBy;
+  final String? receivedBy;
+  final String? waybillNumber;
+  final String? receivedAt;
+  final String? tripTicketNumber;
+  final String? driver;
+  final String? helper;
+  final String? dispatchedAt;
+  final String? dropOffAt;
+  final String? provincialReceiverName;
+  final String? provincialPickUpBy;
+  final String? provincialPickUpAt;
+  final String? provincialInTransitAt;
+  final String? provincialInTransitLocation;
+  final String? provincialDeliveredEndAt;
+  final String? provincialDeliveredLocation;
+
   final String? status;
   final String? remarks;
   final String? createdAt;
   final String? updatedAt;
+  final String? updatedBy;
   final SignatureDto? signature;
   final ClientDto? client;
 
@@ -31,10 +48,26 @@ class AirSeaDto {
     this.itemPreparedAt,
     this.itemPreparedEndAt,
     this.preparedBy,
+    this.receivedBy,
+    this.waybillNumber,
+    this.receivedAt,
+    this.tripTicketNumber,
+    this.driver,
+    this.helper,
+    this.dispatchedAt,
+    this.dropOffAt,
+    this.provincialReceiverName,
+    this.provincialPickUpBy,
+    this.provincialPickUpAt,
+    this.provincialInTransitAt,
+    this.provincialInTransitLocation,
+    this.provincialDeliveredEndAt,
+    this.provincialDeliveredLocation,
     this.status,
     this.remarks,
     this.createdAt,
     this.updatedAt,
+    this.updatedBy,
     this.signature,
     this.client,
   });
@@ -43,6 +76,10 @@ class AirSeaDto {
     final Map<String, dynamic> data = {};
     void put(String key, dynamic value) {
       if (value != null) data[key] = value;
+    }
+
+    void putNullable(String key, dynamic value) {
+      data[key] = value;
     }
 
     data['RequestID'] = requestID;
@@ -55,10 +92,26 @@ class AirSeaDto {
     put('ItemPreparedAt', itemPreparedAt);
     put('ItemPreparedEndAt', itemPreparedEndAt);
     put('PreparedBy', preparedBy);
+    put('ReceivedBy', receivedBy);
+    put('WaybillNumber', waybillNumber);
+    put('ReceivedAt', receivedAt);
+    put('TripTicketNumber', tripTicketNumber);
+    put('Driver', driver);
+    put('Helper', helper);
+    put('DispatchedAt', dispatchedAt);
+    put('DropOffAt', dropOffAt);
+    putNullable('provincialReceiverName', provincialReceiverName);
+    putNullable('provincialPickUpBy', provincialPickUpBy);
+    putNullable('provincialPickUpAt', provincialPickUpAt);
+    putNullable('provincialInTransitAt', provincialInTransitAt);
+    putNullable('provincialInTransitLocation', provincialInTransitLocation);
+    putNullable('provincialDeliveredEndAt', provincialDeliveredEndAt);
+    putNullable('provincialDeliveredLocation', provincialDeliveredLocation);
     put('Status', status);
     put('Remarks', remarks);
     put('CreatedAt', createdAt);
     put('UpdatedAt', updatedAt);
+    put('UpdatedBy', updatedBy);
     put('Signature', signature?.toJson());
     put('Client', client?.toJson());
 
@@ -66,12 +119,19 @@ class AirSeaDto {
   }
 
   factory AirSeaDto.fromJson(Map<String, dynamic> json) {
-    String firstPresent(Map<String, dynamic> m, List<String> keys,
+    String firstRequired(Map<String, dynamic> m, List<String> keys,
         {String fallback = ''}) {
       for (final k in keys) {
         if (m.containsKey(k) && m[k] != null) return m[k].toString();
       }
       return fallback;
+    }
+
+    String? firstPresent(Map<String, dynamic> m, List<String> keys) {
+      for (final k in keys) {
+        if (m.containsKey(k) && m[k] != null) return m[k].toString();
+      }
+      return null;
     }
 
     int? parseIntOrNull(dynamic value) {
@@ -82,7 +142,7 @@ class AirSeaDto {
     }
 
     return AirSeaDto(
-      requestID: firstPresent(json,
+      requestID: firstRequired(json,
           ['RequestID', 'requestID', 'RequestId', 'requestId', 'Requestid']),
       itemCategoryID: json['ItemCategoryID'] ??
           json['itemCategoryID'] ??
@@ -101,10 +161,64 @@ class AirSeaDto {
       itemPreparedAt: json['ItemPreparedAt'] ?? json['itemPreparedAt'],
       itemPreparedEndAt: json['ItemPreparedEndAt'] ?? json['itemPreparedEndAt'],
       preparedBy: json['PreparedBy'] ?? json['preparedBy'],
+      receivedBy: firstPresent(json, ['ReceivedBy', 'receivedBy']),
+      waybillNumber: firstPresent(json, ['WaybillNumber', 'waybillNumber']),
+      receivedAt: firstPresent(json, ['ReceivedAt', 'receivedAt']),
+      tripTicketNumber:
+          firstPresent(json, ['TripTicketNumber', 'tripTicketNumber']),
+      driver: firstPresent(json, ['Driver', 'driver']),
+      helper: firstPresent(json, ['Helper', 'helper']),
+      dispatchedAt: firstPresent(json, ['DispatchedAt', 'dispatchedAt']),
+      dropOffAt: firstPresent(json, ['DropOffAt', 'dropOffAt']),
+      provincialReceiverName: firstPresent(json, [
+        'ProvincialReceiverName',
+        'provincialReceiverName',
+        'provincial_receiver_name',
+        'ProvincialDeliveredReceiverName',
+        'provincialDeliveredReceiverName',
+        'provincial_delivered_receiver_name',
+      ]),
+      provincialPickUpBy: firstPresent(json, [
+        'ProvincialPickUpBy',
+        'provincialPickUpBy',
+        'provincial_pick_up_by',
+      ]),
+      provincialPickUpAt: firstPresent(json, [
+        'ProvincialPickUpAt',
+        'provincialPickUpAt',
+        'provincial_pick_up_at',
+      ]),
+      provincialInTransitAt: firstPresent(json, [
+        'ProvincialInTransitAt',
+        'provincialInTransitAt',
+        'provincial_in_transit_at',
+      ]),
+      provincialInTransitLocation: firstPresent(json, [
+        'ProvincialInTransitLocation',
+        'provincialInTransitLocation',
+        'provincial_in_transit_location',
+      ]),
+      provincialDeliveredEndAt: firstPresent(json, [
+        'ProvincialDeliveredEndAt',
+        'provincialDeliveredEndAt',
+        'provincial_delivered_end_at',
+        'ProvincialDeliveredAt',
+        'provincialDeliveredAt',
+        'provincial_delivered_at',
+      ]),
+      provincialDeliveredLocation: firstPresent(json, [
+        'ProvincialDeliveredLocation',
+        'provincialDeliveredLocation',
+        'provincial_delivered_location',
+        'ProvincialDeliveredTo',
+        'provincialDeliveredTo',
+        'provincial_delivered_to',
+      ]),
       status: json['Status'] ?? json['status'],
       remarks: json['Remarks'] ?? json['remarks'],
       createdAt: json['CreatedAt'] ?? json['createdAt'],
       updatedAt: json['UpdatedAt'] ?? json['updatedAt'],
+      updatedBy: json['UpdatedBy'] ?? json['updatedBy'],
       signature: json['Signature'] != null
           ? SignatureDto.fromJson(Map<String, dynamic>.from(json['Signature']))
           : null,
@@ -114,4 +228,3 @@ class AirSeaDto {
     );
   }
 }
-

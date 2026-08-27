@@ -42,6 +42,8 @@ Future<void> createAllTables(Database db) async {
       MobileID INTEGER DEFAULT 0,
       RequestDriverHelper TEXT,
       Receiver TEXT,
+      RecipientContactDetails TEXT,
+      RecipientName TEXT,
       TripTicketNumber TEXT,
       ItemCategoryID TEXT,
       FormCategoryID TEXT
@@ -55,6 +57,7 @@ Future<void> createAllTables(Database db) async {
       RequestID INTEGER,
       Reference TEXT,
       RequestCreatedAt TEXT,
+      UNIQUE(RequestID, Reference),
       FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
     )
   ''');
@@ -64,6 +67,7 @@ Future<void> createAllTables(Database db) async {
     CREATE TABLE a_tblRequestReceiverSignature (
       RequestID INTEGER UNIQUE,
       RequestReceiverSignature TEXT,
+      ApiStatus TEXT DEFAULT 'Failed',
       FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
     )
   ''');
@@ -74,6 +78,19 @@ Future<void> createAllTables(Database db) async {
       RequestID INTEGER UNIQUE,
       RequestImage TEXT,
       FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
+    )
+  ''');
+
+  // Table: a_tblRequestImageOutbox
+  await db.execute('''
+    CREATE TABLE a_tblRequestImageOutbox (
+      RequestID TEXT NOT NULL,
+      ImageType TEXT NOT NULL,
+      ImageLookupKey TEXT NOT NULL,
+      RequestImage TEXT,
+      ApiStatus TEXT DEFAULT 'Pending',
+      CapturedAt TEXT,
+      UNIQUE(RequestID, ImageType, ImageLookupKey)
     )
   ''');
 
@@ -213,6 +230,13 @@ Future<void> createAllTables(Database db) async {
       Helper TEXT,
       DispatchedAt TEXT,
       DropOffAt TEXT,
+      ProvincialPickUpBy TEXT DEFAULT '',
+      ProvincialPickUpAt TEXT DEFAULT '',
+      ProvincialInTransitAt TEXT DEFAULT '',
+      ProvincialInTransitLocation TEXT DEFAULT '',
+      ProvincialDeliveredEndAt TEXT DEFAULT '',
+      ProvincialDeliveredLocation TEXT DEFAULT '',
+      ProvincialReceiverName TEXT DEFAULT '',
       Status TEXT,
       Remarks TEXT,
       CreatedBy TEXT,
@@ -275,64 +299,25 @@ Future<void> createAllTables(Database db) async {
     )
   ''');
 
-  // Table: a_tblCollectionItems
-  // Stores collection invoice items (bucket and activity)
+  // Table: a_tblRequestBackload
+  // Stores back-load entries per request (multiple entries allowed).
   await db.execute('''
-    CREATE TABLE a_tblCollectionItems (
-      id TEXT PRIMARY KEY,
-      clientId TEXT NOT NULL,
-      clientName TEXT,
-      clientAddress TEXT,
-      documentReferences TEXT,
-      bankName TEXT,
-      toBeCollected REAL DEFAULT 0,
-      totalCollected REAL DEFAULT 0,
-      remarks TEXT,
-      documentDate TEXT,
-      bpCode TEXT,
-      postingDate TEXT,
-      dueDate TEXT,
-      status TEXT,
-      lastOutcome TEXT,
-      assignedAt TEXT,
-      collectorName TEXT,
-      createdAt TEXT,
-      updatedAt TEXT,
-      FOREIGN KEY (clientId) REFERENCES ACCMST_ (ACCMID) ON DELETE CASCADE
+    CREATE TABLE a_tblRequestBackload (
+      BackLoadID TEXT PRIMARY KEY,
+      RequestID TEXT NOT NULL,
+      Remarks TEXT,
+      DeliveryDate TEXT,
+      DateReported TEXT
     )
   ''');
-
-  // Table: a_tblCollectionHistory
-  // Stores history records for collection items
+  // Table: contacts
   await db.execute('''
-    CREATE TABLE a_tblCollectionHistory (
+    CREATE TABLE IF NOT EXISTS contacts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      itemId TEXT NOT NULL,
-      date TEXT NOT NULL,
-      collectorName TEXT,
-      status TEXT,
-      remarks TEXT,
-      totalCollected REAL DEFAULT 0,
-      bankName TEXT,
-      checkNumber TEXT,
-      checkDate TEXT,
-      purposeOfVisit TEXT,
-      FOREIGN KEY (itemId) REFERENCES a_tblCollectionItems (id) ON DELETE CASCADE
-    )
-  ''');
-
-  // Table: a_tblCollectionPending
-  // Stores pending changes to be synced to the server
-  await db.execute('''
-    CREATE TABLE a_tblCollectionPending (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      operation TEXT NOT NULL,
-      payload TEXT NOT NULL,
-      itemId TEXT,
-      createdAt TEXT NOT NULL,
-      retryCount INTEGER DEFAULT 0,
-      lastRetryAt TEXT,
-      FOREIGN KEY (itemId) REFERENCES a_tblCollectionItems (id) ON DELETE CASCADE
+      initial TEXT NOT NULL,
+      department TEXT NOT NULL,
+      contact_number TEXT NOT NULL,
+      created_at TEXT NOT NULL
     )
   ''');
 }

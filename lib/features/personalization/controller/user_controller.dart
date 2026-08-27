@@ -1,14 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/login.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/widgets/re_authenticate_user_login_form.dart';
 
@@ -26,15 +29,58 @@ class UserController extends GetxController {
   final imageUploading = false.obs;
   final verifyEmail = TextEditingController();
   final verifyPassword = TextEditingController();
-  final userRepository = Get.put(UserRepository());
+  // UserRepository is Firebase-backed. Resolve it lazily in onInit only if
+  // Firebase has been initialized and the repository is registered. This
+  // prevents accessing Firebase services on unsupported platforms.
+  UserRepository? userRepository;
   final dbHelper = DatabaseHelper.instance;
+  final _storage = GetStorage();
 
   GlobalKey<FormState> reAuthFormKey = GlobalKey<FormState>();
 
+  IPermissionService get _permissionService => Get.find<IPermissionService>();
+
   @override
   Future<void> onInit() async {
+    // Load cached user synchronously so AppRouter has the department
+    // immediately on cold start, before the async Firebase fetch completes.
+    _loadCachedUser();
+    // Resolve repository only when Firebase is initialized and repository
+    // registration exists. This avoids triggering Firestore access on
+    // platforms where Firebase was intentionally not initialized.
+    try {
+      if (Firebase.apps.isNotEmpty && Get.isRegistered<UserRepository>()) {
+        userRepository = Get.find<UserRepository>();
+      }
+    } catch (e) {
+      // Ignore; repository will remain null and methods should handle it.
+    }
     await fetchUserRecord();
     super.onInit();
+  }
+
+  /// Load cached current user from GetStorage (synchronous).
+  void _loadCachedUser() {
+    try {
+      final cachedJson = _storage.read('CurrentUser');
+      if (cachedJson != null && cachedJson is Map<String, dynamic>) {
+        user(UserModel.fromJson(cachedJson));
+        logDebug('Loaded cached user: ${user.value.department}');
+      }
+    } catch (e) {
+      logDebug('Error loading cached user: $e');
+    }
+  }
+
+  /// Persist current user to GetStorage for cold-start routing.
+  void _cacheCurrentUser() {
+    try {
+      if (user.value.id.isNotEmpty) {
+        _storage.write('CurrentUser', user.value.toLocalJson());
+      }
+    } catch (e) {
+      logDebug('Error caching user: $e');
+    }
   }
 
   @override
@@ -50,11 +96,21 @@ class UserController extends GetxController {
     try {
       profileLoading.value = true;
 
+      // If repository is not available (Firebase not initialized), skip
+      // remote fetch and keep cached/local user only.
+      if (userRepository == null) {
+        profileLoading.value = false;
+        return;
+      }
+
       /// Get user data
-      final users = await userRepository.fetchUserDetails();
+      final users = await userRepository!.fetchUserDetails();
 
       /// Update Rx User
       user(users);
+
+      /// Cache to GetStorage for cold-start routing
+      _cacheCurrentUser();
 
       /// Update Rx User
       profileLoading.value = false;
@@ -70,15 +126,20 @@ class UserController extends GetxController {
     final isConnected = await NetworkManager.instance.isConnected();
 
     if (!isConnected) {
-      BLoaders.errorSnackBar(
-          title: "Internet", message: "No Internet Connection");
+      await dbHelper.getUsers();
       return;
     }
     try {
       profileLoading.value = true;
 
+      // If no Firebase repo is available, skip remote fetch.
+      if (userRepository == null) {
+        profileLoading.value = false;
+        return;
+      }
+
       /// Get user data
-      final users = await userRepository.fetchAllUsers();
+      final users = await userRepository!.fetchAllUsers();
 
       final usersFromLocal = await dbHelper.getUsers();
 
@@ -90,10 +151,49 @@ class UserController extends GetxController {
         BLoaders.successSnackBar(
             title: 'Success', message: 'User List Updated');
       }
+
       /// Update Rx User
       profileLoading.value = false;
     } catch (e) {
       logDebug('Error ${e.toString()}');
+    } finally {
+      profileLoading.value = false;
+    }
+  }
+
+  Future<void> hardResetUsers(bool isDisplay) async {
+    final isConnected = await NetworkManager.instance.isConnected();
+
+    if (!isConnected) {
+      BLoaders.warningSnackBar(
+          title: "Internet", message: "No Internet Connection");
+      return;
+    }
+
+    try {
+      profileLoading.value = true;
+
+      if (userRepository == null) {
+        BLoaders.warningSnackBar(
+          title: 'Unavailable',
+          message: 'User sync is not available on this platform.',
+        );
+        return;
+      }
+
+      final users = await userRepository!.fetchAllUsers();
+
+      await dbHelper.deleteUsers();
+      if (users.isNotEmpty) {
+        await dbHelper.insertUsers(users);
+      }
+
+      if (isDisplay == true) {
+        BLoaders.successSnackBar(
+            title: 'Success', message: 'User List Updated');
+      }
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
     } finally {
       profileLoading.value = false;
     }
@@ -126,8 +226,10 @@ class UserController extends GetxController {
             profilePicture: userCredentials.user!.photoURL ?? '',
           );
 
-          //   Save user data
-          await userRepository.saveUserRecord(user);
+          //   Save user data (skip if no repository available)
+          if (userRepository != null) {
+            await userRepository!.saveUserRecord(user);
+          }
         }
       }
     } catch (e) {
@@ -180,11 +282,13 @@ class UserController extends GetxController {
               Get.offAll(() => const LoginScreen());
             } else {
               BFullScreenLoader.stopLoading();
-              BLoaders.errorSnackBar(title: 'Error', message: deleteResult.error);
+              BLoaders.errorSnackBar(
+                  title: 'Error', message: deleteResult.error);
             }
           } else {
             BFullScreenLoader.stopLoading();
-            BLoaders.errorSnackBar(title: 'Authentication Failed', message: result.error);
+            BLoaders.errorSnackBar(
+                title: 'Authentication Failed', message: result.error);
           }
         } else if (provider == 'password') {
           BFullScreenLoader.stopLoading();
@@ -214,22 +318,26 @@ class UserController extends GetxController {
         return;
       }
 
-      final reAuthResult = await AuthenticationRepository.instance.reAuthenticate(
+      final reAuthResult =
+          await AuthenticationRepository.instance.reAuthenticate(
         email: verifyEmail.text.trim(),
         password: verifyPassword.text.trim(),
       );
 
       if (reAuthResult.isFailure) {
         BFullScreenLoader.stopLoading();
-        BLoaders.errorSnackBar(title: 'Authentication Failed', message: reAuthResult.error);
+        BLoaders.errorSnackBar(
+            title: 'Authentication Failed', message: reAuthResult.error);
         return;
       }
 
-      final deleteResult = await AuthenticationRepository.instance.deleteAccount();
+      final deleteResult =
+          await AuthenticationRepository.instance.deleteAccount();
 
       if (deleteResult.isFailure) {
         BFullScreenLoader.stopLoading();
-        BLoaders.errorSnackBar(title: 'Delete Failed', message: deleteResult.error);
+        BLoaders.errorSnackBar(
+            title: 'Delete Failed', message: deleteResult.error);
         return;
       }
 
@@ -244,6 +352,12 @@ class UserController extends GetxController {
   /// Upload Profile Image
   Future<void> uploadUserProfilePicture() async {
     try {
+      final permission = await _permissionService.requireForFeature(
+        PermissionType.storage,
+        featureName: 'Profile picture upload',
+      );
+      if (!permission.granted) return;
+
       final image = await ImagePicker().pickImage(
           source: ImageSource.gallery,
           imageQuality: 70,
@@ -252,13 +366,20 @@ class UserController extends GetxController {
       if (image != null) {
         imageUploading.value = true;
 
+        //  Upload Image (requires Firebase-backed repo)
+        if (userRepository == null) {
+          BLoaders.errorSnackBar(
+              title: 'Error', message: 'Upload not available on this platform');
+          return;
+        }
+
         //  Upload Image
         final imageUrl =
-            await userRepository.uploadImage('Users/Images/Profile/', image);
+            await userRepository!.uploadImage('Users/Images/Profile/', image);
 
         //  Update User Image Record
         Map<String, dynamic> json = {'ProfilePicture': imageUrl};
-        await userRepository.updateSingleField(json);
+        await userRepository!.updateSingleField(json);
 
         user.value.profilePicture = imageUrl;
         user.refresh();
@@ -278,7 +399,12 @@ class UserController extends GetxController {
   Future<String?> fetchUserPhoneNumber(String initial) async {
     try {
       profileLoading.value = true;
-      final user = await userRepository.fetchUserPhoneNumber(initial);
+      if (userRepository == null) {
+        profileLoading.value = false;
+        return null;
+      }
+
+      final user = await userRepository!.fetchUserPhoneNumber(initial);
       profileLoading.value = false;
       return user.phoneNumber;
     } catch (e) {

@@ -15,6 +15,8 @@ void main() {
       status: 'New Request',
       requestBy: 'JCA',
       createdBy: 'JCA',
+      recipientContactDetails: '09171234567',
+      recipientName: 'Juan Dela Cruz',
       documentReference: ['DR1'],
       client: ClientModel.empty(),
       createdAt: DateTime.now().toString(),
@@ -31,6 +33,8 @@ void main() {
     expect(json['requestStatus'], 'New Request');
     expect(json['requestBy'], 'JCA');
     expect(json['requestCreatedBy'], 'JCA');
+    expect(json['requestRecipientContactDetails'], '09171234567');
+    expect(json['requestRecipientName'], 'Juan Dela Cruz');
     expect(json['documentReference'], ['DR1']);
 
     // Ensure no uppercase keys exist

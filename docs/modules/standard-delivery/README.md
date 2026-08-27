@@ -4,6 +4,11 @@
 
 The Standard Delivery module manages standard delivery logistics requests. It is the primary delivery sub-module handling shipment creation, item preparation, dispatch, in-transit tracking (with real-time location via WebSocket), and delivery confirmation with signature/image proof capture.
 
+## Related Plans
+
+- [Standard Delivery Signature API Status Plan](STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md)
+- [Standard Delivery Local DB Rework Plan](STANDARD_DELIVERY_LOCAL_DB_REWORK_PLAN.md)
+
 ## Status Flow
 
 ```

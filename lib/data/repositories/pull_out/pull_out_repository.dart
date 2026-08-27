@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -11,12 +11,13 @@ import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/pull_out_mapper.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/pull_out/pull_out_dao.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class PullOutRepository extends GetxController {
   static PullOutRepository get instance => Get.find();
 
-  String get _baseUrl => dotenv.env['API_URL'] ?? '';
+  String get _baseUrl => BApiEnvironment.api4BaseUrl;
   Uri _uri(String path) => Uri.parse("$_baseUrl$path");
 
   static const String _resource = '/api4/RequestPullOutReturnPickUp';
@@ -31,6 +32,7 @@ class PullOutRepository extends GetxController {
     _daoInstance = PullOutDao(db);
     return _daoInstance!;
   }
+
   /// Decodes a dynamic JSON root into a list of items.
   List<dynamic> _decodeRootToList(dynamic decoded) {
     if (decoded is List) return decoded;
@@ -88,37 +90,113 @@ class PullOutRepository extends GetxController {
               body: jsonEncode(payload))
           .timeout(const Duration(seconds: 60));
 
-  /// Fetch all pull-out requests.
-  /// [forceRefresh] is accepted for API compatibility but currently has no effect
-  /// since PullOut doesn't have local DB caching yet.
-  Future<List<PullOutModel>> getAll({bool forceRefresh = false}) async {
+  /// Fetch all pull-out requests and cache them to the local Pull-Out table.
+  Future<List<PullOutModel>> getAll({
+    bool forceRefresh = false,
+    bool allowLocalFallback = true,
+  }) async {
     try {
+      final dao = await _dao;
+      final isConnected = await NetworkManager.instance.isConnected();
+
+      if (!isConnected) {
+        if (!allowLocalFallback) {
+          throw Exception('No internet connection');
+        }
+        logDebug('PullOutRepository: Offline, returning local data');
+        return await dao.getPullOutRequests();
+      }
+
+      if (!forceRefresh && await dao.isPullOutTableNotEmpty()) {
+        final localData = await dao.getPullOutRequests();
+        _syncFromApi();
+        return localData;
+      }
+
       final url = _uri(_resource);
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         final items = _decodeRootToList(decoded);
-        return items
+
+        final requests = items
             .whereType<dynamic>()
             .map((e) => e is Map<String, dynamic>
                 ? PullOutModel.fromJson(e)
                 : PullOutModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
+
+        try {
+          await dao.deleteAll();
+          for (final request in requests) {
+            await dao.insertPullOut(request);
+          }
+          logDebug(
+              'PullOutRepository: Cached ${requests.length} pull-out requests to local DB');
+        } catch (dbError) {
+          logDebug('PullOutRepository: Failed to cache to local DB: $dbError');
+        }
+
+        return requests;
       }
       throw Exception(
           'Failed to load pull-out requests (${response.statusCode})');
     } catch (e, st) {
-      _showError('Failed to fetch pull-out list');
+      logDebug('PullOutRepository.getAll error: $e\n$st');
+      if (!allowLocalFallback) {
+        throw Exception('getAll pull-out error: $e\n$st');
+      }
+      try {
+        final localData = await getLocalPullOuts();
+        if (localData.isNotEmpty) {
+          logDebug(
+              'PullOutRepository: API failed, returning ${localData.length} local rows');
+          return localData;
+        }
+      } catch (dbError) {
+        logDebug('PullOutRepository: Local fallback failed: $dbError');
+      }
       throw Exception('getAll pull-out error: $e\n$st');
     }
   }
 
+  Future<void> _syncFromApi() async {
+    try {
+      final url = _uri(_resource);
+      final response = await _safeGet(url);
+      if (response.statusCode != 200) return;
+
+      final decoded = jsonDecode(response.body);
+      final items = _decodeRootToList(decoded);
+      final requests = items
+          .whereType<dynamic>()
+          .map((e) => e is Map<String, dynamic>
+              ? PullOutModel.fromJson(e)
+              : PullOutModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+      if (requests.isEmpty) return;
+
+      final dao = await _dao;
+      await dao.deleteAll();
+      await dao.insertPullOutRequests(requests);
+      logDebug(
+          'PullOutRepository: Background sync completed, ${requests.length} records');
+    } catch (e) {
+      logDebug('PullOutRepository: Background sync failed: $e');
+    }
+  }
+
   /// Get pull-outs from local DB only (no API call).
-  /// Currently just redirects to getAll() since PullOut doesn't have local DB yet.
-  /// This method exists for API compatibility with other repositories.
   Future<List<PullOutModel>> getLocalPullOuts() async {
-    // TODO: Implement local DB support for pull-out requests
-    return await getAll();
+    final dao = await _dao;
+    return await dao.getPullOutRequests();
+  }
+
+  /// Clear all local Pull-Out data.
+  Future<void> clearLocalData() async {
+    final dao = await _dao;
+    await dao.deleteAll();
+    logDebug('PullOutRepository: Local data cleared');
   }
 
   /// Insert a new pull-out request to API and local DB.
@@ -127,6 +205,8 @@ class PullOutRepository extends GetxController {
       final dto = PullOutMapper.toInsertDto(data);
       final payload = dto.toJson();
       final url = _uri(_resource);
+
+      logDebug('PullOutRepository.insert payload: ${jsonEncode(payload)}');
 
       final response = await _safePost(url, payload);
       if (response.statusCode == 201) {
@@ -137,17 +217,20 @@ class PullOutRepository extends GetxController {
 
           if (decoded is Map && decoded.containsKey('requestID')) {
             updatedData = data.copyWith(id: decoded['requestID'].toString());
-            logDebug('PullOutRepository: Got RequestID from server: ${updatedData.id}');
+            logDebug(
+                'PullOutRepository: Got RequestID from server: ${updatedData.id}');
           }
         } catch (parseError) {
-          logDebug('PullOutRepository: Could not parse RequestID from response: $parseError');
+          logDebug(
+              'PullOutRepository: Could not parse RequestID from response: $parseError');
         }
 
         // Save to local DB with the correct ID
         try {
           final dao = await _dao;
           await dao.insertPullOut(updatedData);
-          logDebug('PullOutRepository: Saved to local DB with ID: ${updatedData.id}');
+          logDebug(
+              'PullOutRepository: Saved to local DB with ID: ${updatedData.id}');
         } catch (dbError) {
           logDebug('PullOutRepository: Failed to save to local DB: $dbError');
           // Don't fail the whole operation if local DB save fails
@@ -290,8 +373,7 @@ class PullOutRepository extends GetxController {
   Future<void> cancelPullOutAPI(String requestID, String remarks, String user,
       {bool silent = false}) async {
     try {
-      final url =
-          Uri.parse("${dotenv.env['API_URL']!}$_resource/cancel/$requestID/$user");
+      final url = _uri('$_resource/cancel/$requestID/$user');
       final response = await http
           .patch(url,
               headers: const {

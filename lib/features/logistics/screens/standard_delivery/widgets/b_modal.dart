@@ -1,120 +1,102 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_string.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
-import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
+import 'package:mdmpi_mobile_app/common/widgets/modals/b_backload_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_header.dart';
+// ...existing code...
 
 /// Modal widget that displays detailed information about a standard delivery request.
 ///
-/// This modal adapts its content based on the request status:
-/// - Shows delivery details and signature for completed deliveries
-/// - Displays cancel remarks for cancelled requests
-/// - Provides status-specific action buttons for pending requests
+/// Driven by [StandardDeliveryModalConfig] to determine visibility and action behavior.
+/// Composed of three separate widgets following the Pull Out modal pattern:
+/// - [RequestModalHeader]: Client, address, status/preference chips, item category,
+///   shipping method, delivery terms, delivery date, requested by
+/// - [RequestModalBody]: Preparation info + trip ticket input
+/// - [RequestModalFooter]: Delivery info form (driver/helper/mobile),
+///   proof capture + delivery details section
 class BModal extends StatelessWidget {
   final StandardDeliveryModel requestModel;
-  final VoidCallback onPressed;
-  final bool status;
-  final IDeliveryRequestController requestController;
+  final StandardDeliveryModalConfig config;
 
   const BModal({
     super.key,
     required this.requestModel,
-    required this.onPressed,
-    required this.requestController,
-    this.status = true,
+    required this.config,
   });
 
-  /// Builds the modal UI with status-conditional content sections.
-  ///
-  /// Displays different content based on [requestModel.status]:
-  /// - Done Delivery: Shows receiver info, signature, and delivered item image
-  /// - Cancelled: Shows cancellation remarks
-  /// - Other statuses: Shows appropriate action buttons
   @override
   Widget build(BuildContext context) {
-    // Check request status flags
-    final bool isDoneDelivery =
-        requestModel.status == BTexts.statusDoneDelivery;
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
+    final bool isBackLoad = requestModel.status == BTexts.statusBackLoad;
+    final controller = Get.find<StandardDeliveryController>();
+
+    // Compute requestId once for reuse in children widgets
+    final requestId = requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
 
     // Preload cancel remarks for cancelled requests
     if (isCancelled) {
-      final requestIdForRemarks =
-          requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
-      requestController.loadCancelRemarks(requestIdForRemarks);
+      controller.loadCancelRemarks(requestId);
     }
 
-    // Determine request ID for database lookups
-    final requestIdForDb =
-        requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
+    // Preload BackLoad remarks for back-loaded requests
+    if (isBackLoad) {
+      Get.find<BackLoadController>().loadBackLoadRemarks(requestId);
+    }
 
     return RequestModalScaffold(
-      header: RequestModalHeader(
-        requestModel: requestModel,
-        requestController: requestController,
-      ),
+      header: RequestModalHeader(requestModel: requestModel),
       documentReferences: requestModel.documentReference,
-      docsBottomDivider: true,
-      // Status-specific action button (Prepare Item, Packed and Ready, etc.)
+      // Status-specific action button driven by config
       bottomAction: StatusActionButton(
         status: requestModel.status,
-        onPressed: onPressed,
-        isVisible: status,
-        // Map status to appropriate button text
-        statusToTextMapper: (status) {
-          switch (status) {
-            case BTexts.statusNewRequest:
-              return BTexts.requestModalPrepareItemButtonText;
-            case BTexts.statusGettingSuppliesReady:
-              return BTexts.requestModalPackedAndReadyButtonText;
-            default:
-              return '';
+        onPressed: () async {
+          // Legacy onAction callback takes precedence
+          if (config.onAction != null) {
+            config.onAction!();
+            return;
+          }
+          if (config.nextStatus != null) {
+            // Run optional validator first
+            if (config.validate != null) {
+              final valid = await config.validate!();
+              if (!valid) return;
+            }
+            final userInitial = controller.userController.user.value.initial;
+            await controller.updateRequestStatus(
+                requestModel, config.nextStatus!, userInitial);
           }
         },
+        isVisible: config.isActionVisible,
+        statusToTextMapper: (status) => config.buttonLabel,
       ),
       children: [
-        // Section: Delivery Details (reusable component for completed deliveries)
-        if (isDoneDelivery)
-          BDeliveryDetailsSection(
-            sectionTitle: 'Delivery Details',
-            driver: requestModel.deliveredBy,
-            helper: requestModel.helper,
-            receivedBy: requestModel.receiver,
-            receivedByLabel: 'Received By',
-            departedAt: requestModel.locationStartedAt,
-            departedAtLabel: 'Departed At',
-            completedAt: requestModel.deliveredAt,
-            completedAtLabel: 'Delivered At',
-            requestId: requestIdForDb,
-            showSignatureWatermark: true,
-            viewItemButtonLabel: 'View Delivered Item',
-            dialogTitle: 'Delivered Item',
-            apiController: 'Request',
-            showViewItemButton: true,
-          ),
-
-        // Section: Cancel Remarks (only for cancelled requests)
-        if (isCancelled) ...[
+        // Inventory items: show a compact 'View Items' button that opens
+        // the full items page. Place this immediately after Document References
+        // so it is always shown under that section.
+        // Reusable view-items button
+        BViewItemsButton(requestId: requestId),
+        // Cancel Remarks Section
+        if (isCancelled)
           Obx(() {
-            // Reactively load and display cancel remarks
-            requestController.loadCancelRemarks(requestModel.id);
-            final remarks = requestController.cancelRemarks.value;
-
-            // Hide section if no remarks available
+            final remarks = controller.cancelRemarks.value;
             if (remarks == null || remarks.remarks.isEmpty) {
               return const SizedBox.shrink();
             }
-
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                BTextDivider(text: 'Cancel Remarks'),
+                const BTextDivider(text: 'Cancel Remarks'),
                 BCancelRemarks(
                   remarks: remarks.remarks,
                   date: remarks.date,
@@ -123,10 +105,33 @@ class BModal extends StatelessWidget {
               ],
             );
           }),
-        ],
-
-        // Footer with request metadata
-        RequestModalFooter(requestModel: requestModel),
+        // Back Load Remarks Section
+        if (isBackLoad)
+          Obx(() {
+            final blController = Get.find<BackLoadController>();
+            final entries = blController.backLoadEntries;
+            if (entries.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const BTextDivider(text: 'Back Load Remarks'),
+                ...entries.map((entry) => BBackLoadRemarks(
+                      remarks: entry.remarks,
+                      dateReported: entry.dateReported,
+                    )),
+              ],
+            );
+          }),
+        // Body with all sections (Request Info, Preparation Info, Delivery Info)
+        RequestModalBody(
+          requestModel: requestModel,
+          requestController: controller,
+        ),
+        // Footer with proof capture and delivery details
+        RequestModalFooter(
+          requestModel: requestModel,
+          requestController: controller,
+        ),
       ],
     );
   }
