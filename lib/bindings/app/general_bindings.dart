@@ -79,6 +79,10 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_lo
 import 'package:mdmpi_mobile_app/features/personalization/controller/update_name_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
+import '../../data/repositories/collection/collection_repository.dart';
+import '../../features/collection/helpers/sync_manager.dart';
+import '../../features/collection/presentation/controllers/collection_activity_controller.dart';
+
 class GeneralBindings extends Bindings {
   @override
   void dependencies() {
@@ -228,5 +232,10 @@ class GeneralBindings extends Bindings {
     Get.lazyPut<IPlacesService>(() => PlacesService(), fenix: true);
     Get.lazyPut<ILocationTrackingService>(() => LocationTrackingService(),
         fenix: true);
+
+    /// Collection Activity Controller
+    Get.lazyPut(() => CollectionActivityController(), fenix: true);
+    Get.lazyPut(() => CollectionRepository(), fenix: true);
+    Get.lazyPut(() => SyncManager(), fenix: true);
   }
 }
