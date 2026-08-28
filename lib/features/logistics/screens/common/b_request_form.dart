@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_cons
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 
 import '../../../../base/utils/constants/colors.dart';
+import '../../../../base/utils/logger.dart';
 import '../../../../base/utils/constants/sizes.dart';
 import '../../../../base/utils/helpers/helper_functions.dart';
 
@@ -22,6 +23,16 @@ class BRequestForm extends StatelessWidget {
   final List<StatelessWidget> pages;
   final List<String> iconPaths;
 
+  /// Accent color per shortcut tile, cycled by index.
+  static const List<Color> _tileAccents = [
+    Color(0xFF4B68FF), // Standard Delivery - indigo (brand primary)
+    Color(0xFFF57C00), // Pull out - orange
+    Color(0xFF2E9E6B), // Pick up - green
+    Color(0xFF0EA5E9), // Air / Sea - sky blue
+    Color(0xFFE0507A), // Hotline Direct - rose
+    Color(0xFF8B5CF6), // Stock receive - violet
+  ];
+
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
@@ -30,30 +41,48 @@ class BRequestForm extends StatelessWidget {
       child: BGridLayout(
         itemCount: labels.length,
         crossAxisCount: 3,
-        mainAxisExtent: 110, // keep squares consistent height
+        mainAxisExtent: 116, // keep squares consistent height
         itemBuilder: (context, index) {
+          final accent = _tileAccents[index % _tileAccents.length];
           return InkWell(
             borderRadius: BorderRadius.circular(BSizes.cardRadiusLg),
             onTap: () {
               _navigateToFormWithCategory(index);
             },
             child: BRoundedContainer(
-              backgroundColor: dark ? BColors.black : BColors.light,
+              backgroundColor: dark
+                  ? accent.withValues(alpha: 0.12)
+                  : accent.withValues(alpha: 0.07),
               radius: BSizes.cardRadiusLg,
+              showBorder: true,
+              borderColor: accent.withValues(alpha: dark ? 0.35 : 0.2),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    iconPaths[index],
-                    width: 52,
-                    height: 52,
-                    color: dark ? BColors.white : BColors.black,
+                  Container(
+                    padding: const EdgeInsets.all(BSizes.sm),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: dark ? 0.25 : 0.14),
+                      borderRadius:
+                          BorderRadius.circular(BSizes.cardRadiusLg),
+                    ),
+                    child: Image.asset(
+                      iconPaths[index],
+                      width: 36,
+                      height: 36,
+                      color: accent,
+                    ),
                   ),
                   const SizedBox(height: BSizes.spaceBtwItems / 2),
                   Text(
                     labels[index],
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: dark ? BColors.white : BColors.textPrimary,
+                        ),
                   ),
                 ],
               ),
@@ -101,7 +130,7 @@ class BRequestForm extends StatelessWidget {
             requestController.updateTabIndex(categoryIndex);
           }
         } catch (e) {
-          print(
+          logDebug(
               'RequestController not found, but category will still be available: $e');
         }
 
@@ -112,10 +141,10 @@ class BRequestForm extends StatelessWidget {
           return;
         }
       } else {
-        print('Category "$targetCategoryName" not found in local DB');
+        logDebug('Category "$targetCategoryName" not found in local DB');
       }
     } catch (e) {
-      print('Error loading categories from local DB: $e');
+      logDebug('Error loading categories from local DB: $e');
     }
     Get.to(() => pages[index]);
   }

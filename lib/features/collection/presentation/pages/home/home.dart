@@ -198,9 +198,13 @@ class CollectionHomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const BSectionSubHeading(
-                          title: BTexts.collectionHomeSubTitle1,
-                          showActionButton: false,
+                        // Expanded bounds the heading's width inside this Row
+                        // (its internal Row uses Expanded for ellipsizing).
+                        const Expanded(
+                          child: BSectionSubHeading(
+                            title: BTexts.collectionHomeSubTitle1,
+                            showActionButton: false,
+                          ),
                         ),
                         TextButton(
                           onPressed: () => Get.to(
