@@ -40,6 +40,36 @@ class BApiEnvironment {
         '${_withoutTrailingSlash(liveBaseUrl)}${_withLeadingSlash(path)}',
       );
 
+  /// WebSocket endpoint base (scheme/host/path only — query params are added
+  /// by the caller). The path is always `/api2/ws`; debug builds swap the host
+  /// for the api4 one when the api4 chain (`API4_URL_ANDROID` /
+  /// `API4_URL_WINDOWS` / `API4_URL` in `.env`) resolves to a host other than
+  /// the live one. Release builds always use the live host.
+  static Uri get webSocketBaseUri => resolveWebSocketBaseUri(
+        allowLocalOverrides: kDebugMode,
+      );
+
+  @visibleForTesting
+  static Uri resolveWebSocketBaseUri({required bool allowLocalOverrides}) {
+    if (allowLocalOverrides) {
+      final api4Base = resolveApi4BaseUrl(allowLocalOverrides: true);
+      if (api4Base != liveBaseUrl) {
+        return toWebSocketUri(api4Base, '/api2/ws');
+      }
+    }
+
+    return toWebSocketUri(liveBaseUrl, '/api2/ws');
+  }
+
+  /// Converts an http(s) base URL into its ws(s) counterpart with [path].
+  @visibleForTesting
+  static Uri toWebSocketUri(String httpBaseUrl, String path) {
+    final uri = Uri.parse(
+      '${_withoutTrailingSlash(httpBaseUrl)}${_withLeadingSlash(path)}',
+    );
+    return uri.replace(scheme: uri.scheme == 'https' ? 'wss' : 'ws');
+  }
+
   static String? _read(String key) {
     if (!dotenv.isInitialized) return null;
     final value = dotenv.env[key]?.trim();

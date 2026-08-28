@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -155,17 +156,59 @@ class RiderRealtimeTrackingController extends GetxController {
     _storage.write(_queueKey, queue);
   }
 
-  void _flushQueuedUpdates() {
+  Future<void> _flushQueuedUpdates() async {
     if (!_webSocketController.isConnected.value) return;
 
     final queue = _readQueue();
     if (queue.isEmpty) return;
 
+    // The watcher only renders the latest frame per RequestID, and the server
+    // rate-limits at 20 messages/second — replaying the whole queue would get
+    // this connection 1008-closed. Collapse to one frame per request and pace
+    // the rest well under the limit.
+    final collapsed = collapseQueueToLatestPerRequest(queue);
+    _storage.write(_queueKey, <String>[]);
+
+    for (var i = 0; i < collapsed.length; i++) {
+      if (!_webSocketController.isConnected.value) break;
+      _webSocketController.sendMessage(collapsed[i]);
+      if (i < collapsed.length - 1) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    }
+  }
+
+  /// Keeps only the latest queued payload per RequestID (by Timestamp; queue
+  /// order wins ties), preserving first-seen request order. Entries that fail
+  /// to parse are dropped.
+  @visibleForTesting
+  static List<String> collapseQueueToLatestPerRequest(List<String> queue) {
+    final latestByRequest = <String, RiderLocationModel>{};
+    final payloadByRequest = <String, String>{};
+
     for (final payload in queue) {
-      _webSocketController.sendMessage(payload);
+      RiderLocationModel location;
+      try {
+        final decoded = jsonDecode(payload);
+        if (decoded is! Map) continue;
+        location = RiderLocationModel.fromJson(
+          Map<String, dynamic>.from(decoded),
+        );
+      } catch (_) {
+        continue;
+      }
+
+      if (location.requestId.isEmpty) continue;
+
+      final existing = latestByRequest[location.requestId];
+      if (existing == null ||
+          !location.timestamp.isBefore(existing.timestamp)) {
+        latestByRequest[location.requestId] = location;
+        payloadByRequest[location.requestId] = payload;
+      }
     }
 
-    _storage.write(_queueKey, <String>[]);
+    return payloadByRequest.values.toList();
   }
 
   List<String> _readQueue() {

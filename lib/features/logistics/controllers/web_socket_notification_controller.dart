@@ -7,6 +7,8 @@ import 'package:web_socket_channel/status.dart' as status;
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../../../notification.dart';
+import '../helpers/web_socket_backoff.dart';
+import '../helpers/web_socket_client_identity.dart';
 import '../models/combined_message_model.dart';
 import '../models/notification_model.dart';
 import '../models/rider_location_model.dart';
@@ -20,7 +22,11 @@ class WebSocketNotificationController extends GetxController {
 
   WebSocketNotificationController({
     WebSocketChannelFactory? channelFactory,
-  }) : _channelFactory = channelFactory ?? WebSocketConnectionConfig.connect;
+    WebSocketBackoff? backoff,
+    String Function()? clientIdResolver,
+  })  : _channelFactory = channelFactory ?? WebSocketConnectionConfig.connect,
+        _backoff = backoff ?? WebSocketBackoff(),
+        _clientIdResolver = clientIdResolver ?? WebSocketClientIdentity.resolve;
 
   final message = ''.obs;
   final isConnected = false.obs;
@@ -29,6 +35,8 @@ class WebSocketNotificationController extends GetxController {
   final connectionState = WebSocketConnectionState.disconnected.obs;
 
   final WebSocketChannelFactory _channelFactory;
+  final WebSocketBackoff _backoff;
+  final String Function() _clientIdResolver;
   WebSocketChannel? _channel;
   Timer? _reconnectTimer;
   bool _intentionalDisconnect = false;
@@ -61,7 +69,11 @@ class WebSocketNotificationController extends GetxController {
     connectionAttempted.value = true;
     connectionState.value = WebSocketConnectionState.connecting;
     try {
-      final channel = _channelFactory(WebSocketConnectionConfig.endpoint);
+      // No role: this socket both sends and receives notifications, so the
+      // server logs it as "unspecified".
+      final channel = _channelFactory(WebSocketConnectionConfig.endpointFor(
+        clientId: _clientIdResolver(),
+      ));
       _channel = channel;
       await channel.ready;
       if (_intentionalDisconnect ||
@@ -79,6 +91,9 @@ class WebSocketNotificationController extends GetxController {
           isConnected.value = true;
           connectionState.value = WebSocketConnectionState.connected;
           _cancelReconnectTimer();
+          // Reset on frames rather than on ready: a connect-then-instant-close
+          // loop must keep backing off.
+          _backoff.reset();
 
           final Map<String, dynamic> jsonData = jsonDecode(data);
           final combinedMessage = NotificationModel.fromJson(jsonData);
@@ -98,7 +113,24 @@ class WebSocketNotificationController extends GetxController {
             _channel = null;
           }
           connectionState.value = WebSocketConnectionState.disconnected;
-          if (!_intentionalDisconnect) _scheduleReconnect();
+          if (_intentionalDisconnect ||
+              channel.closeCode == status.normalClosure ||
+              channel.closeCode == status.goingAway) {
+            return;
+          }
+
+          if (channel.closeCode == status.policyViolation) {
+            // Server rate limit (>20 msg/s sustained). Retrying quickly would
+            // only earn another 1008, so jump straight to the max delay.
+            logDebug(
+                'WebSocketNotification: Server closed with 1008 (rate limit). Backing off to max delay.');
+            _backoff.escalateToMax();
+          } else if (channel.closeCode == status.messageTooBig) {
+            logDebug(
+                'WebSocketNotification: Server closed with 1009 (message too big) — client bug, payloads should be far under 64 KB.');
+          }
+
+          _scheduleReconnect();
         },
         onError: (error) {
           logDebug('WebSocketNotification: Stream error: $error');
@@ -126,7 +158,10 @@ class WebSocketNotificationController extends GetxController {
     if (_reconnectTimer?.isActive ?? false) _reconnectTimer!.cancel();
     if (isClosed || _intentionalDisconnect) return;
     connectionState.value = WebSocketConnectionState.reconnecting;
-    _reconnectTimer = Timer(WebSocketConnectionConfig.reconnectDelay, () {
+    final delay = _backoff.nextDelay();
+    logDebug(
+        'WebSocketNotification: Reconnecting in ${delay.inMilliseconds} ms (attempt ${_backoff.attempt}).');
+    _reconnectTimer = Timer(delay, () {
       if (!isConnected.value && !isClosed) {
         connect();
       }

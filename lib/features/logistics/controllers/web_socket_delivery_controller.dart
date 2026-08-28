@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/web_socket_backoff.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/web_socket_client_identity.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/combined_message_model.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status; // For status codes
@@ -17,10 +20,17 @@ class WebSocketDeliveryController extends GetxController {
 
   WebSocketDeliveryController({
     WebSocketChannelFactory? channelFactory,
-  }) : _channelFactory = channelFactory ?? WebSocketConnectionConfig.connect;
+    WebSocketBackoff? backoff,
+    String Function()? clientIdResolver,
+  })  : _channelFactory = channelFactory ?? WebSocketConnectionConfig.connect,
+        _backoff = backoff ?? WebSocketBackoff(),
+        _clientIdResolver = clientIdResolver ?? WebSocketClientIdentity.resolve;
 
   WebSocketChannel? channel;
   final WebSocketChannelFactory _channelFactory;
+  final WebSocketBackoff _backoff;
+  final String Function() _clientIdResolver;
+  Timer? _reconnectTimer;
   final message = ''.obs; // For generic messages, if needed
   final isConnected = false.obs;
   final connectionState = WebSocketConnectionState.disconnected.obs;
@@ -66,8 +76,12 @@ class WebSocketDeliveryController extends GetxController {
 
     connectionState.value = WebSocketConnectionState.connecting;
     _intentionalDisconnect = false;
+    _cancelReconnectTimer();
     try {
-      final activeChannel = _channelFactory(WebSocketConnectionConfig.endpoint);
+      final activeChannel = _channelFactory(WebSocketConnectionConfig.endpointFor(
+        clientId: _clientIdResolver(),
+        role: 'watcher',
+      ));
       channel = activeChannel;
       await activeChannel.ready;
       if (_intentionalDisconnect ||
@@ -82,6 +96,9 @@ class WebSocketDeliveryController extends GetxController {
         (data) {
           isConnected.value = true;
           connectionState.value = WebSocketConnectionState.connected;
+          // Reset on frames rather than on ready: a connect-then-instant-close
+          // loop must keep backing off.
+          _backoff.reset();
           try {
             handleIncomingData(data);
           } catch (e) {
@@ -122,22 +139,29 @@ class WebSocketDeliveryController extends GetxController {
             channel = null;
           }
           connectionState.value = WebSocketConnectionState.disconnected;
-          // If the closure was unexpected, you might want to attempt reconnection.
-          if (!_intentionalDisconnect &&
-              activeChannel.closeCode != status.normalClosure &&
-              activeChannel.closeCode !=
-                  status.goingAway && /* add other normal codes if any */
-              activeChannel.closeCode !=
-                  null /* Ensure there's a close code to check */) {
-            reconnectWebSocket(); // Your existing reconnect logic
-          } else if (activeChannel.closeCode == null) {
-            // This might happen if the stream is cancelled before a close frame is received
-            logDebug(
-                'WebSocketDelivery: Stream done, but no close code. Might be an abrupt closure or client-side cancellation. Ensuring isConnected is false.');
+          if (_intentionalDisconnect ||
+              activeChannel.closeCode == status.normalClosure ||
+              activeChannel.closeCode == status.goingAway) {
+            return;
           }
-          // No need to nullify channel here if reconnectWebSocket is called,
-          // as connectWebSocket will reassign it.
-          // If not reconnecting, then: channel = null;
+
+          if (activeChannel.closeCode == status.policyViolation) {
+            // Server rate limit (>20 msg/s sustained). Retrying quickly would
+            // only earn another 1008, so jump straight to the max delay.
+            logDebug(
+                'WebSocketDelivery: Server closed with 1008 (rate limit). Backing off to max delay.');
+            _backoff.escalateToMax();
+          } else if (activeChannel.closeCode == status.messageTooBig) {
+            logDebug(
+                'WebSocketDelivery: Server closed with 1009 (message too big) — client bug, payloads should be far under 64 KB.');
+          } else if (activeChannel.closeCode == null) {
+            // Abrupt closure with no close frame (dead cellular link etc.) —
+            // still worth reconnecting.
+            logDebug(
+                'WebSocketDelivery: Stream done with no close code (abrupt closure). Reconnecting.');
+          }
+
+          reconnectWebSocket();
         },
         cancelOnError:
             true, // Good: cancels the subscription on the first error.
@@ -175,6 +199,20 @@ class WebSocketDeliveryController extends GetxController {
     }
 
     final requestId = location.requestId;
+
+    // The server replays the cached latest envelope per RequestID on connect,
+    // and reconnect bursts can arrive out of order — never let an older frame
+    // rewind a marker. Equal timestamps re-apply (idempotent duplicates).
+    // Caveat: frames with a missing/unparsable Timestamp get DateTime.now()
+    // from RiderLocationModel, so they always count as newest.
+    final existing = riderLocationUpdates[requestId];
+    if (existing != null && location.timestamp.isBefore(existing.timestamp)) {
+      logDebug(
+          'WebSocketDelivery: Ignored stale frame for RequestID $requestId '
+          '(incoming ${location.timestamp.toIso8601String()} < stored ${existing.timestamp.toIso8601String()}).');
+      return;
+    }
+
     final newPosition = LatLng(location.latitude, location.longitude);
 
     riderLocation.value = location;
@@ -227,11 +265,12 @@ class WebSocketDeliveryController extends GetxController {
     return hash % itemCount;
   }
 
-  void reconnectWebSocket() async {
+  void reconnectWebSocket() {
     if (isConnected.value ||
         connectionState.value == WebSocketConnectionState.reconnecting ||
         connectionState.value == WebSocketConnectionState.connecting ||
-        _intentionalDisconnect) {
+        _intentionalDisconnect ||
+        isClosed) {
       return;
     }
     connectionState.value = WebSocketConnectionState.reconnecting;
@@ -240,9 +279,19 @@ class WebSocketDeliveryController extends GetxController {
           "WebSocketDelivery: Error closing old channel sink during reconnect: $e");
     });
     channel = null;
-    await Future.delayed(WebSocketConnectionConfig.reconnectDelay);
-    if (_intentionalDisconnect || isClosed) return;
-    connectWebSocket();
+    _cancelReconnectTimer();
+    final delay = _backoff.nextDelay();
+    logDebug(
+        'WebSocketDelivery: Reconnecting in ${delay.inMilliseconds} ms (attempt ${_backoff.attempt}).');
+    _reconnectTimer = Timer(delay, () {
+      if (_intentionalDisconnect || isClosed || isConnected.value) return;
+      connectWebSocket();
+    });
+  }
+
+  void _cancelReconnectTimer() {
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
   }
 
   void sendMessage(String msg) {
@@ -257,6 +306,7 @@ class WebSocketDeliveryController extends GetxController {
   @override
   void onClose() {
     _intentionalDisconnect = true;
+    _cancelReconnectTimer();
     connectionState.value = WebSocketConnectionState.closing;
     isConnected.value = false; // Set state before closing
     channel?.sink.close(status.goingAway).catchError((e) {
