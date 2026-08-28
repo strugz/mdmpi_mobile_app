@@ -19,6 +19,7 @@ class DashboardItem extends StatelessWidget {
     this.labelStyle,
     this.valueStyle,
     this.padding,
+    this.onTap,
   });
 
   /// The label text (e.g., "Total Requests:")
@@ -42,12 +43,15 @@ class DashboardItem extends StatelessWidget {
   /// Optional custom padding
   final EdgeInsets? padding;
 
+  /// Optional tap handler (e.g. drill into a module on the dashboard)
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
     final accentColor = accent ?? BColors.primary;
 
-    return Padding(
+    final row = Padding(
       padding: padding ?? const EdgeInsets.symmetric(vertical: BSizes.xs),
       child: Row(
         children: [
@@ -93,6 +97,14 @@ class DashboardItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    if (onTap == null) return row;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
+      onTap: onTap,
+      child: row,
     );
   }
 }

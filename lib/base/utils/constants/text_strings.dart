@@ -100,6 +100,9 @@ class BTexts {
   static const String dashboardItemsPrepared = "Items Prepared:";
   static const String dashboardForDelivery = "For Delivery:";
   static const String dashboardDelivered = "Delivered:";
+  static const String dashboardAllRequests = "All Requests";
+  static const String dashboardAllTime = "All Time";
+  static const String dashboardWholeYear = "Whole Year";
 
   /// Request Texts
   static const String requestPackageIconText = "Request";

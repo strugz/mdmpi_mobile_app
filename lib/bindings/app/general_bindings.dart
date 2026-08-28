@@ -60,7 +60,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_control
 import 'package:mdmpi_mobile_app/features/logistics/controllers/chart_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_location_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_vehicle_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/home_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/dashboard_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/inventory_item_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/logistics_onboarding_controller.dart';
@@ -172,7 +172,7 @@ class GeneralBindings extends Bindings {
     // ========================================================================
     Get.lazyPut(() => UserInitialController(), fenix: true);
     Get.lazyPut(() => StandardDeliveryController(), fenix: true);
-    Get.lazyPut(() => HomeController(), fenix: true);
+    Get.lazyPut(() => DashboardController(), fenix: true);
 
     Get.lazyPut(() => LoginController(), fenix: true);
     Get.lazyPut(() => LoadingScreenController(), fenix: true);
