@@ -116,9 +116,14 @@ class RequestTransport extends StatelessWidget {
                   heroTag: 'request_transport_my_location',
                   backgroundColor: BColors.white,
                   onPressed: () {
-                    reqTranController.selectedDestinationMarkerId.value = null;
-                    reqTranController.destination.value = LatLng(0, 0);
-                    reqTranController.polyLines.value.clear();
+                    // Once dispatched (For Delivery), the route is locked in —
+                    // only recenter the camera, never clear the destination.
+                    if (currentRequest.status != BTexts.statusForDelivery) {
+                      reqTranController.selectedDestinationMarkerId.value =
+                          null;
+                      reqTranController.destination.value = LatLng(0, 0);
+                      reqTranController.polyLines.value.clear();
+                    }
                     reqTranController.getUserLocation();
                   },
                   child: const Icon(Icons.my_location, color: BColors.dark),
