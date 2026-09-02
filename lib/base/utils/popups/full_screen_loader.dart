@@ -8,12 +8,11 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/loaders/animation_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal.dart';
@@ -21,6 +20,8 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/pick_up/widgets/pick
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_modal_config.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/stock_receive_modal_config.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/stock_receive/widgets/stock_receive_modal.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/signature_capture_dialog.dart';
 
@@ -33,12 +34,6 @@ import '../../../features/logistics/models/standard_delivery_model.dart';
 import '../../../features/logistics/models/pull_out_model.dart';
 import '../../../features/logistics/models/pick_up_model.dart';
 import '../../../features/logistics/models/air_sea_model.dart';
-import '../../../common/widgets/dividers/text_divider.dart';
-import '../../../common/widgets/modals/b_cancel_remarks.dart';
-import '../../../common/widgets/modals/request_modal_scaffold.dart';
-import '../../../common/widgets/buttons/status_action_button.dart';
-import '../../../features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_modal_header.dart';
-import '../../../features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_request_modal_footer.dart';
 
 /// A utility class for managing a full-screen loading dialog.
 class BFullScreenLoader {
@@ -399,7 +394,7 @@ class BFullScreenLoader {
   }
 
   static void showSignatureDialogForPullOut(
-      BuildContext context, PullOutController requestController) {
+      BuildContext context, IPullOutRequestController requestController) {
     BSignatureCaptureDialog.show(
       context: context,
       onSave: (Uint8List? signatureBytes) {
@@ -571,12 +566,11 @@ class BFullScreenLoader {
     );
   }
 
-  /// Show Stock Receive modal dialog
+  /// Show Stock Receive modal dialog driven by [StockReceiveModalConfig].
   static void showStockReceiveDialog(
     BuildContext context,
     PullOutModel requestModel,
-    VoidCallback onPressed,
-    bool isActionVisible,
+    StockReceiveModalConfig config,
   ) {
     final dark = BHelperFunctions.isDarkMode(context);
     showModalBottomSheet<void>(
@@ -584,96 +578,18 @@ class BFullScreenLoader {
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        // Import StockReceiveModal dynamically to avoid circular dependencies
-        // Implement as a factory that creates the appropriate modal
-        return _buildStockReceiveModal(
-          context,
-          requestModel,
-          onPressed,
-          isActionVisible,
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: SafeArea(
+            child: StockReceiveModal(
+              requestModel: requestModel,
+              config: config,
+            ),
+          ),
         );
       },
-    );
-  }
-
-  /// Helper to build stock receive modal (avoids circular dependency)
-  static Widget _buildStockReceiveModal(
-    BuildContext context,
-    PullOutModel requestModel,
-    VoidCallback onPressed,
-    bool isActionVisible,
-  ) {
-    // Dynamic import or inline the modal build
-    return SafeArea(
-      child: _StockReceiveModalContent(
-        requestModel: requestModel,
-        onPressed: onPressed,
-        isActionVisible: isActionVisible,
-      ),
-    );
-  }
-}
-
-/// Internal widget for rendering stock receive modal content
-/// This avoids circular dependency issues by being defined here
-class _StockReceiveModalContent extends StatelessWidget {
-  final PullOutModel requestModel;
-  final VoidCallback onPressed;
-  final bool isActionVisible;
-
-  const _StockReceiveModalContent({
-    required this.requestModel,
-    required this.onPressed,
-    this.isActionVisible = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final bool isCancelled = requestModel.requestStatus == BTexts.statusCancelled;
-    final controller = Get.find<StockReceiveController>();
-
-    // Load cancel remarks if cancelled
-    if (isCancelled) {
-      controller.loadCancelRemarks(requestModel.id);
-    }
-
-    return RequestModalScaffold(
-      header: PullOutRequestModalHeader(requestModel: requestModel),
-      documentReferences: requestModel.documentReference,
-      bottomAction: StatusActionButton(
-        status: requestModel.requestStatus,
-        onPressed: onPressed,
-        isVisible: isActionVisible,
-        statusToTextMapper: (status) {
-          if (status == null) return 'Proceed';
-          switch (status) {
-            case 'New Request':
-              return 'Set In Transit';
-            case 'In Transit':
-              return 'Mark Taken Out';
-            case 'Taken Out':
-              return '';
-            default:
-              return 'Proceed';
-          }
-        },
-      ),
-      children: [
-        if (isCancelled) BTextDivider(text: 'Cancel Remarks'),
-        Obx(() {
-          controller.loadCancelRemarks(requestModel.id);
-          final remarks = controller.cancelRemarks.value;
-          if (remarks == null || remarks.remarks.isEmpty) {
-            return const SizedBox.shrink();
-          }
-          return BCancelRemarks(
-            remarks: remarks.remarks,
-            date: remarks.date,
-            user: remarks.userUpdated,
-          );
-        }),
-        PullOutRequestModalFooter(requestModel: requestModel),
-      ],
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
@@ -12,7 +13,8 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_data_manager.dart';
 
 /// Controller for managing pull-out requests state and operations.
-class PullOutController extends GetxController {
+class PullOutController extends GetxController
+    implements IPullOutRequestController {
   /// Raw list of pull-out requests.
   final RxList<PullOutModel> pullOuts = <PullOutModel>[].obs;
 
@@ -34,6 +36,7 @@ class PullOutController extends GetxController {
   final RxnString errorMessage = RxnString();
 
   /// Cancel remarks data
+  @override
   final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
 
   /// Manager for date & status filtering.
@@ -41,6 +44,7 @@ class PullOutController extends GetxController {
   late final PullOutDataManager dataManager;
 
   /// --- Form state and controllers ---
+  @override
   late final PullOutFormState formState;
 
   /// User controller for accessing logged-in user data.
@@ -127,11 +131,13 @@ class PullOutController extends GetxController {
   }
 
   /// Update status using data manager to merge UI inputs.
+  @override
   Future<void> updateStatusWithInputs(
       PullOutModel request, String newStatus) async {
     await dataManager.updateRequestStatus(request, newStatus, this, formState);
   }
 
+  @override
   void setSignature(Uint8List? signature) {
     formState.receiverSignatureBytes.value = signature;
     formState.receiverSignatureBase64.value =
@@ -141,6 +147,7 @@ class PullOutController extends GetxController {
   }
 
   /// Load cancel remarks for a request ID
+  @override
   Future<void> loadCancelRemarks(String requestId) async {
     try {
       final repo = Get.find<CancelRemarksRepository>();

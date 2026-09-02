@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
@@ -21,7 +22,8 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/stock_receive_data_m
 /// - Manages local DB and API synchronization
 /// - Handles signature capture and image proof uploads
 /// - Filters data by Stock Receive form category only
-class StockReceiveController extends GetxController {
+class StockReceiveController extends GetxController
+    implements IPullOutRequestController {
   /// Raw list of Stock Receive requests.
   final RxList<PullOutModel> stockReceives = <PullOutModel>[].obs;
 
@@ -43,6 +45,7 @@ class StockReceiveController extends GetxController {
   final RxnString errorMessage = RxnString();
 
   /// Cancel remarks data
+  @override
   final Rx<CancelRemarksModel?> cancelRemarks = Rx<CancelRemarksModel?>(null);
 
   /// Manager for date & status filtering.
@@ -50,6 +53,7 @@ class StockReceiveController extends GetxController {
   late final StockReceiveDataManager dataManager;
 
   /// --- Form state and controllers ---
+  @override
   late final PullOutFormState formState;
 
   /// User controller for accessing logged-in user data.
@@ -137,11 +141,13 @@ class StockReceiveController extends GetxController {
   }
 
   /// Update status using data manager to merge UI inputs.
+  @override
   Future<void> updateStatusWithInputs(
       PullOutModel request, String newStatus) async {
     await dataManager.updateRequestStatus(request, newStatus, this, formState);
   }
 
+  @override
   void setSignature(Uint8List? signature) {
     formState.receiverSignatureBytes.value = signature;
     formState.receiverSignatureBase64.value =
@@ -151,6 +157,7 @@ class StockReceiveController extends GetxController {
   }
 
   /// Load cancel remarks for a request ID
+  @override
   Future<void> loadCancelRemarks(String requestId) async {
     try {
       final repo = Get.find<CancelRemarksRepository>();

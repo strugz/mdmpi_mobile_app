@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -18,9 +19,18 @@ import '../../../controllers/pull_out_controller.dart';
 import '../../../models/pull_out_model.dart';
 
 class PullOutRequestModalFooter extends StatelessWidget {
-  const PullOutRequestModalFooter({super.key, required this.requestModel});
+  const PullOutRequestModalFooter({
+    super.key,
+    required this.requestModel,
+    this.controller,
+  });
 
   final PullOutModel requestModel;
+
+  /// Controller owning the form state the inputs write to. Defaults to
+  /// [PullOutController]; Stock Receive passes its own controller so the
+  /// module's validator reads the same form state the fields wrote to.
+  final IPullOutRequestController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +40,8 @@ class PullOutRequestModalFooter extends StatelessWidget {
 
     final cameraController = Get.find<CameraHandlerController>();
 
-    final PullOutController requestController = Get.find();
+    final IPullOutRequestController requestController =
+        controller ?? Get.find<PullOutController>();
     final UserController userController = Get.find();
 
     final role = userController.user.value.role;

@@ -8,42 +8,37 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_co
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_request_card.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/services/implementations/stock_receive_role_handler.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/stock_receive_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart';
 
 import '../../../../base/utils/constants/text_strings.dart';
 
-/// Role priority map: Lower number = Higher priority (more capabilities)
-const _rolePriority = {
-  BTexts.roleRelease: 1, // Most powerful - can handle most statuses
-  BTexts.roleCourier: 2, // Handles dispatch/drop-off
-  BTexts.roleRequest: 3, // Can only advance "New Request"
-  BTexts.roleViewer: 4, // View-only access
+// ============================================================================
+// STATUS-DRIVEN ROLE SELECTION
+// ============================================================================
+// Stock Receive mirrors Pull Out minus the "For Pull Out" step: Release
+// dispatches (New Request → In Transit) and Courier completes
+// (In Transit → Taken Out).
+//
+// Status-Role Capability Matrix:
+// ┌──────────────┬─────────┬─────────┬─────────┐
+// │ Status       │ Request │ Release │ Courier │
+// ├──────────────┼─────────┼─────────┼─────────┤
+// │ New Request  │ View    │ ✅ Action│ View    │
+// │ In Transit   │ View    │ View    │ ✅ Action│
+// │ Taken Out    │ View    │ View    │ View    │
+// │ Cancelled    │ View    │ View    │ View    │
+// └──────────────┴─────────┴─────────┴─────────┘
+// ============================================================================
+
+/// Maps each status to the preferred role that has action capability.
+const _statusToPreferredRole = {
+  BTexts.statusNewRequest: BTexts.roleRelease, // Release: Set In Transit
+  BTexts.statusInTransit: BTexts.roleCourier, // Courier: Mark Taken Out
+  // Taken Out, Cancelled, Picked-up: All roles are view-only
 };
-
-/// Selects the appropriate role based on status and available roles.
-/// Prioritizes roles by status context, then by priority map.
-String? _selectActiveRole(List<String> roles, String status) {
-  // Picked-up/Cancelled: handled with default handler (no role selection needed)
-  if (status.toLowerCase() == 'picked-up' ||
-      status.toLowerCase() == 'cancelled') {
-    return null;
-  }
-
-  // Default: find highest-priority role
-  String? highestRole;
-  int highestPriority = 999;
-
-  for (final role in roles) {
-    final priority = _rolePriority[role] ?? 999;
-    if (priority < highestPriority) {
-      highestPriority = priority;
-      highestRole = role;
-    }
-  }
-
-  return highestRole;
-}
 
 /// List widget for displaying Stock Receive requests.
 ///
@@ -165,54 +160,28 @@ class StockReceiveList extends StatelessWidget {
 }
 
 /// Handles tap on Stock Receive request based on user role.
-/// Selects the highest-priority role handler to avoid multiple dialogs.
+/// Uses status-driven role selection so users with multiple roles
+/// can perform ALL available actions at ANY status.
 void _handleStockReceiveTap(
   BuildContext context,
   PullOutModel request,
   StockReceiveController controller,
   UserController userController,
 ) {
-  final roles = userController.user.value.role
-      .split(',')
-      .map((e) => e.trim())
-      .where((e) => e.isNotEmpty)
-      .toList();
-  final userInitial = userController.user.value.initial;
+  final roles = RoleResolver.parseRoles(userController.user.value.role);
 
-  // Normalize status comparison for consistency
-  final statusLower = request.requestStatus.toLowerCase();
+  // Resolve the best role for this status using RoleResolver
+  final selectedRole = RoleResolver.resolveRoleForStatus(
+    status: request.requestStatus,
+    userRoles: roles,
+    statusToPreferredRole: _statusToPreferredRole,
+  );
 
-  // Handle cancelled/picked-up status with default handler
-  if (statusLower == 'cancelled' || statusLower == 'picked-up') {
-    StockReceiveDefaultHandler().handleAction(
-        context, request, controller as dynamic, userController, userInitial);
-    return;
-  }
-
-  final activeRole = _selectActiveRole(roles, request.requestStatus);
-
-  if (activeRole == null) {
-    // No valid role - show default handler
-    StockReceiveDefaultHandler().handleAction(
-        context, request, controller as dynamic, userController, userInitial);
-    return;
-  }
-
-  final handlers = <String, StockReceiveActionHandler>{
-    BTexts.roleRequest: StockReceiveRequestRoleHandler(),
-    BTexts.roleRelease: StockReceiveReleaseRoleHandler(),
-    BTexts.roleCourier: StockReceiveCourierRoleHandler(),
-    BTexts.roleViewer: StockReceiveViewerRoleHandler(),
-  };
-
-  // Invoke only the selected handler
-  if (handlers.containsKey(activeRole)) {
-    handlers[activeRole]!.handleAction(
-        context, request, controller as dynamic, userController, userInitial);
-  } else {
-    // Fallback if no handler is registered for the selected role
-    StockReceiveDefaultHandler().handleAction(
-        context, request, controller as dynamic, userController, userInitial);
-  }
+  final config = StockReceiveModalConfig.resolve(
+    request: request,
+    role: selectedRole,
+    controller: controller,
+  );
+  BFullScreenLoader.showStockReceiveDialog(context, request, config);
 }
 

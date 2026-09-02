@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
@@ -23,9 +24,15 @@ class PullOutModalBody extends StatelessWidget {
   const PullOutModalBody({
     super.key,
     required this.requestModel,
+    this.controller,
   });
 
   final PullOutModel requestModel;
+
+  /// Controller owning the form state the inputs write to. Defaults to
+  /// [PullOutController]; Stock Receive passes its own controller so the
+  /// module's validator reads the same form state the fields wrote to.
+  final IPullOutRequestController? controller;
 
   String _formatDate(String value) {
     if (value.isEmpty) return '';
@@ -50,7 +57,8 @@ class PullOutModalBody extends StatelessWidget {
     final hasIrrfNumber = requestModel.irrfNumber.isNotEmpty;
 
 
-    final PullOutController requestController = Get.find();
+    final IPullOutRequestController requestController =
+        controller ?? Get.find<PullOutController>();
     final userInitialController = Get.find<UserInitialController>();
     final MobileController mobileController = Get.find();
     final UserController userController = Get.find();
