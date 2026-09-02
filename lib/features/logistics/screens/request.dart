@@ -65,20 +65,26 @@ class _RequestScreenState extends State<RequestScreen>
     });
   }
 
-  /// Initialize TabController and CarouselController
+  /// Initialize TabController and CarouselController.
+  /// Recreates the TabController when a background category refresh changes
+  /// the number of categories, since TabController's length is fixed.
   void _initializeControllers() {
-    if (_tabController != null) {
-      // Already initialized
+    final categoryCount = controller.formCategories.length;
+    if (_tabController != null && _tabController!.length == categoryCount) {
+      // Already initialized with the correct length
       return;
     }
 
     setState(() {
+      _tabController?.dispose();
+      final initialIndex =
+          controller.currentTabIndex.value.clamp(0, categoryCount - 1);
       _tabController = TabController(
-        length: controller.formCategories.length,
+        length: categoryCount,
         vsync: this,
-        initialIndex: controller.currentTabIndex.value,
+        initialIndex: initialIndex,
       );
-      _carouselController = CarouselSliderController();
+      _carouselController ??= CarouselSliderController();
     });
   }
 

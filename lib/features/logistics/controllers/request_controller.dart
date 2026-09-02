@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/data/models/form_category_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -97,13 +100,17 @@ class RequestController extends GetxController {
 
   /// Load form categories from repository and sort them according to predefined order.
   /// Sets loading state and handles errors appropriately.
+  ///
+  /// Loads cache-first (the repository falls back to the API when the local
+  /// DB is empty), then refreshes from the server in the background so the
+  /// screen renders instantly on subsequent opens.
   Future<void> loadFormCategories() async {
     try {
       isLoadingCategories.value = true;
       errorMessage.value = null;
 
       final repo = Get.find<FormCategoryRepository>();
-      final categories = await repo.getAll(forceRefresh: true);
+      final categories = await repo.getAll();
 
       // Sort categories according to the defined order
       final sortedCategories = _sortCategoriesByOrder(categories);
@@ -121,6 +128,44 @@ class RequestController extends GetxController {
     } finally {
       isLoadingCategories.value = false;
     }
+
+    // Refresh from the server without blocking the UI; the cached list is
+    // already on screen.
+    unawaited(_refreshFormCategoriesInBackground());
+  }
+
+  /// Fetch the latest categories from the API and update state only when the
+  /// server data differs from what is currently displayed.
+  Future<void> _refreshFormCategoriesInBackground() async {
+    try {
+      final repo = Get.find<FormCategoryRepository>();
+      final fresh = _sortCategoriesByOrder(await repo.getAll(forceRefresh: true));
+
+      if (fresh.isEmpty || _sameCategories(fresh, formCategories)) {
+        return;
+      }
+
+      formCategories.value = fresh;
+
+      // Keep the selection valid if the list shrank.
+      if (currentTabIndex.value >= fresh.length) {
+        currentTabIndex.value = fresh.length - 1;
+      }
+      currentSelectedCategory.value = fresh[currentTabIndex.value];
+    } catch (e) {
+      // Cached data is already displayed; a failed refresh is not an error
+      // worth surfacing.
+      logDebug('RequestController: background category refresh failed: $e');
+    }
+  }
+
+  bool _sameCategories(
+      List<FormCategoryModel> a, List<FormCategoryModel> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id || a[i].name != b[i].name) return false;
+    }
+    return true;
   }
 
   /// Sort categories according to the predefined order.
