@@ -117,11 +117,6 @@ class PickUpDataManager {
 
       controller.pickUps.assignAll(results);
       controller.filterManager.applyFilter(controller.pickUps.toList());
-
-      BLoaders.successSnackBar(
-        title: 'Success',
-        message: 'Pick-Up data refreshed successfully',
-      );
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());

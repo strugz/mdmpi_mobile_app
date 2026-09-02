@@ -612,11 +612,6 @@ class StandardDeliveryDataManager {
       }
 
       controller.updateRequestCounts();
-
-      BLoaders.successSnackBar(
-        title: 'Success',
-        message: 'Request data refreshed successfully',
-      );
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());

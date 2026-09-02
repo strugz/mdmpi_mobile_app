@@ -123,11 +123,6 @@ class AirSeaDataManager {
 
       controller.airSeaRequests.assignAll(results);
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());
-
-      BLoaders.successSnackBar(
-        title: 'Success',
-        message: 'Air/Sea data refreshed successfully',
-      );
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());

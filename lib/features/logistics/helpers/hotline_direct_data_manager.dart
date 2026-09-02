@@ -522,11 +522,6 @@ class HotlineDirectDataManager {
       controller.filterManager
           .applyFilter(controller.allPendingRequests.toList());
       controller.updateRequestCounts();
-
-      BLoaders.successSnackBar(
-        title: 'Success',
-        message: 'Hotline Direct data refreshed successfully',
-      );
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());

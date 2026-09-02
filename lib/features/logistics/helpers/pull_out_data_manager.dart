@@ -344,11 +344,6 @@ class PullOutDataManager {
 
       controller.pullOuts.assignAll(pullOutsRequests);
       controller.filterManager.applyFilter(controller.pullOuts.toList());
-
-      BLoaders.successSnackBar(
-        title: 'Success',
-        message: 'Pull-Out data refreshed successfully',
-      );
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());

@@ -364,11 +364,6 @@ class StockReceiveDataManager {
       (controller.stockReceives as RxList<PullOutModel>)
           .assignAll(stockReceiveRequests);
       controller.filterManager.applyFilter(controller.stockReceives.toList());
-
-      BLoaders.successSnackBar(
-        title: 'Success',
-        message: 'Stock Receive data refreshed successfully',
-      );
     } catch (e) {
       controller.errorMessage.value = e.toString();
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
