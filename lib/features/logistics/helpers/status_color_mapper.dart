@@ -26,6 +26,10 @@ class LogisticsStatusColors {
         fg = BColors.white; break;
       case BTexts.statusForDelivery:
         bg = darkMode ? BColors.primary.withValues(alpha: 0.25) : BColors.primaryBackground; fg = BColors.primary; break;
+      case BTexts.statusForPullOut:
+        // Dispatch-prep stage: mirror the Item Prepared styling.
+        bg = _adjustAlpha(BColors.info, darkMode, baseAlpha: 0.35);
+        fg = BColors.white; break;
       case BTexts.statusInTransit:
         bg = _adjustAlpha(BColors.secondary, darkMode, baseAlpha: 0.3); fg = BColors.white; break;
       case BTexts.statusTakenOut:

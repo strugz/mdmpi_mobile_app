@@ -708,7 +708,11 @@ class _RequestScreenState extends State<RequestScreen>
               const SizedBox(height: 8),
               FilterDropdown<PullOutStatusFilter>(
                 selectedFilter: stockReceiveController.filterManager.selectedStatusFilter,
-                filterValues: PullOutStatusFilter.values,
+                // For Pull Out is a Pull Out / Return-only status; Stock
+                // Receive keeps its New Request → In Transit → Taken Out flow.
+                filterValues: PullOutStatusFilter.values
+                    .where((f) => f != PullOutStatusFilter.statusForPullOut)
+                    .toList(),
                 getDisplayName: (f) => f.displayName,
                 onFilterChanged: stockReceiveController.selectStatusFilter,
               ),

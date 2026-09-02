@@ -186,7 +186,7 @@ class PullOutDataManager {
             ? nowString
             : request.pullOutDateEndAt,
         mobileID:
-            newStatus == BTexts.statusInTransit && request.mobileID == null
+            newStatus == BTexts.statusForPullOut && request.mobileID == null
                 ? (int.tryParse(controller.formState.mobile.text) ??
                     request.mobileID)
                 : request.mobileID,
@@ -437,7 +437,10 @@ class PullOutDataManager {
     required String newStatus,
     required PullOutFormState formState,
   }) async {
-    if (newStatus == BTexts.statusInTransit) {
+    // Dispatch info is entered by Release at For Pull Out; the In Transit
+    // check is a defensive guard (passes when the request already carries it).
+    if (newStatus == BTexts.statusForPullOut ||
+        newStatus == BTexts.statusInTransit) {
       return _validateDispatchInfo(request, formState);
     }
 

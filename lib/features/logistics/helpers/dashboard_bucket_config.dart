@@ -100,6 +100,28 @@ class DashboardBucketConfig {
           _cancelled,
         ];
       case FormCategoryType.pullOutReturn:
+        return const [
+          _newRequest,
+          DashboardBucket(
+            label: BTexts.statusForPullOut,
+            icon: Iconsax.box_tick,
+            accent: _violet,
+            statuses: {BTexts.statusForPullOut},
+          ),
+          DashboardBucket(
+            label: BTexts.statusInTransit,
+            icon: Iconsax.truck_fast,
+            accent: BColors.info,
+            statuses: {BTexts.statusInTransit},
+          ),
+          DashboardBucket(
+            label: BTexts.statusTakenOut,
+            icon: Iconsax.box_remove,
+            accent: _orange,
+            statuses: {BTexts.statusTakenOut},
+          ),
+          _cancelled,
+        ];
       case FormCategoryType.stockReceive:
         return const [
           _newRequest,

@@ -139,9 +139,7 @@ class PullOutRequestModalFooter extends StatelessWidget {
           apiController: 'RequestPullOutReturnPickUp',
           viewItemButtonLabel: 'View Proof of Pull Out',
           showViewItemButton:
-              requestModel.requestStatus == BTexts.statusInTransit
-                  ? false
-                  : true,
+              requestModel.requestStatus == BTexts.statusTakenOut,
         ),
       ],
     );

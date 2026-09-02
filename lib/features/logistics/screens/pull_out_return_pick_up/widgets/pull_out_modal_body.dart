@@ -56,9 +56,9 @@ class PullOutModalBody extends StatelessWidget {
     final UserController userController = Get.find();
 
     final role = userController.user.value.role;
-    // Show Delivery Info if user has Courier role (Courier can set In Transit)
-    // Even if user has Request/Release roles, Courier capability takes precedence
-    final hasCourierRole = role.contains(BTexts.roleCourier);
+    // Show Delivery Info if user has Release role (Release can set In Transit
+    // and enters the trip ticket, driver, helper, and vehicle).
+    final hasReleaseRole = role.contains(BTexts.roleRelease);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -114,7 +114,7 @@ class PullOutModalBody extends StatelessWidget {
         ],
 
         // ========== BODY: Delivery Info (for new requests) ==========
-        if (requestModel.requestStatus == BTexts.statusNewRequest && hasCourierRole) ...[
+        if (requestModel.requestStatus == BTexts.statusNewRequest && hasReleaseRole) ...[
           const SizedBox(height: BSizes.sm),
           const BTextDivider(text: 'Delivery Info'),
           const SizedBox(height: BSizes.spaceBtwItems),

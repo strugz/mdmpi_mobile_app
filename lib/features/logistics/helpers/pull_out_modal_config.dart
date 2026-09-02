@@ -72,21 +72,30 @@ class PullOutModalConfig {
         return PullOutModalConfig.viewOnly(role: role);
 
       // ── Release role ──────────────────────────────────────────────────
-      // Release role is view-only for Pull Out module.
+      // Release handles dispatch prep: New Request → For Pull Out, entering
+      // the trip ticket, driver, helper, and vehicle (with validation).
       case BTexts.roleRelease:
+        if (status == BTexts.statusNewRequest) {
+          return PullOutModalConfig(
+            role: role,
+            nextStatus: BTexts.statusForPullOut,
+            isActionVisible: true,
+            buttonLabel: 'Set For Pull Out',
+            validate: () => _validateForPullOutTransition(controller),
+          );
+        }
         return PullOutModalConfig.viewOnly(role: role);
 
       // ── Courier role ──────────────────────────────────────────────────
-      // Courier handles New Request → In Transit (with validation)
-      // and In Transit → Taken Out
+      // Courier confirms departure (For Pull Out → In Transit) and
+      // completion (In Transit → Taken Out).
       case BTexts.roleCourier:
-        if (status == BTexts.statusNewRequest) {
+        if (status == BTexts.statusForPullOut) {
           return PullOutModalConfig(
             role: role,
             nextStatus: BTexts.statusInTransit,
             isActionVisible: true,
             buttonLabel: 'Set In Transit',
-            validate: () => _validateInTransitTransition(controller),
           );
         }
         if (status == BTexts.statusInTransit) {
@@ -109,9 +118,9 @@ class PullOutModalConfig {
   // VALIDATION HELPERS (private, co-located with config)
   // ========================================================================
 
-  /// Validates fields required before transitioning to In Transit.
+  /// Validates fields required before transitioning to For Pull Out.
   /// Returns `true` if validation passes; `false` to abort.
-  static Future<bool> _validateInTransitTransition(
+  static Future<bool> _validateForPullOutTransition(
       PullOutController controller) async {
     final formState = controller.formState;
     return _validateDeliveryInfo(formState);

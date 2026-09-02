@@ -50,6 +50,7 @@ class SmsMessageTemplateService {
             '$targetDateLine';
       case BTexts.statusItemPacked:
       case BTexts.statusForDispatch:
+      case BTexts.statusForPullOut:
       case BTexts.statusDispatch:
       case BTexts.statusInTransit:
       case BTexts.statusEndorsedToGuard:

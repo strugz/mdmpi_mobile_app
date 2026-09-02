@@ -60,6 +60,32 @@ void main() {
     expect(gettingReady.contains('  getting supplies ready  '), isTrue);
   });
 
+  test('Pull Out / Return has a For Pull Out bucket; Stock Receive does not',
+      () {
+    final pullOutLabels = DashboardBucketConfig.bucketsFor(
+            FormCategoryType.pullOutReturn)
+        .map((b) => b.label)
+        .toList();
+    expect(pullOutLabels, [
+      'New Request',
+      'For Pull Out',
+      'In Transit',
+      'Taken Out',
+      'Cancelled',
+    ]);
+
+    final stockReceiveLabels = DashboardBucketConfig.bucketsFor(
+            FormCategoryType.stockReceive)
+        .map((b) => b.label)
+        .toList();
+    expect(stockReceiveLabels, [
+      'New Request',
+      'In Transit',
+      'Taken Out',
+      'Cancelled',
+    ]);
+  });
+
   test('every module has an accent color and icon', () {
     for (final module in FormCategoryType.values) {
       expect(() => DashboardBucketConfig.moduleAccent(module), returnsNormally);

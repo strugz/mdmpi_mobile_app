@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_fi
 
 enum PullOutStatusFilter {
   statusNewRequest('New Request'),
+  statusForPullOut('For Pull Out'),
   statusInTransit('In Transit'),
   statusTakenOut('Taken Out'),
   statusCancelled('Cancelled'),

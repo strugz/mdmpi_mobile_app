@@ -18,14 +18,15 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart
 // ============================================================================
 // STATUS-DRIVEN ROLE SELECTION
 // ============================================================================
-// For Pull Out module, only Courier has actions. This map defines which role
-// should be preferred based on the request status.
+// For Pull Out module, Release preps dispatch and Courier departs/completes.
+// This map defines which role should be preferred based on the request status.
 //
 // Status-Role Capability Matrix:
 // ┌──────────────┬─────────┬─────────┬─────────┐
 // │ Status       │ Request │ Release │ Courier │
 // ├──────────────┼─────────┼─────────┼─────────┤
-// │ New Request  │ View    │ View    │ ✅ Action│
+// │ New Request  │ View    │ ✅ Action│ View    │
+// │ For Pull Out │ View    │ View    │ ✅ Action│
 // │ In Transit   │ View    │ View    │ ✅ Action│
 // │ Taken Out    │ View    │ View    │ View    │
 // │ Cancelled    │ View    │ View    │ View    │
@@ -35,7 +36,8 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart
 /// Maps each status to the preferred role that has action capability.
 /// Returns null if no role has actions for that status (all view-only).
 const _statusToPreferredRole = {
-  BTexts.statusNewRequest: BTexts.roleCourier, // Courier: Set In Transit
+  BTexts.statusNewRequest: BTexts.roleRelease, // Release: Set For Pull Out
+  BTexts.statusForPullOut: BTexts.roleCourier, // Courier: Set In Transit
   BTexts.statusInTransit: BTexts.roleCourier, // Courier: Mark Taken Out
   // Taken Out, Cancelled, Picked-up: All roles are view-only (no preferred role)
 };

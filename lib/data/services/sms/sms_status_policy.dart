@@ -13,6 +13,7 @@ class SmsStatusPolicy {
     BTexts.statusItemPacked,
     BTexts.statusReceived,
     BTexts.statusInTransit,
+    BTexts.statusForPullOut,
     BTexts.statusTakenOut,
     BTexts.statusEndorsedToGuard,
     BTexts.statusForDispatch,

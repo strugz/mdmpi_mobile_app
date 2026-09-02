@@ -141,6 +141,7 @@ class BTexts {
   static const String statusNewRequest = "New Request";
   static const String statusCancelled = "Cancelled";
   static const String statusInTransit = "In Transit";
+  static const String statusForPullOut = "For Pull Out";
   static const String statusTakenOut = "Taken Out";
   static const String statusAll = "All";
   static const String statusReceived = "Received";
