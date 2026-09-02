@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_backload_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -29,20 +30,28 @@ class BModal extends StatelessWidget {
   final StandardDeliveryModel requestModel;
   final StandardDeliveryModalConfig config;
 
+  /// Controller owning the form state this modal reads/writes. Defaults to
+  /// [StandardDeliveryController]; Hotline Direct passes its own controller
+  /// so validation reads the same form state the fields wrote to.
+  final IDeliveryRequestController? requestController;
+
   const BModal({
     super.key,
     required this.requestModel,
     required this.config,
+    this.requestController,
   });
 
   @override
   Widget build(BuildContext context) {
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
     final bool isBackLoad = requestModel.status == BTexts.statusBackLoad;
-    final controller = Get.find<StandardDeliveryController>();
+    final controller =
+        requestController ?? Get.find<StandardDeliveryController>();
 
     // Compute requestId once for reuse in children widgets
-    final requestId = requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
+    final requestId =
+        requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
 
     // Preload cancel remarks for cancelled requests
     if (isCancelled) {

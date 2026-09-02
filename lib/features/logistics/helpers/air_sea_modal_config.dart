@@ -246,13 +246,6 @@ class AirSeaModalConfig {
       );
       return false;
     }
-    if (formState.helperController.text.trim().isEmpty) {
-      BLoaders.errorSnackBar(
-        title: 'Validation Error',
-        message: 'Please select Helper',
-      );
-      return false;
-    }
     if (formState.vehicleController.text.trim().isEmpty) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',

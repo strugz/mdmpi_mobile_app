@@ -436,6 +436,7 @@ class BFullScreenLoader {
             child: BModal(
               requestModel: requestModel,
               config: config,
+              requestController: requestController,
             ),
           ),
         );

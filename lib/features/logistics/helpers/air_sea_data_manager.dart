@@ -837,13 +837,6 @@ class AirSeaDataManager {
       );
       return false;
     }
-    if (helper.trim().isEmpty) {
-      BLoaders.errorSnackBar(
-        title: 'Validation Error',
-        message: 'Please select Helper',
-      );
-      return false;
-    }
     if (!hasVehicle) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
