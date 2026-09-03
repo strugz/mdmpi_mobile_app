@@ -97,6 +97,27 @@ class BImageHelperFunctions {
     return imageBase64;
   }
 
+  /// Base64 of the extra proof photos (slots 2..3) saved for a request,
+  /// keyed by slot number. Slot 1 is handled by [getDeliveryImageAsBase64].
+  static Future<Map<int, String>> getExtraDeliveryImagesAsBase64(
+      String requestId,
+      {int maxPhotos = 3}) async {
+    final result = <int, String>{};
+    if (requestId.isEmpty) return result;
+
+    final storageGranted =
+        await _requireStoragePermission('Proof image storage');
+    if (!storageGranted) return result;
+
+    for (int slot = 2; slot <= maxPhotos; slot++) {
+      final file = File('${BPaths.deliveryShots}/${requestId}_$slot.jpg');
+      if (await file.exists()) {
+        result[slot] = base64Encode(await file.readAsBytes());
+      }
+    }
+    return result;
+  }
+
   static Future<String> saveImage(XFile? imageFile, String pictureName) async {
     if (imageFile == null) return "";
 

@@ -52,6 +52,7 @@ class BDeliveryDetailsSection extends StatelessWidget {
     // If null, the receivedBy placement follows signatureLeft; otherwise explicit
     this.receivedByLeft,
     this.imageProofType = 'Proof',
+    this.imageProofTypes,
     this.signatureType = 'Signature',
   });
 
@@ -140,6 +141,11 @@ class BDeliveryDetailsSection extends StatelessWidget {
   final bool? receivedByLeft;
 
   final String imageProofType;
+
+  /// When set, the view-item dialog checks each of these image types and
+  /// shows every photo found (e.g. ['Proof', 'Proof_2', 'Proof_3']).
+  /// When null, only [imageProofType] is shown.
+  final List<String>? imageProofTypes;
 
   final String signatureType;
 
@@ -380,6 +386,19 @@ class BDeliveryDetailsSection extends StatelessWidget {
             labelTitle: viewItemButtonLabel,
             onPressed: onViewItemPressed ??
                 () {
+                  final types = imageProofTypes;
+                  if (types != null && types.isNotEmpty) {
+                    showRequestImagesDialog(
+                      context,
+                      requestId: requestId,
+                      types: types,
+                      semanticsLabel:
+                          'Delivered item image for request $requestId',
+                      apiController: apiController,
+                      title: dialogTitle,
+                    );
+                    return;
+                  }
                   showRequestImageDialog(
                     context,
                     requestId: requestId,

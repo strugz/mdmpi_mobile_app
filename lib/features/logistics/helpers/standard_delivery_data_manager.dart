@@ -359,6 +359,14 @@ class StandardDeliveryDataManager {
         request.image.isEmpty &&
         finalImageBase64.isNotEmpty;
 
+    // Extra proof photos (slots 2-3) upload as their own image types
+    // (Proof_2, Proof_3) through the same endpoint and outbox.
+    final Map<int, String> extraProofImages =
+        newStatus == BTexts.statusDoneDelivery && imageProofWasAdded
+            ? await BImageHelperFunctions.getExtraDeliveryImagesAsBase64(
+                request.id)
+            : const {};
+
     if (!signatureWasAdded && !imageProofWasAdded) return;
 
     final isConnectedForUpload = await NetworkManager.instance.isConnected();
@@ -371,6 +379,15 @@ class StandardDeliveryDataManager {
           type: 'Proof',
           apiStatus: 'Pending',
         );
+        for (final entry in extraProofImages.entries) {
+          await ProofImageOutboxUploader.instance.queueOnly(
+            requestId: request.id,
+            imageLookupKey: request.id,
+            base64Image: entry.value,
+            type: 'Proof_${entry.key}',
+            apiStatus: 'Pending',
+          );
+        }
       }
       BLoaders.warningSnackBar(
         title: 'No Internet',
@@ -403,6 +420,14 @@ class StandardDeliveryDataManager {
         base64Image: finalImageBase64,
         type: 'Proof',
       );
+      for (final entry in extraProofImages.entries) {
+        await ProofImageOutboxUploader.instance.uploadOrQueue(
+          requestId: request.id,
+          imageLookupKey: request.id,
+          base64Image: entry.value,
+          type: 'Proof_${entry.key}',
+        );
+      }
     }
   }
 

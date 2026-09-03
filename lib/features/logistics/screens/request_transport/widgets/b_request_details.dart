@@ -10,17 +10,14 @@ import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_document_reference.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_proof_photo_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/constants/sizes.dart';
-import '../../../../../base/utils/local_storage/text_storage_service.dart';
-import '../../../../../common/controllers/camera_controller.dart';
 import '../../../../../common/widgets/texts/product_title_text.dart';
 import '../../../../personalization/controller/user_controller.dart';
 import '../../../controllers/request_transport_controller.dart';
-import 'package:mdmpi_mobile_app/common/widgets/popups/image_preview_dialog.dart';
 
 /// Details content for the Request Transport draggable bottom sheet.
 ///
@@ -44,7 +41,6 @@ class BRequestDetails extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final textColor = dark ? BColors.light : BColors.black;
     final iconColor = dark ? BColors.light : BColors.black;
-    final textStorage = TextStorageService();
 
     return Obx(
       () {
@@ -219,62 +215,10 @@ class BRequestDetails extends StatelessWidget {
               const SizedBox(height: BSizes.md),
               const BTextDivider(text: 'Proof of Delivery'),
               const SizedBox(height: BSizes.sm),
-              Obx(
-                () {
-                  final cameraController = Get.find<CameraHandlerController>();
-
-                  // Read both sources so GetX registers the reactive dependency
-                  final String? storedPath = textStorage.getText('proofImagePath');
-                  final String cameraPath = cameraController.imageProofPath.value;
-                  final String displayPath = storedPath ?? cameraPath;
-
-                  return Center(
-                    child: Column(
-                      children: [
-                        IconButton(
-                          onPressed: () => Get.to(
-                            () => BDropOffCapture(
-                              title: 'Proof Picture',
-                              onCapture: (camera) async =>
-                                  camera.takePictureWithAnimation(
-                                updatedRequest.id,
-                              ),
-                            ),
-                          ),
-                          icon: Icon(Iconsax.camera, size: 25, color: iconColor),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: BProductTitleText(
-                                title: displayPath,
-                                maxLines: 1,
-                                smallSize: true,
-                                fontColor: textColor,
-                              ),
-                            ),
-                            if (displayPath.isNotEmpty)
-                              Listener(
-                                onPointerDown: (_) {
-                                        if (displayPath.isNotEmpty) {
-                                                ImagePreviewDialog.show(context, displayPath);
-                                              }
-                                },
-                                onPointerUp: (_) {
-                                  if (Navigator.canPop(context)) {
-                                    Navigator.pop(context);
-                                  }
-                                },
-                                child: Icon(Iconsax.eye,
-                                    color: iconColor, size: 24),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                },
+              BProofPhotoList(
+                requestId: updatedRequest.id,
+                iconColor: iconColor,
+                textColor: textColor,
               ),
               const SizedBox(height: BSizes.xs),
               const Divider(),

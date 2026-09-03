@@ -39,9 +39,16 @@ class BProofImage {
   }
 
   String _buildFileName(String requestId, {String type = 'Proof'}) {
-    return type == 'Provincial_PickUp_Proof'
-        ? '${requestId}_provincial_pick_up.jpg'
-        : '$requestId.jpg';
+    if (type == 'Provincial_PickUp_Proof') {
+      return '${requestId}_provincial_pick_up.jpg';
+    }
+    // Extra proof photos (Proof_2, Proof_3) live beside the legacy slot-1
+    // file as {requestId}_2.jpg / {requestId}_3.jpg.
+    final extraSlot = RegExp(r'^Proof_(\d+)$').firstMatch(type);
+    if (extraSlot != null) {
+      return '${requestId}_${extraSlot.group(1)}.jpg';
+    }
+    return '$requestId.jpg';
   }
 
   String _buildFilePath(String requestId, {String type = 'Proof'}) {
@@ -135,8 +142,12 @@ class BProofImage {
     }
 
     try {
-      final local = await _db.loadSavedRequestImageBytes(requestId);
-      if (local != null && local.isNotEmpty) return local;
+      // The local DB row only ever holds the slot-1 'Proof' image, so the
+      // fallback must not answer for other types (e.g. Proof_2, Proof_3).
+      if (type == 'Proof') {
+        final local = await _db.loadSavedRequestImageBytes(requestId);
+        if (local != null && local.isNotEmpty) return local;
+      }
     } catch (e, st) {
       logDebug(
           'BProofImage: failed to read local image for $requestId: $e\n$st');
@@ -158,7 +169,11 @@ class BProofImage {
         showErrorSnackbar: false,
       );
       if (bytes.isNotEmpty) {
-        await _saveBytesToDb(bytes, requestId);
+        // Same single-row constraint: only the 'Proof' type may be cached
+        // in the DB, or an extra photo would overwrite the slot-1 image.
+        if (type == 'Proof') {
+          await _saveBytesToDb(bytes, requestId);
+        }
         return bytes;
       } else {
         logDebug('BProofImage: API returned empty bytes for $requestId');

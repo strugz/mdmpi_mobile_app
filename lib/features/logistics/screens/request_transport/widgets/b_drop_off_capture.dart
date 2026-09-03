@@ -13,12 +13,22 @@ class BDropOffCapture extends StatefulWidget {
   const BDropOffCapture({
     super.key,
     this.title = 'Capture',
-    required this.onCapture,
-  });
+    this.onCapture,
+    this.onConfirmPath,
+  }) : assert(onCapture != null || onConfirmPath != null,
+            'Provide onCapture or onConfirmPath');
 
   final String title;
 
-  final Future<void> Function(CameraHandlerController camera) onCapture;
+  /// Legacy confirm handler: called without the reviewed file, typically to
+  /// re-capture via the camera service. Prefer [onConfirmPath] — re-capturing
+  /// while the review screen covers the preview returns a stale frame.
+  final Future<void> Function(CameraHandlerController camera)? onCapture;
+
+  /// Confirm handler receiving the reviewed photo's file path, so the caller
+  /// saves exactly what the user approved.
+  final Future<void> Function(CameraHandlerController camera, String imagePath)?
+      onConfirmPath;
 
   @override
   State<BDropOffCapture> createState() => _BDropOffCaptureState();
@@ -52,8 +62,14 @@ class _BDropOffCaptureState extends State<BDropOffCapture> {
   Future<void> _confirmPhoto() async {
     logDebug('✅ Photo confirmed, saving...');
     try {
-      // Call the onCapture callback to save the photo
-      await widget.onCapture(cameraController);
+      // Save the reviewed photo (preferred), or fall back to the legacy
+      // re-capture callback.
+      final reviewedPath = capturedImagePath.value;
+      if (widget.onConfirmPath != null && reviewedPath != null) {
+        await widget.onConfirmPath!(cameraController, reviewedPath);
+      } else {
+        await widget.onCapture!(cameraController);
+      }
 
       // Reset state
       isReviewingPhoto.value = false;

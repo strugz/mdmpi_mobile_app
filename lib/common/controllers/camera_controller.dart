@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/local_storage/text_storage_service.dart';
+import 'package:mdmpi_mobile_app/base/utils/paths/path.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -29,7 +30,17 @@ class CameraHandlerController extends GetxController
   late Animation<double> flashOpacity;
   Future<void>? _cameraInitializationFuture;
 
+  /// Maximum proof-of-delivery photos per request.
+  static const int maxProofPhotos = 3;
+
   final imageProofPath = RxString('');
+
+  /// Proof photo paths for the request in [proofPhotosRequestId], slot order.
+  /// Slot 1 keeps the legacy `{requestId}.jpg` name; slots 2-3 use
+  /// `{requestId}_2.jpg` / `{requestId}_3.jpg`.
+  final imageProofPaths = RxList<String>();
+  String proofPhotosRequestId = '';
+
   final recognizedText = Rx<String>('');
   RxBool isProcessing = false.obs;
   RxBool isCameraLoading = true.obs;
@@ -274,6 +285,113 @@ class CameraHandlerController extends GetxController
     isFlashing.value = true;
     _flashAnimController.forward(from: 0.0);
     await takePicture(requestId);
+  }
+
+  /// File name (without extension) for a proof photo slot (1-based).
+  /// Slot 1 keeps the legacy `{requestId}` name so existing readers
+  /// (validation, upload, display) continue to work unchanged.
+  static String proofFileName(String requestId, int slot) =>
+      slot <= 1 ? requestId : '${requestId}_$slot';
+
+  /// Reload [imageProofPaths] from disk for the given request.
+  /// Idempotent; call when a proof capture UI is shown so the list
+  /// reflects the current request instead of a previously opened one.
+  Future<void> syncProofPhotos(String requestId) async {
+    proofPhotosRequestId = requestId;
+    final found = <String>[];
+    for (int slot = 1; slot <= maxProofPhotos; slot++) {
+      final path =
+          '${BPaths.deliveryShots}/${proofFileName(requestId, slot)}.jpg';
+      if (await File(path).exists()) {
+        found.add(path);
+      }
+    }
+    imageProofPaths.assignAll(found);
+    _mirrorFirstProofPhoto();
+  }
+
+  /// Save an already-captured photo file (e.g. the one the user just
+  /// confirmed on the review screen) into the next free proof slot
+  /// (max [maxProofPhotos]). Does NOT take a new picture — re-capturing on
+  /// confirm returns a stale camera frame while the review screen covers
+  /// the preview, producing identical photos.
+  Future<void> addProofPictureFromFile(
+      String requestId, String sourcePath) async {
+    if (proofPhotosRequestId != requestId) {
+      await syncProofPhotos(requestId);
+    }
+    if (imageProofPaths.length >= maxProofPhotos) {
+      BLoaders.warningSnackBar(
+        title: 'Photo Limit',
+        message: 'You can attach up to $maxProofPhotos proof photos.',
+      );
+      return;
+    }
+
+    try {
+      final storagePermission = await _permissionService.requireForFeature(
+        PermissionType.storage,
+        featureName: 'Proof photo',
+      );
+      if (!storagePermission.granted) return;
+
+      final source = File(sourcePath);
+      if (!await source.exists()) {
+        BLoaders.errorSnackBar(
+          title: 'Error',
+          message: 'Captured photo file not found.',
+        );
+        return;
+      }
+
+      final slot = imageProofPaths.length + 1;
+      await Directory(BPaths.deliveryShots).create(recursive: true);
+      final targetPath =
+          '${BPaths.deliveryShots}/${proofFileName(requestId, slot)}.jpg';
+      await source.copy(targetPath);
+
+      imageProofPaths.add(targetPath);
+      await _mirrorFirstProofPhoto();
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    }
+  }
+
+  /// Remove the proof photo at [index] and compact the remaining photos
+  /// down into the freed slots so slot 1 is always occupied first.
+  Future<void> removeProofPhoto(String requestId, int index) async {
+    if (index < 0 || index >= imageProofPaths.length) return;
+
+    try {
+      final removed = File(imageProofPaths[index]);
+      if (await removed.exists()) {
+        await removed.delete();
+      }
+
+      // Shift later photos down one slot on disk.
+      for (int i = index + 1; i < imageProofPaths.length; i++) {
+        final source = File(imageProofPaths[i]);
+        final targetPath =
+            '${BPaths.deliveryShots}/${proofFileName(requestId, i)}.jpg';
+        if (await source.exists()) {
+          await source.rename(targetPath);
+        }
+      }
+      await syncProofPhotos(requestId);
+    } catch (e) {
+      BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+    }
+  }
+
+  /// Keep the legacy single-photo state pointing at slot 1 so existing
+  /// consumers (action button validation, transport controller fallback)
+  /// stay consistent with the multi-photo list.
+  Future<void> _mirrorFirstProofPhoto() async {
+    final first = imageProofPaths.isNotEmpty ? imageProofPaths.first : '';
+    imageProofPath.value = first;
+    if (first.isNotEmpty) {
+      await _textStorageService.saveText('proofImagePath', first);
+    }
   }
 
   /// --- Take Picture and Return Path (without saving) ---

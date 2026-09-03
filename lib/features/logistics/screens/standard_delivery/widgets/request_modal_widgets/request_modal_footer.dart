@@ -6,16 +6,14 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
-import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
-import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_proof_photo_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_mobile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
@@ -107,35 +105,11 @@ class RequestModalFooter extends StatelessWidget {
           const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Proof of Delivery'),
           const SizedBox(height: BSizes.sm),
-          Obx(() {
-            final cameraController = Get.find<CameraHandlerController>();
-
-            return Center(
-              child: Column(
-                children: [
-                  IconButton(
-                    onPressed: () => Get.to(
-                      () => BDropOffCapture(
-                        title: 'Proof Picture',
-                        onCapture: (camera) async =>
-                            camera.takePictureWithAnimation(
-                          requestModel.id,
-                        ),
-                      ),
-                    ),
-                    icon: Icon(Iconsax.camera, size: 25, color: iconColor),
-                  ),
-                  if (cameraController.imageProofPath.value.isNotEmpty)
-                    BProductTitleText(
-                      title: cameraController.imageProofPath.value,
-                      maxLines: 1,
-                      smallSize: true,
-                      fontColor: textColor,
-                    ),
-                ],
-              ),
-            );
-          }),
+          BProofPhotoList(
+            requestId: requestModel.id,
+            iconColor: iconColor,
+            textColor: textColor,
+          ),
           const SizedBox(height: BSizes.spaceBtwItems),
           BTextFormField(
             controller: requestController.formState.receiver,
@@ -211,6 +185,7 @@ class RequestModalFooter extends StatelessWidget {
           apiController: 'Request',
           viewItemButtonLabel: 'Item Photo',
           dialogTitle: 'Delivered Item',
+          imageProofTypes: const ['Proof', 'Proof_2', 'Proof_3'],
           showViewItemButton: requestModel.status == BTexts.statusDoneDelivery,
         ),
       ],

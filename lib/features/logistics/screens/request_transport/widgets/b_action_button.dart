@@ -76,17 +76,25 @@ class BActionButton extends StatelessWidget {
                       return;
                     }
 
-                    // Validate proof of delivery using stored path (camera or text storage)
-                    final String proofImagePath =
-                        textStorage.getText('proofImagePath') ??
-                            cameraController.imageProofPath.value;
+                    // Validate proof of delivery (min 1 photo). Check the
+                    // multi-photo list first, then the legacy single path
+                    // (camera or text storage).
+                    final candidatePaths = <String>[
+                      ...cameraController.imageProofPaths,
+                      textStorage.getText('proofImagePath') ??
+                          cameraController.imageProofPath.value,
+                    ];
 
                     bool proofExists = false;
-                    if (proofImagePath.isNotEmpty) {
+                    for (final path in candidatePaths) {
+                      if (path.isEmpty) continue;
                       try {
-                        proofExists = await File(proofImagePath).exists();
+                        if (await File(path).exists()) {
+                          proofExists = true;
+                          break;
+                        }
                       } catch (_) {
-                        proofExists = false;
+                        // ignore unreadable path and keep checking
                       }
                     }
 
