@@ -233,14 +233,11 @@ class StandardDelivery extends StatelessWidget {
                       controller: stdDeliveryController
                           .formState.recipientContactDetails,
                       decoration: InputDecoration(
-                        labelText: 'Recipient Contact Details',
+                        labelText: 'Recipient Contact Details (Optional)',
                         prefixIcon: const Icon(Iconsax.call),
                         hintText:
                             'Enter recipient phone number or contact info',
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Please enter recipient contact details'
-                          : null,
                     ),
                     const SizedBox(height: BSizes.spaceBtwItems),
 
@@ -248,13 +245,10 @@ class StandardDelivery extends StatelessWidget {
                     TextFormField(
                       controller: stdDeliveryController.formState.recipientName,
                       decoration: InputDecoration(
-                        labelText: 'Recipient Name',
+                        labelText: 'Recipient Name (Optional)',
                         prefixIcon: const Icon(Iconsax.user),
                         hintText: 'Enter recipient name',
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Please enter recipient name'
-                          : null,
                     ),
                     const SizedBox(height: BSizes.spaceBtwItems),
                   ],
