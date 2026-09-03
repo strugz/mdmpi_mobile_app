@@ -4,7 +4,9 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
+import 'package:mdmpi_mobile_app/data/repositories/pull_out/lose_item_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/lose_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
@@ -175,6 +177,26 @@ class PullOutDataManager {
       formState: formState,
     )) {
       return;
+    }
+
+    // Record lost items before completing. Runs before the try/finally so a
+    // failure returns with the form state (the courier's entries) intact —
+    // the request is not marked Taken Out unless the lost items are saved.
+    if (newStatus == BTexts.statusTakenOut &&
+        formState.lostItemRemarks.isNotEmpty) {
+      final lostItems = formState.lostItemRemarks.entries
+          .map((e) => LoseItemModel(itemCode: e.key, remarks: e.value))
+          .toList();
+      final saveResult = await LoseItemRepository.instance
+          .replaceForRequest(request.id, lostItems);
+      if (saveResult.isFailure) {
+        controller.errorMessage.value = saveResult.error;
+        BLoaders.errorSnackBar(
+          title: 'Lost Items',
+          message: 'Could not save the lost items. Please try again.',
+        );
+        return;
+      }
     }
 
     try {
@@ -531,6 +553,20 @@ class PullOutDataManager {
       );
       return false;
     }
+    // Every item marked as lost must carry a remark before completion.
+    final missingRemarks = formState.lostItemRemarks.entries
+        .where((e) => e.value.trim().isEmpty)
+        .map((e) => e.key)
+        .toList();
+    if (missingRemarks.isNotEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message:
+            'Please enter a reason for each lost item (${missingRemarks.join(', ')})',
+      );
+      return false;
+    }
+
     if (proofImage.trim().isEmpty) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',

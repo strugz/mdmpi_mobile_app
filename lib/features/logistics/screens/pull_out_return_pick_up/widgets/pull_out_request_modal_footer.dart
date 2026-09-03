@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/pull_out_return_pick_up/widgets/pull_out_lost_items_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -55,6 +56,11 @@ class PullOutRequestModalFooter extends StatelessWidget {
         /// -- Proof of Pull out (for Taken Out status, Courier only) --
         if (requestModel.requestStatus == BTexts.statusInTransit &&
             hasCourierRole) ...[
+          /// Lost items: courier unchecks items not pulled out + remarks.
+          PullOutLostItemsSection.editable(
+            requestModel: requestModel,
+            requestController: requestController,
+          ),
           const SizedBox(height: BSizes.md),
           const BTextDivider(text: 'Proof of Pull out'),
           const SizedBox(height: BSizes.sm),
@@ -136,6 +142,10 @@ class PullOutRequestModalFooter extends StatelessWidget {
               ),
             ),
         ],
+
+        /// -- Lost Items (recorded on completion, read-only) --
+        if (requestModel.requestStatus == BTexts.statusTakenOut)
+          PullOutLostItemsSection.readOnly(requestModel: requestModel),
 
         /// -- Delivery Details --
         BDeliveryDetailsSection(

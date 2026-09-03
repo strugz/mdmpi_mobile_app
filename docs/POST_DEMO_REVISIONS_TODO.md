@@ -12,7 +12,7 @@
 - [x] 1. Standard Delivery: make Recipient Contact Details optional — `S` (done; Recipient Name made optional too per follow-up feedback)
 - [x] 2. Standard Delivery: proof of delivery photos, up to 3 — `M` (done app-side; no backend or DB migration needed — see notes)
 - [x] 3. Pull Out: Add Item support — `M` (done app-side; no backend change — items post to the existing `/api4/Item/request/{id}` endpoint; hidden for Stock Receive)
-- [ ] 4. Pull Out: per-item exclusion remarks (lost/not included) — `L` (backend)
+- [x] 4. Pull Out: per-item exclusion remarks (lost/not included) — `L` (done app + backend via new `a_tblLoseItem` table; run `MDMPI.App/migration_20260903_add_a_tblloseitem.sql` and redeploy the testing backend)
 - [ ] 5. Pull Out: pause an in-progress request for an urgent pull out — `M/L`
 - [ ] 6. Standard Delivery: Release role can change driver/helper — `S/M`
 - [ ] 7. Pick Up: multiple item-category selection — `L` (backend)
@@ -141,12 +141,24 @@ completing (`Taken Out`).
 `cancel_remarks_model.dart`). The status-update payload (`pull_out_mapper.dart:37-58`)
 cannot carry remarks at all. No per-item anything (depends on item 3).
 
-**Plan (depends on item 3)**
-- [ ] Item model: add `isIncluded` + `exclusionRemarks` (extend `InventoryItemModel` or a new `PullOutItemModel`).
-- [ ] Local DB: new child table e.g. `a_tblRequestPullOutItem(RequestID, ItemCode, Qty, IsIncluded, Remarks)` in `db_schema.dart` + DAO (mirror how `pull_out_dao.dart:123-140` writes document references).
-- [ ] Payload: extend `toUpdateDto` so exclusions/remarks travel with the `Taken Out` transition (`pull_out_repository.dart:321`). **Backend contract change.**
-- [ ] Validation: `pull_out_data_manager.dart:486-518` (`_validateCompletionInfo`) — require a remark when any item is unchecked.
-- [ ] UI: per-item include checkbox + remarks field in the modal (gated on status `In Transit`), plus read-only display of exclusions after completion. The BackLoad remarks widget (`b_backload_remarks.dart`) is the display pattern to mirror.
+**Implemented (design settled with stakeholder: dedicated `a_tblLoseItem` table).**
+Instead of flags on the shared item table, lost items live in their own server
+table — a row means "this item was NOT pulled out" with the courier's remarks;
+absence means included. Identified by RequestID + ItemCode. No mobile local-DB
+table (matches item 3: items are server-side, fetched on demand).
+
+Backend (MDMPI.App — **deploy in lockstep**; run
+`migration_20260903_add_a_tblloseitem.sql` on the testing Postgres first):
+- [x] `a_tblloseitem(loseitemid identity PK, requestid FK → a_tblrequestpulloutreturnpickup ON DELETE CASCADE, itemcode, remarks, createdat)` + index; both schema dumps updated.
+- [x] `LoseItemModel` entity, `Fetch/InsertLoseItemDto`, `ILoseItemService/Repository`, `LoseItemService`, `LoseItemRepository` (replace-set semantics: POST deletes existing rows and inserts the new set), DbContext mapping, DI in `Program.cs`.
+- [x] `LoseItemController`: `GET/POST /api4/LoseItem/request/{requestId}` — both validate the RequestID exists in `a_tblrequestpulloutreturnpickup` (404 otherwise).
+
+Mobile:
+- [x] `lose_item_model.dart` + `lose_item_repository.dart` (GET returns empty on 404; POST replaces the set), registered in `GeneralBindings` outside the Firebase guard.
+- [x] `PullOutFormState.lostItemRemarks` (`RxMap<itemCode, remark>`; presence = marked lost), cleared on reset.
+- [x] `pull_out_lost_items_section.dart` — editable (In Transit, courier): request items with an included checkbox; unchecking requires a reason. Read-only (Taken Out): recorded lost items + remarks. Renders nothing when the request has no items, so Stock Receive (shared modal) is naturally unaffected.
+- [x] Validation in `_validateCompletionInfo`: every lost item must carry a remark before `Taken Out`.
+- [x] Persistence in `updateRequestStatus`: lost items save via `POST /api4/LoseItem/request/{id}` before the status update — on failure the transition aborts with the courier's entries preserved.
 
 ---
 

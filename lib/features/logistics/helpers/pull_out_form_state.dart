@@ -35,6 +35,11 @@ class PullOutFormState {
   final RxList<ItemCategoryModel> itemCategories = <ItemCategoryModel>[].obs;
   final RxList<FormCategoryModel> formCategories = <FormCategoryModel>[].obs;
 
+  /// Items the courier marked as lost (not pulled out), keyed by item code
+  /// with the exclusion remark as value. Presence in the map = marked lost.
+  /// Saved to `a_tblLoseItem` on the Taken Out transition.
+  final RxMap<String, String> lostItemRemarks = <String, String>{}.obs;
+
   /// Autocomplete controller for Client Contact Person
   late final AutocompleteController clientContactPersonAutocomplete;
 
@@ -87,6 +92,7 @@ class PullOutFormState {
 
     cameraDropOffPicture.value = "";
     cameraPickUpPicture.value = "";
+    lostItemRemarks.clear();
     formKey.currentState?.reset();
     for (var c in documentReferenceControllers) {
       try {
