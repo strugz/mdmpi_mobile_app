@@ -28,12 +28,21 @@ class PullOutModalConfig {
   /// Returns `true` if validation passes; `false` to abort.
   final Future<bool> Function()? validate;
 
+  /// Optional secondary transition (e.g. Pause while the primary action is
+  /// Mark Taken Out). Rendered as an outlined button above the primary one.
+  final String? secondaryNextStatus;
+
+  /// Label for the secondary action button. Empty hides it.
+  final String secondaryButtonLabel;
+
   const PullOutModalConfig({
     required this.role,
     this.nextStatus,
     this.isActionVisible = false,
     this.buttonLabel = '',
     this.validate,
+    this.secondaryNextStatus,
+    this.secondaryButtonLabel = '',
   });
 
   /// View-only config for any role.
@@ -41,7 +50,9 @@ class PullOutModalConfig {
       : nextStatus = null,
         isActionVisible = false,
         buttonLabel = '',
-        validate = null;
+        validate = null,
+        secondaryNextStatus = null,
+        secondaryButtonLabel = '';
 
   // ========================================================================
   // FACTORY — single source of truth for (role, status) → config
@@ -99,11 +110,17 @@ class PullOutModalConfig {
           );
         }
         if (status == BTexts.statusInTransit) {
+          // Courier can pause an in-progress pull out to service a more
+          // urgent one: the request returns to For Pull Out with its start
+          // time cleared, and departing again ("Set In Transit") resumes it
+          // with a fresh start time.
           return PullOutModalConfig(
             role: role,
             nextStatus: BTexts.statusTakenOut,
             isActionVisible: true,
             buttonLabel: 'Mark Taken Out',
+            secondaryNextStatus: BTexts.statusForPullOut,
+            secondaryButtonLabel: 'Pause (Back to For Pull Out)',
           );
         }
         return PullOutModalConfig.viewOnly(role: role);

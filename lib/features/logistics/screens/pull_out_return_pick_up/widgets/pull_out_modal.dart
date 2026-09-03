@@ -38,21 +38,42 @@ class PullOutModal extends StatelessWidget {
     return RequestModalScaffold(
       header: PullOutRequestModalHeader(requestModel: requestModel),
       documentReferences: requestModel.documentReference,
-      bottomAction: StatusActionButton(
-        status: requestModel.requestStatus,
-        onPressed: () async {
-          if (config.nextStatus != null) {
-            // Run optional validator first
-            if (config.validate != null) {
-              final valid = await config.validate!();
-              if (!valid) return;
-            }
-            await controller.updateStatusWithInputs(
-                requestModel, config.nextStatus!);
-          }
-        },
-        isVisible: config.isActionVisible,
-        statusToTextMapper: (status) => config.buttonLabel,
+      bottomAction: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Secondary transition (e.g. Pause while In Transit).
+          if (config.isActionVisible &&
+              config.secondaryNextStatus != null &&
+              config.secondaryButtonLabel.isNotEmpty) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () async {
+                  await controller.updateStatusWithInputs(
+                      requestModel, config.secondaryNextStatus!);
+                },
+                child: Text(config.secondaryButtonLabel),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          StatusActionButton(
+            status: requestModel.requestStatus,
+            onPressed: () async {
+              if (config.nextStatus != null) {
+                // Run optional validator first
+                if (config.validate != null) {
+                  final valid = await config.validate!();
+                  if (!valid) return;
+                }
+                await controller.updateStatusWithInputs(
+                    requestModel, config.nextStatus!);
+              }
+            },
+            isVisible: config.isActionVisible,
+            statusToTextMapper: (status) => config.buttonLabel,
+          ),
+        ],
       ),
       children: [
         // Cancel Remarks Section

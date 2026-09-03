@@ -33,7 +33,11 @@ class PullOutMapper {
     );
   }
 
-  static Map<String, dynamic> toUpdateDto(PullOutModel m) {
+  /// [clearPullOutDateStartAt] tells the backend to null the start time —
+  /// used when a courier pauses an in-transit pull out back to For Pull Out
+  /// so the next departure stamps a fresh start.
+  static Map<String, dynamic> toUpdateDto(PullOutModel m,
+      {bool clearPullOutDateStartAt = false}) {
     final Map<String, dynamic> data = {};
     void put(String key, dynamic value) {
       if (value == null) return;
@@ -53,6 +57,10 @@ class PullOutMapper {
     put('Driver', m.driver);
     put('Helper', m.helper);
     put('RequestedBy', m.requestedBy);
+    if (clearPullOutDateStartAt) {
+      data['ClearPullOutDateStartAt'] = true;
+      data.remove('PullOutDateStartAt');
+    }
     return data;
   }
 }

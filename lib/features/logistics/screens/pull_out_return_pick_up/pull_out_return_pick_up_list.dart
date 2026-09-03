@@ -38,7 +38,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_dialog.dart
 const _statusToPreferredRole = {
   BTexts.statusNewRequest: BTexts.roleRelease, // Release: Set For Pull Out
   BTexts.statusForPullOut: BTexts.roleCourier, // Courier: Set In Transit
-  BTexts.statusInTransit: BTexts.roleCourier, // Courier: Mark Taken Out
+  BTexts.statusInTransit: BTexts.roleCourier, // Courier: Mark Taken Out / Pause
   // Taken Out, Cancelled, Picked-up: All roles are view-only (no preferred role)
 };
 

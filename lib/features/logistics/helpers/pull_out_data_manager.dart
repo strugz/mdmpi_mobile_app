@@ -204,6 +204,11 @@ class PullOutDataManager {
       controller.errorMessage.value = null;
       final nowString = DateTime.now().toString();
 
+      // Pause: an in-transit pull out returns to For Pull Out with its start
+      // time cleared, so the next departure stamps a fresh start.
+      final bool isPause = request.requestStatus == BTexts.statusInTransit &&
+          newStatus == BTexts.statusForPullOut;
+
       final updated = request.copyWith(
         requestStatus: newStatus,
         tripTicketNumber:
@@ -216,10 +221,12 @@ class PullOutDataManager {
         helper: controller.formState.helperController.text.isNotEmpty
             ? controller.formState.helperController.text
             : request.helper,
-        pullOutDateStartAt: newStatus == BTexts.statusInTransit &&
-                request.pullOutDateStartAt.isEmpty
-            ? nowString
-            : request.pullOutDateStartAt,
+        pullOutDateStartAt: isPause
+            ? ''
+            : newStatus == BTexts.statusInTransit &&
+                    request.pullOutDateStartAt.isEmpty
+                ? nowString
+                : request.pullOutDateStartAt,
         pullOutDateEndAt: newStatus == BTexts.statusTakenOut &&
                 request.pullOutDateEndAt.isEmpty
             ? nowString
@@ -270,10 +277,16 @@ class PullOutDataManager {
         }
       }
 
-      final payload = PullOutMapper.toUpdateDto(updated);
+      final payload =
+          PullOutMapper.toUpdateDto(updated, clearPullOutDateStartAt: isPause);
 
       await _repository.updateWithPayload(payload, silent: true);
-      await _messageController.sendSmsMessage(newStatus, updated);
+
+      // Pausing notifies the client with the On Hold wording even though the
+      // stored status returns to For Pull Out; a later resume is an ordinary
+      // departure and sends the normal In Transit SMS.
+      await _messageController.sendSmsMessage(
+          isPause ? BTexts.statusOnHold : newStatus, updated);
 
       await controller.loadPullOuts();
 

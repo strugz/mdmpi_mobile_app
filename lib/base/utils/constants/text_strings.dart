@@ -143,6 +143,7 @@ class BTexts {
   static const String statusInTransit = "In Transit";
   static const String statusForPullOut = "For Pull Out";
   static const String statusTakenOut = "Taken Out";
+  static const String statusOnHold = "On Hold";
   static const String statusAll = "All";
   static const String statusReceived = "Received";
   static const String statusItemPacked = "Item Packed";

@@ -13,7 +13,7 @@
 - [x] 2. Standard Delivery: proof of delivery photos, up to 3 — `M` (done app-side; no backend or DB migration needed — see notes)
 - [x] 3. Pull Out: Add Item support — `M` (done app-side; no backend change — items post to the existing `/api4/Item/request/{id}` endpoint; hidden for Stock Receive)
 - [x] 4. Pull Out: per-item exclusion remarks (lost/not included) — `L` (done app + backend via new `a_tblLoseItem` table; run `MDMPI.App/migration_20260903_add_a_tblloseitem.sql` and redeploy the testing backend)
-- [ ] 5. Pull Out: pause an in-progress request for an urgent pull out — `M/L`
+- [x] 5. Pull Out: pause an in-progress request for an urgent pull out — `M` (done; Pause reverts In Transit → For Pull Out and clears the start time — backend gained `ClearPullOutDateStartAt` on the update DTO; deploy in lockstep)
 - [ ] 6. Standard Delivery: Release role can change driver/helper — `S/M`
 - [ ] 7. Pick Up: multiple item-category selection — `L` (backend)
 - [ ] 8. Rename/extend "Air / Sea" to "Air / Sea / Land" — `M/L` (decision needed)
@@ -172,17 +172,40 @@ urgent pull-out request, then resume it (returning to its prior status).
 Cancelled. There is no `previousStatus` field on the model or DB table, so resume has
 nowhere to read the prior status from today.
 
-**Plan**
-- [ ] New constant `statusPaused` (e.g. "On Hold") in `text_strings.dart` + `PullOutStatusFilter` (`pull_out_filter_manager.dart:8-18`).
-- [ ] Store prior status: add `previousStatus` to `PullOutModel`, `a_tblRequestPullOutReturnPickUp`, and `toUpdateDto` — or restrict pause to `In Transit` only so resume always returns to `In Transit` (simpler; recommended first pass).
-- [ ] Transitions in `PullOutModalConfig.resolve` (`pull_out_modal_config.dart:55-115`): Courier `In Transit` → Paused ("Pause"), Paused → `In Transit` ("Resume").
-- [ ] Guard side effects in `pull_out_data_manager.dart:149-253` so pausing does not stamp `pullOutDateEndAt` or fire the completion SMS; add a branch in `_validateRequiredUpdateFields:430-447`.
-- [ ] Status color case in `status_color_mapper.dart:16-62`; role map entry in `pull_out_return_pick_up_list.dart:38-43`.
-- [ ] Stock Receive reuses the Pull Out filter enum by exclusion (`request_controller.dart:417-419`, `request.dart:719-721`) — exclude the new status there too.
-- [ ] Courier visibility rule `pull_out_filter_manager.dart:96-107` treats only some statuses as "open" — ensure a paused request stays visible to its courier (and decide whether another courier may take it over).
+**Implemented (final design per stakeholder: Pause reverts the request to
+For Pull Out and clears the start time — no separate "On Hold" status).**
+An initial On Hold-status implementation was replaced. Rationale: the
+stakeholder wants `pullOutDateEndAt − pullOutDateStartAt` to measure only the
+final leg, with the courier's next departure stamping a fresh start time. The
+history table (`a_tblrequestpulloutreturnpickup_history`, populated by the
+existing trigger on every update) still records the original departure and all
+pause/resume transitions with timestamps if net-time reporting is ever needed.
 
-**Open questions.** Does "pause" apply only to Pull Out, or also to Standard
-Delivery/Hotline in-transit requests? Does the backend need to know (reporting)?
+- [x] Pause: Courier at In Transit gets a secondary "Pause (Back to For Pull
+  Out)" action (new `secondaryNextStatus`/`secondaryButtonLabel` fields on
+  `PullOutModalConfig`, rendered as an outlined button in
+  `pull_out_modal.dart`) → status returns to For Pull Out and
+  `pullOutDateStartAt` is cleared. Resume = the ordinary "Set In Transit"
+  action, which stamps a fresh start because the field is empty again.
+- [x] Backend (**deploy in lockstep**): `UpdateRequestPullOutReturnPickUpDto`
+  gained `ClearPullOutDateStartAt`; `UpdateAsync` nulls the column when true
+  (the `UpdateIfNotNull` pattern cannot clear columns otherwise). Mobile
+  `PullOutMapper.toUpdateDto(clearPullOutDateStartAt:)` sends the flag; the
+  pause is detected in `pull_out_data_manager.dart` as In Transit → For Pull
+  Out.
+- [x] SMS: pausing texts the client with On Hold wording (template in
+  `sms_message_template_service.dart` + policy entry in
+  `sms_status_policy.dart`; `BTexts.statusOnHold` survives for messaging
+  only). Resume sends the normal In Transit SMS — it is a genuine new
+  departure. Every SMS outcome now logs via `_storeSmsResult`
+  (`messaging_controller.dart`), including silent skips.
+- [x] Visibility: For Pull Out is already assigned-courier-only in the filter
+  rule, so only the paused request's driver/helper sees and resumes it.
+  A paused request is indistinguishable from a not-yet-departed one in
+  lists/dashboards — accepted trade-off of this design.
+
+**Resolved questions.** Pull Out only (other modules can copy the pattern
+later). Backend change is limited to the clear-flag on the update DTO.
 
 ---
 

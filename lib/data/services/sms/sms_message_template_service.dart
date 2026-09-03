@@ -72,6 +72,14 @@ class SmsMessageTemplateService {
             'Document References:\n'
             '$documentReferencesText\n'
             'Status: $completionStatus.';
+      case BTexts.statusOnHold:
+        return '${payload.clientName} \n'
+            'Document References:\n'
+            '$documentReferencesText\n'
+            'Your pull out is temporarily on hold and has been reverted to '
+            'For Pull Out. It will resume shortly.\n'
+            'Status: ${BTexts.statusForPullOut}.'
+            '$targetDateLine';
       case BTexts.statusCancelled:
         return '${payload.clientName} \n'
             'Document References:\n'

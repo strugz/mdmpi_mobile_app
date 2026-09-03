@@ -218,7 +218,6 @@ class MessagingController extends GetxController {
         }
 
         final result = _summarizeSendResults(sendResults);
-        _logSmsResult(result);
         return _storeSmsResult(result);
       } else {
         return _storeSmsResult(
@@ -227,11 +226,9 @@ class MessagingController extends GetxController {
       }
     } on PlatformException catch (e) {
       final result = await _classifyPlatformException(e);
-      _logSmsResult(result);
       return _storeSmsResult(result);
     } catch (e) {
       final result = await _classifyUnexpectedSmsError(e);
-      _logSmsResult(result);
       return _storeSmsResult(result);
     }
   }
@@ -271,6 +268,9 @@ class MessagingController extends GetxController {
   }
 
   SmsResult _storeSmsResult(SmsResult result) {
+    // Log every outcome, including the silent early returns (not required,
+    // no recipients, unsupported platform), so skipped sends are visible.
+    _logSmsResult(result);
     lastSmsResult.value = result;
     return result;
   }
