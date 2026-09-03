@@ -9,6 +9,7 @@ This folder contains application-level and module-level documentation for the MD
 ```
 docs/
   README.md                          # This file — documentation index
+  POST_DEMO_REVISIONS_TODO.md        # Post-demo revisions & bug fix TO DO list (2026-09)
   application/
     README.md                        # Application documentation landing page
     USER_GUIDE.md                    # Daily app usage guide
@@ -48,6 +49,7 @@ docs/
 
 | Module | Domain | Status | Link |
 |---|---|---|---|
+| Post-Demo Revisions TO DO | Logistics / Cross-module | Planned | [POST_DEMO_REVISIONS_TODO.md](POST_DEMO_REVISIONS_TODO.md) |
 | Air & Sea | Logistics | Active | [modules/air-sea/](modules/air-sea/) |
 | Standard Delivery | Logistics | Active | [modules/standard-delivery/](modules/standard-delivery/) |
 | Standard Delivery Signature API Status Plan | Logistics | Planned | [modules/standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md](modules/standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md) |
