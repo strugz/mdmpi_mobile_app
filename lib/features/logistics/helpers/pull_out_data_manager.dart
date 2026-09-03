@@ -3,7 +3,9 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
@@ -128,8 +130,23 @@ class PullOutDataManager {
         requestedBy: userCtrl.user.value.initial,
         documentReference: docRefs,
       );
-      await _repository.insert(model, silent: true);
-      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model);
+      // Scanned items live on the shared Standard Delivery form state (the
+      // Pull Out form reuses its scanner flow, like client and doc refs).
+      // Stock Receive shares this create path but has no Add Item UI.
+      final selectedCategoryName = controller.formState.formCategories
+              .firstWhereOrNull((c) => c.id == normalizedFormCategory)
+              ?.name ??
+          '';
+      final isStockReceive =
+          FormCategoryConstants.fromCategoryName(selectedCategoryName) ==
+              FormCategoryType.stockReceive;
+      final items = isStockReceive
+          ? <InventoryItemModel>[]
+          : stdController.formState.scannedInventoryItems.toList();
+
+      await _repository.insert(model, silent: true, items: items);
+      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model,
+          inventoryItems: items);
 
       await controller.loadPullOuts();
 

@@ -11,7 +11,7 @@
 
 - [x] 1. Standard Delivery: make Recipient Contact Details optional — `S` (done; Recipient Name made optional too per follow-up feedback)
 - [x] 2. Standard Delivery: proof of delivery photos, up to 3 — `M` (done app-side; no backend or DB migration needed — see notes)
-- [ ] 3. Pull Out: Add Item support — `L` (backend)
+- [x] 3. Pull Out: Add Item support — `M` (done app-side; no backend change — items post to the existing `/api4/Item/request/{id}` endpoint; hidden for Stock Receive)
 - [ ] 4. Pull Out: per-item exclusion remarks (lost/not included) — `L` (backend)
 - [ ] 5. Pull Out: pause an in-progress request for an urgent pull out — `M/L`
 - [ ] 6. Standard Delivery: Release role can change driver/helper — `S/M`
@@ -101,15 +101,32 @@ the same scanner/manual flow Standard Delivery uses).
 the chain (model, DTO, mapper, DB table `a_tblRequestPullOutReturnPickUp`, form, modal).
 Only an Item Category dropdown exists (`pull_out_form.dart:152-166`).
 
-**Plan (mirror the Standard Delivery pattern)**
-- [ ] `pull_out_form_state.dart` — add `RxList<InventoryItemModel> scannedInventoryItems` (+ reset/dispose).
-- [ ] `pull_out_form.dart` (~`:152`) — add the `Add Item (count)` button → `ScannedItemsScreen` (the scanner widgets duck-type on `formState.scannedInventoryItems`, so they work as-is).
-- [ ] `pull_out_insert_dto.dart` + `pull_out_mapper.dart:6` — add `items` to the insert payload (`POST /api4/RequestPullOutReturnPickUp`). **Backend contract change.**
-- [ ] `pull_out_data_manager.dart:47` — pass items on create (mirror `standard_delivery_data_manager.dart:135-137`).
-- [ ] View items on an existing request: add `BViewItemsButton(requestId)` to `pull_out_modal_body.dart` (items read back via `GET /api4/Item/request/{id}` through `InventoryItemController`).
+**Implemented (design deviates from the original plan — no backend change).**
+Two key deviations, both confirmed against the code:
+1. **Scanner state reuse instead of a new RxList.** The Pull Out form already
+   borrows the Standard Delivery form state for client, doc refs, and requester
+   — and the scanner stack (`ScannedItemsScreen` → `BItemScanner` →
+   `ScannedItemTile`) duck-types onto a controller exposing not just
+   `formState.scannedInventoryItems` but also `isAnalyzingFile`,
+   `clearScannedItems`, `removeScannedItem`, `updateScannedItemByKey`, and
+   `pickAndAnalyzeFrom{Camera,File}`. Duplicating all of that on
+   `PullOutController` wasn't worth it; the form passes `stdController` to the
+   scanner and the create path reads items from there. The existing
+   `stdController.formState.reset()` in the form's `onSave` clears them.
+2. **No insert-DTO/backend change.** The backend already exposes generic
+   `POST /api4/Item/request/{id}` (items keyed by RequestID only), and the
+   pull-out insert response returns the new `requestID` — so
+   `PullOutRepository.insert` posts items in a follow-up call after create.
+   If the item post fails, the user gets a warning that the request was
+   created without items.
 
-**Open question.** Does Stock Receive (which reuses `PullOutForm`) also get Add Item,
-or must it be hidden for `FormCategoryType.stockReceive`?
+- [x] `pull_out_form.dart` — `Add Item (count)` button → `ScannedItemsScreen(controller: stdController)`, hidden when the selected category is Stock Receive; also replaced two `print()`s with `logDebug`.
+- [x] `pull_out_repository.dart` — `insert(..., items:)` + `_insertItemsForRequest` (POST `/api4/Item/request/{id}`).
+- [x] `pull_out_data_manager.dart` — passes scanned items on create (empty for Stock Receive) and includes them in the new-request SMS.
+- [x] `pull_out_modal_body.dart` — `BViewItemsButton(requestId)` shown only for Pull Out / Return category requests (modal is shared with Stock Receive).
+
+**Resolved question.** Stock Receive does **not** get Add Item (confirmed) —
+the button and item payload are gated on `FormCategoryType.stockReceive`.
 
 ---
 

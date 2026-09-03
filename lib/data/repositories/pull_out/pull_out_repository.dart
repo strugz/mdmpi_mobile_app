@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/pull_out_mapper.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
@@ -200,7 +201,12 @@ class PullOutRepository extends GetxController {
   }
 
   /// Insert a new pull-out request to API and local DB.
-  Future<void> insert(PullOutModel data, {bool silent = false}) async {
+  ///
+  /// When [items] are provided, they are posted to the shared
+  /// `POST /api4/Item/request/{id}` endpoint after the request is created —
+  /// the insert response carries the new RequestID the item post needs.
+  Future<void> insert(PullOutModel data,
+      {bool silent = false, List<InventoryItemModel>? items}) async {
     try {
       final dto = PullOutMapper.toInsertDto(data);
       final payload = dto.toJson();
@@ -223,6 +229,24 @@ class PullOutRepository extends GetxController {
         } catch (parseError) {
           logDebug(
               'PullOutRepository: Could not parse RequestID from response: $parseError');
+        }
+
+        if (items != null && items.isNotEmpty) {
+          if (updatedData.id.isNotEmpty) {
+            final itemsSaved =
+                await _insertItemsForRequest(updatedData.id, items);
+            if (!itemsSaved) {
+              _showWarning(
+                'Request created, but its items could not be saved. '
+                'Please contact support to attach the items.',
+              );
+            }
+          } else {
+            _showWarning(
+              'Request created, but the server did not return its ID — '
+              'items were not saved.',
+            );
+          }
         }
 
         // Save to local DB with the correct ID
@@ -259,6 +283,31 @@ class PullOutRepository extends GetxController {
       } else {
         _showError('An error occurred: $e');
       }
+    }
+  }
+
+  /// Post scanned items for a freshly created request to the shared Item
+  /// endpoint. Returns true when the server accepted them.
+  Future<bool> _insertItemsForRequest(
+      String requestId, List<InventoryItemModel> items) async {
+    try {
+      final url = _uri('/api4/Item/request/$requestId');
+      final response = await http
+          .post(url,
+              headers: const {'Content-Type': 'application/json'},
+              body: jsonEncode(items.map((e) => e.toJson()).toList()))
+          .timeout(const Duration(seconds: 60));
+      if (response.statusCode == 200) {
+        logDebug(
+            'PullOutRepository: Saved ${items.length} items for request $requestId');
+        return true;
+      }
+      logDebug(
+          'PullOutRepository: Item insert failed (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      logDebug('PullOutRepository._insertItemsForRequest error: $e');
+      return false;
     }
   }
 

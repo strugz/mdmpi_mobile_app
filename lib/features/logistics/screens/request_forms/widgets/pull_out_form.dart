@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_autocomplete_text_field.dart';
@@ -11,6 +12,8 @@ import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
+import 'package:mdmpi_mobile_app/common/widgets/scanner/scanned_items_screen.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
 
@@ -38,17 +41,21 @@ class PullOutForm extends StatelessWidget {
     }
 
     // Pre-select form category from RequestController if available
+    bool isStockReceive = false;
     try {
       final selectedCategory = requestController.currentSelectedCategory.value;
+      isStockReceive = FormCategoryConstants.fromCategoryName(
+              selectedCategory?.name ?? '') ==
+          FormCategoryType.stockReceive;
 
       if (selectedCategory != null) {
         // Set form category based on selected tab
         controller.formState.formCategoryController.text = selectedCategory.id;
-        print(
+        logDebug(
             'Pre-selected form category from RequestController: ${selectedCategory.name} (ID: ${selectedCategory.id})');
       }
     } catch (e) {
-      print('RequestController not found or error reading category: $e');
+      logDebug('RequestController not found or error reading category: $e');
     }
 
     Future<void> onSave() async {
@@ -126,6 +133,28 @@ class PullOutForm extends StatelessWidget {
                         /// Document Reference
                         const BDocumentReference(),
                         const SizedBox(height: BSizes.sm),
+
+                        /// Add Item (scanner) — Pull Out only; Stock Receive
+                        /// shares this form but has no item list.
+                        if (!isStockReceive)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Obx(() {
+                              final count = stdController
+                                  .formState.scannedInventoryItems.length;
+                              return TextButton.icon(
+                                onPressed: () => Get.to(() =>
+                                    ScannedItemsScreen(
+                                        controller: stdController)),
+                                icon: const Icon(Iconsax.add, size: 16),
+                                label: Text(count > 0
+                                    ? 'Add Item ($count)'
+                                    : 'Add Item'),
+                              );
+                            }),
+                          ),
+                        if (!isStockReceive)
+                          const SizedBox(height: BSizes.sm),
                       ],
                     ),
 

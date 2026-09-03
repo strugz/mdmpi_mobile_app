@@ -12,9 +12,12 @@ import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
@@ -33,6 +36,22 @@ class PullOutModalBody extends StatelessWidget {
   /// [PullOutController]; Stock Receive passes its own controller so the
   /// module's validator reads the same form state the fields wrote to.
   final IPullOutRequestController? controller;
+
+  /// True when the request belongs to the Pull Out / Return category (this
+  /// modal is shared with Stock Receive, which has no item list).
+  bool _isPullOutCategory(PullOutModel request) {
+    try {
+      final categories = Get.find<RequestController>().formCategories;
+      final name = categories
+              .firstWhereOrNull((c) => c.id == request.formCategoryId)
+              ?.name ??
+          '';
+      return FormCategoryConstants.fromCategoryName(name) ==
+          FormCategoryType.pullOutReturn;
+    } catch (_) {
+      return false;
+    }
+  }
 
   String _formatDate(String value) {
     if (value.isEmpty) return '';
@@ -119,6 +138,10 @@ class PullOutModalBody extends StatelessWidget {
               ],
             ),
           ],
+          // Items are Pull Out-only (Stock Receive shares this modal but
+          // carries no item list).
+          if (_isPullOutCategory(requestModel) && requestModel.id.isNotEmpty)
+            BViewItemsButton(requestId: requestModel.id),
         ],
 
         // ========== BODY: Delivery Info (for new requests) ==========
