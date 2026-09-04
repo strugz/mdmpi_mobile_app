@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_document_reference.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_proof_photo_list.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/reassign_delivery_crew_section.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
 
 import '../../../../../base/utils/constants/colors.dart';
@@ -59,7 +60,10 @@ class BRequestDetails extends StatelessWidget {
         final hasTripTicket = updatedRequest.tripTicketNumber.isNotEmpty;
         final hasDocRefs = updatedRequest.documentReference.isNotEmpty;
         final hasDriver = updatedRequest.deliveredBy.isNotEmpty;
-        final hasHelper = updatedRequest.helper.isNotEmpty;
+        // A helper identical to the driver is legacy duplicate data — show
+        // the person once, as the driver.
+        final hasHelper = updatedRequest.helper.isNotEmpty &&
+            updatedRequest.helper != updatedRequest.deliveredBy;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,6 +206,18 @@ class BRequestDetails extends StatelessWidget {
                 ],
               ),
             ],
+
+            // ========== Re-assign Driver / Helper (Release role) ==========
+            // Multi-role users with Courier are routed to this screen instead
+            // of the request modal, so the Release re-assignment section must
+            // also live here.
+            if (userController.user.value.role.contains(BTexts.roleRelease) &&
+                (updatedRequest.status == BTexts.statusItemPrepared ||
+                    updatedRequest.status == BTexts.statusForDelivery))
+              ReassignDeliveryCrewSection(
+                requestModel: updatedRequest,
+                requestController: requestController,
+              ),
 
             // ========== Document References ==========
             if (hasDocRefs) ...[

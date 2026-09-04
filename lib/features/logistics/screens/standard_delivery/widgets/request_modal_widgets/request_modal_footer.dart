@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/reassign_delivery_crew_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_proof_photo_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_mobile.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
@@ -47,6 +48,13 @@ class RequestModalFooter extends StatelessWidget {
         requestModel.status == BTexts.statusGettingSuppliesReady &&
             requestModel.itemPreparedBy ==
                 requestController.userController.user.value.initial;
+
+    // Release can re-assign the driver/helper after preparation, while the
+    // request is Item Prepared or For Delivery.
+    final canReassignCrew = requestController.userController.user.value.role
+            .contains(BTexts.roleRelease) &&
+        (requestModel.status == BTexts.statusItemPrepared ||
+            requestModel.status == BTexts.statusForDelivery);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,6 +107,13 @@ class RequestModalFooter extends StatelessWidget {
           const SizedBox(height: BSizes.spaceBtwItems),
           BMobile(requestController: requestController),
         ],
+
+        /// -- Re-assign Driver / Helper (Release, after preparation) --
+        if (canReassignCrew)
+          ReassignDeliveryCrewSection(
+            requestModel: requestModel,
+            requestController: requestController,
+          ),
 
         /// -- Proof of Delivery (for For Delivery status) --
         if (requestModel.status == BTexts.statusForDelivery) ...[

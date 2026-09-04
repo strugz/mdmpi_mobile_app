@@ -7,6 +7,11 @@ import 'dart:typed_data';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
 /// Displays a saved or remotely fetched signature image for a request.
+///
+/// Adapts to its parent: when the parent provides a bounded box (e.g. the
+/// sized signature slot in [BDeliveryDetailsSection]) the image fills it;
+/// otherwise it falls back to a fixed 150x100. The signature is always drawn
+/// with [BoxFit.contain] so it is never cropped or distorted.
 class CapturedSignatureImage extends StatelessWidget {
   final String requestId;
   final String type;
@@ -22,74 +27,54 @@ class CapturedSignatureImage extends StatelessWidget {
     );
 
     final imageRequestUrl = uri.toString();
-    // First try to load saved signature bytes from local DB. If found, show it directly.
-    return FutureBuilder<Uint8List?>(
-      future: DatabaseHelper.instance.loadSavedSignatureBytes(requestId),
-      builder: (context, snapshot) {
-        // While waiting, show the same placeholder as CachedNetworkImage would
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
+
+    return LayoutBuilder(builder: (context, constraints) {
+      // Fill a fully bounded parent; keep the legacy intrinsic size when the
+      // parent leaves either axis unbounded (e.g. inside a plain Column).
+      final bool bounded =
+          constraints.hasBoundedWidth && constraints.hasBoundedHeight;
+      final double boxWidth = bounded ? constraints.maxWidth : 150;
+      final double boxHeight = bounded ? constraints.maxHeight : 100;
+
+      Widget framed(Widget child) => Center(
             child: Container(
+              width: boxWidth,
+              height: boxHeight,
               decoration: BoxDecoration(
                 border: Border.all(color: BColors.grey),
               ),
-              child: const SizedBox(
-                height: 100,
-                width: 150,
-                child: Center(child: CircularProgressIndicator()),
-              ),
+              child: child,
             ),
           );
-        }
 
-        if (snapshot.hasError) {
-          // On DB error, fall back to network image
-          // (we intentionally do not surface DB errors here)
-        }
+      // First try to load saved signature bytes from local DB. If found,
+      // show it directly.
+      return FutureBuilder<Uint8List?>(
+        future: DatabaseHelper.instance.loadSavedSignatureBytes(requestId),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return framed(
+                const Center(child: CircularProgressIndicator(strokeWidth: 2)));
+          }
 
-        final Uint8List? bytes = snapshot.data;
-        if (bytes != null && bytes.isNotEmpty) {
-          return Center(
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: BColors.grey),
-              ),
-              child: Image.memory(
-                bytes,
-                height: 100,
-                width: 150,
-                fit: BoxFit.fill,
-              ),
-            ),
-          );
-        }
+          final Uint8List? bytes = snapshot.data;
+          if (bytes != null && bytes.isNotEmpty) {
+            return framed(Image.memory(bytes, fit: BoxFit.contain));
+          }
 
-        // No local bytes: fall back to network-loaded image (cached)
-        return Center(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: BColors.grey),
-            ),
-            child: CachedNetworkImage(
+          // No local bytes: fall back to network-loaded image (cached)
+          return framed(
+            CachedNetworkImage(
               imageUrl: imageRequestUrl,
-              height: 100,
-              width: 150,
-              fit: BoxFit.fill,
-              placeholder: (context, url) => const SizedBox(
-                height: 100,
-                width: 150,
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              errorWidget: (context, url, error) => const SizedBox(
-                height: 100,
-                width: 150,
-                child: Center(
-                    child: Icon(Icons.error, color: Colors.red, size: 40)),
-              ),
+              fit: BoxFit.contain,
+              placeholder: (context, url) => const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2)),
+              errorWidget: (context, url, error) => const Center(
+                  child: Icon(Icons.error, color: Colors.red, size: 40)),
             ),
-          ),
-        );
-      },
-    );
+          );
+        },
+      );
+    });
   }
 }

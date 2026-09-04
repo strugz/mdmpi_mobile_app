@@ -156,7 +156,9 @@ class BDeliveryDetailsSection extends StatelessWidget {
 
     // Check if any data exists to display
     final hasDriver = driver.isNotEmpty;
-    final hasHelper = helper.isNotEmpty;
+    // A helper identical to the driver is legacy duplicate data — show the
+    // person once, as the driver.
+    final hasHelper = helper.isNotEmpty && helper != driver;
     final hasReceivedBy = receivedBy.isNotEmpty;
     final hasDeparted = departedAt != null && departedAt!.isNotEmpty;
     final hasCompleted = completedAt != null && completedAt!.isNotEmpty;
@@ -212,15 +214,19 @@ class BDeliveryDetailsSection extends StatelessWidget {
               computedSignatureHeight =
                   signatureHeight!.clamp(0.0, screenWidth);
             } else {
+              // Match the signature capture's 3:2 aspect so the contained
+              // image fills its frame without letterboxing or cropping.
               computedSignatureHeight =
-                  (computedSignatureWidth * 0.5).clamp(40.0, 130.0);
+                  (computedSignatureWidth / 1.5).clamp(40.0, 130.0);
             }
+            final bool showsWatermark = hasReceivedBy &&
+                showSignatureWatermark &&
+                !signatureBelowReceivedBy;
+
             return Stack(
               children: [
                 // Signature watermark - right aligned and faded (only when not using below-received placement)
-                if (hasReceivedBy &&
-                    showSignatureWatermark &&
-                    !signatureBelowReceivedBy)
+                if (showsWatermark)
                   Positioned(
                     top: 20,
                     // position left or right based on signatureLeft flag
@@ -238,140 +244,149 @@ class BDeliveryDetailsSection extends StatelessWidget {
                       ),
                     ),
                   ),
-                // Main content on top
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Driver/Helper and Receiver row - always horizontal
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Left column: Driver/Helper and optionally Received By (if placed left)
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (hasDriver)
-                                BProductTitleText(
-                                  title: '$driverLabel: $driver',
-                                  maxLines: 3,
-                                  smallSize: true,
-                                  fontColor: textColor,
-                                ),
-                              if (hasDriver && hasHelper)
-                                const SizedBox(height: BSizes.xs),
-                              if (hasHelper)
-                                BProductTitleText(
-                                  title: 'Helper: $helper',
-                                  maxLines: 3,
-                                  smallSize: true,
-                                  fontColor: textColor,
-                                ),
-                              if (placeReceivedLeft) ...[
-                                const SizedBox(height: BSizes.xs),
-                                BLabelValueText(
-                                  label: receivedByLabel,
-                                  value: receivedBy,
-                                  showLabel: true,
-                                  maxLines: 3,
-                                  smallSize: true,
-                                  textColor: textColor,
-                                  padding: EdgeInsets.zero,
-                                ),
-                                if (signatureBelowReceivedBy) ...[
-                                  const SizedBox(height: BSizes.sm),
-                                  FractionallySizedBox(
-                                    widthFactor: 0.9,
-                                    child: SizedBox(
-                                      height: computedSignatureHeight,
-                                      child: CapturedSignatureImage(
-                                        requestId: requestId,
-                                        type: signatureType,
+                // Main content on top. The Stack takes its height from this
+                // (non-positioned) child, so when the watermark is shown it
+                // must be at least tall enough to contain the positioned
+                // signature — otherwise the Stack clips its bottom.
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight:
+                        showsWatermark ? 20 + computedSignatureHeight + 4 : 0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Driver/Helper and Receiver row - always horizontal
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left column: Driver/Helper and optionally Received By (if placed left)
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (hasDriver)
+                                  BProductTitleText(
+                                    title: '$driverLabel: $driver',
+                                    maxLines: 3,
+                                    smallSize: true,
+                                    fontColor: textColor,
+                                  ),
+                                if (hasDriver && hasHelper)
+                                  const SizedBox(height: BSizes.xs),
+                                if (hasHelper)
+                                  BProductTitleText(
+                                    title: 'Helper: $helper',
+                                    maxLines: 3,
+                                    smallSize: true,
+                                    fontColor: textColor,
+                                  ),
+                                if (placeReceivedLeft) ...[
+                                  const SizedBox(height: BSizes.xs),
+                                  BLabelValueText(
+                                    label: receivedByLabel,
+                                    value: receivedBy,
+                                    showLabel: true,
+                                    maxLines: 3,
+                                    smallSize: true,
+                                    textColor: textColor,
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  if (signatureBelowReceivedBy) ...[
+                                    const SizedBox(height: BSizes.sm),
+                                    FractionallySizedBox(
+                                      widthFactor: 0.9,
+                                      child: SizedBox(
+                                        height: computedSignatureHeight,
+                                        child: CapturedSignatureImage(
+                                          requestId: requestId,
+                                          type: signatureType,
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: BSizes.sm),
-                        // Right column: show Received By if it's not placed on the left
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (!placeReceivedLeft && hasReceivedBy) ...[
-                                BLabelValueText(
-                                  label: receivedByLabel,
-                                  value: receivedBy,
-                                  showLabel: true,
-                                  maxLines: 3,
-                                  smallSize: true,
-                                  textColor: textColor,
-                                  padding: EdgeInsets.zero,
-                                ),
-                                if (signatureBelowReceivedBy) ...[
-                                  const SizedBox(height: BSizes.sm),
-                                  FractionallySizedBox(
-                                    widthFactor: 0.9,
-                                    child: SizedBox(
-                                      height: computedSignatureHeight,
-                                      child: CapturedSignatureImage(
-                                        requestId: requestId,
-                                        type: signatureType,
+                          const SizedBox(width: BSizes.sm),
+                          // Right column: show Received By if it's not placed on the left
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (!placeReceivedLeft && hasReceivedBy) ...[
+                                  BLabelValueText(
+                                    label: receivedByLabel,
+                                    value: receivedBy,
+                                    showLabel: true,
+                                    maxLines: 3,
+                                    smallSize: true,
+                                    textColor: textColor,
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  if (signatureBelowReceivedBy) ...[
+                                    const SizedBox(height: BSizes.sm),
+                                    FractionallySizedBox(
+                                      widthFactor: 0.9,
+                                      child: SizedBox(
+                                        height: computedSignatureHeight,
+                                        child: CapturedSignatureImage(
+                                          requestId: requestId,
+                                          type: signatureType,
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ],
-                            ],
+                            ),
                           ),
+                        ],
+                      ),
+                      // Timestamps
+                      if (hasDeparted) ...[
+                        const SizedBox(height: BSizes.sm),
+                        BLabelValueText(
+                          label: departedAtLabel,
+                          value: BFormatter.formatDateWithAmPm(departedAt!),
+                          showLabel: false,
+                          icon: Iconsax.calendar,
+                          maxLines: 2,
+                          smallSize: true,
+                          textColor: textColor,
+                          padding: EdgeInsets.zero,
                         ),
                       ],
-                    ),
-                    // Timestamps
-                    if (hasDeparted) ...[
-                      const SizedBox(height: BSizes.sm),
-                      BLabelValueText(
-                        label: departedAtLabel,
-                        value: BFormatter.formatDateWithAmPm(departedAt!),
-                        showLabel: false,
-                        icon: Iconsax.calendar,
-                        maxLines: 2,
-                        smallSize: true,
-                        textColor: textColor,
-                        padding: EdgeInsets.zero,
-                      ),
+                      if (hasCompleted) ...[
+                        const SizedBox(height: BSizes.sm),
+                        BLabelValueText(
+                          label: completedAtLabel,
+                          value: completedAtFormatter != null
+                              ? completedAtFormatter!(completedAt!)
+                              : BFormatter.formatDateWithAmPm(completedAt!),
+                          showLabel: false,
+                          icon: Iconsax.calendar_1,
+                          maxLines: 2,
+                          smallSize: true,
+                          textColor: textColor,
+                          padding: EdgeInsets.zero,
+                        ),
+                      ],
+                      if (hasLocation) ...[
+                        const SizedBox(height: BSizes.sm),
+                        BMapLocationLink(
+                          label: locationLabel,
+                          location: location,
+                          showLabel: true,
+                          icon: Iconsax.location,
+                          padding: EdgeInsets.zero,
+                          mainAlignment: MainAxisAlignment.start,
+                          iconOnly: true,
+                        ),
+                      ],
                     ],
-                    if (hasCompleted) ...[
-                      const SizedBox(height: BSizes.sm),
-                      BLabelValueText(
-                        label: completedAtLabel,
-                        value: completedAtFormatter != null
-                            ? completedAtFormatter!(completedAt!)
-                            : BFormatter.formatDateWithAmPm(completedAt!),
-                        showLabel: false,
-                        icon: Iconsax.calendar_1,
-                        maxLines: 2,
-                        smallSize: true,
-                        textColor: textColor,
-                        padding: EdgeInsets.zero,
-                      ),
-                    ],
-                    if (hasLocation) ...[
-                      const SizedBox(height: BSizes.sm),
-                      BMapLocationLink(
-                        label: locationLabel,
-                        location: location,
-                        showLabel: true,
-                        icon: Iconsax.location,
-                        padding: EdgeInsets.zero,
-                        mainAlignment: MainAxisAlignment.start,
-                        iconOnly: true,
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ],
             );
@@ -399,15 +414,13 @@ class BDeliveryDetailsSection extends StatelessWidget {
                     );
                     return;
                   }
-                  showRequestImageDialog(
-                    context,
-                    requestId: requestId,
-                    semanticsLabel:
-                        'Delivered item image for request $requestId',
-                    apiController: apiController,
-                    title: dialogTitle,
-                    type: imageProofType
-                  );
+                  showRequestImageDialog(context,
+                      requestId: requestId,
+                      semanticsLabel:
+                          'Delivered item image for request $requestId',
+                      apiController: apiController,
+                      title: dialogTitle,
+                      type: imageProofType);
                 },
           ),
         ],

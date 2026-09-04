@@ -14,7 +14,7 @@
 - [x] 3. Pull Out: Add Item support — `M` (done app-side; no backend change — items post to the existing `/api4/Item/request/{id}` endpoint; hidden for Stock Receive)
 - [x] 4. Pull Out: per-item exclusion remarks (lost/not included) — `L` (done app + backend via new `a_tblLoseItem` table; run `MDMPI.App/migration_20260903_add_a_tblloseitem.sql` and redeploy the testing backend)
 - [x] 5. Pull Out: pause an in-progress request for an urgent pull out — `M` (done; Pause reverts In Transit → For Pull Out and clears the start time — backend gained `ClearPullOutDateStartAt` on the update DTO; deploy in lockstep)
-- [ ] 6. Standard Delivery: Release role can change driver/helper — `S/M`
+- [x] 6. Standard Delivery: Release role can change driver/helper — `S` (done; also covers Hotline Direct via the shared footer, no backend change)
 - [ ] 7. Pick Up: multiple item-category selection — `L` (backend)
 - [ ] 8. Rename/extend "Air / Sea" to "Air / Sea / Land" — `M/L` (decision needed)
 - [ ] 9. Hotline Direct: allow driver (Courier) to create requests — `M`
@@ -222,11 +222,33 @@ writes `deliveredBy`/`helper` **when the existing value is empty**
 impossible after "Packed & Ready". Roles are already defined (`Release` in
 `text_strings.dart:170-176`; gate matrix in `standard_delivery_modal_config.dart:74-171`).
 
-**Plan**
-- [ ] Extend the Release branch in `standard_delivery_modal_config.dart:112-132` to allow an "edit assignment" action on `Item Prepared` / `For Delivery` statuses.
-- [ ] Show driver/helper dropdowns for Release in those statuses (`request_modal_footer.dart:48-103`).
-- [ ] Remove/replace the `isEmpty ? new : existing` guards in `standard_delivery_data_manager.dart:306-309, 334-336` for the Release edit path, and persist via the existing update payload.
-- [ ] Decide whether the same applies to Hotline Direct, Air/Sea, Pull Out (they have parallel modal configs).
+**Implemented (simpler than planned — the modal config and write-once guards
+were left untouched).** Re-assignment is its own action, not a status
+transition, so it bypasses the `isEmpty ? new : existing` guards in
+`_buildUpdatedRequest` entirely instead of weakening them. The Release modal
+stays view-only at these statuses; the footer gains an editing section.
+
+- [x] New `ReassignDeliveryCrewSection` widget
+  (`reassign_delivery_crew_section.dart`): driver/helper dropdowns seeded with
+  the current assignment + a "Save Assignment" button. Shown in
+  `request_modal_footer.dart` when the user has the Release role and the
+  request is `Item Prepared` or `For Delivery`.
+- [x] New `StandardDeliveryDataManager.updateDriverHelperAssignment`:
+  overwrites `deliveredBy`/`helper` via the existing update payload
+  (driver required; an empty helper keeps the current one — the PATCH
+  endpoint ignores empty fields, so clearing is not possible, only
+  replacing), persists to API + local DB, and updates the reactive lists.
+- [x] Hotline Direct is covered automatically — it shares the footer and the
+  Standard Delivery repository. Courier visibility follows the new assignment
+  immediately (the courier lists filter on `deliveredBy`/`helper`).
+- [x] Second surface in `b_request_details.dart` (RequestTransport screen):
+  the list force-routes any user holding the Courier role to RequestTransport
+  at `Item Prepared`/`For Delivery` (`standard_delivery_list.dart:186-199`),
+  so multi-role users never see the modal footer there — the same section is
+  gated on the Release role inside the transport details too.
+
+**Resolved question.** Standard Delivery + Hotline Direct only (confirmed);
+Pull Out / Air Sea can copy the pattern later if requested.
 
 ---
 

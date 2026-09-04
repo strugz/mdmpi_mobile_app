@@ -469,6 +469,64 @@ class StandardDeliveryDataManager {
     }
   }
 
+  /// Re-assign the driver and/or helper on a request (Release role, after
+  /// preparation). Unlike the status-transition path, this deliberately
+  /// overwrites the existing assignment; the status is left unchanged.
+  /// Works for Standard Delivery and Hotline Direct (same repository).
+  Future<bool> updateDriverHelperAssignment({
+    required IDeliveryRequestController controller,
+    required StandardDeliveryModel request,
+    required String driver,
+    required String helper,
+  }) async {
+    final newDriver = driver.trim();
+    final newHelper = helper.trim();
+
+    if (newDriver.isEmpty) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Please select a Driver',
+      );
+      return false;
+    }
+    if (newHelper.isNotEmpty && newHelper == newDriver) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Driver and Helper cannot be the same person',
+      );
+      return false;
+    }
+    if (!await validateConnectivity()) {
+      return false;
+    }
+
+    // An empty helper keeps the current one: the update endpoint ignores
+    // empty fields, so clearing is not possible — only replacing.
+    final updated = request.copyWith(
+      deliveredBy: newDriver,
+      helper: newHelper.isEmpty ? request.helper : newHelper,
+    );
+
+    try {
+      await _persistUpdatedRequest(
+        request: updated,
+        userInitial: controller.userController.user.value.initial,
+        useLocalStorage: false,
+      );
+      _applyReactiveRequestUpdate(controller, updated);
+      BLoaders.successSnackBar(
+        title: 'Assignment Updated',
+        message: 'Driver/Helper re-assigned.',
+      );
+      return true;
+    } catch (e) {
+      controller.errorMessage.value = 'An error occurred: $e';
+      BLoaders.errorSnackBar(
+          title: 'Update Failed', message: 'An error occurred: $e');
+      return false;
+    }
+  }
+
   void _applyReactiveRequestUpdate(
     IDeliveryRequestController controller,
     StandardDeliveryModel updatedRequest,
@@ -780,6 +838,9 @@ class StandardDeliveryDataManager {
     final driver = request.deliveredBy.trim().isNotEmpty
         ? request.deliveredBy
         : formState.selectedDriver.text;
+    final helper = request.helper.trim().isNotEmpty
+        ? request.helper
+        : formState.selectedHelper.text;
     final hasVehicle = (request.mobileID != null && request.mobileID != 0) ||
         formState.mobile.text.trim().isNotEmpty;
 
@@ -801,6 +862,13 @@ class StandardDeliveryDataManager {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',
+      );
+      return false;
+    }
+    if (helper.trim().isNotEmpty && helper.trim() == driver.trim()) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Driver and Helper cannot be the same person',
       );
       return false;
     }

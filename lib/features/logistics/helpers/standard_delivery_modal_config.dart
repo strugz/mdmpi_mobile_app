@@ -198,6 +198,15 @@ class StandardDeliveryModalConfig {
       );
       return false;
     }
+    if (formState.selectedHelper.text.trim().isNotEmpty &&
+        formState.selectedHelper.text.trim() ==
+            formState.selectedDriver.text.trim()) {
+      BLoaders.errorSnackBar(
+        title: 'Validation Error',
+        message: 'Driver and Helper cannot be the same person',
+      );
+      return false;
+    }
     return true;
   }
 }
