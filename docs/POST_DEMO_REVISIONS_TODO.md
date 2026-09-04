@@ -15,7 +15,7 @@
 - [x] 4. Pull Out: per-item exclusion remarks (lost/not included) — `L` (done app + backend via new `a_tblLoseItem` table; run `MDMPI.App/migration_20260903_add_a_tblloseitem.sql` and redeploy the testing backend)
 - [x] 5. Pull Out: pause an in-progress request for an urgent pull out — `M` (done; Pause reverts In Transit → For Pull Out and clears the start time — backend gained `ClearPullOutDateStartAt` on the update DTO; deploy in lockstep)
 - [x] 6. Standard Delivery: Release role can change driver/helper — `S` (done; also covers Hotline Direct via the shared footer, no backend change)
-- [ ] 7. Pick Up: multiple item-category selection — `L` (backend)
+- [x] 7. Pick Up: multiple item-category selection — `L` (done app + backend via new `a_tblrequestpickupitemcategory` child table; run `MDMPI.App/migration_20260904_add_a_tblrequestpickupitemcategory.sql` and redeploy in lockstep)
 - [ ] 8. Rename/extend "Air / Sea" to "Air / Sea / Land" — `M/L` (decision needed)
 - [ ] 9. Hotline Direct: allow driver (Courier) to create requests — `M`
 - [ ] 10. Hotline Direct: support Air/Sea requests — `L` (decision needed)
@@ -263,14 +263,29 @@ one `ItemCategoryID` (`pick_up_form_state.dart:21`), scalar model field
 DB (`db_schema.dart:176-192`) and server (`a_tblrequestpickup.itemcategoryid bigint`).
 No multi-select dropdown widget exists in `lib/common/widgets/dropdown/`.
 
-**Plan**
-- [ ] New multi-select checklist/dropdown widget (pattern exists in the Collection feature, e.g. `deposit_form.dart` / `bucket_item_card.dart`).
-- [ ] `PickUpFormState`: `RxList<String> selectedItemCategoryIds` replacing the single controller.
-- [ ] Model/DTO: list of category IDs; cleanest storage is a child table `a_tblRequestPickUpItemCategory` mirroring the existing `a_tblRequestDocumentReference` pattern (`db_schema.dart:53-63`) rather than widening the scalar column. **Backend contract + server schema change** (incl. history-trigger tables).
-- [ ] Filtering: `pick_up_filter_manager.dart:113-114, 164-165` — `==` becomes `contains`.
-- [ ] Display: `pick_up_request_card.dart` / `pick_up_modal*.dart` render one name today — show a joined list/chips.
+**Implemented (child table + primary-category compatibility).**
+The scalar `itemcategoryid` column keeps the FIRST selection on both server
+and app, so existing rows, reports, and single-category consumers keep
+working; the full selection lives in a new child table. History-trigger
+tables were NOT touched — the child table (like document references) is not
+historized.
 
-**Note.** `AirSeaForm` uses the identical single-select widget (`air_sea_form.dart:102-114`) — confirm whether the requirement extends there.
+Backend (MDMPI.App — **deploy in lockstep**; run
+`migration_20260904_add_a_tblrequestpickupitemcategory.sql` first, which also
+backfills one child row per existing request):
+- [x] `a_tblrequestpickupitemcategory(pickupitemcategoryid identity PK, requestid FK → a_tblrequestpickupmdmpi ON DELETE CASCADE, itemcategoryid, UNIQUE(requestid,itemcategoryid))`; both schema dumps updated.
+- [x] `PickUpItemCategoryModel` entity + DbContext mapping; `InsertRequestPickUpDto`/`RequestPickUpDto` gained `ItemCategoryIDs`; `RequestPickUpRepository` inserts the set on create (first fills the scalar) and returns it on GetAll.
+
+Mobile:
+- [x] New generic `BMultiSelectDropDown` (`lib/common/widgets/dropdown/multi_select_drop_down.dart`): dropdown-styled FormField opening a checkbox dialog; same items shape as `BDropDownDynamicList`.
+- [x] `PickUpFormState.selectedItemCategoryIds` (the legacy `itemCategoryController` mirrors the first selection); form swaps in the multi-select with an at-least-one validator; default 'reagent' seeding covers both.
+- [x] `PickUpModel.itemCategoryIds` (+DTO/mapper `ItemCategoryIDs`); local DB column `ItemCategoryIDs TEXT` (comma-joined) in `a_tblRequestPickUp`, DB version 16 → 17 (destructive cache rebuild per existing pattern), DAO writes it in all three paths.
+- [x] Filtering: category filter matches the scalar OR the list.
+- [x] Display: `pick_up_request_card.dart` resolves and joins all selected
+  category names (the card is the only category display in the Pick Up UI).
+
+**Resolved question.** Air/Sea stays single-select (confirmed); it can copy
+this pattern later.
 
 ---
 

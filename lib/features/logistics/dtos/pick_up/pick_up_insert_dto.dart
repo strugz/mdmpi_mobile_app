@@ -1,6 +1,10 @@
 class PickUpInsertDto {
   final String? clientID;
   final dynamic itemCategoryID;
+
+  /// All selected categories (primary one first) — multi-select support.
+  final List<int>? itemCategoryIDs;
+
   final List<String>? documentReference;
   final String? datePickUp;
   final String? status;
@@ -9,6 +13,7 @@ class PickUpInsertDto {
   PickUpInsertDto({
     this.clientID,
     this.itemCategoryID,
+    this.itemCategoryIDs,
     this.documentReference,
     this.datePickUp,
     this.status,
@@ -23,6 +28,7 @@ class PickUpInsertDto {
 
     put('ClientID', clientID);
     put('ItemCategoryID', itemCategoryID);
+    put('ItemCategoryIDs', itemCategoryIDs);
     put('DocumentReference', documentReference);
     put('DatePickUp', datePickUp);
     put('Status', status);

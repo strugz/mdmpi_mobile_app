@@ -24,6 +24,10 @@ class PickUpModel {
   ItemCategoryModel itemCategory;
   List<String> documentReference;
 
+  /// All selected item categories (primary one first). [itemCategoryId]
+  /// keeps the primary selection for backward compatibility.
+  List<String> itemCategoryIds;
+
   PickUpModel({
     this.id = '',
     this.clientId = '',
@@ -42,9 +46,12 @@ class PickUpModel {
     ClientModel? client,
     ItemCategoryModel? itemCategory,
     List<String>? documentReference,
+    List<String>? itemCategoryIds,
   })  : client = client ?? ClientModel.empty(),
         itemCategory = itemCategory ?? ItemCategoryModel.empty(),
-        documentReference = documentReference ?? <String>[];
+        documentReference = documentReference ?? <String>[],
+        itemCategoryIds = itemCategoryIds ??
+            (itemCategoryId.isNotEmpty ? <String>[itemCategoryId] : <String>[]);
 
   /// Convenience empty factory
   static PickUpModel empty() => PickUpModel();
@@ -67,6 +74,7 @@ class PickUpModel {
     ClientModel? client,
     ItemCategoryModel? itemCategory,
     List<String>? documentReference,
+    List<String>? itemCategoryIds,
   }) {
     return PickUpModel(
       id: id ?? this.id,
@@ -86,6 +94,7 @@ class PickUpModel {
       client: client ?? this.client,
       itemCategory: itemCategory ?? this.itemCategory,
       documentReference: documentReference ?? this.documentReference,
+      itemCategoryIds: itemCategoryIds ?? this.itemCategoryIds,
     );
   }
 
@@ -109,6 +118,7 @@ class PickUpModel {
       'Client': client.toJson(),
       'ItemCategory': itemCategory.toJson(),
       'DocumentReference': documentReference,
+      'ItemCategoryIDs': itemCategoryIds,
     };
   }
 
@@ -173,6 +183,13 @@ class PickUpModel {
               ? List<String>.from((json['documentReference'] as List)
                   .map((e) => e?.toString() ?? ''))
               : <String>[],
+      itemCategoryIds: () {
+        final raw = json['ItemCategoryIDs'] ?? json['itemCategoryIDs'];
+        if (raw is List && raw.isNotEmpty) {
+          return raw.map((e) => e.toString()).toList();
+        }
+        return null; // falls back to [itemCategoryId] in the constructor
+      }(),
     );
   }
 
@@ -208,6 +225,15 @@ class PickUpModel {
       createdAt: (lower['createdat'] ?? '').toString(),
       updatedAt: (lower['updatedat'] ?? '').toString(),
       itemCategory: itemCategoryModel,
+      itemCategoryIds: () {
+        final joined = (lower['itemcategoryids'] ?? '').toString();
+        if (joined.isEmpty) return null;
+        return joined
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }(),
       // client and documentReference will be loaded by DAO
     );
   }

@@ -177,6 +177,7 @@ Future<void> createAllTables(Database db) async {
       RequestID INTEGER PRIMARY KEY,
       ClientID TEXT,
       ItemCategoryID TEXT,
+      ItemCategoryIDs TEXT,
       ItemCategoryName TEXT,
       PreparedBy TEXT,
       ItemPreparedAt TEXT,

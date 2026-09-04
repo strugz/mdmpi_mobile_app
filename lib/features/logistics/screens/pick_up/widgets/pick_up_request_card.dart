@@ -67,23 +67,33 @@ class PickUpRequestCard extends StatelessWidget {
   }
 
   Future<String> _getItemCategoryName() async {
-    // If already has a name, return it
-    if (item.itemCategory.name.isNotEmpty) {
+    // Multi-select: resolve every selected category and join the names.
+    final ids = item.itemCategoryIds.isNotEmpty
+        ? item.itemCategoryIds
+        : (item.itemCategoryId.isNotEmpty
+            ? <String>[item.itemCategoryId]
+            : const <String>[]);
+    if (ids.isEmpty) return '';
+
+    final names = <String>[];
+    for (final id in ids) {
+      // The aggregate carries the primary category's name already.
+      if (id == item.itemCategory.id && item.itemCategory.name.isNotEmpty) {
+        names.add(item.itemCategory.name);
+        continue;
+      }
+      try {
+        final name =
+            await ItemCategoryRepository.instance.fetchItemCategory(id);
+        if (name != null && name.isNotEmpty) names.add(name);
+      } catch (_) {
+        // skip unresolvable ids
+      }
+    }
+    if (names.isEmpty && item.itemCategory.name.isNotEmpty) {
       return item.itemCategory.name;
     }
-
-    // If no itemCategoryId, return empty
-    if (item.itemCategoryId.isEmpty) {
-      return '';
-    }
-
-    // Fetch from repository
-    try {
-      final categoryName = await ItemCategoryRepository.instance.fetchItemCategory(item.itemCategoryId);
-      return categoryName ?? '';
-    } catch (e) {
-      return '';
-    }
+    return names.join(', ');
   }
 
   @override

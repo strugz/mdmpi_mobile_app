@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dropdown/multi_select_drop_down.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -58,11 +58,11 @@ class PickUpForm extends StatelessWidget {
         return;
       }
 
-      // Validate Item Category
-      if (controller.formState.itemCategoryController.text.trim().isEmpty) {
+      // Validate Item Categories (multi-select)
+      if (controller.formState.selectedItemCategoryIds.isEmpty) {
         BLoaders.errorSnackBar(
           title: 'Validation Error',
-          message: 'Please select an item category',
+          message: 'Please select at least one item category',
         );
         return;
       }
@@ -79,6 +79,8 @@ class PickUpForm extends StatelessWidget {
         controller.formState.receivedByController.clear();
 
         // Reload categories to re-apply defaults (Item Category)
+        controller.formState.selectedItemCategoryIds.clear();
+        controller.formState.itemCategoryController.clear();
         await controller.loadCategories();
 
         // Reset shared Standard Delivery form state used by common widgets
@@ -138,19 +140,29 @@ class PickUpForm extends StatelessWidget {
 
                       const SizedBox(height: BSizes.spaceBtwItems),
 
-                      /// Item Category (display name, store ID)
-                      Obx(() => BDropDownDynamicList(
-                            controller:
-                                controller.formState.itemCategoryController,
-                            label: 'Item Category',
-                            dropdownList: controller.formState.itemCategories
+                      /// Item Categories (multi-select; first = primary)
+                      Obx(() => BMultiSelectDropDown(
+                            label: 'Item Categories',
+                            icon: Iconsax.box,
+                            items: controller.formState.itemCategories
                                 .map((e) => e.toJson())
                                 .toList(),
                             valueKey: 'ItemCategoryID',
                             displayKey: 'ItemCategoryName',
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Please select an item category'
-                                : null,
+                            selectedValues: controller
+                                .formState.selectedItemCategoryIds
+                                .toList(),
+                            onChanged: (values) {
+                              controller.formState.selectedItemCategoryIds
+                                  .assignAll(values);
+                              // Mirror the primary selection for legacy readers.
+                              controller.formState.itemCategoryController.text =
+                                  values.isNotEmpty ? values.first : '';
+                            },
+                            validator: (values) =>
+                                (values == null || values.isEmpty)
+                                    ? 'Please select at least one item category'
+                                    : null,
                           )),
                       const SizedBox(height: BSizes.spaceBtwItems),
 

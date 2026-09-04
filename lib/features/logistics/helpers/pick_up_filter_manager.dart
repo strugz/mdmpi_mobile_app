@@ -110,8 +110,9 @@ class PickUpFilterManager {
           (targetDate != null &&
               !targetDate.isAfter(DateTime(
                   dateTo.year, dateTo.month, dateTo.day, 23, 59, 59)));
-      final itemCategoryMatches =
-          itemCategoryId.isEmpty || item.itemCategoryId == itemCategoryId;
+      final itemCategoryMatches = itemCategoryId.isEmpty ||
+          item.itemCategoryId == itemCategoryId ||
+          item.itemCategoryIds.contains(itemCategoryId);
       final clientNameMatches =
           clientQuery.isEmpty || item.client.name.toLowerCase().contains(clientQuery);
       final documentReferenceMatches = documentQuery.isEmpty ||

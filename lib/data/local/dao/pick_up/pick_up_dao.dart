@@ -96,6 +96,7 @@ class PickUpDao {
       'RequestID': parsedId,
       'ClientID': pickUpModel.clientId,
       'ItemCategoryID': pickUpModel.itemCategoryId,
+      'ItemCategoryIDs': pickUpModel.itemCategoryIds.join(','),
       'ItemCategoryName': pickUpModel.itemCategory.name,
       'PreparedBy': pickUpModel.preparedBy,
       'ItemPreparedAt': pickUpModel.itemPreparedAt,
@@ -166,6 +167,7 @@ class PickUpDao {
         'RequestID': parsedId,
         'ClientID': pickUpModel.clientId,
         'ItemCategoryID': pickUpModel.itemCategoryId,
+        'ItemCategoryIDs': pickUpModel.itemCategoryIds.join(','),
         'ItemCategoryName': pickUpModel.itemCategory.name,
         'PreparedBy': pickUpModel.preparedBy,
         'ItemPreparedAt': pickUpModel.itemPreparedAt,
@@ -256,6 +258,7 @@ class PickUpDao {
     Map<String, dynamic> pickUpData = {
       'ClientID': pickUpModel.clientId,
       'ItemCategoryID': pickUpModel.itemCategoryId,
+      'ItemCategoryIDs': pickUpModel.itemCategoryIds.join(','),
       'ItemCategoryName': pickUpModel.itemCategory.name,
       'PreparedBy': pickUpModel.preparedBy,
       'ItemPreparedAt': pickUpModel.itemPreparedAt,

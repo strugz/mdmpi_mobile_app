@@ -29,6 +29,10 @@ class PickUpFormState {
 
   final RxList<ItemCategoryModel> itemCategories = <ItemCategoryModel>[].obs;
 
+  /// Selected item category IDs (multi-select; first entry is the primary).
+  /// [itemCategoryController] mirrors the first selection for legacy readers.
+  final RxList<String> selectedItemCategoryIds = <String>[].obs;
+
   /// Initializes the pick-up date controller with today's date.
   /// Should be called during form initialization.
   void initializeDefaultDate() {
@@ -62,12 +66,14 @@ class PickUpFormState {
     itemCategoryController.text = '';
     receiverSignatureBase64.value = '';
 
+    selectedItemCategoryIds.clear();
     if (itemCategories.isNotEmpty) {
       final defaultItem = itemCategories.firstWhere(
         (e) => e.name.toLowerCase().contains('reagent'),
         orElse: () => itemCategories.first,
       );
       itemCategoryController.text = defaultItem.id;
+      selectedItemCategoryIds.add(defaultItem.id);
     }
 
     cameraDropOffPicture.value = "";

@@ -12,9 +12,15 @@ class PickUpMapper {
       return n ?? s;
     }
 
+    final categoryIds = m.itemCategoryIds
+        .map((id) => int.tryParse(id))
+        .whereType<int>()
+        .toList();
+
     return PickUpInsertDto(
       clientID: m.clientId.isNotEmpty ? m.clientId : null,
       itemCategoryID: parseIntIfPossible(m.itemCategoryId),
+      itemCategoryIDs: categoryIds.isNotEmpty ? categoryIds : null,
       documentReference: m.documentReference.isNotEmpty ? m.documentReference : null,
       datePickUp: m.datePickUp.isNotEmpty ? m.datePickUp : null,
       status: m.status.isNotEmpty ? m.status : null,

@@ -198,10 +198,21 @@ class PickUpDataManager {
           controller.formState.itemCategoryController,
           controller.formState.itemCategories);
 
+      // Multi-select: all chosen categories; the primary (first) also fills
+      // the scalar itemCategoryId for backward compatibility.
+      final selectedCategoryIds =
+          controller.formState.selectedItemCategoryIds.toList();
+      if (selectedCategoryIds.isEmpty && normalizedItemCategory.isNotEmpty) {
+        selectedCategoryIds.add(normalizedItemCategory);
+      }
+
       final model = PickUpModel(
         clientId: client.id,
         client: client,
-        itemCategoryId: normalizedItemCategory,
+        itemCategoryId: selectedCategoryIds.isNotEmpty
+            ? selectedCategoryIds.first
+            : normalizedItemCategory,
+        itemCategoryIds: selectedCategoryIds,
         datePickUp: controller.formState.datePickUpController.text,
         status: 'New Request',
         createdBy: userCtrl.user.value.initial,
@@ -426,6 +437,11 @@ class PickUpDataManager {
         );
         // Store the ID in the controller; BDropDownDynamicList stores IDs.
         controller.formState.itemCategoryController.text = defaultItem.id;
+      }
+      if (controller.formState.selectedItemCategoryIds.isEmpty &&
+          controller.formState.itemCategoryController.text.trim().isNotEmpty) {
+        controller.formState.selectedItemCategoryIds
+            .add(controller.formState.itemCategoryController.text.trim());
       }
     } catch (e) {
       logDebug('PickUpDataManager.loadCategories failed: $e');
