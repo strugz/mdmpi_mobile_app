@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/data/models/form_category_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
@@ -79,7 +80,7 @@ class RequestController extends GetxController {
     'Standard Delivery',
     'Pull Out / Return',
     'Pick Up',
-    'Air / Sea',
+    'Air / Sea / Land',
     'Hotline Direct',
     'Stock Receive',
   ];
@@ -174,10 +175,15 @@ class RequestController extends GetxController {
       List<FormCategoryModel> categories) {
     final sorted = <FormCategoryModel>[];
 
-    // Add categories in the defined order
+    // Add categories in the defined order. Match by resolved category type
+    // (which accepts legacy names) so a renamed category keeps its position
+    // while the server row rename deploys.
     for (final orderName in categoryOrder) {
-      final category = categories.firstWhereOrNull(
-          (c) => c.name.toLowerCase() == orderName.toLowerCase());
+      final orderType = FormCategoryConstants.fromCategoryName(orderName);
+      final category = categories.firstWhereOrNull((c) =>
+          c.name.toLowerCase() == orderName.toLowerCase() ||
+          (orderType != null &&
+              FormCategoryConstants.fromCategoryName(c.name) == orderType));
       if (category != null) {
         sorted.add(category);
       }

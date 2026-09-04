@@ -164,13 +164,13 @@ class SettingsHardResetSection extends StatelessWidget {
           ),
           _sectionTile(
             icon: Iconsax.document_upload,
-            title: 'Air / Sea',
+            title: 'Air / Sea / Land',
             subTitle: 'Hard reset request cache and reload',
             onRefresh: () => _confirmAndRun(
               context,
-              title: 'Hard Reset Air / Sea',
+              title: 'Hard Reset Air / Sea / Land',
               message:
-                  'This will clear cached Air / Sea data and reload it from the server.',
+                  'This will clear cached Air / Sea / Land data and reload it from the server.',
               action: airSeaController.hardResetAirSeaRequests,
             ),
           ),

@@ -99,13 +99,16 @@ class HotlineDirectFilterManager {
       final statusMatches = statusFilter.displayName == StandardDeliveryStatusFilter.all.displayName ||
           item.status == statusFilter.displayName;
 
-      // User role matching (courier sees only their assignments)
+      // User role matching (courier sees their assignments and, since
+      // couriers may create Hotline Direct requests, their own creations).
       bool userMatches = true;
       if (!currentUser.role.contains(',')) {
         if (currentUser.role.contains(BTexts.roleCourier)) {
           userMatches = item.helper == currentUser.initial ||
-                       item.deliveredBy == currentUser.initial;
-          logDebug('HotlineDirectFilter: helper=${item.helper}, deliveredBy=${item.deliveredBy}');
+              item.deliveredBy == currentUser.initial ||
+              item.createdBy == currentUser.initial;
+          logDebug(
+              'HotlineDirectFilter: helper=${item.helper}, deliveredBy=${item.deliveredBy}, createdBy=${item.createdBy}');
         }
       }
 

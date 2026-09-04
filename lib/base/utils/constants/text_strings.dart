@@ -181,7 +181,7 @@ class BTexts {
     'Standard Delivery',
     'Pull out',
     'Pick up',
-    'Air / Sea',
+    'Air / Sea / Land',
     'Hotline Direct',
     'Stock receive',
   ];

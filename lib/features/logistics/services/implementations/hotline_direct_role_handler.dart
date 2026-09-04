@@ -125,9 +125,32 @@ class HotlineDirectCourierRoleHandler extends HotlineDirectActionHandler {
     UserController userController,
     String userInitial,
   ) {
-    if (request.status == BTexts.statusNewRequest) {
+    // Couriers may create Hotline Direct requests, and may also prepare the
+    // requests they created themselves (mirrors the Release preparation
+    // flow); other requests stay view-only during preparation.
+    if (request.status == BTexts.statusNewRequest &&
+        request.createdBy == userInitial) {
+      _showDialog(
+        context,
+        request,
+        () => requestController.updateRequestStatus(
+            request, BTexts.statusGettingSuppliesReady, userInitial),
+        true,
+        requestController,
+      );
+    } else if (request.status == BTexts.statusNewRequest) {
       BFullScreenLoader.showRequestForReleasingDialog(
           context, request, () {}, false, requestController);
+    } else if (request.status == BTexts.statusGettingSuppliesReady &&
+        request.itemPreparedBy == userInitial) {
+      _showDialog(
+        context,
+        request,
+        () => requestController.updateRequestStatus(
+            request, BTexts.statusItemPrepared, userInitial),
+        true,
+        requestController,
+      );
     } else if (request.status == BTexts.statusGettingSuppliesReady) {
       BFullScreenLoader.showRequestForReleasingDialog(
           context, request, () {}, false, requestController);

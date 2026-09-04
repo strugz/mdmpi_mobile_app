@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/panels/custom_filter_panel.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
@@ -145,7 +146,7 @@ class _RequestScreenState extends State<RequestScreen>
     if (!isStandardDelivery && !isPullOut && !isPickUp && !isAirSea && !isHotlineDirect && !isStockReceive) {
       Get.snackbar(
         'Custom Filter',
-        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, Air / Sea, Hotline Direct, and Stock Receive only.',
+        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, Air / Sea / Land, Hotline Direct, and Stock Receive only.',
       );
       return;
     }
@@ -418,7 +419,7 @@ class _RequestScreenState extends State<RequestScreen>
             ..sort((a, b) => a.value.compareTo(b.value));
 
           return CustomFilterPanel(
-            title: 'Air / Sea Filters',
+            title: 'Air / Sea / Land Filters',
             onReset: () {
               airSeaController.selectDateFilter(RequestFilter.today);
               airSeaController.selectStatusFilter(AirSeaStatusFilter.all);
@@ -1073,7 +1074,15 @@ class _RequestScreenState extends State<RequestScreen>
           ],
         ),
         floatingActionButton: Obx(() {
-          if (!userController.user.value.role.contains(BTexts.roleRequest)) {
+          final role = userController.user.value.role;
+          // Couriers (drivers) may create requests, but only on the Hotline
+          // Direct tab; everywhere else creation stays with the Request role.
+          final isHotlineTab = FormCategoryConstants.fromCategoryName(
+                  controller.currentSelectedCategory.value?.name ?? '') ==
+              FormCategoryType.hotlineDirect;
+          final canCreate = role.contains(BTexts.roleRequest) ||
+              (isHotlineTab && role.contains(BTexts.roleCourier));
+          if (!canCreate) {
             return Container();
           } else {
             return Container(

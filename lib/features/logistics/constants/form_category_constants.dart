@@ -25,7 +25,9 @@ extension FormCategoryTypeExtension on FormCategoryType {
       case FormCategoryType.pickUp:
         return 'Pick Up';
       case FormCategoryType.airSea:
-        return 'Air / Sea';
+        // Renamed from 'Air / Sea' (2026-09-04). Must match the server's
+        // a_tblcategory row (type='Form') — rename both in lockstep.
+        return 'Air / Sea / Land';
       case FormCategoryType.hotlineDirect:
         return 'Hotline Direct';
       case FormCategoryType.stockReceive:
@@ -35,6 +37,17 @@ extension FormCategoryTypeExtension on FormCategoryType {
 
   /// Returns the lowercase version for case-insensitive matching.
   String get lowerCaseName => categoryName.toLowerCase();
+
+  /// Former display names still accepted when matching server data, so the
+  /// app keeps working while the server row rename deploys.
+  List<String> get legacyNames {
+    switch (this) {
+      case FormCategoryType.airSea:
+        return const ['Air / Sea']; // renamed to 'Air / Sea / Land' 2026-09-04
+      default:
+        return const [];
+    }
+  }
 
   /// Returns the index position in AppRoutes.requestFormPages.
   /// This determines which form page to navigate to.
@@ -105,10 +118,15 @@ class FormCategoryConstants {
       FormCategoryType.values.map((e) => e.categoryName).toList();
 
   /// Finds a FormCategoryType by matching the category name (case-insensitive).
+  /// Legacy display names (see [FormCategoryTypeExtension.legacyNames]) are
+  /// accepted too, so renames deploy without breaking older server data.
   static FormCategoryType? fromCategoryName(String name) {
+    final lower = name.toLowerCase();
     try {
       return FormCategoryType.values.firstWhere(
-        (type) => type.lowerCaseName == name.toLowerCase(),
+        (type) =>
+            type.lowerCaseName == lower ||
+            type.legacyNames.any((legacy) => legacy.toLowerCase() == lower),
       );
     } catch (_) {
       return null;

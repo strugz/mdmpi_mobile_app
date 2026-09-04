@@ -98,7 +98,7 @@ class AirSeaPageStages extends StatelessWidget {
           Navigator.of(context).pop();
         },
         title: Text(
-          'Air / Sea Details',
+          'Air / Sea / Land Details',
           style: Theme.of(context).textTheme.titleMedium,
           overflow: TextOverflow.ellipsis,
           maxLines: 1,

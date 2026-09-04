@@ -112,7 +112,7 @@ class AirSeaList extends StatelessWidget {
                             ),
                             const SizedBox(height: BSizes.spaceBtwItems),
                             Text(
-                              'No Air / Sea requests found',
+                              'No Air / Sea / Land requests found',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleLarge

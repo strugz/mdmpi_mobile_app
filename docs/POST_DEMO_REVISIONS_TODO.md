@@ -16,8 +16,8 @@
 - [x] 5. Pull Out: pause an in-progress request for an urgent pull out — `M` (done; Pause reverts In Transit → For Pull Out and clears the start time — backend gained `ClearPullOutDateStartAt` on the update DTO; deploy in lockstep)
 - [x] 6. Standard Delivery: Release role can change driver/helper — `S` (done; also covers Hotline Direct via the shared footer, no backend change)
 - [x] 7. Pick Up: multiple item-category selection — `L` (done app + backend via new `a_tblrequestpickupitemcategory` child table; run `MDMPI.App/migration_20260904_add_a_tblrequestpickupitemcategory.sql` and redeploy in lockstep)
-- [ ] 8. Rename/extend "Air / Sea" to "Air / Sea / Land" — `M/L` (decision needed)
-- [ ] 9. Hotline Direct: allow driver (Courier) to create requests — `M`
+- [x] 8. Rename "Air / Sea" to "Air / Sea / Land" — `S` (relabel only, per decision; run `MDMPI.App/migration_20260904_rename_air_sea_category.sql` together with this app build)
+- [x] 9. Hotline Direct: allow driver (Courier) to create requests — `M` (done; Courier creates on the Hotline tab only and can prepare their own requests; no backend change)
 - [ ] 10. Hotline Direct: support Air/Sea requests — `L` (decision needed)
 - [ ] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (backend)
 - [ ] 12. Stock Receive: document reference optional — `S`
@@ -302,11 +302,23 @@ Meanwhile Standard Delivery / Hotline already have a Shipping Method dropdown of
   field to the Air/Sea request, or
 - **(b)** only relabel, keeping behavior identical.
 
-**Touch points for the rename** (name matching is by string — DB and app must change together)
-- [ ] `form_category_constants.dart:27-28` (canonical name, must match `a_tblFormCategory.FormCategoryName` on the server).
-- [ ] `text_strings.dart:183` (`requestFormLabels`), `request_controller.dart:78-85` (`categoryOrder`).
-- [ ] Server `a_tblFormCategory` row rename — deploy in lockstep.
-- [ ] Category dispatch uses `contains('air') || contains('sea')` in ~5 places (`request_controller.dart:212, 239, 359-382, 462`) — "Air / Sea / Land" still matches, but verify each.
+**Implemented (option b: relabel only — decision confirmed).** Note the doc's
+original touch points were slightly off: form categories are NOT a dedicated
+`a_tblFormCategory` table — they are rows in `a_tblcategory` with
+`type='Form'`, served by `/api4/Category`. The rename is therefore a one-row
+data UPDATE, no backend code change.
+
+- [x] `form_category_constants.dart` canonical name → 'Air / Sea / Land'.
+- [x] `text_strings.dart` (`requestFormLabels`), `request_controller.dart`
+  (`categoryOrder`), `settings_hard_reset_section.dart` (hard-reset tile).
+- [x] Server: `migration_20260904_rename_air_sea_category.sql` renames the
+  `a_tblcategory` row (varchar(20) fits the 16-char name) — **run together
+  with this app build**: exact-name matching (`fromCategoryName`, sorting)
+  needs both sides to agree; the fuzzy `contains('air')/('sea')` dispatch
+  keeps old app builds functional in the interim.
+- [x] Verified all 5 fuzzy dispatch sites plus `request.dart:134`: the new
+  name still matches its own branch and no earlier branch (no branch tests
+  'land').
 
 **If a per-request Land mode is added (option a)**
 - [ ] `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror `standard_delivery_form.dart:146-156`).
@@ -328,11 +340,25 @@ runs through the **Standard Delivery form/controller** (`request_controller.dart
 `HotlineDirectForm` and `HotlineDirectDataManager.saveRequestFromForm` are dead
 creation paths.
 
-**Plan**
-- [ ] Confirm with stakeholders: "driver" = `Courier` role, or a new `Driver` role? (New role → add to `text_strings.dart`, `RoleResolver.defaultRolePriority`, per-module `_rolePriority` maps, handler maps, and the server role table.)
-- [ ] Make the FAB gate category-aware in `request.dart:1076`: allow Courier only when `currentSelectedCategory` is Hotline Direct (a blanket relax would enable creation on every tab).
-- [ ] Visibility fix: `hotline_direct_filter_manager.dart:103-110` filters a single-role Courier's list to assigned rows only — also match `createdBy == user.initial` or the driver never sees their own new request.
-- [ ] Role/action matrix: `hotline_direct_list.dart:29-66` — Courier has no `New Request` branch; decide what a Courier can do with their own new request.
+**Implemented (decisions confirmed: driver = Courier role; Courier can also
+PREPARE their own new request, mirroring the Release flow).**
+- [x] FAB gate (`request.dart`): create button shows for the Request role
+  everywhere, and additionally for the Courier role when the selected tab is
+  Hotline Direct (resolved via `FormCategoryConstants.fromCategoryName`, so
+  it is alias/rename tolerant).
+- [x] Visibility (`hotline_direct_filter_manager.dart`): a single-role
+  Courier's list now also matches `createdBy == user.initial`, so drivers see
+  the requests they created before being assigned to them.
+- [x] Courier handler (`hotline_direct_role_handler.dart`): at `New Request`,
+  a courier can act on their OWN request (createdBy match) → Prepare Item;
+  at `Getting supplies ready` with `itemPreparedBy == user` → Packed & Ready
+  (same validations as Release via the shared update path). Other people's
+  requests stay view-only during preparation. Creation itself flows through
+  the existing Standard Delivery form (`openFormForCurrentCategory`).
+
+**Resolved question.** No new Driver role — Courier covers it. Multi-role
+users keep their existing routing (Release/Request take precedence at
+preparation statuses).
 
 ---
 
