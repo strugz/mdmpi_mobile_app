@@ -46,6 +46,16 @@ class StandardDeliveryFormState {
   // formState reference. Use reactive list to allow Obx bindings.
   final RxList<InventoryItemModel> scannedInventoryItems = <InventoryItemModel>[].obs;
 
+  // Backloaded items entered by the courier before drop off: itemCode →
+  // remark. Presence of a key means the item is marked "not received by the
+  // client" (backloaded); the remark is required before Done Delivery.
+  // Saved to `a_tblbackloaditem` on the drop-off transition.
+  final RxMap<String, String> backloadItemRemarks = <String, String>{}.obs;
+
+  // The request the entries in [backloadItemRemarks] belong to. The editable
+  // section clears stale entries when the courier opens a different request.
+  final RxString backloadItemsRequestId = RxString('');
+
   // Reactive state
   final Rx<DateTime?> deliveryDate = Rx<DateTime?>(null);
   final Rx<ClientModel?> clientInformation = Rx<ClientModel?>(ClientModel.empty());
@@ -92,6 +102,8 @@ class StandardDeliveryFormState {
     documentReferenceControllers.forEach((c) => c.clear());
     // Also clear scanned inventory items when resetting the form
     scannedInventoryItems.clear();
+    backloadItemRemarks.clear();
+    backloadItemsRequestId.value = '';
 
     // Restore category defaults if already loaded
     if (formCategories.isNotEmpty) {

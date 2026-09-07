@@ -19,7 +19,7 @@
 - [x] 8. Rename "Air / Sea" to "Air / Sea / Land" — `S` (relabel only, per decision; run `MDMPI.App/migration_20260904_rename_air_sea_category.sql` together with this app build)
 - [x] 9. Hotline Direct: allow driver (Courier) to create requests — `M` (done; Courier creates on the Hotline tab only and can prepare their own requests; no backend change)
 - [ ] 10. Hotline Direct: support Air/Sea requests — `L` (decision needed)
-- [ ] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (backend)
+- [x] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (done app + backend via new `a_tblbackloaditem` table; per decision the courier unchecks items at For Delivery before Drop Off — run `MDMPI.App/migration_20260907_add_a_tblbackloaditem.sql` and redeploy in lockstep)
 - [ ] 12. Stock Receive: document reference optional — `S`
 
 ---
@@ -405,21 +405,40 @@ the local DB** (fetched read-only from `/items/{requestId}` via
 `InventoryItemController`, in-memory cache only). The backload page renders no item
 list at all (`backload_transaction_page.dart`).
 
-**Plan**
-- [ ] Local DB: new `a_tblRequestBackloadItem(ID PK, BackLoadID FK, RequestID, ItemCode, Description, Qty, Unit, BatchSerial, ExpiryDate)` + migration in `database_helper.dart` (version bump, DAO getter, reset handling).
-- [ ] Models: `BackLoadItemModel`; `List<BackLoadItemModel> items` on `BackLoadModel` (`backload_model.dart:30-77` toJson/fromJson/toDbJson).
-- [ ] DAO: `BackLoadItemDao`; child fetch in `BackLoadDao.getByRequestId` (`backload_dao.dart:32-40`).
-- [ ] API: extend `POST /api4/RequestBackload` payload with `Items[]` (`backload_repository.dart:50-54, 92-93`). **Backend contract change.**
-- [ ] Controller: selected-items `RxList` + validation in `backload_controller.dart:110-185` (today only the reason is validated).
-- [ ] UI: selectable item table on `backload_transaction_page.dart` (source: `InventoryItemController.loadItems(request.id)`), plus a read-only backloaded-items table in the request modal (`b_backload_remarks.dart`, `b_modal.dart:118-125`, `standard_delivery_page.dart:88-100`).
-- [ ] **Status semantics decision:** today backload flips the whole request to
-  `BackLoad`. A partial backload should keep the request in its delivery flow while
-  flagging only the selected items — the long-press entry guard
-  (`standard_delivery_list.dart:69-79`) and the `BackLoad → Reprocess` branch
-  (`standard_delivery_modal_config.dart:89-96`) assume request-level status and need
-  rework. Proposal: full backload (all items) keeps today's behavior; partial backload
-  records items + remark and the request continues to `Done Delivery`.
-- [ ] Update `docs/modules/backload/BACKLOAD_MODULE_DOCUMENTATION.md`.
+**Implemented (design settled with stakeholder — the plan below was replaced).**
+Decision: "Before Drop Off, the client sometimes won't receive one or more
+items — at **For Delivery** the courier gets a widget to uncheck items and
+input remarks before dropping off." That is exactly the item-4 lost-items
+pattern, so the implementation mirrors it 1:1 instead of extending the
+whole-request backload flow:
+
+- Item-level backload is **not** a status flip. The courier unchecks items on
+  the Request Transport screen while at For Delivery; each unchecked item
+  requires a reason; the set saves to the new server table on the Drop Off
+  (Done Delivery) transition, and the request completes normally.
+- The existing whole-request backload (long-press → `BackLoad` status →
+  Reprocess, `a_tblrequestbackload`) is untouched — still the answer for
+  header-only requests (confirmed) and full-request events.
+- No mobile local-DB table (matches items 3/4: items are server-side,
+  fetched on demand).
+
+Backend (MDMPI.App — **deploy in lockstep**; run
+`migration_20260907_add_a_tblbackloaditem.sql` on the testing Postgres first):
+- [x] `a_tblbackloaditem(backloaditemid identity PK, requestid FK → a_tblrequeststandarddelivery ON DELETE CASCADE, itemcode, remarks, createdat)` + index; both schema dumps updated. The FK table hosts Standard Delivery AND Hotline Direct, so both are covered.
+- [x] `BackloadItemModel` entity, `Fetch/InsertBackloadItemDto`, `IBackloadItemService/Repository`, `BackloadItemService`, `BackloadItemRepository` (replace-set semantics), DbContext mapping, DI in `Program.cs`.
+- [x] `BackloadItemController`: `GET/POST /api4/BackloadItem/request/{requestId}` — both validate the RequestID exists in `a_tblrequeststandarddelivery` (404 otherwise).
+
+Mobile:
+- [x] `backload_item_model.dart` + `backload_item_repository.dart` (GET returns empty on 404; POST replaces the set), registered in `GeneralBindings` outside the Firebase guard.
+- [x] `StandardDeliveryFormState.backloadItemRemarks` (`RxMap<itemCode, remark>`; presence = marked backloaded) + `backloadItemsRequestId` (the editable section clears stale entries when a different request is opened); both cleared on reset.
+- [x] `backload_items_section.dart` — editable (For Delivery, Request Transport screen, above Proof of Delivery): request items with a received checkbox; unchecking requires a reason. Read-only (Done Delivery, request modal): recorded backloaded items + remarks. Renders nothing when the request has no items.
+- [x] Validation in `b_action_button.dart` Drop Off flow: every backloaded item must carry a remark.
+- [x] Persistence in `RequestTransportController.processRequestDispatchOrDropOff`: backloaded items save via `POST /api4/BackloadItem/request/{id}` before the Done Delivery status update — on failure the transition aborts with the courier's entries preserved; entries clear after a successful drop off.
+
+**Not done (out of scope per decision).** The original plan's `Items[]` on
+`POST /api4/RequestBackload`, local `a_tblRequestBackloadItem` cache table,
+selectable table on `backload_transaction_page.dart`, and Reprocess rework —
+the whole-request flow no longer needs item granularity.
 
 ---
 

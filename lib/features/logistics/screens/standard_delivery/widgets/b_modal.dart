@@ -12,6 +12,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_deliver
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/backload_items_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_header.dart';
@@ -131,6 +132,10 @@ class BModal extends StatelessWidget {
               ],
             );
           }),
+        // Items backloaded at drop off (item-level, request completed
+        // normally) — hides itself when none were recorded.
+        if (requestModel.status == BTexts.statusDoneDelivery)
+          BackloadItemsSection.readOnly(requestModel: requestModel),
         // Body with all sections (Request Info, Preparation Info, Delivery Info)
         RequestModalBody(
           requestModel: requestModel,

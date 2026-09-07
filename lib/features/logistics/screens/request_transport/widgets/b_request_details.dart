@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_document_reference.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/backload_items_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_proof_photo_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/reassign_delivery_crew_section.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
@@ -228,6 +229,14 @@ class BRequestDetails extends StatelessWidget {
 
             // ========== Proof of Delivery (For Delivery status only) ==========
             if (updatedRequest.status == BTexts.statusForDelivery) ...[
+              // Before drop off the courier can uncheck items the client will
+              // not receive (backload) with a required reason each; hidden
+              // automatically when the request has no item list.
+              BackloadItemsSection.editable(
+                key: ValueKey('backload-items-${updatedRequest.id}'),
+                requestModel: updatedRequest,
+                requestController: requestController,
+              ),
               const SizedBox(height: BSizes.md),
               const BTextDivider(text: 'Proof of Delivery'),
               const SizedBox(height: BSizes.sm),

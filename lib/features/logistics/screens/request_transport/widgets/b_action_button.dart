@@ -103,6 +103,18 @@ class BActionButton extends StatelessWidget {
                           "Please capture the delivery proof image.");
                       return;
                     }
+
+                    // Every item marked for backload must carry a reason.
+                    final missingBackloadRemarks = requestController
+                        .formState.backloadItemRemarks.entries
+                        .where((e) => e.value.trim().isEmpty)
+                        .map((e) => e.key)
+                        .toList();
+                    if (missingBackloadRemarks.isNotEmpty) {
+                      BHelperFunctions.showSnackBar(
+                          "Please state a reason for each backloaded item: ${missingBackloadRemarks.join(', ')}.");
+                      return;
+                    }
                   }
 
                   await requestTransportController

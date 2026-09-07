@@ -34,6 +34,7 @@ import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/air_sea/air_sea_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/backload_item_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/backload_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pull_out/lose_item_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
@@ -169,6 +170,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => ContactRepository(), fenix: true);
     // Lost items on Pull Out requests: REST only, no Firebase dependency.
     Get.lazyPut(() => LoseItemRepository(), fenix: true);
+    // Backloaded items on delivery requests: REST only, no Firebase dependency.
+    Get.lazyPut(() => BackloadItemRepository(), fenix: true);
 
     // ========================================================================
     // Controllers

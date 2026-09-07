@@ -15,7 +15,9 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/backload_item_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/backload_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/location_alternative_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
@@ -533,6 +535,30 @@ class RequestTransportController extends GetxController {
         );
       } else if (currentRequest.status == BTexts.statusForDelivery) {
         newStatus = BTexts.statusDoneDelivery;
+
+        // Record backloaded items before completing — the request is not
+        // marked Done Delivery unless they are saved, and the courier's
+        // entries survive the failure.
+        final formState = requestController.formState;
+        if (formState.backloadItemRemarks.isNotEmpty &&
+            formState.backloadItemsRequestId.value == currentRequest.id) {
+          final backloadItems = formState.backloadItemRemarks.entries
+              .map((e) =>
+                  BackloadItemModel(itemCode: e.key, remarks: e.value))
+              .toList();
+          final saveResult = await BackloadItemRepository.instance
+              .replaceForRequest(currentRequest.id, backloadItems);
+          if (saveResult.isFailure) {
+            BLoaders.errorSnackBar(
+              title: 'Backloaded Items',
+              message:
+                  'Could not save the backloaded items. Please try again.',
+            );
+            isLoadingAction.value = false;
+            return;
+          }
+        }
+
         currentRequest.locationEndAt =
             '${currentLocation.value.latitude} ${currentLocation.value.longitude}';
 
@@ -547,6 +573,10 @@ class RequestTransportController extends GetxController {
 
       await requestController.updateRequestStatus(
           currentRequest, newStatus, userInitial);
+      if (newStatus == BTexts.statusDoneDelivery) {
+        requestController.formState.backloadItemRemarks.clear();
+        requestController.formState.backloadItemsRequestId.value = '';
+      }
       if (newStatus == BTexts.statusForDelivery) {
         await riderTrackingController.startTrackingForRequest(
           currentRequest,
