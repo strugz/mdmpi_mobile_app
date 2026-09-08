@@ -1,0 +1,7 @@
+# Vendored third-party package (patched copy of another_telephony 0.4.1).
+# Keep analysis quiet here so upstream style lints don't clutter the app's
+# Dart Analysis panel; we only maintain the Android 11 SmsManager patch.
+analyzer:
+  errors:
+    unnecessary_this: ignore
+    deprecated_member_use: ignore
