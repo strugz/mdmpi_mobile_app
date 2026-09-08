@@ -124,6 +124,15 @@ dependencies:
   workmanager: ^0.6.0
   table_calendar: ^3.2.0
 
+# Vendored copy of another_telephony 0.4.1 with a fix for Android 11 and
+# below: upstream calls getSystemService(SmsManager) which only exists on
+# API 31+, so every SMS send on older devices threw
+# "Flutter Telephony: Error getting SmsManager". See
+# packages/another_telephony/android/.../SmsController.kt (getSmsManager).
+dependency_overrides:
+  another_telephony:
+    path: packages/another_telephony
+
 dev_dependencies:
   build_runner:
   flutter_test:
