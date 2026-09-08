@@ -77,11 +77,9 @@ class StandardDelivery extends StatelessWidget {
                         ),
 
                         const Divider(),
-                        const SizedBox(height: BSizes.sm),
 
-                        /// Document Reference
+                        /// Document Reference (button opens full-screen editor)
                         const BDocumentReference(),
-                        const SizedBox(height: BSizes.sm),
 
                         /// Inventory Scanner moved to full-screen view.
                         Align(
@@ -94,6 +92,11 @@ class StandardDelivery extends StatelessWidget {
                                     .formState.scannedInventoryItems);
 
                             return TextButton.icon(
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: BSizes.sm),
+                              ),
                               onPressed: () => Get.to(() => ScannedItemsScreen(
                                   controller: stdDeliveryController)),
                               icon: const Icon(Iconsax.add, size: 16),

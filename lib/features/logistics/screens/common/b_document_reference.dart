@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
-import 'package:mdmpi_mobile_app/common/widgets/scanner/simple_text_scanner.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/document_reference_screen.dart';
 
-import '../../../../../base/utils/constants/colors.dart';
-
+/// Compact entry point for document references on request forms.
+///
+/// Renders an "Add Document Reference (n)" button (same pattern as the
+/// "Add Item (n)" button) that opens [DocumentReferenceScreen], where the
+/// actual fields live. A hidden FormField keeps the required/duplicate
+/// validation inside the host form's validate() pass.
 class BDocumentReference extends StatelessWidget {
   const BDocumentReference({super.key, this.isRequired = true});
 
@@ -19,110 +22,77 @@ class BDocumentReference extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final requestController = Get.find<StandardDeliveryController>();
-    final dark = BHelperFunctions.isDarkMode(context);
-    return Center(
-      child: Obx(
-        () => Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Column(
-              children: requestController.formState.documentReferenceControllers
-                  .map((controller) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: BSizes.sm),
-                  child: TextFormField(
-                    onTap: () async {
-                      // Only start scanner if current field is empty
-                      if (controller.text.isEmpty) {
-                        final result = await Get.to<List<String>?>(
-                            () => const SimpleTextScanner());
-                        // result == null -> user cancelled
-                        if (result == null) {
-                          // nothing to do
-                          return;
-                        }
-                        if (result.isEmpty) {
-                          // No matches found
-                          Get.snackbar(
-                            'No Text Found',
-                            'Could not detect any document references. Please try again.',
-                            snackPosition: SnackPosition.BOTTOM,
-                          );
-                          return;
-                        }
 
-                        // Populate the tapped controller with the first non-duplicate match
-                        final stdController = requestController;
-                        for (int i = 0; i < result.length; i++) {
-                          final String match = result[i].trim();
-                          if (match.isEmpty) continue;
+    List<String> nonEmptyRefs() => requestController
+        .formState.documentReferenceControllers
+        .map((c) => c.text.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
 
-                          final bool alreadyExists = stdController
-                              .formState.documentReferenceControllers
-                              .any((c) => c.text.trim() == match);
-
-                          if (alreadyExists) {
-                            // skip duplicates
-                            continue;
-                          }
-
-                          if (i == 0) {
-                            // Put first match in the tapped controller
-                            controller.text = match;
-                          } else {
-                            // Add new field(s) for subsequent matches
-                            stdController.addDocumentReferenceField();
-                            stdController.formState.documentReferenceControllers
-                                .last.text = match;
-                          }
-                        }
-                      }
-                    },
-                    controller: controller,
-                    decoration: InputDecoration(
-                        prefixIcon: Icon(Iconsax.document_code),
-                        labelText: isRequired
-                            ? 'Document Reference'
-                            : 'Document Reference (optional)',
-                        labelStyle: TextStyle(
-                            color: dark ? BColors.light : BColors.darkerGrey),
-                        suffixIcon: IconButton(
-                            onPressed: () {
-                              requestController
-                                  .removeDocumentReferenceField(controller);
-                            },
-                            icon: Icon(Iconsax.close_circle))),
-                    validator: (value) {
-                      final text = value?.trim() ?? '';
-                      if (text.isEmpty) {
-                        return isRequired
-                            ? 'Document Reference is required'
-                            : null;
-                      }
-                      final all = requestController
-                          .formState.documentReferenceControllers
-                          .map((c) => c.text.trim())
-                          .where((s) => s.isNotEmpty)
-                          .toList();
-                      final count = all.where((s) => s == text).length;
-                      if (count > 1) return 'Duplicate document reference';
-                      return null;
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: requestController.addDocumentReferenceField,
-                icon: const Icon(Iconsax.add, size: BSizes.md),
-                label: const Text('Add Document Reference'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: Obx(() {
+            final count = nonEmptyRefs().length;
+            return TextButton.icon(
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
               ),
-            )
-          ],
+              onPressed: () async {
+                // Open the editor with one ready-to-fill field. Done here
+                // (not in the screen's build) so the list isn't mutated
+                // while widgets are still building.
+                if (requestController
+                    .formState.documentReferenceControllers.isEmpty) {
+                  requestController.addDocumentReferenceField();
+                }
+                await Get.to(
+                    () => DocumentReferenceScreen(isRequired: isRequired));
+                // Typing into existing controllers doesn't notify the RxList;
+                // refresh on return so the count label updates.
+                requestController.formState.documentReferenceControllers
+                    .refresh();
+              },
+              icon: const Icon(Iconsax.add, size: 16),
+              label: Text(count > 0
+                  ? 'Add Document Reference ($count)'
+                  : 'Add Document Reference'),
+            );
+          }),
         ),
-      ),
+
+        /// Hidden validator so Create Request still guards references
+        /// even though the fields live on a separate screen.
+        FormField<String>(
+          validator: (_) {
+            final refs = nonEmptyRefs();
+            if (isRequired && refs.isEmpty) {
+              return 'At least one document reference is required';
+            }
+            if (refs.toSet().length != refs.length) {
+              return 'Duplicate document reference';
+            }
+            return null;
+          },
+          builder: (FormFieldState<String> formFieldState) {
+            return formFieldState.hasError
+                ? Padding(
+                    padding: const EdgeInsets.only(right: BSizes.sm),
+                    child: Text(
+                      formFieldState.errorText ?? '',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink();
+          },
+        ),
+      ],
     );
   }
 }
