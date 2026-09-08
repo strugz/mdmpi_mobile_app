@@ -8,6 +8,7 @@ class SmsStatusPolicy {
     BTexts.statusNewRequest,
     BTexts.statusGettingSuppliesReady,
     BTexts.statusItemPrepared,
+    BTexts.statusForDelivery,
     BTexts.statusDoneDelivery,
     BTexts.statusCancelled,
     BTexts.statusItemPacked,

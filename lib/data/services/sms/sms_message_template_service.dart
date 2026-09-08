@@ -48,6 +48,13 @@ class SmsMessageTemplateService {
             '$documentReferencesText\n'
             'Status: Ready for Delivery.'
             '$targetDateLine';
+      case BTexts.statusForDelivery:
+        return '${payload.clientName} \n'
+            'Document References:\n'
+            '$documentReferencesText\n'
+            'Your items are now out for delivery.\n'
+            'Status: For Delivery.'
+            '$targetDateLine';
       case BTexts.statusItemPacked:
       case BTexts.statusForDispatch:
       case BTexts.statusForPullOut:

@@ -89,8 +89,10 @@ class MessagingController extends GetxController {
   final Future<String?> Function()? _networkIssueChecker;
   final void Function(String text, String animation)? _openLoadingDialog;
   final void Function()? _closeLoadingDialog;
+  final Future<void> Function()? _openSuccessDialog;
   final _dbHelper = DatabaseHelper.instance;
   final Rxn<SmsResult> lastSmsResult = Rxn<SmsResult>();
+  final RxString smsSendProgressText = ''.obs;
 
   Telephony get _telephonyInstance => _telephony ??= Telephony.instance;
 
@@ -113,6 +115,7 @@ class MessagingController extends GetxController {
     Future<String?> Function()? networkIssueChecker,
     void Function(String text, String animation)? openLoadingDialog,
     void Function()? closeLoadingDialog,
+    Future<void> Function()? openSuccessDialog,
   })  : _telephony = telephony,
         _smsStatusPolicy = smsStatusPolicy ?? SmsStatusPolicy(),
         _smsMessageTemplateService =
@@ -129,7 +132,8 @@ class MessagingController extends GetxController {
         _smsSender = smsSender,
         _networkIssueChecker = networkIssueChecker,
         _openLoadingDialog = openLoadingDialog,
-        _closeLoadingDialog = closeLoadingDialog;
+        _closeLoadingDialog = closeLoadingDialog,
+        _openSuccessDialog = openSuccessDialog;
 
   Future<SmsResult> sendSmsMessage(
     String status,
@@ -199,17 +203,25 @@ class MessagingController extends GetxController {
           return _storeSmsResult(SmsLikelyNetworkIssue(likelyNetworkIssue));
         }
 
-        (_openLoadingDialog ?? BFullScreenLoader.openLoadingDialog)(
-          'Please wait message sending...',
-          BImages.docerAnimation,
-        );
+        final total = normalizedRecipients.length;
+        smsSendProgressText.value =
+            'Please wait message sending... (0/$total)';
+        if (_openLoadingDialog != null) {
+          _openLoadingDialog(smsSendProgressText.value, BImages.docerAnimation);
+        } else {
+          BFullScreenLoader.openProgressLoadingDialog(
+            smsSendProgressText,
+            BImages.docerAnimation,
+          );
+        }
         final sendResults = <_RecipientSendResult>[];
 
         try {
-          for (final String phoneNumber in normalizedRecipients) {
+          for (var i = 0; i < normalizedRecipients.length; i++) {
+            smsSendProgressText.value = 'Sending message ${i + 1}/$total...';
             sendResults.add(
               await _sendSmsToRecipient(
-                  phoneNumber: phoneNumber, message: message),
+                  phoneNumber: normalizedRecipients[i], message: message),
             );
             await Future.delayed(const Duration(seconds: 1));
           }
@@ -218,6 +230,14 @@ class MessagingController extends GetxController {
         }
 
         final result = _summarizeSendResults(sendResults);
+        if (result is SmsSuccess &&
+            result.attemptedRecipients > 0 &&
+            result.sentRecipients == result.attemptedRecipients) {
+          // Await the full show -> auto-dismiss lifecycle so callers (e.g. the
+          // resend dialog) don't pop the success view by mistake.
+          await (_openSuccessDialog ??
+              BFullScreenLoader.openMessageSentDialog)();
+        }
         return _storeSmsResult(result);
       } else {
         return _storeSmsResult(
