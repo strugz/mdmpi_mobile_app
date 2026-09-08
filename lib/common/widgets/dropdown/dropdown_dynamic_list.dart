@@ -48,6 +48,12 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
   String? _selectedValue;
   VoidCallback? _controllerListener;
 
+  // Keeps the searchable FormField's internal value in sync with the
+  // selection; without didChange the validator only ever sees the value
+  // present when the field was first validated.
+  final GlobalKey<FormFieldState<String>> _searchFieldKey =
+      GlobalKey<FormFieldState<String>>();
+
   @override
   void initState() {
     super.initState();
@@ -66,6 +72,7 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
           setState(() {
             _selectedValue = text.isEmpty ? null : text;
           });
+          _searchFieldKey.currentState?.didChange(_selectedValue);
         }
       };
       widget.controller!.addListener(_controllerListener!);
@@ -110,6 +117,10 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
     final currentItems = widget.dropdownList.map(_getItemValue).toSet();
     if (_selectedValue != null && !currentItems.contains(_selectedValue)) {
       _selectedValue = null;
+      // Sync the form field after this build frame (didChange can't run mid-build).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _searchFieldKey.currentState?.didChange(null);
+      });
     }
   }
 
@@ -139,6 +150,10 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
       if (widget.controller != null) {
         widget.controller!.text = result;
       }
+      final fieldState = _searchFieldKey.currentState;
+      fieldState?.didChange(result);
+      // Clear a stale "please select" error as soon as a value is picked.
+      if (fieldState?.hasError ?? false) fieldState!.validate();
       if (widget.onChanged != null) widget.onChanged!(result);
     }
   }
@@ -157,6 +172,7 @@ class _BDropDownDynamicListState extends State<BDropDownDynamicList> {
           : null;
 
       return FormField<String>(
+        key: _searchFieldKey,
         initialValue: _selectedValue,
         validator: widget.validator,
         builder: (fieldState) {
