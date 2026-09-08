@@ -9,7 +9,12 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_deliver
 import '../../../../../base/utils/constants/colors.dart';
 
 class BDocumentReference extends StatelessWidget {
-  const BDocumentReference({super.key});
+  const BDocumentReference({super.key, this.isRequired = true});
+
+  /// Whether at least a value per field is mandatory. Stock Receive submits
+  /// without document references; every other form keeps them required.
+  /// The duplicate-value check stays active either way.
+  final bool isRequired;
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +81,9 @@ class BDocumentReference extends StatelessWidget {
                     controller: controller,
                     decoration: InputDecoration(
                         prefixIcon: Icon(Iconsax.document_code),
-                        labelText: 'Document Reference',
+                        labelText: isRequired
+                            ? 'Document Reference'
+                            : 'Document Reference (optional)',
                         labelStyle: TextStyle(
                             color: dark ? BColors.light : BColors.darkerGrey),
                         suffixIcon: IconButton(
@@ -87,7 +94,11 @@ class BDocumentReference extends StatelessWidget {
                             icon: Icon(Iconsax.close_circle))),
                     validator: (value) {
                       final text = value?.trim() ?? '';
-                      if (text.isEmpty) return 'Document Reference is required';
+                      if (text.isEmpty) {
+                        return isRequired
+                            ? 'Document Reference is required'
+                            : null;
+                      }
                       final all = requestController
                           .formState.documentReferenceControllers
                           .map((c) => c.text.trim())

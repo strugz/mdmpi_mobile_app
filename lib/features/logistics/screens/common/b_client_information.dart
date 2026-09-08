@@ -18,55 +18,70 @@ class BClientInformation extends StatelessWidget {
   Widget build(BuildContext context) {
     final requestController = Get.find<StandardDeliveryController>();
     final dark = BHelperFunctions.isDarkMode(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            /// Client Information
-            Obx(
-              () => Expanded(
-                child: BProductTitleText(
-                    title: requestController.formState.clientInformation.value!.name,
-                    maxLines: 1,
-                    fontColor: dark ? BColors.light : BColors.darkerGrey),
-              ),
-            ),
-            //  Client Search button
-            BCircularIcon(
-              icon: Iconsax.search_normal,
-              onPressed: () => BFullScreenLoader.showSearchSheet(
-                  context, Get.find<ClientController>(), requestController),
-            ),
-          ],
-        ),
+    final selectedColor = dark ? BColors.light : BColors.darkerGrey;
 
-        /// Address and phone number
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    void openClientSearch() => BFullScreenLoader.showSearchSheet(
+        context, Get.find<ClientController>(), requestController);
+
+    return Obx(() {
+      final client = requestController.formState.clientInformation.value;
+      final hasClient = client != null && !client.isEmpty;
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Obx(
-                () => BProductTitleText(
-                    title: requestController.formState.clientInformation.value!.address,
-                    maxLines: 1,
-                    smallSize: true,
-                    fontColor: dark ? BColors.light : BColors.darkerGrey),
+              /// Client name, or a placeholder prompting selection.
+              /// The whole row opens the search — not just the icon.
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: openClientSearch,
+                  child: hasClient
+                      ? BProductTitleText(
+                          title: client.name,
+                          maxLines: 1,
+                          fontColor: selectedColor)
+                      : const BProductTitleText(
+                          title: 'Select a client',
+                          maxLines: 1,
+                          fontColor: BColors.darkGrey),
+                ),
               ),
-              const SizedBox(width: BSizes.spaceBtwInputFields),
-              Obx(
-                () => BProductTitleText(
-                    title: requestController.formState.clientInformation.value!.contact,
-                    maxLines: 1,
-                    smallSize: true,
-                    fontColor: dark ? BColors.light : BColors.darkerGrey),
+
+              //  Client Search button
+              BCircularIcon(
+                icon: Iconsax.search_normal,
+                onPressed: openClientSearch,
               ),
             ],
           ),
-        ),
-      ],
-    );
+
+          /// Address and phone number — only once a client is selected.
+          if (hasClient)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  BProductTitleText(
+                      title: client.address,
+                      maxLines: 1,
+                      smallSize: true,
+                      fontColor: selectedColor),
+                  const SizedBox(width: BSizes.spaceBtwInputFields),
+                  BProductTitleText(
+                      title: client.contact,
+                      maxLines: 1,
+                      smallSize: true,
+                      fontColor: selectedColor),
+                ],
+              ),
+            ),
+        ],
+      );
+    });
   }
 }

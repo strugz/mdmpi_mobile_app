@@ -204,8 +204,7 @@ class MessagingController extends GetxController {
         }
 
         final total = normalizedRecipients.length;
-        smsSendProgressText.value =
-            'Please wait message sending... (0/$total)';
+        smsSendProgressText.value = 'Please wait message sending... (0/$total)';
         if (_openLoadingDialog != null) {
           _openLoadingDialog(smsSendProgressText.value, BImages.docerAnimation);
         } else {

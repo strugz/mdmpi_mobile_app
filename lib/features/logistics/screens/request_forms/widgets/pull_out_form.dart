@@ -130,8 +130,9 @@ class PullOutForm extends StatelessWidget {
                         const Divider(),
                         const SizedBox(height: BSizes.sm),
 
-                        /// Document Reference
-                        const BDocumentReference(),
+                        /// Document Reference — optional for Stock Receive,
+                        /// required for Pull Out / Return.
+                        BDocumentReference(isRequired: !isStockReceive),
                         const SizedBox(height: BSizes.sm),
 
                         /// Add Item (scanner) — Pull Out only; Stock Receive

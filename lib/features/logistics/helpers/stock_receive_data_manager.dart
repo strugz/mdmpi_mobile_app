@@ -74,17 +74,12 @@ class StockReceiveDataManager {
         return;
       }
 
+      // Document references are optional for Stock Receive — keep whatever
+      // was entered, dropping blank fields.
       final docRefs = stdController.formState.documentReferenceControllers
           .map((c) => c.text.trim())
+          .where((e) => e.isNotEmpty)
           .toList();
-      if (docRefs.isEmpty || docRefs.any((e) => e.isEmpty)) {
-        controller.errorMessage.value =
-            'Please enter at least one document reference.';
-        BLoaders.errorSnackBar(
-            title: 'Document Reference',
-            message: 'Please enter at least one document reference.');
-        return;
-      }
 
       if (controller.formState.pullOutDateController.text.trim().isEmpty) {
         controller.errorMessage.value = 'Please pick a stock receive date.';

@@ -84,6 +84,7 @@ class StandardDeliveryFormState {
     deliveryTerms.text = 'Full';
     cameraDropOffPicture.value = "";
     preference.text = 'Low';
+    requestedBy.clear();
     formKey.currentState?.reset();
     documentReferenceControllers.clear();
     clientInformation.value = ClientModel.empty();

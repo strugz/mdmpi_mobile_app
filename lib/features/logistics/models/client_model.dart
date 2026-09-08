@@ -14,6 +14,9 @@ class ClientModel {
       required this.contact,
       required this.emailAddress});
 
+  /// True when this is the [empty] placeholder — no client has been selected.
+  bool get isEmpty => id.trim().isEmpty || id == 'N/A';
+
   /// Empty Model
   static ClientModel empty() => ClientModel(
       id: 'N/A',
