@@ -1240,7 +1240,11 @@ CREATE TABLE public.a_tblrequeststandarditem (
     itemcode character varying(100),
     description character varying(500),
     qty numeric(18,2),
-    unit character varying(50)
+    unit character varying(50),
+    partno character varying(100),
+    serialno character varying(200),
+    ptn character varying(100),
+    remarks character varying(500)
 );
 
 

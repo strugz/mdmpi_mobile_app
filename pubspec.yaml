@@ -39,6 +39,10 @@ dependencies:
   flutter_svg: ^2.0.10
   shimmer: ^3.0.0
   image_picker: ^1.1.2
+  # Used to bake EXIF orientation into scanned document pixels before upload
+  # (lib/base/utils/images/document_image.dart). Already present transitively;
+  # declared directly because we import it.
+  image: ^4.8.0
   file_picker: ^8.0.0
   json_annotation: ^4.9.0
   curved_navigation_bar: ^1.0.6

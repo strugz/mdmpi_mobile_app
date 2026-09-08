@@ -32,6 +32,11 @@ class InventoryItemView extends StatelessWidget {
     final itemKey =
         keyId ?? (item.itemCode.isNotEmpty ? item.itemCode : item.description);
 
+    // The slip has no item code column, so prefer the part number and fall
+    // back to the item code.
+    final headline =
+        item.referenceCode.isNotEmpty ? item.referenceCode : '(no part no.)';
+
     final theme = Theme.of(context);
 
     return Card(
@@ -74,13 +79,9 @@ class InventoryItemView extends StatelessWidget {
                           Expanded(
                             flex: 6,
                             child: Tooltip(
-                              message: item.itemCode.isNotEmpty
-                                  ? item.itemCode
-                                  : '(no code)',
+                              message: headline,
                               child: BProductTitleText(
-                                title: item.itemCode.isNotEmpty
-                                    ? item.itemCode
-                                    : '(no code)',
+                                title: headline,
                                 smallSize: true,
                                 bold: true,
                                 maxLines: 2,
@@ -114,6 +115,38 @@ class InventoryItemView extends StatelessWidget {
                             bold: false,
                             maxLines: 3,
                             fontColor: BColors.textSecondary,
+                          ),
+                        ),
+                      ],
+
+                      // Slip identifiers: serial number and PTN.
+                      if (item.serialNo.isNotEmpty || item.ptn.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 52.0),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            children: [
+                              if (item.serialNo.isNotEmpty)
+                                BSimpleChip(
+                                  label: 'S/N ${item.serialNo}',
+                                  backgroundColor: BColors.primaryBackground,
+                                  textStyle: theme.textTheme.bodySmall
+                                      ?.copyWith(
+                                          color: BColors.primary,
+                                          fontSize: 11),
+                                ),
+                              if (item.ptn.isNotEmpty)
+                                BSimpleChip(
+                                  label: 'PTN ${item.ptn}',
+                                  backgroundColor: BColors.primaryBackground,
+                                  textStyle: theme.textTheme.bodySmall
+                                      ?.copyWith(
+                                          color: BColors.primary,
+                                          fontSize: 11),
+                                ),
+                            ],
                           ),
                         ),
                       ],

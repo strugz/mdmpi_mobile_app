@@ -49,6 +49,11 @@ class ScannedItemTile extends StatelessWidget {
     final originalKey = originalId ?? item.itemCode;
     final originalById = originalId != null;
 
+    // Headline for the collapsed tile: the slip has no item code column, so
+    // prefer the part number and fall back to the item code.
+    final headline =
+        item.referenceCode.isNotEmpty ? item.referenceCode : '(no part no.)';
+
     return InkWell(
       onTap: () async {
         var itemCodeValue = item.itemCode;
@@ -57,6 +62,9 @@ class ScannedItemTile extends StatelessWidget {
             ? item.qty.toInt().toString()
             : item.qty.toString();
         var unitValue = item.unit;
+        var partNoValue = item.partNo;
+        var serialNoValue = item.serialNo;
+        var ptnValue = item.ptn;
 
         // Helper to robustly parse quantity strings entered by user.
         String normalizeQty(String input) {
@@ -129,37 +137,7 @@ class ScannedItemTile extends StatelessWidget {
                       key: formKey,
                       child: Column(
                         children: [
-                          // Item code
-                          TextFormField(
-                            key: ValueKey(
-                                'inventory_item_itemCode_$originalKey'),
-                            initialValue: itemCodeValue,
-                            textInputAction: TextInputAction.next,
-                            decoration:
-                                const InputDecoration(labelText: 'Item code'),
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Item code is required'
-                                : null,
-                            onSaved: (v) => itemCodeValue = v?.trim() ?? '',
-                            onChanged: (v) => itemCodeValue = v.trim(),
-                          ),
-                          const SizedBox(height: BSizes.sm),
-
-                          // Description
-                          TextFormField(
-                            key: ValueKey(
-                                'inventory_item_description_$originalKey'),
-                            initialValue: descriptionValue,
-                            textInputAction: TextInputAction.next,
-                            decoration:
-                                const InputDecoration(labelText: 'Description'),
-                            maxLines: 2,
-                            onSaved: (v) => descriptionValue = v?.trim() ?? '',
-                            onChanged: (v) => descriptionValue = v.trim(),
-                          ),
-                          const SizedBox(height: BSizes.sm),
-
-                          // Qty + Unit row
+                          // Qty + UM row
                           Row(
                             children: [
                               Expanded(
@@ -203,34 +181,102 @@ class ScannedItemTile extends StatelessWidget {
                                   key: ValueKey(
                                       'inventory_item_unit_$originalKey'),
                                   initialValue: unitValue,
-                                  textInputAction: TextInputAction.done,
+                                  textInputAction: TextInputAction.next,
                                   decoration:
-                                      const InputDecoration(labelText: 'Unit'),
+                                      const InputDecoration(labelText: 'UM'),
                                   onSaved: (v) => unitValue = v?.trim() ?? '',
                                   onChanged: (v) => unitValue = v.trim(),
                                 ),
                               ),
                             ],
                           ),
-
-                          // Editable batches section (serial, qty, expiry) inside modal
                           const SizedBox(height: BSizes.sm),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Batches',
-                              style: Theme.of(sCtx).textTheme.labelLarge,
-                            ),
+
+                          // Part No.
+                          TextFormField(
+                            key: ValueKey('inventory_item_partNo_$originalKey'),
+                            initialValue: partNoValue,
+                            textInputAction: TextInputAction.next,
+                            decoration:
+                                const InputDecoration(labelText: 'Part No.'),
+                            onSaved: (v) => partNoValue = v?.trim() ?? '',
+                            onChanged: (v) => partNoValue = v.trim(),
                           ),
                           const SizedBox(height: BSizes.sm),
-                          if (editableBatches.isEmpty)
+
+                          // Item code — optional, but one of item code or part
+                          // number must be present so the line is identifiable.
+                          TextFormField(
+                            key: ValueKey(
+                                'inventory_item_itemCode_$originalKey'),
+                            initialValue: itemCodeValue,
+                            textInputAction: TextInputAction.next,
+                            decoration:
+                                const InputDecoration(labelText: 'Item code'),
+                            validator: (v) {
+                              final code = v?.trim() ?? '';
+                              if (code.isEmpty && partNoValue.trim().isEmpty) {
+                                return 'Enter an item code or a part number';
+                              }
+                              return null;
+                            },
+                            onSaved: (v) => itemCodeValue = v?.trim() ?? '',
+                            onChanged: (v) => itemCodeValue = v.trim(),
+                          ),
+                          const SizedBox(height: BSizes.sm),
+
+                          // Item description
+                          TextFormField(
+                            key: ValueKey(
+                                'inventory_item_description_$originalKey'),
+                            initialValue: descriptionValue,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                                labelText: 'Item description'),
+                            maxLines: 2,
+                            onSaved: (v) => descriptionValue = v?.trim() ?? '',
+                            onChanged: (v) => descriptionValue = v.trim(),
+                          ),
+                          const SizedBox(height: BSizes.sm),
+
+                          // Serial No.
+                          TextFormField(
+                            key: ValueKey(
+                                'inventory_item_serialNo_$originalKey'),
+                            initialValue: serialNoValue,
+                            textInputAction: TextInputAction.next,
+                            decoration:
+                                const InputDecoration(labelText: 'Serial No.'),
+                            onSaved: (v) => serialNoValue = v?.trim() ?? '',
+                            onChanged: (v) => serialNoValue = v.trim(),
+                          ),
+                          const SizedBox(height: BSizes.sm),
+
+                          // PTN
+                          TextFormField(
+                            key: ValueKey('inventory_item_ptn_$originalKey'),
+                            initialValue: ptnValue,
+                            textInputAction: TextInputAction.done,
+                            decoration: const InputDecoration(labelText: 'PTN'),
+                            onSaved: (v) => ptnValue = v?.trim() ?? '',
+                            onChanged: (v) => ptnValue = v.trim(),
+                          ),
+
+                          // Editable batches section (serial, qty, expiry)
+                          // inside modal. The header only appears once a batch
+                          // exists so an empty section does not push the slip
+                          // fields off screen.
+                          const SizedBox(height: BSizes.sm),
+                          if (editableBatches.isNotEmpty) ...[
                             Align(
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                'No batches',
-                                style: Theme.of(sCtx).textTheme.bodySmall,
+                                'Batches',
+                                style: Theme.of(sCtx).textTheme.labelLarge,
                               ),
                             ),
+                            const SizedBox(height: BSizes.sm),
+                          ],
                           Column(
                             children:
                                 List.generate(editableBatches.length, (i) {
@@ -427,6 +473,9 @@ class ScannedItemTile extends StatelessWidget {
                                     description: descriptionValue.trim(),
                                     qty: double.tryParse(parsedQtyText) ?? 0.0,
                                     unit: unitValue.trim(),
+                                    partNo: partNoValue.trim(),
+                                    serialNo: serialNoValue.trim(),
+                                    ptn: ptnValue.trim(),
                                     // Use edited batches from the modal
                                     batches: editableBatches,
                                   );
@@ -531,7 +580,7 @@ class ScannedItemTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.itemCode,
+                    headline,
                     style: Theme.of(context)
                         .textTheme
                         .titleSmall
@@ -557,13 +606,20 @@ class ScannedItemTile extends StatelessWidget {
                     textColor: dark ? BColors.light : BColors.darkGrey,
                   ),
 
-                  // Inline batches summary (show up to 2 batches inline, then +N)
-                  if (item.batches.isNotEmpty) ...[
+                  // Slip identifiers plus inline batches summary (show up to
+                  // 2 batches inline, then +N)
+                  if (item.serialNo.isNotEmpty ||
+                      item.ptn.isNotEmpty ||
+                      item.batches.isNotEmpty) ...[
                     const SizedBox(height: BSizes.sm),
                     Wrap(
                       spacing: BSizes.sm,
                       runSpacing: BSizes.xs,
                       children: [
+                        if (item.serialNo.isNotEmpty)
+                          BSimpleChip(label: 'S/N ${item.serialNo}'),
+                        if (item.ptn.isNotEmpty)
+                          BSimpleChip(label: 'PTN ${item.ptn}'),
                         ...item.batches.take(2).map((b) {
                           final txt =
                               '${b.batchSerial} • ${b.batchQuantity}${b.expiryDate.isNotEmpty ? ' • ${b.expiryDate}' : ''}';

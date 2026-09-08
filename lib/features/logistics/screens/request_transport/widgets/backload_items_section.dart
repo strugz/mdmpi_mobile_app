@@ -81,9 +81,9 @@ class _BackloadItemsSectionState extends State<BackloadItemsSection> {
       });
       // Seed remark editors from any previously entered state.
       for (final item in _items) {
-        final existing = _backloadRemarks[item.itemCode];
+        final existing = _backloadRemarks[item.referenceCode];
         if (existing != null) {
-          _ctrlFor(item.itemCode).text = existing;
+          _ctrlFor(item.referenceCode).text = existing;
         }
       }
     } else {
@@ -97,8 +97,10 @@ class _BackloadItemsSectionState extends State<BackloadItemsSection> {
     }
   }
 
-  TextEditingController _ctrlFor(String itemCode) =>
-      _remarkCtrls.putIfAbsent(itemCode, () => TextEditingController());
+  /// Keyed by [InventoryItemModel.referenceCode], not the raw item code:
+  /// a line entered from a Stock Issue Slip may have no item code at all.
+  TextEditingController _ctrlFor(String code) =>
+      _remarkCtrls.putIfAbsent(code, () => TextEditingController());
 
   @override
   void dispose() {
@@ -137,28 +139,28 @@ class _BackloadItemsSectionState extends State<BackloadItemsSection> {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
-                  value: !backload.containsKey(item.itemCode),
+                  value: !backload.containsKey(item.referenceCode),
                   title: Text(
-                    '${item.itemCode} — ${item.description}',
+                    '${item.referenceCode} — ${item.description}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text('Qty: ${item.qty} ${item.unit}'),
                   onChanged: (received) {
                     if (received == true) {
-                      backload.remove(item.itemCode);
+                      backload.remove(item.referenceCode);
                     } else {
-                      backload[item.itemCode] =
-                          _ctrlFor(item.itemCode).text.trim();
+                      backload[item.referenceCode] =
+                          _ctrlFor(item.referenceCode).text.trim();
                     }
                   },
                 ),
-                if (backload.containsKey(item.itemCode))
+                if (backload.containsKey(item.referenceCode))
                   Padding(
                     padding: const EdgeInsets.only(
                         left: BSizes.lg, bottom: BSizes.sm),
                     child: TextField(
-                      controller: _ctrlFor(item.itemCode),
+                      controller: _ctrlFor(item.referenceCode),
                       maxLines: 2,
                       decoration: const InputDecoration(
                         labelText: 'Reason (required)',
@@ -166,7 +168,7 @@ class _BackloadItemsSectionState extends State<BackloadItemsSection> {
                         hintText: 'Why is this item being backloaded?',
                       ),
                       onChanged: (value) =>
-                          backload[item.itemCode] = value.trim(),
+                          backload[item.referenceCode] = value.trim(),
                     ),
                   ),
               ],

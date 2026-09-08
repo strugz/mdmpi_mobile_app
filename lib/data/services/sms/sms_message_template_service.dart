@@ -121,7 +121,12 @@ class SmsMessageTemplateService {
         return '  • Batch: ${batch.batchSerial} x$batchQty$expiryText';
       }).join('\n');
 
-      final itemLine = '- ${item.description} (${item.itemCode}) x$qty ${item.unit}';
+      final serialText = item.serialNo.trim().isEmpty
+          ? ''
+          : ' S/N: ${item.serialNo.trim()}';
+
+      final itemLine =
+          '- ${item.description} (${item.referenceCode}) x$qty ${item.unit}$serialText';
 
       if (batchLines.isEmpty) {
         return itemLine;

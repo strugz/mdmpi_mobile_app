@@ -17,6 +17,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_data_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/inventory_item_merger.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -704,42 +705,25 @@ class StandardDeliveryController extends GetxController
   /// Merge incoming scanned items into [formState.scannedInventoryItems].
   ///
   /// Merge strategy:
-  /// - If an incoming item has the same `itemCode` as an existing item, sum
-  ///   the quantities and merge batches. This prevents duplicate rows when
-  ///   the same file is processed twice or when different UI controls invoke
+  /// - If an incoming item has the same identity as an existing item, sum the
+  ///   quantities and merge batches. This prevents duplicate rows when the
+  ///   same file is processed twice or when different UI controls invoke
   ///   analysis for the same file.
+  ///
+  /// Identity is `InventoryItemModel.mergeKey`: part number, item code and
+  /// serial number together. Two lines sharing a part number but carrying
+  /// different serial numbers are different physical units and must stay as
+  /// separate rows.
   void _mergeScannedItems(List<InventoryItemModel> incoming) {
     try {
       final items = formState.scannedInventoryItems;
 
-      for (final inc in incoming) {
-        final idx = items.indexWhere((it) => it.itemCode == inc.itemCode);
-        if (idx != -1) {
-          final existing = items[idx];
-          final mergedQty = existing.qty + inc.qty;
-          // Merge batches by appending and de-duplicating by batchSerial
-          final Map<String, InventoryBatchModel> batchMap = {
-            for (final b in existing.batches) b.batchSerial: b
-          };
-          for (final b in inc.batches) {
-            batchMap[b.batchSerial] = b;
-          }
+      final merged = InventoryItemMerger.merge(
+        existing: items.toList(),
+        incoming: incoming,
+      );
 
-          final merged = InventoryItemModel(
-            itemCode: existing.itemCode,
-            description: existing.description.isNotEmpty
-                ? existing.description
-                : inc.description,
-            qty: mergedQty,
-            unit: existing.unit.isNotEmpty ? existing.unit : inc.unit,
-            batches: batchMap.values.toList(),
-          );
-
-          items[idx] = merged;
-        } else {
-          items.add(inc);
-        }
-      }
+      items.assignAll(merged);
 
       // If RxList, refresh to notify listeners
       try {
