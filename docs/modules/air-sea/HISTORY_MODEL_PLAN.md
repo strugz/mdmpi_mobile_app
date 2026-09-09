@@ -1,6 +1,27 @@
 
 # Air/Sea: Request History — DTO-only status-change plan
 
+> **⚠️ SUPERSEDED — do not implement from this document.**
+>
+> The code went the opposite way. This plan's central rule was "do not build a full
+> history model"; what shipped is exactly that — a single 24-field
+> `AirSeaStatusStagesModel` (`lib/features/logistics/models/air_sea_status_stages_model.dart`)
+> returned by `AirSeaRepository.fetchHistoryByRequestId`, used to gate stage sections in
+> `air_sea_page_stages.dart` by status presence. There is no timeline widget and no
+> per-status DTO dispatch. Following this plan today would add a second, conflicting
+> history path.
+>
+> It is kept only as the record of what is now **dead code**, which should be either
+> finished or deleted:
+>
+> - `screens/air_sea/widgets/air_sea_history_section.dart` — a 0-byte placeholder file.
+> - The four per-status DTOs under `dtos/air_sea/` (`..._new_request_history_dto.dart`,
+>   `..._getting_supplies_ready_history_dto.dart`, `..._item_packed_history_dto.dart`,
+>   `..._endorsed_to_guard_history_dto.dart`) — only ever referenced by
+>   `AirSeaStatusStagesMapper`, which itself has no callers anywhere in `lib/`.
+> - `air_sea_history_status_dto.dart`, the shared base contract this plan specifies, was
+>   never created.
+
 This plan is revised to match the new requirement: **do not build a full history model first**. Start from the sample history payload and create **DTOs only**, one per status change, with **only the fields needed for that status**.
 
 ## Scope

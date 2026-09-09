@@ -20,8 +20,8 @@ This documentation focuses on:
 
 - Logistics authentication and onboarding context.
 - Logistics navigation: Home, Request, Location, and Settings.
-- Request categories: Standard Delivery, Pull Out / Return, Pick Up, Air / Sea, Hotline Direct, Stock Receive, and BackLoad.
-- Role-based user workflows for Request, Release, Courier, Provincial, Viewer, and Admin users.
+- Request categories: Standard Delivery, Pull Out / Return, Pick Up, Air / Sea / Land, Air / Sea / Land HD, Hotline Direct, Stock Receive, and BackLoad.
+- Role-based user workflows for Request, Release, Courier, Provincial, HD, Viewer, and Admin users.
 - Request list usage, filtering, creation, status updates, cancellation, proof capture, and delivery location workflows.
 - Logistics support tools: Upload Data, Hard Reset Refresh, Realtime Location Saver, Contact Directory, Local Storage Viewer, Signature Outbox, and Image Outbox.
 - Developer architecture for Logistics controllers, repositories, DAOs, mappers, routes, and bindings.
@@ -34,7 +34,7 @@ Collection, Service, and InHouse are mentioned only where they affect shared rou
 
 - [Module Documentation Index](../README.md)
 - [Standard Delivery Module](../modules/standard-delivery/README.md)
-- [Air & Sea Module](../modules/air-sea/README.md)
+- [Air / Sea / Land Module](../modules/air-sea/README.md)
 - [Pick Up Module](../modules/pick-up/README.md)
 - [Pull Out / Return Module](../modules/pull-out/README.md)
 - [Hotline Direct Module](../modules/hotline-direct/README.md)

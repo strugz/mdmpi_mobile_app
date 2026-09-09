@@ -201,13 +201,13 @@ All layers have been implemented:
 | Controller | `lib/features/logistics/controllers/backload_controller.dart` | ✅ `Result<T>`, reprocess, load remarks |
 | Transaction Page | `lib/features/logistics/screens/back_load/backload_transaction_page.dart` | ✅ Complete |
 | Remarks Widget | `lib/common/widgets/modals/b_backload_remarks.dart` | ✅ Complete |
-| Bindings | `lib/bindings/general_bindings.dart` | ✅ Repo + Controller registered |
+| Bindings | `lib/bindings/app/general_bindings.dart` | ✅ Repo + Controller registered |
 | Route Constant | `lib/base/utils/routes/routes.dart` (`BRoutes.backLoad`) | ✅ Defined |
 | Route Page | `lib/base/utils/routes/app_routes.dart` (`GetPage`) | ✅ Registered |
-| Status Constant | `lib/base/utils/constants/text_string.dart` (`BTexts.statusBackLoad`) | ✅ Defined |
+| Status Constant | `lib/base/utils/constants/text_strings.dart` (`BTexts.statusBackLoad`) | ✅ Defined |
 | Modal Config | `lib/features/logistics/helpers/standard_delivery_modal_config.dart` | ✅ Back Load → Reprocess action |
 | SD Modal | `lib/features/logistics/screens/standard_delivery/widgets/b_modal.dart` | ✅ BackLoad remarks section |
-| SD Page | `lib/features/logistics/presentation/pages/standard_delivery/standard_delivery_page.dart` | ✅ BackLoad remarks section |
+| SD Page | `lib/features/logistics/screens/standard_delivery/standard_delivery_page.dart` | ✅ BackLoad remarks section |
 | SD List | `lib/features/logistics/screens/standard_delivery/standard_delivery_list.dart` | ✅ Long-press + tap wiring |
 
 ### Key behaviors

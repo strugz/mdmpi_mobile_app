@@ -1,8 +1,8 @@
-# Air & Sea Module
+# Air / Sea / Land Module
 
 ## Overview
 
-The Air & Sea module handles air and sea freight logistics requests within the MDMPI Mobile App. It manages the full lifecycle of air/sea shipment requests — from creation through item preparation, guard endorsement, dispatch, drop-off, and receipt.
+The Air / Sea / Land module handles air, sea and land freight logistics requests within the MDMPI Mobile App. It manages the full lifecycle of air/sea shipment requests — from creation through item preparation, guard endorsement, dispatch, drop-off, and receipt.
 
 ### Air / Sea / Land HD variant (2026-09-09)
 
@@ -26,15 +26,48 @@ unaffected. Server migrations:
 ```
 New Request
   → Getting Supplies Ready
-    → Item Prepared
+    → Item Packed
       → Endorsed to Guard
-        → Item Packed
-          → Dispatched
+        → For Dispatch
+          → Dispatch
             → Drop Off
               → Received
+                → Provincial Pick Up        ┐
+                  → Provincial In Transit   │ provincial extension
+                    → Provincial Delivered  ┘
 
 (Any status) → Cancelled
 ```
+
+Status strings are defined in `lib/base/utils/constants/text_strings.dart:137-157`; the
+role × status action matrix lives in
+`lib/features/logistics/helpers/air_sea_modal_config.dart`. Note there is no "Item
+Prepared" step in this flow, and the dispatch status is `Dispatch`, not "Dispatched".
+
+### Provincial extension
+
+Requests that continue to a provincial destination carry on past Received through three
+further statuses, handled by the `Provincial` role (`BTexts.roleProvincial`) and resolved
+in `air_sea_modal_config.dart` (`_resolveProvincial`). `Provincial Delivered` — not
+`Received` — is the terminal status for these requests.
+
+The seven provincial model fields (`provincialPickUpBy`, `provincialPickUpAt`,
+`provincialInTransitAt`, `provincialInTransitLocation`, `provincialDeliveredEndAt`,
+`provincialDeliveredLocation`, `provincialReceiverName`) are stored as `TEXT DEFAULT ''`
+columns on `a_tblRequestAirSea` (`lib/data/local/db_schema.dart:234-240`) — added to the
+schema directly, with no runtime migration. UI lives in
+`air_sea_provincial_pick_up_section.dart`, `air_sea_provincial_in_transit_section.dart`
+and `air_sea_provincial_delivery_section.dart`.
+
+**Not yet built** (carried over from the provincial delivery plan, removed 2026-09-09):
+
+- Transaction history / audit trail — no `RequestHistoryDto`, `RequestHistoryModel`, or
+  local `a_tblRequestHistory` table exists. Related dead code: the per-status history DTOs
+  under `dtos/air_sea/` and `AirSeaStatusStagesMapper` have no callers, and
+  `screens/air_sea/widgets/air_sea_history_section.dart` is an empty placeholder file.
+  Either finish this or delete the orphans.
+- Tests — there is no DAO round-trip, mapper, controller or widget test covering the
+  provincial statuses.
 
 ## Architecture
 

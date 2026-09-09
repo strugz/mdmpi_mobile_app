@@ -50,9 +50,14 @@ Open the Request tab to work with Logistics request categories. The app loads ca
 1. Standard Delivery
 2. Pull Out / Return
 3. Pick Up
-4. Air / Sea
-5. Hotline Direct
-6. Stock Receive
+4. Air / Sea / Land
+5. Air / Sea / Land HD
+6. Hotline Direct
+7. Stock Receive
+
+The **Air / Sea / Land HD** tab is the Hotline Direct equivalent for air, sea and land
+freight. It follows the same workflow and the same role rules as the Air / Sea / Land tab;
+only creating a request there is restricted, and requires the `HD` role.
 
 BackLoad is opened from a Standard Delivery request when a backload transaction is needed.
 
@@ -81,7 +86,10 @@ Available filters depend on the selected category.
 1. Open Request.
 2. Select the request category.
 3. Tap the add/create action.
-4. Complete required client, requester, item, delivery, date, and document-reference fields.
+4. Complete the required client, requester, item, delivery and date fields. Document
+   references are added through the "Add Document Reference" button, which opens its own
+   screen; they are optional for Stock Receive and required for Pull Out and Return.
+   Recipient name and contact details are optional on the Standard Delivery form.
 5. Save the request.
 6. Confirm that the request appears in the appropriate list.
 
@@ -99,12 +107,14 @@ Typical status flow:
 
 ```text
 New Request
-Getting Supplies Ready
+Getting supplies ready
 Item Prepared
 For Delivery
-In Transit
-Done Delivery
+Delivered
 ```
+
+There is no In Transit step for Standard Delivery, and the final status reads
+**Delivered**.
 
 Requests can also be cancelled when cancellation is allowed. Cancellation requires remarks.
 
@@ -114,7 +124,8 @@ Common user actions:
 - Prepare items.
 - Assign or confirm delivery details.
 - Move a request through delivery statuses.
-- Capture receiver signature and proof image.
+- Capture receiver signature and up to three proof-of-delivery photos.
+- Untick any item the client will not receive and give a reason for each, before Drop Off.
 - Check live/location-related delivery information.
 
 ## Pull Out / Return Workflow
@@ -126,18 +137,27 @@ Pull Out / Return handles return or pull-out request data. Use the Pull Out / Re
 - Create or update a request.
 - Cancel a request with remarks when allowed.
 
+Status flow: **New Request → For Pull Out → In Transit → Taken Out.** Release moves a
+request to For Pull Out and enters the transport details (trip ticket, driver, helper,
+vehicle); the Courier then departs, and may pause back to For Pull Out if the trip is
+interrupted. While In Transit the courier can record items that could not be pulled out,
+with a reason for each.
+
 ## Pick Up Workflow
 
 Pick Up handles pickup-specific request tracking. Use the Pick Up tab to:
 
 - View pickup requests.
 - Filter pickup data.
-- Create or update pickup requests.
+- Create or update pickup requests. A request can carry more than one item category.
 - Track status and cancellation remarks.
 
-## Air / Sea Workflow
+Status flow: **New Request → Getting Supplies Ready → Item Packed → Received**, all handled
+by Release.
 
-Air / Sea handles air and sea logistics requests. Use the Air / Sea tab to:
+## Air / Sea / Land Workflow
+
+Air / Sea / Land handles air and sea logistics requests. Use the Air / Sea / Land tab to:
 
 - View air/sea requests.
 - Filter by date, status, client, item category, or document reference.
@@ -170,14 +190,31 @@ Use the Stock Receive tab to:
 
 BackLoad is tied to a Standard Delivery request. Open BackLoad only from a request context where the app passes the selected Standard Delivery request into the BackLoad page.
 
-Use BackLoad when a delivery requires backload transaction details connected to the original request.
+Use BackLoad when a delivery requires backload transaction details connected to the original
+request, or when the whole request comes back.
+
+To backload only *some* items, do it from the Request Transport screen at For Delivery
+instead: untick those items in "Items to Deliver" and give a reason for each. The request
+still completes normally, and the backloaded items appear as a read-only list on the
+completed request.
+
+## Text Message Notifications
+
+Some status changes send an SMS to the request contacts. Moving a Standard Delivery or
+Hotline Direct request to **For Delivery** sends a message that includes all of the
+request's document references.
+
+While the messages go out you see progress per recipient. Once every recipient has been
+reached, a full-screen "Message Sent!" confirmation appears and closes itself. You do not
+need to do anything — this replaced the small per-recipient popup that used to appear on
+request cards.
 
 ## Proof Capture
 
 Some Logistics delivery flows support:
 
 - Receiver signature
-- Proof image
+- Up to three proof-of-delivery photos
 - Receiver details
 
 If proof capture succeeds locally but does not appear on the server, ask an operations admin to check Signature Outbox or Image Outbox.

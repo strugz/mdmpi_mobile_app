@@ -9,7 +9,9 @@ This folder contains application-level and module-level documentation for the MD
 ```
 docs/
   README.md                          # This file — documentation index
-  POST_DEMO_REVISIONS_TODO.md        # Post-demo revisions & bug fix TO DO list (2026-09)
+  POST_DEMO_REVISIONS_TODO.md        # Post-demo revisions log (2026-09) — all 12 items delivered
+  CODEX_TO_CLAUDE_TRANSITION.md      # One-time Codex -> Claude Code migration notes (2026-08)
+  WEBSOCKET_DISCONNECT_HANDLING.md   # WebSocket disconnect/reconnect contract
   application/
     README.md                        # Application documentation landing page
     USER_GUIDE.md                    # Daily app usage guide
@@ -18,16 +20,15 @@ docs/
     ADMIN_GUIDE.md                   # Operations admin support guide
     DEVELOPER_GUIDE.md               # Developer setup and architecture guide
   modules/
-    air-sea/README.md                # Air & Sea logistics module
-    air-sea/AIR_SEA_PROVINCIAL_DELIVERY_PLAN.md  # Provincial delivery extension plan
+    air-sea/README.md                # Air / Sea / Land logistics module (base + HD tabs)
+    air-sea/HISTORY_MODEL_PLAN.md    # Superseded history-model plan (see banner in file)
     standard-delivery/README.md      # Standard Delivery logistics module
-    standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md # Standard Delivery signature sync plan
-    standard-delivery/STANDARD_DELIVERY_LOCAL_DB_REWORK_PLAN.md # Standard Delivery local DB rework plan
     pick-up/README.md                # Pick Up logistics module
     pull-out/README.md               # Pull Out / Return logistics module
     hotline-direct/README.md         # Hotline Direct logistics module
     stock-receive/README.md          # Stock Receive logistics module
     request-forms/INVENTORY_SCANNER_ROLLOUT_PLAN.md # Cross-module request form scanner rollout plan
+    inventory_item/INVENTORY_ITEM_MODULE_DOCUMENTATION.md # Inventory item controller and view widget
     backload/BACKLOAD_MODULE_DOCUMENTATION.md # BackLoad logistics module
     authentication/README.md         # Authentication module (Clean Architecture)
     collection/README.md             # Collection department module
@@ -49,19 +50,21 @@ docs/
 
 | Module | Domain | Status | Link |
 |---|---|---|---|
-| Post-Demo Revisions TO DO | Logistics / Cross-module | Planned | [POST_DEMO_REVISIONS_TODO.md](POST_DEMO_REVISIONS_TODO.md) |
-| Air & Sea | Logistics | Active | [modules/air-sea/](modules/air-sea/) |
+| Post-Demo Revisions TO DO | Logistics / Cross-module | Complete (12/12) | [POST_DEMO_REVISIONS_TODO.md](POST_DEMO_REVISIONS_TODO.md) |
+| Codex to Claude Code transition | Tooling | Historical (2026-08) | [CODEX_TO_CLAUDE_TRANSITION.md](CODEX_TO_CLAUDE_TRANSITION.md) |
+| WebSocket disconnect handling | Cross-cutting | Active | [WEBSOCKET_DISCONNECT_HANDLING.md](WEBSOCKET_DISCONNECT_HANDLING.md) |
+| Air / Sea / Land | Logistics | Active | [modules/air-sea/](modules/air-sea/) |
+| Air / Sea / Land History Model Plan | Logistics | Superseded | [modules/air-sea/HISTORY_MODEL_PLAN.md](modules/air-sea/HISTORY_MODEL_PLAN.md) |
 | Standard Delivery | Logistics | Active | [modules/standard-delivery/](modules/standard-delivery/) |
-| Standard Delivery Signature API Status Plan | Logistics | Planned | [modules/standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md](modules/standard-delivery/STANDARD_DELIVERY_SIGNATURE_API_STATUS_PLAN.md) |
-| Standard Delivery Local DB Rework Plan | Logistics | Planned | [modules/standard-delivery/STANDARD_DELIVERY_LOCAL_DB_REWORK_PLAN.md](modules/standard-delivery/STANDARD_DELIVERY_LOCAL_DB_REWORK_PLAN.md) |
 | Pick Up | Logistics | Active | [modules/pick-up/](modules/pick-up/) |
 | Pull Out | Logistics | Active | [modules/pull-out/](modules/pull-out/) |
 | Hotline Direct | Logistics | Active | [modules/hotline-direct/](modules/hotline-direct/) |
 | Stock Receive | Logistics | Active | [modules/stock-receive/](modules/stock-receive/) |
 | Request Forms Scanner Rollout Plan | Logistics / Cross-module | Active | [modules/request-forms/INVENTORY_SCANNER_ROLLOUT_PLAN.md](modules/request-forms/INVENTORY_SCANNER_ROLLOUT_PLAN.md) |
-| BackLoad | Logistics | Planned | [modules/backload/](modules/backload/) |
+| Inventory Item | Logistics / Cross-module | Active | [modules/inventory_item/](modules/inventory_item/) |
+| BackLoad | Logistics | Active | [modules/backload/](modules/backload/) |
 | Authentication | Cross-cutting | Active | [modules/authentication/](modules/authentication/) |
-| Collection | Collection | Early Dev | [modules/collection/](modules/collection/) |
+| Collection | Collection | Active | [modules/collection/](modules/collection/) |
 | Personalization | Cross-cutting | Active | [modules/personalization/](modules/personalization/) |
 
 ## Module Relationships

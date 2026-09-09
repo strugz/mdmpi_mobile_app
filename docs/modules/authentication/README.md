@@ -45,7 +45,6 @@ lib/
         login/                              # Login screen
         signup/                             # Signup + email verification screens
         password_configuration/             # Forget/reset password screens
-        onboarding/                         # Onboarding screens
       widgets/
         auth_header.dart                    # Shared auth header widget
         success_screen.dart                 # Success confirmation screen
@@ -103,7 +102,7 @@ Get.lazyPut(() => LoginWithGoogleUseCase(...), fenix: true);
 
 // Controllers
 Get.lazyPut(() => LoginController(), fenix: true);
-Get.put(SignupController(), permanent: false);  // Singleton to retain form data
+Get.lazyPut(() => SignupController(), fenix: true);  // Retains form data across navigation
 Get.lazyPut(() => LoadingScreenController(), fenix: true);
 Get.lazyPut(() => VerifyEmailController(), fenix: true);
 Get.lazyPut(() => ForgetPasswordController(), fenix: true);
@@ -128,6 +127,7 @@ Get.lazyPut(() => ForgetPasswordController(), fenix: true);
 
 ### Notes
 
-- `SignupController` is registered with `Get.put(permanent: false)` (not `lazyPut`) to retain form data during navigation.
-- `AuthenticationRepository` is registered early in `main.dart` via `Get.put` for pre-app-start initialization, and also via `GeneralBindings` using the interface.
+- There is no `onboarding/` folder under authentication. Onboarding is per-department — e.g. `lib/features/collection/presentation/pages/onboarding/` — and is selected by `AppRouter`.
+- `SignupController` is registered with `Get.lazyPut(fenix: true)` (`general_bindings.dart:200`). It was previously `Get.put`; the change avoids building Firebase-backed repositories at startup on platforms without Firebase — see the comment above the registration.
+- `AuthenticationRepository` is registered early in `lib/base/utils/platform_init.dart:96` via `Get.put` for pre-app-start initialization (not in `main.dart`), and also via `GeneralBindings` using the interface.
 - Post-auth routing is handled by `AppRouter` which checks `GetStorage` for department and onboarding status.

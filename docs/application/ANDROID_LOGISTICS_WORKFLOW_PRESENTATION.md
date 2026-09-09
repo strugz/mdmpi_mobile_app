@@ -28,9 +28,9 @@ Use demo accounts and non-production sample transactions during training.
 8. Pull Out / Return responsibilities by role
 9. Pick Up process
 10. Pick Up responsibilities by role
-11. Air / Sea preparation and dispatch process
-12. Air / Sea provincial delivery extension
-13. Air / Sea responsibilities by role
+11. Air / Sea / Land preparation and dispatch process
+12. Air / Sea / Land provincial delivery extension
+13. Air / Sea / Land responsibilities by role
 14. Hotline Direct process
 15. Hotline Direct responsibilities by role
 16. Proof, synchronization, and exception responsibilities
@@ -44,7 +44,7 @@ Use demo accounts and non-production sample transactions during training.
 | Request | Create new Logistics requests and monitor existing requests. |
 | Release | Prepare, pack, release, or receive items where the workflow allows. |
 | Courier | Dispatch, transport, track, pull out, and complete assigned delivery actions. |
-| Provincial | Continue eligible Air / Sea requests through the provincial delivery stages. |
+| Provincial | Continue eligible Air / Sea / Land requests through the provincial delivery stages. |
 | Viewer | Review requests without changing their status. |
 | Admin | Support operations; normal request status actions remain view-only unless another lifecycle role is assigned. |
 
@@ -67,7 +67,7 @@ flowchart LR
 |---|---|
 | Request | Create the request and view existing transaction details. |
 | Release | Move New Request to Getting Supplies Ready. The same preparer moves it to Item Prepared after entering the trip ticket, driver, and vehicle. |
-| Courier | If assigned as driver or helper, dispatch the request, start tracking, capture the receiver, signature, and proof image, and complete drop-off. |
+| Courier | If assigned as driver or helper, dispatch the request, start tracking, capture the receiver, signature, and up to three proof photos, and complete drop-off. |
 | Provincial | No Standard Delivery status action. |
 | Viewer | View-only. |
 | Admin | View-only for normal modal transitions. |
@@ -83,15 +83,18 @@ The current transport workflow moves directly from **Item Prepared** to
 3. Release marks the request Item Prepared.
 4. The assigned Courier or helper verifies the route and dispatches it.
 5. Tracking begins when the request becomes For Delivery.
-6. Courier enters the receiver, captures the signature and proof image, and
+6. Courier enters the receiver, captures the signature and up to three proof photos,
+   unticks any items the client will not receive (with a reason each), and
    confirms Delivered.
 
 ## Pull Out / Return Workflow
 
 ~~~mermaid
 flowchart LR
-    A["New Request"] -->|Courier with transport details| B["In Transit"]
-    B -->|Courier| C["Taken Out"]
+    A["New Request"] -->|Release enters transport details| B["For Pull Out"]
+    B -->|Courier departs| C["In Transit"]
+    C -->|Courier| D["Taken Out"]
+    C -->|Courier pauses| B
 ~~~
 
 ### Responsibilities by Role
@@ -99,14 +102,16 @@ flowchart LR
 | Role | Responsibility |
 |---|---|
 | Request | Create the Pull Out / Return request and monitor its progress. |
-| Release | View-only. |
-| Courier | Enter the trip ticket, driver, and vehicle; set the request In Transit; then mark it Taken Out. |
+| Release | Set the request For Pull Out, entering the trip ticket, driver, helper, and vehicle. |
+| Courier | Depart (For Pull Out to In Transit), record any items that could not be pulled out, then mark Taken Out. May pause back to For Pull Out. |
 | Provincial | No Pull Out / Return action. |
 | Viewer | View-only. |
 | Admin | View-only for normal modal transitions. |
 
-The Courier must not start **In Transit** until the required transport
-information is complete.
+Release captures the transport information at the **For Pull Out** step — the Courier
+cannot depart until that is done. A courier who is interrupted mid-trip can pause the
+request back to For Pull Out; the start time is cleared and re-recorded on the next
+departure.
 
 ## Pick Up Workflow
 
@@ -130,7 +135,7 @@ flowchart LR
 
 Release must verify that **Received** is visible before leaving the transaction.
 
-## Air / Sea Workflow
+## Air / Sea / Land Workflow
 
 The Release role first prepares and packs the shipment.
 
@@ -169,7 +174,7 @@ flowchart LR
 
 | Role | Responsibility |
 |---|---|
-| Request | Create the Air / Sea request and view its progress. |
+| Request | Create the Air / Sea / Land request and view its progress. |
 | Release | Prepare and pack the shipment, then select Endorsed to Guard, Received, or For Dispatch. Release also completes guard receipt when applicable. |
 | Courier | Move For Dispatch to Dispatch and then Drop Off. |
 | Provincial | Move Received or Drop Off through Provincial Pick Up, Provincial In Transit, and Provincial Delivered. |
@@ -236,7 +241,7 @@ Hotline Direct appear in separate lists.
 | Request | Create one sample request and verify it appears in the correct category. |
 | Release | Prepare or pack the assigned demo transaction. |
 | Courier | Perform one assigned dispatch, delivery, or Pull Out action. |
-| Provincial | Validate one Air / Sea provincial extension step. |
+| Provincial | Validate one Air / Sea / Land provincial extension step. |
 | Viewer | Explain the current status and identify the next responsible role. |
 | Admin | Confirm that normal modal actions are view-only without an additional lifecycle role. |
 
@@ -270,5 +275,5 @@ This training workflow is:
 - [Standard Delivery Module](../modules/standard-delivery/README.md)
 - [Pull Out / Return Module](../modules/pull-out/README.md)
 - [Pick Up Module](../modules/pick-up/README.md)
-- [Air / Sea Module](../modules/air-sea/README.md)
+- [Air / Sea / Land Module](../modules/air-sea/README.md)
 - [Hotline Direct Module](../modules/hotline-direct/README.md)
