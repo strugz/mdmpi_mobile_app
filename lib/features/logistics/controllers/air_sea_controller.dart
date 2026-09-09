@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_fi
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_data_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 
 /// Controller for managing Air/Sea requests lifecycle, state, and business operations.
 ///
@@ -19,6 +20,11 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_data_manager
 /// - Manages local DB and API synchronization
 /// - Handles signature capture and image proof uploads
 class AirSeaController extends GetxController {
+  /// Which slice of the shared Air/Sea data this controller shows.
+  /// The base tab shows legacy/NULL rows; AirSeaHdController overrides this
+  /// to show only 'Air / Sea / Land HD' rows.
+  AirSeaCategoryScope get scope => AirSeaCategoryScope.base;
+
   // ========================================================================
   // STATE PROPERTIES
   // ========================================================================

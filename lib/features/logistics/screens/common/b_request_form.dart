@@ -31,6 +31,7 @@ class BRequestForm extends StatelessWidget {
     Color(0xFF0EA5E9), // Air / Sea - sky blue
     Color(0xFFE0507A), // Hotline Direct - rose
     Color(0xFF8B5CF6), // Stock receive - violet
+    Color(0xFFDC2626), // Air / Sea / Land HD - urgent red
   ];
 
   @override

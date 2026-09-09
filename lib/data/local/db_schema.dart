@@ -242,7 +242,8 @@ Future<void> createAllTables(Database db) async {
       Remarks TEXT,
       CreatedBy TEXT,
       CreatedAt TEXT,
-      UpdatedAt TEXT
+      UpdatedAt TEXT,
+      FormCategoryID TEXT
     )
   ''');
 

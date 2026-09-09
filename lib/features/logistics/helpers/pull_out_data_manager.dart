@@ -26,6 +26,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../data/repositories/image/image_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 
 /// Manager for Pull-Out domain orchestration (save/update flows).
 class PullOutDataManager {
@@ -361,7 +362,7 @@ class PullOutDataManager {
       }
 
       final pullOutsRequests =
-          results.where((r) => r.formCategoryId == '4').toList();
+          results.where((r) => r.formCategoryId == FormCategoryIds.pullOutReturn).toList();
 
       controller.pullOuts.assignAll(pullOutsRequests);
 
@@ -392,7 +393,7 @@ class PullOutDataManager {
         allowLocalFallback: false,
       );
       final pullOutsRequests =
-          results.where((r) => r.formCategoryId == '4').toList();
+          results.where((r) => r.formCategoryId == FormCategoryIds.pullOutReturn).toList();
 
       controller.pullOuts.assignAll(pullOutsRequests);
       controller.filterManager.applyFilter(controller.pullOuts.toList());

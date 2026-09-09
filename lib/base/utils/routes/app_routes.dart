@@ -65,6 +65,7 @@ class AppRoutes {
   ];
 
   // Pages to navigate to
+  // Index-aligned with FormCategoryType.values — append only.
   static final requestFormPages = [
     const StandardDelivery(),
     const PullOutForm(),
@@ -72,5 +73,6 @@ class AppRoutes {
     const AirSeaForm(),
     const HotlineDirectForm(),
     const StockReceiveForm(),
+    const AirSeaForm(), // Air / Sea / Land HD shares the Air/Sea form
   ];
 }

@@ -176,7 +176,14 @@ class BTexts {
   static const String roleAdmin = "Admin";
   static const String roleProvincial = "Provincial";
 
+  /// Designates users allowed to create 'Air / Sea / Land HD' (urgent Air/Sea)
+  /// requests. Assigned like any other role via the user's comma-separated
+  /// Role field; it gates creation only — workflow actions stay with
+  /// Release/Courier/Provincial.
+  static const String roleHd = "HD";
+
   // Labels
+  // Index-aligned with FormCategoryType.values — append only.
   static List<String> requestFormLabels = [
     'Standard Delivery',
     'Pull out',
@@ -184,6 +191,7 @@ class BTexts {
     'Air / Sea / Land',
     'Hotline Direct',
     'Stock receive',
+    'Air / Sea / Land HD',
   ];
 }
 

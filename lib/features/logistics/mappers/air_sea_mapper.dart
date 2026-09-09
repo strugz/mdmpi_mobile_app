@@ -32,6 +32,7 @@ class AirSeaMapper {
       status: m.status.isNotEmpty ? m.status : null,
       createdBy: m.createdBy.isNotEmpty ? m.createdBy : null,
       updatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
+      formCategoryID: parseIntIfPossible(m.formCategoryID),
     );
   }
 

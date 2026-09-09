@@ -9,7 +9,7 @@ import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 
@@ -28,7 +28,7 @@ class AirSeaDropOffSection extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
     final textColor = dark ? BColors.light : BColors.black;
     final iconColor = dark ? BColors.light : BColors.black;
-    final controller = Get.find<AirSeaController>();
+    final controller = AirSeaControllers.forRequest(requestModel);
     final cameraController = Get.find<CameraHandlerController>();
 
     return Column(

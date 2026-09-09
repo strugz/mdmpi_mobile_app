@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dar
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
@@ -70,6 +71,7 @@ class SettingsHardResetSection extends StatelessWidget {
     final standardDeliveryController = Get.find<StandardDeliveryController>();
     final hotlineDirectController = Get.find<HotlineDirectController>();
     final airSeaController = Get.find<AirSeaController>();
+    final airSeaHdController = Get.find<AirSeaHdController>();
     final pickUpController = Get.find<PickUpController>();
     final pullOutController = Get.find<PullOutController>();
     final stockReceiveController = Get.find<StockReceiveController>();
@@ -172,6 +174,18 @@ class SettingsHardResetSection extends StatelessWidget {
               message:
                   'This will clear cached Air / Sea / Land data and reload it from the server.',
               action: airSeaController.hardResetAirSeaRequests,
+            ),
+          ),
+          _sectionTile(
+            icon: Iconsax.document_upload,
+            title: 'Air / Sea / Land HD',
+            subTitle: 'Hard reset request cache and reload',
+            onRefresh: () => _confirmAndRun(
+              context,
+              title: 'Hard Reset Air / Sea / Land HD',
+              message:
+                  'This will clear cached Air / Sea / Land HD data and reload it from the server.',
+              action: airSeaHdController.hardResetAirSeaRequests,
             ),
           ),
           _sectionTile(

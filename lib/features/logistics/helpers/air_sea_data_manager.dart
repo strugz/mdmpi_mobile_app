@@ -8,7 +8,9 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/air_sea/air_sea_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/proof_image_outbox_uploader.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -92,7 +94,10 @@ class AirSeaDataManager {
         }
       }
 
-      controller.airSeaRequests.assignAll(results);
+      // Base and HD tabs share one table/endpoint; each controller only shows
+      // the rows matching its scope (legacy NULL rows belong to the base tab).
+      controller.airSeaRequests.assignAll(
+          results.where((r) => controller.scope.matches(r.formCategoryID)));
 
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());
     } catch (e) {
@@ -121,7 +126,8 @@ class AirSeaDataManager {
         allowLocalFallback: false,
       );
 
-      controller.airSeaRequests.assignAll(results);
+      controller.airSeaRequests.assignAll(
+          results.where((r) => controller.scope.matches(r.formCategoryID)));
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());
     } catch (e) {
       controller.errorMessage.value = e.toString();
@@ -205,6 +211,16 @@ class AirSeaDataManager {
 
       final userCtrl = Get.find<UserController>();
 
+      // The acting controller's scope decides the category: the HD tab writes
+      // the pinned Air / Sea / Land HD id; the base tab leaves it empty (NULL
+      // server-side), matching how legacy rows are bucketed.
+      final scope = controller is AirSeaController
+          ? controller.scope
+          : AirSeaCategoryScope.base;
+      final formCategoryId = scope == AirSeaCategoryScope.hotlineDirect
+          ? FormCategoryIds.airSeaHd
+          : '';
+
       final model = AirSeaModel(
         clientId: client.id,
         client: client,
@@ -213,6 +229,7 @@ class AirSeaDataManager {
         status: 'New Request',
         createdBy: userCtrl.user.value.initial,
         documentReference: docRefs,
+        formCategoryID: formCategoryId,
       );
 
       // Insert via API (also saves to local DB)
@@ -222,12 +239,17 @@ class AirSeaDataManager {
       // Force refresh from API to ensure we have the latest data with proper IDs
       final refreshedList = await _repository.refreshFromApi();
 
-      // Update controller's list
+      // Update controller's list (scoped to this tab's slice)
       controller.airSeaRequests.clear();
-      controller.airSeaRequests.addAll(refreshedList);
+      controller.airSeaRequests.addAll(
+          refreshedList.where((r) => scope.matches(r.formCategoryID)));
 
       // Reapply filters to update the filtered view
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());
+
+      // Keep the sibling tab in sync when both controllers are alive
+      // (mirrors how Standard Delivery refreshes Hotline Direct on '8').
+      _refreshSiblingController(scope, refreshedList);
 
       controller.errorMessage.value = null;
     } catch (e) {
@@ -236,6 +258,28 @@ class AirSeaDataManager {
           title: 'Save Failed', message: 'An error occurred: $e');
     } finally {
       BFullScreenLoader.stopLoading();
+    }
+  }
+
+  /// Refreshes the opposite Air/Sea tab's controller (base vs HD) so both
+  /// lists stay consistent after a create, without forcing extra API calls.
+  void _refreshSiblingController(
+      AirSeaCategoryScope actingScope, List<AirSeaModel> refreshedList) {
+    try {
+      final AirSeaController? sibling =
+          actingScope == AirSeaCategoryScope.hotlineDirect
+              ? (Get.isRegistered<AirSeaController>()
+                  ? Get.find<AirSeaController>()
+                  : null)
+              : (Get.isRegistered<AirSeaHdController>()
+                  ? Get.find<AirSeaHdController>()
+                  : null);
+      if (sibling == null) return;
+      sibling.airSeaRequests.assignAll(
+          refreshedList.where((r) => sibling.scope.matches(r.formCategoryID)));
+      sibling.filterManager.applyFilter(sibling.airSeaRequests.toList());
+    } catch (e) {
+      logDebug('AirSeaDataManager._refreshSiblingController skipped: $e');
     }
   }
 

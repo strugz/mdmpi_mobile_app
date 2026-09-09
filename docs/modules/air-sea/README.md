@@ -4,6 +4,23 @@
 
 The Air & Sea module handles air and sea freight logistics requests within the MDMPI Mobile App. It manages the full lifecycle of air/sea shipment requests — from creation through item preparation, guard endorsement, dispatch, drop-off, and receipt.
 
+### Air / Sea / Land HD variant (2026-09-09)
+
+The **"Air / Sea / Land HD"** form category is the Hotline-Direct (urgent) variant of
+this module — analogous to Hotline Direct vs Standard Delivery. Both tabs share the
+same table (`a_tblRequestAirSea` / `a_tblrequestairsea`), endpoint
+(`/api4/RequestAirSea`), status flow, and role matrix; rows are split by a nullable
+`FormCategoryID` (`FormCategoryIds.airSeaHd = '21'`; NULL/legacy rows belong to the
+base tab — see `AirSeaCategoryScope` in `lib/features/logistics/constants/form_category_ids.dart`).
+`AirSeaHdController` (`lib/features/logistics/controllers/air_sea_hd_controller.dart`)
+extends `AirSeaController`, overriding only its data scope; shared pages/sections
+resolve the owning controller via `AirSeaControllers.forRequest(...)`. Creation on the
+HD tab is restricted to users holding the **"HD" role** (Firestore `Roles`). The
+backend GET excludes HD rows unless `includeHd=true`, so pre-HD app builds are
+unaffected. Server migrations:
+`MDMPI.App/migration_20260909_add_air_sea_formcategoryid.sql` and
+`MDMPI.App/migration_20260909_add_air_sea_hd_category.sql`.
+
 ## Status Flow
 
 ```

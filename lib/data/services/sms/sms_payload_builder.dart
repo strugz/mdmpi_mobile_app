@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 
 /// Builds [SmsRequestPayload] from domain request models.
 ///
@@ -101,7 +102,7 @@ class SmsPayloadBuilder {
     PullOutModel model,
     String normalizedOverride,
   ) {
-    final isStockReceive = model.formCategoryId == '9';
+    final isStockReceive = model.formCategoryId == FormCategoryIds.stockReceive;
 
     return SmsRequestPayload(
       requestId: model.id,

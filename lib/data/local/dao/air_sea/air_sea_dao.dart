@@ -133,6 +133,7 @@ class AirSeaDao {
       'CreatedBy': airSeaModel.createdBy,
       'CreatedAt': airSeaModel.createdAt,
       'UpdatedAt': airSeaModel.updatedAt,
+      'FormCategoryID': airSeaModel.formCategoryID,
     };
 
     final int requestId = await db.insert(
@@ -217,6 +218,7 @@ class AirSeaDao {
         'CreatedBy': airSeaModel.createdBy,
         'CreatedAt': airSeaModel.createdAt,
         'UpdatedAt': airSeaModel.updatedAt,
+        'FormCategoryID': airSeaModel.formCategoryID,
       };
 
       batch.insert(

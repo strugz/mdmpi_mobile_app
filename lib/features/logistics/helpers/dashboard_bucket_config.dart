@@ -51,6 +51,7 @@ class DashboardBucketConfig {
   static const Color _green = Color(0xFF2E9E6B);
   static const Color _rose = Color(0xFFE0507A);
   static const Color _indigo = Color(0xFF4B68FF);
+  static const Color _urgentRed = Color(0xFFDC2626);
 
   static const DashboardBucket _newRequest = DashboardBucket(
     label: BTexts.statusNewRequest,
@@ -163,6 +164,7 @@ class DashboardBucketConfig {
           _cancelled,
         ];
       case FormCategoryType.airSea:
+      case FormCategoryType.airSeaHd:
         return const [
           _newRequest,
           DashboardBucket(
@@ -216,6 +218,8 @@ class DashboardBucketConfig {
         return _rose;
       case FormCategoryType.stockReceive:
         return _violet;
+      case FormCategoryType.airSeaHd:
+        return _urgentRed;
     }
   }
 
@@ -234,6 +238,8 @@ class DashboardBucketConfig {
         return Iconsax.call;
       case FormCategoryType.stockReceive:
         return Iconsax.box_add;
+      case FormCategoryType.airSeaHd:
+        return Iconsax.airplane_square;
     }
   }
 }

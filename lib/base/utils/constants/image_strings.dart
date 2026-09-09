@@ -102,6 +102,7 @@ class BImages {
   ];
 
   // Icon paths
+  // Index-aligned with FormCategoryType.values — append only.
   static List<String> requestFormIconPaths = [
     'assets/icons/request/delivery.png',
     'assets/icons/request/pullOut.png',
@@ -109,5 +110,6 @@ class BImages {
     'assets/icons/request/seaAir.png',
     'assets/icons/request/hotlineDirect.png',
     'assets/icons/request/inventoryStock.png',
+    'assets/icons/request/seaAir.png', // Air / Sea / Land HD reuses the Air/Sea icon
   ];
 }

@@ -17,6 +17,7 @@ import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dar
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 
@@ -31,7 +32,7 @@ class AirSeaItemPackedSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final controller = Get.find<AirSeaController>();
+    final controller = AirSeaControllers.forRequest(requestModel);
     final cameraController = Get.find<CameraHandlerController>();
 
     // Add listener to trigger rebuild when dropdown changes
