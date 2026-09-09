@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.da
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
@@ -37,7 +38,7 @@ class AirSeaModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isCancelled = requestModel.status == BTexts.statusCancelled;
-    final controller = Get.find<AirSeaController>();
+    final controller = AirSeaControllers.forRequest(requestModel);
 
     // Load cancel remarks if cancelled
     if (isCancelled) {

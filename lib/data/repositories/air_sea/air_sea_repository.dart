@@ -121,7 +121,9 @@ class AirSeaRepository extends GetxController {
           return localData;
         }
       }
-      final url = _uri(_resource);
+      // includeHd=true: this build splits base vs HD rows client-side; the
+      // backend excludes HD rows by default so older builds stay unaffected.
+      final url = _uri('$_resource?includeHd=true');
 
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
@@ -174,7 +176,7 @@ class AirSeaRepository extends GetxController {
   /// Background sync from API (non-blocking)
   Future<void> _syncFromApi() async {
     try {
-      final url = _uri(_resource);
+      final url = _uri('$_resource?includeHd=true');
       final response = await _safeGet(url);
 
       if (response.statusCode == 200) {

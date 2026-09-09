@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
@@ -38,6 +39,7 @@ class DashboardController extends GetxController {
   PullOutController? _pullOut;
   PickUpController? _pickUp;
   AirSeaController? _airSea;
+  AirSeaHdController? _airSeaHd;
   StockReceiveController? _stockReceive;
 
   final List<Worker> _workers = [];
@@ -121,6 +123,7 @@ class DashboardController extends GetxController {
     _pullOut = _tryFind<PullOutController>();
     _pickUp = _tryFind<PickUpController>();
     _airSea = _tryFind<AirSeaController>();
+    _airSeaHd = _tryFind<AirSeaHdController>();
     _stockReceive = _tryFind<StockReceiveController>();
 
     _watch(_standardDelivery?.allPendingRequests);
@@ -128,6 +131,7 @@ class DashboardController extends GetxController {
     _watch(_pullOut?.pullOuts);
     _watch(_pickUp?.pickUps);
     _watch(_airSea?.airSeaRequests);
+    _watch(_airSeaHd?.airSeaRequests);
     _watch(_stockReceive?.stockReceives);
 
     _rebuildEntries();
@@ -191,6 +195,7 @@ class DashboardController extends GetxController {
         _guarded('pullOut', _pullOut?.loadPullOuts),
         _guarded('pickUp', _pickUp?.loadPickUps),
         _guarded('airSea', _airSea?.loadAirSeaRequests),
+        _guarded('airSeaHd', _airSeaHd?.loadAirSeaRequests),
         _guarded('stockReceive', _stockReceive?.loadStockReceives),
       ]);
     } finally {
@@ -249,6 +254,14 @@ class DashboardController extends GetxController {
     for (final request in _airSea?.airSeaRequests ?? const <AirSeaModel>[]) {
       result.add(DashboardEntry(
         module: FormCategoryType.airSea,
+        status: request.status,
+        date: DashboardAggregator.tryParseDate(request.datePickUp) ??
+            DashboardAggregator.tryParseDate(request.createdAt),
+      ));
+    }
+    for (final request in _airSeaHd?.airSeaRequests ?? const <AirSeaModel>[]) {
+      result.add(DashboardEntry(
+        module: FormCategoryType.airSeaHd,
         status: request.status,
         date: DashboardAggregator.tryParseDate(request.datePickUp) ??
             DashboardAggregator.tryParseDate(request.createdAt),

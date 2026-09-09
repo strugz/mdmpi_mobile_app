@@ -21,6 +21,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../data/repositories/image/image_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 
 /// Manager for Stock Receive domain orchestration (save/update flows).
 ///
@@ -321,7 +322,7 @@ class StockReceiveDataManager {
 
       // Filter for Stock Receive category only (formCategoryId = '7')
       final stockReceiveRequests =
-          results.where((r) => r.formCategoryId == '9').toList();
+          results.where((r) => r.formCategoryId == FormCategoryIds.stockReceive).toList();
 
       (controller.stockReceives as RxList<PullOutModel>)
           .assignAll(stockReceiveRequests);
@@ -354,7 +355,7 @@ class StockReceiveDataManager {
         allowLocalFallback: false,
       );
       final stockReceiveRequests =
-          results.where((r) => r.formCategoryId == '9').toList();
+          results.where((r) => r.formCategoryId == FormCategoryIds.stockReceive).toList();
 
       (controller.stockReceives as RxList<PullOutModel>)
           .assignAll(stockReceiveRequests);

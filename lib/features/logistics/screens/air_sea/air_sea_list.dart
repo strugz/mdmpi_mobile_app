@@ -27,12 +27,17 @@ const _rolePriority = {
 /// Main list screen for Air/Sea requests.
 /// Displays filtered requests with pull-to-refresh and tap handling based on user roles.
 class AirSeaList extends StatelessWidget {
-  const AirSeaList({super.key});
+  /// The Air/Sea controller instance to render. Defaults to the base
+  /// 'Air / Sea / Land' controller; the 'Air / Sea / Land HD' tab passes its
+  /// AirSeaHdController so the same widget serves both tabs.
+  const AirSeaList({super.key, this.controller});
+
+  final AirSeaController? controller;
 
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    final controller = Get.find<AirSeaController>();
+    final controller = this.controller ?? Get.find<AirSeaController>();
     final userController = Get.find<UserController>();
 
     return Obx(() {

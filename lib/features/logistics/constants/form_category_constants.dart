@@ -10,6 +10,11 @@ enum FormCategoryType {
   airSea,
   hotlineDirect,
   stockReceive,
+  // Appended LAST so the index-aligned home-grid lists (requestFormLabels,
+  // requestFormIconPaths, requestFormPages, tile accents) stay backward
+  // compatible with one appended entry each. Display order in the request
+  // tabs is controlled separately by RequestController.categoryOrder.
+  airSeaHd,
 }
 
 /// Extension to provide display names and category name matching for FormCategoryType.
@@ -32,6 +37,10 @@ extension FormCategoryTypeExtension on FormCategoryType {
         return 'Hotline Direct';
       case FormCategoryType.stockReceive:
         return 'Stock Receive';
+      case FormCategoryType.airSeaHd:
+        // Hotline-Direct (urgent) variant of Air / Sea / Land. Must match the
+        // server's a_tblcategory row (type='Form'); 19 chars fits varchar(20).
+        return 'Air / Sea / Land HD';
     }
   }
 
@@ -65,6 +74,8 @@ extension FormCategoryTypeExtension on FormCategoryType {
         return 4;
       case FormCategoryType.stockReceive:
         return 5;
+      case FormCategoryType.airSeaHd:
+        return 6;
     }
   }
 
@@ -84,13 +95,16 @@ extension FormCategoryTypeExtension on FormCategoryType {
         return 0; // Uses StandardDelivery()
       case FormCategoryType.stockReceive:
         return 1; // Uses PullOutForm()
+      case FormCategoryType.airSeaHd:
+        return 3; // Uses AirSeaForm()
     }
   }
 
   /// Returns true if this category uses a shared form from another category.
   bool get usesSharedForm {
     return this == FormCategoryType.hotlineDirect ||
-        this == FormCategoryType.stockReceive;
+        this == FormCategoryType.stockReceive ||
+        this == FormCategoryType.airSeaHd;
   }
 
   /// Returns the category type that this category's form is based on.
@@ -100,6 +114,8 @@ extension FormCategoryTypeExtension on FormCategoryType {
         return FormCategoryType.standardDelivery;
       case FormCategoryType.stockReceive:
         return FormCategoryType.pullOutReturn;
+      case FormCategoryType.airSeaHd:
+        return FormCategoryType.airSea;
       default:
         return this;
     }

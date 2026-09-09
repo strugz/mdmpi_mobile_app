@@ -58,6 +58,7 @@ import 'package:mdmpi_mobile_app/features/authentication/presentation/controller
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/verify_email_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_onboarding_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/chart_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_location_controller.dart';
@@ -210,6 +211,7 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => PullOutController(), fenix: true);
     Get.lazyPut(() => PickUpController(), fenix: true);
     Get.lazyPut(() => AirSeaController(), fenix: true);
+    Get.lazyPut(() => AirSeaHdController(), fenix: true);
     Get.lazyPut(() => HotlineDirectController(), fenix: true);
     Get.lazyPut(() => StockReceiveController(), fenix: true);
     Get.lazyPut(() => RequestController(), fenix: true);

@@ -12,6 +12,7 @@ import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.da
 import 'package:mdmpi_mobile_app/common/widgets/signature/captured_signature_image.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/air_sea/widgets/air_sea_dispatch_info_section.dart';
@@ -41,7 +42,7 @@ class AirSeaPage extends StatelessWidget {
     super.key,
     required this.requestModel,
     required this.config,
-  })  : controller = Get.find<AirSeaController>();
+  })  : controller = AirSeaControllers.forRequest(requestModel);
 
   @override
   /// Builds the full-screen request details view, including the header,

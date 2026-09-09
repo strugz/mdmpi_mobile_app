@@ -7,7 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/scanner/b_single_field_scanner.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 
 /// Widget for handling waybill input when status is "Endorsed to Guard".
@@ -21,7 +21,7 @@ class AirSeaWaybillInputSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<AirSeaController>();
+    final controller = AirSeaControllers.forRequest(requestModel);
     final dark = BHelperFunctions.isDarkMode(context);
 
     // Initialize waybill field with existing value if available

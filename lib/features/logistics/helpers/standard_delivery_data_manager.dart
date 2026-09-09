@@ -25,6 +25,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_mod
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 
 /// Manager for Standard Delivery domain orchestration (save/update flows).
 ///
@@ -148,7 +149,7 @@ class StandardDeliveryDataManager {
       // Reload requests based on form category
       // If it's Hotline Direct (form category ID '8'), refresh HotlineDirectController
       // Otherwise, refresh StandardDeliveryController
-      if (normalizedFormCategory == '8') {
+      if (normalizedFormCategory == FormCategoryIds.hotlineDirect) {
         try {
           final hotlineDirectController = Get.find<HotlineDirectController>();
           await hotlineDirectController.dataManager.fetchHotlineDirectRequests(
@@ -637,7 +638,7 @@ class StandardDeliveryDataManager {
 
       // Filter for Standard Delivery category only (formCategoryID = '6')
       final standardDeliveryRequests =
-          results.where((r) => r.formCategoryID == '6').toList();
+          results.where((r) => r.formCategoryID == FormCategoryIds.standardDelivery).toList();
 
       controller.allPendingRequests.assignAll(standardDeliveryRequests);
 
@@ -681,7 +682,7 @@ class StandardDeliveryDataManager {
       await _dbHelper.insertRequests(apiRequests);
 
       final standardDeliveryRequests =
-          apiRequests.where((r) => r.formCategoryID == '6').toList();
+          apiRequests.where((r) => r.formCategoryID == FormCategoryIds.standardDelivery).toList();
 
       controller.allPendingRequests.assignAll(standardDeliveryRequests);
 

@@ -5,7 +5,9 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
@@ -21,9 +23,21 @@ class AirSeaForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AirSeaController controller = Get.find();
     final StandardDeliveryController stdController = Get.find();
     final RequestController requestController = Get.find();
+
+    // This form is shared by the base 'Air / Sea / Land' tab and its urgent
+    // 'Air / Sea / Land HD' variant — bind to the controller matching the tab
+    // so the request is created (and the list refreshed) under the right
+    // category, mirroring how the Standard Delivery form serves Hotline Direct.
+    final selectedCategoryName =
+        requestController.currentSelectedCategory.value?.name ?? '';
+    final selectedType =
+        FormCategoryConstants.fromCategoryName(selectedCategoryName);
+    final AirSeaController controller =
+        selectedType == FormCategoryType.airSeaHd
+            ? Get.find<AirSeaHdController>()
+            : Get.find<AirSeaController>();
 
     final stdFormRefs = stdController.formState.documentReferenceControllers;
     if (stdFormRefs.isEmpty) {
@@ -112,6 +126,20 @@ class AirSeaForm extends StatelessWidget {
                                 ? 'Please select an item category'
                                 : null,
                           )),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+
+                      /// Form Category (read-only, driven by the selected tab)
+                      TextFormField(
+                        readOnly: true,
+                        enabled: false,
+                        initialValue: selectedCategoryName.isNotEmpty
+                            ? selectedCategoryName
+                            : FormCategoryType.airSea.categoryName,
+                        decoration: const InputDecoration(
+                          labelText: 'Form Category',
+                          prefixIcon: Icon(Iconsax.document),
+                        ),
+                      ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
                       /// Pick-Up Date (date only)

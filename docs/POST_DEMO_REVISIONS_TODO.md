@@ -18,7 +18,7 @@
 - [x] 7. Pick Up: multiple item-category selection — `L` (done app + backend via new `a_tblrequestpickupitemcategory` child table; run `MDMPI.App/migration_20260904_add_a_tblrequestpickupitemcategory.sql` and redeploy in lockstep)
 - [x] 8. Rename "Air / Sea" to "Air / Sea / Land" — `S` (relabel only, per decision; run `MDMPI.App/migration_20260904_rename_air_sea_category.sql` together with this app build)
 - [x] 9. Hotline Direct: allow driver (Courier) to create requests — `M` (done; Courier creates on the Hotline tab only and can prepare their own requests; no backend change)
-- [ ] 10. Hotline Direct: support Air/Sea requests — `L` (decision needed)
+- [x] 10. Hotline Direct: support Air/Sea requests — `L` (done as a new "Air / Sea / Land HD" form category, per decision; run `MDMPI.App/migration_20260909_add_air_sea_formcategoryid.sql` first, then `migration_20260909_add_air_sea_hd_category.sql` together with this app build + backend deploy; add the "HD" role in Firestore and assign it to the designated requestors)
 - [x] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (done app + backend via new `a_tblbackloaditem` table; per decision the courier unchecks items at For Delivery before Drop Off — run `MDMPI.App/migration_20260907_add_a_tblbackloaditem.sql` and redeploy in lockstep)
 - [x] 12. Stock Receive: document reference optional — `S` (done app-side only; Pull Out / Return and all other forms keep it required)
 
@@ -386,6 +386,42 @@ workflows. `AirSeaController` does **not** implement that interface yet — maki
 so is the natural first step either way.
 
 **Related.** This pairs with item 8 — decide 8 and 10 together.
+
+**Implemented (2026-09-09) — shape 1, as a new form category "Air / Sea / Land HD".**
+The HD tab is to Air/Sea what Hotline Direct is to Standard Delivery: one table
+(`a_tblrequestairsea`), one endpoint (`/api4/RequestAirSea`), two tabs split by a new
+nullable `formcategoryid` column. Decisions locked in: same status flow & role matrix
+as base Air/Sea; tab sits right after "Air / Sea / Land"; creation restricted to
+designated users holding the new **"HD" role** (Firestore `Roles` collection — assign
+`HD` in the user's comma-separated Role field; workflow actions stay with
+Release/Courier/Provincial).
+
+- **Backend (MDMPI.App):** nullable `FormCategoryID` on entity/history/DTOs;
+  set on insert only. `GET /api4/RequestAirSea` **excludes HD rows unless
+  `includeHd=true`** — the currently deployed mobile build (which sends no
+  params) keeps receiving exactly the pre-HD dataset, so old clients are
+  unaffected. Migrations at MDMPI.App root:
+  `migration_20260909_add_air_sea_formcategoryid.sql` (column on table +
+  history + full re-emit of `trg_a_tblrequestairsea_history_fn`; safe to run
+  early) and `migration_20260909_add_air_sea_hd_category.sql` (pins category
+  id **21**, name `'Air / Sea / Land HD'`, type `Form` — run together with the
+  app rollout; verify id 21 is free first).
+- **App:** `FormCategoryType.airSeaHd` appended last (home-grid lists appended
+  in lockstep); new `FormCategoryIds` constants home (`'4'/'6'/'8'/'9'/'10'`
+  literals swept); `AirSeaCategoryScope` splits rows in `AirSeaDataManager`
+  (NULL/legacy rows stay on the base tab); `AirSeaHdController extends
+  AirSeaController` (no duplicated stack) + `AirSeaControllers.forRequest(...)`
+  resolves the owning controller in shared pages/sections/dialogs; the shared
+  `AirSeaForm` binds to the tab's controller and shows the category read-only;
+  the create FAB on the HD tab requires the parsed `HD` role; dashboard shares
+  the Air/Sea buckets with its own accent/icon; settings hard-reset gained an
+  HD entry; local DB v17→18 adds `FormCategoryID` to `a_tblRequestAirSea`
+  (destructive cache rebuild — local cache re-syncs on first launch);
+  `AirSeaRepository` GETs with `includeHd=true`. SMS dispatches on model type,
+  so HD inherits the Air/Sea payloads unchanged.
+- **Rollout order (keeps old clients safe):** schema migration → backend deploy
+  → category INSERT + APK distribution together → add/assign the `HD` role in
+  Firestore.
 
 ---
 

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dialogs/cancel_reason_dialog.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
@@ -73,7 +73,7 @@ class BDialog {
       }
 
       if (requestModel is AirSeaModel) {
-        final requestController = Get.find<AirSeaController>();
+        final requestController = AirSeaControllers.forRequest(requestModel);
         await CancelReasonDialog.show(
           context,
           (reason) async =>

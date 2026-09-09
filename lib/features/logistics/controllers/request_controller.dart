@@ -12,6 +12,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_control
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pick_up_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/b_filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/hotline_direct/hotline_direct_list.dart';
@@ -81,6 +82,7 @@ class RequestController extends GetxController {
     'Pull Out / Return',
     'Pick Up',
     'Air / Sea / Land',
+    'Air / Sea / Land HD',
     'Hotline Direct',
     'Stock Receive',
   ];
@@ -209,6 +211,12 @@ class RequestController extends GetxController {
     final lowerName = categoryName.toLowerCase();
 
     try {
+      // Exact-name resolution first: 'Air / Sea / Land HD' would otherwise be
+      // swallowed by the fuzzy contains('air')/contains('sea') branch below.
+      if (FormCategoryConstants.fromCategoryName(categoryName) ==
+          FormCategoryType.airSeaHd) {
+        return Get.find<AirSeaHdController>();
+      }
       if (lowerName.contains('standard') || lowerName.contains('delivery')) {
         return Get.find<StandardDeliveryController>();
       } else if (lowerName.contains('pull')) {
@@ -236,6 +244,11 @@ class RequestController extends GetxController {
   Widget getListWidgetForCategory(String categoryName) {
     final lowerName = categoryName.toLowerCase();
 
+    // Exact-name resolution first (see getControllerForCategory).
+    if (FormCategoryConstants.fromCategoryName(categoryName) ==
+        FormCategoryType.airSeaHd) {
+      return AirSeaList(controller: Get.find<AirSeaHdController>());
+    }
     if (lowerName.contains('standard') || lowerName.contains('delivery')) {
       return const BList();
     } else if (lowerName.contains('pull')) {

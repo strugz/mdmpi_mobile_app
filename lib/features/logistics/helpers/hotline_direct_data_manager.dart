@@ -25,6 +25,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_mod
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 
 /// Manager for Hotline Direct domain orchestration (save/update flows).
 ///
@@ -479,7 +480,7 @@ class HotlineDirectDataManager {
 
       // Filter for Hotline Direct category only (formCategoryID = '8')
       final hotlineDirectRequests =
-          results.where((r) => r.formCategoryID == '8').toList();
+          results.where((r) => r.formCategoryID == FormCategoryIds.hotlineDirect).toList();
 
       controller.allPendingRequests.assignAll(hotlineDirectRequests);
 
@@ -516,7 +517,7 @@ class HotlineDirectDataManager {
       await _dbHelper.insertRequests(apiRequests);
 
       final hotlineDirectRequests =
-          apiRequests.where((r) => r.formCategoryID == '8').toList();
+          apiRequests.where((r) => r.formCategoryID == FormCategoryIds.hotlineDirect).toList();
 
       controller.allPendingRequests.assignAll(hotlineDirectRequests);
       controller.filterManager
@@ -637,7 +638,7 @@ class HotlineDirectDataManager {
       final requests = await _dbHelper.getRequests();
       // Filter for Hotline Direct category (formCategoryID = '8')
       final hotlineDirectRequests =
-          requests.where((r) => r.formCategoryID == '8').toList();
+          requests.where((r) => r.formCategoryID == FormCategoryIds.hotlineDirect).toList();
 
       for (var request in hotlineDirectRequests) {
         if (request.status != BTexts.statusNewRequest) {

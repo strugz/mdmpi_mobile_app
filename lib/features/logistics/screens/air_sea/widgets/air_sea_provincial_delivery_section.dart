@@ -10,7 +10,7 @@ import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
 import 'package:mdmpi_mobile_app/common/widgets/popups/image_preview_dialog.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 
@@ -35,7 +35,7 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<AirSeaController>();
+    final controller = AirSeaControllers.forRequest(requestModel);
     final formState = controller.formState;
     final dark = BHelperFunctions.isDarkMode(context);
     final textColor = dark ? BColors.light : BColors.black;

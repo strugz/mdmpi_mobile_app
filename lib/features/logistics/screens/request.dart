@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/filter_dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/panels/custom_filter_panel.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -1077,11 +1078,19 @@ class _RequestScreenState extends State<RequestScreen>
           final role = userController.user.value.role;
           // Couriers (drivers) may create requests, but only on the Hotline
           // Direct tab; everywhere else creation stays with the Request role.
-          final isHotlineTab = FormCategoryConstants.fromCategoryName(
-                  controller.currentSelectedCategory.value?.name ?? '') ==
-              FormCategoryType.hotlineDirect;
-          final canCreate = role.contains(BTexts.roleRequest) ||
-              (isHotlineTab && role.contains(BTexts.roleCourier));
+          // The Air / Sea / Land HD tab is restricted to designated users
+          // holding the HD role.
+          final selectedTabType = FormCategoryConstants.fromCategoryName(
+              controller.currentSelectedCategory.value?.name ?? '');
+          final isHotlineTab = selectedTabType == FormCategoryType.hotlineDirect;
+          final bool canCreate;
+          if (selectedTabType == FormCategoryType.airSeaHd) {
+            canCreate = RoleResolver.hasRole(
+                RoleResolver.parseRoles(role), BTexts.roleHd);
+          } else {
+            canCreate = role.contains(BTexts.roleRequest) ||
+                (isHotlineTab && role.contains(BTexts.roleCourier));
+          }
           if (!canCreate) {
             return Container();
           } else {
