@@ -69,9 +69,9 @@ class _PullOutLostItemsSectionState extends State<PullOutLostItemsSection> {
       });
       // Seed remark editors from any previously entered state.
       for (final item in _items) {
-        final existing = _lostItemRemarks[item.itemCode];
+        final existing = _lostItemRemarks[item.referenceCode];
         if (existing != null) {
-          _ctrlFor(item.itemCode).text = existing;
+          _ctrlFor(item.referenceCode).text = existing;
         }
       }
     } else {
@@ -85,8 +85,10 @@ class _PullOutLostItemsSectionState extends State<PullOutLostItemsSection> {
     }
   }
 
-  TextEditingController _ctrlFor(String itemCode) =>
-      _remarkCtrls.putIfAbsent(itemCode, () => TextEditingController());
+  /// Keyed by [InventoryItemModel.referenceCode], not the raw item code:
+  /// a line entered from a Stock Issue Slip may have no item code at all.
+  TextEditingController _ctrlFor(String code) =>
+      _remarkCtrls.putIfAbsent(code, () => TextEditingController());
 
   @override
   void dispose() {
@@ -125,27 +127,27 @@ class _PullOutLostItemsSectionState extends State<PullOutLostItemsSection> {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
-                  value: !lost.containsKey(item.itemCode),
+                  value: !lost.containsKey(item.referenceCode),
                   title: Text(
-                    '${item.itemCode} — ${item.description}',
+                    '${item.referenceCode} — ${item.description}',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text('Qty: ${item.qty} ${item.unit}'),
                   onChanged: (included) {
                     if (included == true) {
-                      lost.remove(item.itemCode);
+                      lost.remove(item.referenceCode);
                     } else {
-                      lost[item.itemCode] = _ctrlFor(item.itemCode).text.trim();
+                      lost[item.referenceCode] = _ctrlFor(item.referenceCode).text.trim();
                     }
                   },
                 ),
-                if (lost.containsKey(item.itemCode))
+                if (lost.containsKey(item.referenceCode))
                   Padding(
                     padding: const EdgeInsets.only(
                         left: BSizes.lg, bottom: BSizes.sm),
                     child: TextField(
-                      controller: _ctrlFor(item.itemCode),
+                      controller: _ctrlFor(item.referenceCode),
                       maxLines: 2,
                       decoration: const InputDecoration(
                         labelText: 'Reason (required)',
@@ -153,7 +155,7 @@ class _PullOutLostItemsSectionState extends State<PullOutLostItemsSection> {
                         hintText: 'Why was this item not pulled out?',
                       ),
                       onChanged: (value) =>
-                          lost[item.itemCode] = value.trim(),
+                          lost[item.referenceCode] = value.trim(),
                     ),
                   ),
               ],

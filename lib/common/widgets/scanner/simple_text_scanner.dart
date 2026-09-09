@@ -54,6 +54,7 @@ class _SimpleTextScannerState extends State<SimpleTextScanner> {
 
       final InputImage inputImage = InputImage.fromFile(file);
       final String rawText = await textRecognition.processImage(inputImage);
+      logDebug('SimpleTextScanner raw OCR text:\n$rawText');
 
       final RegExp inventoryHeader =
           RegExp(r'inventory\s*transfer', caseSensitive: false);

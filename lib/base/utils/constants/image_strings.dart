@@ -60,6 +60,8 @@ class BImages {
       "assets/icons/payment_methods/payment-check.png";
 
   /// Animations
+  static const String messageSentIllustration =
+      "assets/images/animations/message_sent.svg";
   static const String deliveredEmailIllustration =
       "assets/images/animations/sammy-line-man-receives-a-mail.png";
 

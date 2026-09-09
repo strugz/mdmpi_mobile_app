@@ -13,16 +13,30 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 
 class LoadingScreenController extends GetxController {
   var isLoading = false.obs; // Observable boolean to track loading state
+  final RxString loadingProgressText = ''.obs;
 
   final clientController = Get.find<ClientController>();
   final userController = Get.find<UserController>();
   final userMDMPIController = Get.find<UserMdmpiController>();
 
   Future<void> loadInitialData() async {
+    final steps = <({String label, Future<void> Function() run})>[
+      (label: 'Clients', run: () => clientController.fetchClientFromDb(false)),
+      (label: 'Users', run: () => userController.fetchUsersRecord(false)),
+      (label: 'User Profile', run: () => userController.fetchUserRecord()),
+      (
+        label: 'Requesters',
+        run: () => userMDMPIController.fetchUserMdmpiFromDb()
+      ),
+      (label: 'Item Categories', run: _loadItemCategories),
+      (label: 'Form Categories', run: _loadFormCategories),
+    ];
+
     try {
       //  Start Data Loading
-      BFullScreenLoader.openLoadingDialog(
-          'Data is Loading...', BImages.docerAnimation);
+      loadingProgressText.value = 'Data is Loading... (0/${steps.length})';
+      BFullScreenLoader.openProgressLoadingDialog(
+          loadingProgressText, BImages.docerAnimation);
 
       //  Check Internet Connectivity
       final isConnected = await NetworkManager.instance.isConnected();
@@ -31,24 +45,18 @@ class LoadingScreenController extends GetxController {
         return;
       }
 
-      await clientController.fetchClientFromDb(false);
-
-      await userController.fetchUsersRecord(false);
-
-      await userController.fetchUserRecord();
-
-
-      await userMDMPIController.fetchUserMdmpiFromDb();
-
-      // Load ItemCategory and FormCategory to local DB
-      await _loadItemCategories();
-      await _loadFormCategories();
+      for (var i = 0; i < steps.length; i++) {
+        loadingProgressText.value =
+            'Loading ${steps[i].label}... (${i + 1}/${steps.length})';
+        await steps[i].run();
+      }
 
       BFullScreenLoader.stopLoading();
 
       AuthenticationRepository.instance.screenRedirect();
     } catch (e) {
       logDebug("Error loading initial data: $e");
+      BFullScreenLoader.stopLoading();
     }
   }
 

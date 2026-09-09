@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" fill="none">
+  <!-- Soft background circle -->
+  <circle cx="120" cy="100" r="86" fill="#4B68FF" fill-opacity="0.08"/>
+
+  <!-- Dashed swoosh trail -->
+  <path d="M28 156 C 56 168, 96 160, 112 128"
+        stroke="#9AA4B2" stroke-width="4" stroke-linecap="round"
+        stroke-dasharray="2 12" fill="none"/>
+
+  <!-- Paper plane, tilted up-right -->
+  <g transform="rotate(-12 128 96)">
+    <!-- Lower body (darker) -->
+    <path d="M62 118 L188 62 L128 132 L112 116 Z" fill="#3554E8"/>
+    <!-- Top wing (lighter) -->
+    <path d="M62 118 L188 62 L104 100 Z" fill="#4B68FF"/>
+    <!-- Inner fold shadow -->
+    <path d="M104 100 L188 62 L112 116 Z" fill="#2A44C4"/>
+    <!-- Fold keel -->
+    <path d="M112 116 L128 132 L124 108 Z" fill="#1E339E"/>
+  </g>
+
+  <!-- Green check badge -->
+  <circle cx="172" cy="138" r="30" fill="#4CAF50"/>
+  <circle cx="172" cy="138" r="30" stroke="#FFFFFF" stroke-width="4"/>
+  <path d="M158 138 L168 149 L187 128"
+        stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"
+        stroke-linejoin="round" fill="none"/>
+
+  <!-- Sparkle accents -->
+  <g stroke="#4B68FF" stroke-width="3.5" stroke-linecap="round">
+    <path d="M58 52 v14 M51 59 h14"/>
+    <path d="M196 34 v10 M191 39 h10"/>
+  </g>
+  <circle cx="86" cy="30" r="4" fill="#4CAF50" fill-opacity="0.7"/>
+  <circle cx="214" cy="92" r="3.5" fill="#9AA4B2"/>
+</svg>

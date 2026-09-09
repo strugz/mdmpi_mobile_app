@@ -174,7 +174,8 @@ class PullOutRequestCard extends StatelessWidget {
 
     switch (result) {
       case SmsSuccess():
-        BLoaders.successSnackBar(title: 'SMS sent', message: result.message);
+        // Full success is celebrated by the "Message Sent!" screen shown
+        // inside sendSmsMessage; no snackbar needed here.
         return;
       case SmsPartialSuccess():
         BLoaders.warningSnackBar(

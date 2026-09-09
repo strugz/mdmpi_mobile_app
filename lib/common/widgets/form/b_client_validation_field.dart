@@ -34,32 +34,38 @@ class BClientValidationField extends StatelessWidget {
   /// The error message displayed when validation fails.
   final String errorMessage;
 
+  bool get _hasClient {
+    final ClientModel? client = clientInformation.value;
+    return client != null && !client.isEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     return FormField<String>(
-      validator: (_) {
-        final ClientModel? client = clientInformation.value;
-        if (client == null || client.id.isEmpty) {
-          return errorMessage;
-        }
-        return null;
-      },
+      validator: (_) => _hasClient ? null : errorMessage,
       builder: (FormFieldState<String> formFieldState) {
-        return formFieldState.hasError
-            ? Padding(
-                padding: const EdgeInsets.only(left: BSizes.sm, top: 4.0),
-                child: Text(
-                  formFieldState.errorText ?? '',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 12,
+        return Obx(() {
+          // Clear the error as soon as a client is picked, instead of
+          // waiting for the next submit attempt.
+          if (_hasClient && formFieldState.hasError) {
+            WidgetsBinding.instance
+                .addPostFrameCallback((_) => formFieldState.validate());
+          }
+
+          return formFieldState.hasError
+              ? Padding(
+                  padding: const EdgeInsets.only(left: BSizes.sm, top: 4.0),
+                  child: Text(
+                    formFieldState.errorText ?? '',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-              )
-            : const SizedBox.shrink();
+                )
+              : const SizedBox.shrink();
+        });
       },
     );
   }
 }
-
-

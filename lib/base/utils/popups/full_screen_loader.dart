@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
@@ -64,6 +66,87 @@ class BFullScreenLoader {
         ),
       ),
     );
+  }
+
+  /// Open a full-screen loading dialog whose text updates live from [text].
+  ///
+  ///   Parameters:
+  ///   - text: Observable text; updating its value refreshes the dialog.
+  ///   - animation: The Lottie animation to be shown.
+  static void openProgressLoadingDialog(RxString text, String animation) {
+    showDialog(
+      context: Get.overlayContext!,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Container(
+          color: BHelperFunctions.isDarkMode(Get.context!)
+              ? BColors.dark
+              : BColors.white,
+          width: double.infinity,
+          height: double.infinity,
+          child: Column(
+            children: [
+              const SizedBox(height: 250),
+              Obx(() =>
+                  BAnimationLoaderWidget(text: text.value, animation: animation))
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Show a full-screen "Message Sent!" success view with the paper-plane
+  /// illustration, then auto-dismiss it. The returned future completes only
+  /// after the view has been dismissed, so callers can await the full
+  /// lifecycle before popping any route of their own.
+  static Future<void> openMessageSentDialog({
+    Duration displayDuration = const Duration(seconds: 2),
+  }) async {
+    final dialogFuture = showDialog<void>(
+      context: Get.overlayContext!,
+      barrierDismissible: false,
+      builder: (_) => PopScope(
+        canPop: false,
+        child: Container(
+          color: BHelperFunctions.isDarkMode(Get.context!)
+              ? BColors.dark
+              : BColors.white,
+          width: double.infinity,
+          height: double.infinity,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  BImages.messageSentIllustration,
+                  width: MediaQuery.of(Get.context!).size.width * 0.6,
+                ),
+                const SizedBox(height: BSizes.defaultSpace),
+                Text(
+                  'Message Sent!',
+                  style: Theme.of(Get.context!).textTheme.headlineMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: BSizes.sm),
+                Text(
+                  'All recipients have been notified via SMS.',
+                  style: Theme.of(Get.context!)
+                      .textTheme
+                      .bodyMedium
+                      ?.apply(color: BColors.darkGrey),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await Future.delayed(displayDuration);
+    stopLoading();
+    await dialogFuture;
   }
 
   /// Open a half screen dialog for Pick and Dispatch Items and Delivery of Items

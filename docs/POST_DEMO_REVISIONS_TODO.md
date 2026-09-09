@@ -20,7 +20,7 @@
 - [x] 9. Hotline Direct: allow driver (Courier) to create requests — `M` (done; Courier creates on the Hotline tab only and can prepare their own requests; no backend change)
 - [ ] 10. Hotline Direct: support Air/Sea requests — `L` (decision needed)
 - [x] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (done app + backend via new `a_tblbackloaditem` table; per decision the courier unchecks items at For Delivery before Drop Off — run `MDMPI.App/migration_20260907_add_a_tblbackloaditem.sql` and redeploy in lockstep)
-- [ ] 12. Stock Receive: document reference optional — `S`
+- [x] 12. Stock Receive: document reference optional — `S` (done app-side only; Pull Out / Return and all other forms keep it required)
 
 ---
 
@@ -457,11 +457,19 @@ Pull Out** (Stock Receive has no form of its own — it reuses `PullOutForm` /
    is empty or contains blanks. (Pull Out's identical guard at
    `pull_out_data_manager.dart:69-79` must stay.)
 
-**Plan**
-- [ ] Add an `isRequired` (or custom validator) parameter to `BDocumentReference`; keep the duplicate-value check active.
-- [ ] Derive the flag inside `pull_out_form.dart:126-127` from `RequestController.currentSelectedCategory == FormCategoryType.stockReceive`.
-- [ ] Relax `stock_receive_data_manager.dart:77-87` to strip blanks instead of erroring.
-- [ ] Optionally stop force-adding the blank field for Stock Receive (`pull_out_form.dart:35-38, :78`).
+**Implemented (app-side only — no backend or model change needed).**
+- [x] `BDocumentReference` gained `isRequired` (default `true`, so every other
+  form is unchanged): an empty field no longer errors when optional, the label
+  reads "Document Reference (optional)", and the duplicate-value check stays
+  active either way.
+- [x] `pull_out_form.dart` passes `isRequired: !isStockReceive` using the
+  `FormCategoryConstants.fromCategoryName` check the form already computes.
+- [x] `stock_receive_data_manager.dart` strips blank fields instead of
+  erroring; `PullOutMapper.toInsertDto` already sends `null` for an empty
+  list, so the insert chain tolerates no references end to end.
+- [x] The auto-added blank field was kept (harmless now that it validates and
+  saves as "no reference"); Pull Out's own required guard
+  (`pull_out_data_manager.dart`) is untouched.
 
 ---
 
