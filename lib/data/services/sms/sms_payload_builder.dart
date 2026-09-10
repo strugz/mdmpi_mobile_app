@@ -122,6 +122,9 @@ class SmsPayloadBuilder {
           : model.cancelRemarks.remarks,
       completionStatusLabel: isStockReceive ? 'STOCK RECEIVED' : 'TAKEN OUT',
       inventoryItems: const [],
+      // Stamped locally when the courier moves the request to In Transit
+      // (Pull Out / Return and Stock Receive share this model); Pause clears it.
+      dispatchAt: model.pullOutDateStartAt,
     );
   }
 

@@ -68,10 +68,17 @@ class SmsMessageTemplateService {
             'Status: $status.'
             '$dispatchTimeLine'
             '$targetDateLine';
+      case BTexts.statusInTransit:
+        // Pull Out / Return and Stock Receive: courier started the trip.
+        return '${payload.clientName} \n'
+            'Document References:\n'
+            '$documentReferencesText\n'
+            'Status: $status.'
+            '$dispatchTimeLine'
+            '$targetDateLine';
       case BTexts.statusItemPacked:
       case BTexts.statusForDispatch:
       case BTexts.statusForPullOut:
-      case BTexts.statusInTransit:
       case BTexts.statusEndorsedToGuard:
       case BTexts.statusDropOff:
       case BTexts.statusProvincialPickUp:

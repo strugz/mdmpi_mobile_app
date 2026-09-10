@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/data/services/sms/sms_message_template_service.
 import 'package:mdmpi_mobile_app/data/services/sms/sms_payload_builder.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 import '../../../fixtures/sms_payload_fixtures.dart';
@@ -102,5 +103,31 @@ void main() {
           await const SmsPayloadBuilder().build(BTexts.statusDispatch, model);
       expect(payload!.dispatchAt, stamped);
     });
+
+    test('Pull Out / Stock Receive map pullOutDateStartAt', () async {
+      final model = PullOutModel(
+        id: '3',
+        clientId: 'C1',
+        requestStatus: BTexts.statusInTransit,
+        pullOutDateStartAt: stamped,
+      );
+      final payload =
+          await const SmsPayloadBuilder().build(BTexts.statusInTransit, model);
+      expect(payload!.dispatchAt, stamped);
+    });
+  });
+
+  test('In Transit (Pull Out / Stock Receive) prints the time', () {
+    final message = service.createMessage(
+      BTexts.statusInTransit,
+      SmsPayloadFixtures.base(dispatchAt: stamped),
+    );
+    expect(message, contains('Status: In Transit.'));
+    expect(message, contains('Dispatched At: Sep 9, 2026 03:03 PM.'));
+
+    // A paused request has its start time cleared: no line.
+    final paused =
+        service.createMessage(BTexts.statusInTransit, SmsPayloadFixtures.base());
+    expect(paused, isNot(contains('Dispatched At')));
   });
 }

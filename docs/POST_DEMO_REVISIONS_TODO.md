@@ -600,7 +600,11 @@ capture:
 filled from `deliveredAt` (Standard Delivery / Hotline Direct) and `dispatchedAt`
 (Air / Sea / Land, both tabs). The template appends `Dispatched At: <Sep 9, 2026
 03:03 PM>.` to the `For Delivery` text and to a now-dedicated `Dispatch` case (the
-other statuses in the shared branch are unchanged). New
+other statuses in the shared branch are unchanged). Extended the same day to
+**Pull Out / Return and Stock Receive**: their `In Transit` text carries the line from
+`pullOutDateStartAt` (Pause clears it, so an On Hold request prints none). Pick Up has
+no courier trip and Backload sends no SMS, so every module with a dispatch-like step is
+now covered. New
 `SmsMessageTemplateService.formatTimeForSms` renders `DateTime.now().toString()` /
 ISO values via `BFormatter.formatDateWithAmPm` with raw-text fallback, and the
 completion lines (`Date Time Received/Completed/...`) use it too. Not blocked by item
