@@ -122,8 +122,22 @@ class DeliveryLocationController extends GetxController {
   Set<Marker> riderBuildMarkers() {
     final nextMarkers = <String, Marker>{};
 
+    // Retire cars that stopped reporting, then draw at most one car per
+    // rider — a finished request's last position must not sit under the
+    // courier's current one (TODO item 17).
+    webSocketController.pruneStale();
+    final visible = WebSocketDeliveryController.visibleRequestIds(
+      webSocketController.riderLocationUpdates,
+      now: DateTime.now(),
+    );
+    previousPositions
+        .removeWhere((id, _) => !webSocketController.riderLocations.containsKey(id));
+    markerBearings
+        .removeWhere((id, _) => !webSocketController.riderLocations.containsKey(id));
+
     webSocketController.riderLocations.forEach((requestId, position) {
       if (position.latitude == 0.0 || position.longitude == 0.0) return;
+      if (!visible.contains(requestId)) return;
 
       final previousPosition = previousPositions[requestId];
       final movementMeters = previousPosition == null

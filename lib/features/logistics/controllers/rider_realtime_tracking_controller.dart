@@ -27,6 +27,7 @@ class RiderRealtimeTrackingController extends GetxController {
 
   StreamSubscription<Position>? _positionSubscription;
   StandardDeliveryModel? _activeRequest;
+  Position? _lastPosition;
   bool _isStarting = false;
   String _eta = 'Calculating...';
   String _distance = 'Calculating...';
@@ -55,7 +56,8 @@ class RiderRealtimeTrackingController extends GetxController {
     }
 
     _isStarting = true;
-    await stopTracking();
+    // Switching requests: tell the watchers the previous car is gone.
+    await stopTracking(finalStatus: 'tracking_stopped');
 
     _activeRequest = request;
     activeRequestId.value = request.id;
@@ -107,7 +109,14 @@ class RiderRealtimeTrackingController extends GetxController {
     }
   }
 
-  Future<void> stopTracking() async {
+  /// Stops sharing location and, when a request was being tracked, sends one
+  /// final frame with [finalStatus] so every watcher removes the car — until
+  /// this, a finished request's last position stayed on the map next to the
+  /// courier's next dispatch (TODO item 17). Pass `null` to stop silently.
+  Future<void> stopTracking({String? finalStatus = 'completed'}) async {
+    final request = _activeRequest;
+    final lastPosition = _lastPosition;
+
     await _positionSubscription?.cancel();
     _positionSubscription = null;
     await _locationTrackingService.stopTracking();
@@ -115,11 +124,68 @@ class RiderRealtimeTrackingController extends GetxController {
     isTracking.value = false;
     activeRequestId.value = '';
     _activeRequest = null;
+    _lastPosition = null;
+
+    if (request != null && finalStatus != null) {
+      _announceTerminal(request, lastPosition, finalStatus);
+    }
+  }
+
+  void _announceTerminal(
+    StandardDeliveryModel request,
+    Position? lastPosition,
+    String finalStatus,
+  ) {
+    final frame = RiderLocationModel(
+      type: 'location_update',
+      requestId: request.id,
+      latitude: lastPosition?.latitude ?? 0.0,
+      longitude: lastPosition?.longitude ?? 0.0,
+      timestamp: DateTime.now(),
+      status: finalStatus,
+      riderInitial: request.deliveredBy,
+      eta: '',
+      distance: '',
+      client: request.client.name,
+    );
+    final payload = jsonEncode(frame.toJson());
+
+    // Older en_route frames for this request must never be replayed after
+    // the terminal one, or the car would come back on reconnect.
+    _storage.write(
+        _queueKey, dropQueuedForRequest(_readQueue(), request.id));
+
+    if (_webSocketController.isConnected.value) {
+      _webSocketController.sendMessage(payload);
+    } else {
+      _queueUpdate(payload);
+      _webSocketController.reconnectWebSocket();
+    }
+  }
+
+  /// Removes every queued frame belonging to [requestId]. Unparsable entries
+  /// are dropped as well (they could never be sent meaningfully).
+  @visibleForTesting
+  static List<String> dropQueuedForRequest(
+      List<String> queue, String requestId) {
+    final kept = <String>[];
+    for (final payload in queue) {
+      try {
+        final decoded = jsonDecode(payload);
+        if (decoded is! Map) continue;
+        if (decoded['RequestID']?.toString() == requestId) continue;
+        kept.add(payload);
+      } catch (_) {
+        continue;
+      }
+    }
+    return kept;
   }
 
   void _sendPositionUpdate(Position position) {
     final request = _activeRequest;
     if (request == null) return;
+    _lastPosition = position;
 
     final riderLocation = RiderLocationModel(
       type: 'location_update',
