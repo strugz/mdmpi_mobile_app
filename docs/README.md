@@ -19,6 +19,8 @@ docs/
     ANDROID_LOGISTICS_WORKFLOW_PRESENTATION.md # Android workflow presentation and training
     ADMIN_GUIDE.md                   # Operations admin support guide
     DEVELOPER_GUIDE.md               # Developer setup and architecture guide
+    LOGISTICS_PROCESS_FLOW_AND_NARRATIVE.docx # ISO / QMS Logistics process flow and user narrative (Word)
+    COLLECTION_PROCESS_FLOW_AND_NARRATIVE.docx # ISO / QMS Collection process flow and user narrative (Word)
   modules/
     air-sea/README.md                # Air / Sea / Land logistics module (base + HD tabs)
     air-sea/HISTORY_MODEL_PLAN.md    # Superseded history-model plan (see banner in file)
@@ -45,6 +47,8 @@ docs/
 | Android Workflow Training | [application/ANDROID_LOGISTICS_WORKFLOW_PRESENTATION.md](application/ANDROID_LOGISTICS_WORKFLOW_PRESENTATION.md) |
 | Logistics Operations Admins | [application/ADMIN_GUIDE.md](application/ADMIN_GUIDE.md) |
 | Logistics Developers | [application/DEVELOPER_GUIDE.md](application/DEVELOPER_GUIDE.md) |
+| ISO / QMS Documentation (Logistics) | [application/LOGISTICS_PROCESS_FLOW_AND_NARRATIVE.docx](application/LOGISTICS_PROCESS_FLOW_AND_NARRATIVE.docx) |
+| ISO / QMS Documentation (Collection) | [application/COLLECTION_PROCESS_FLOW_AND_NARRATIVE.docx](application/COLLECTION_PROCESS_FLOW_AND_NARRATIVE.docx) |
 
 ## Module Documentation
 
