@@ -46,7 +46,6 @@ import 'package:mdmpi_mobile_app/data/repositories/client/client_repository.dart
 import 'package:mdmpi_mobile_app/data/repositories/common/contact_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
-import 'package:mdmpi_mobile_app/data/repositories/delivery_vehicle/delivery_vehicle_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/image/image_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/inventory/inventory_item_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pick_up/pick_up_repository.dart';
@@ -62,7 +61,6 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_contr
 import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/chart_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_location_controller.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_vehicle_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/dashboard_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/inventory_item_controller.dart';
@@ -143,7 +141,6 @@ class GeneralBindings extends Bindings {
       Get.lazyPut(() => UserMDMPIRepository(), fenix: true);
       Get.lazyPut(() => StandardDeliveryRepository(), fenix: true);
       Get.lazyPut(() => ImageRepository(), fenix: true);
-      Get.lazyPut(() => DeliveryVehicleRepository(), fenix: true);
       Get.lazyPut(() => PullOutRepository(), fenix: true);
       Get.lazyPut(() => PickUpRepository(), fenix: true);
       Get.lazyPut(() => AirSeaRepository(), fenix: true);
@@ -186,7 +183,6 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => WebSocketDispatcherController(), fenix: true);
     Get.lazyPut(() => RiderRealtimeTrackingController(), fenix: true);
     Get.lazyPut(() => RequestTransportController(), fenix: true);
-    Get.lazyPut(() => DeliveryVehicleController(), fenix: true);
     Get.lazyPut(() => ClientController(), fenix: true);
     Get.lazyPut(() => UserMdmpiController(), fenix: true);
     Get.lazyPut(() => WebSocketDeliveryController(), fenix: true);

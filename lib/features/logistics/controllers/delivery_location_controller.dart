@@ -1,35 +1,32 @@
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/call_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/delivery_vehicle_model.dart';
 
 import '../../../base/utils/helpers/helper_functions.dart';
 import '../../personalization/controller/user_controller.dart';
 import 'web_socket_delivery_controller.dart';
+import '../models/rider_location_model.dart';
 
 class DeliveryLocationController extends GetxController {
   static DeliveryLocationController get instance => Get.find();
 
   final mapController = Rx<GoogleMapController?>(null);
   final currentLocation = Rx<LatLng>(LatLng(0, 0));
-  final destination = Rx<LatLng>(LatLng(0, 0));
-  final polylines = Rx<Set<Polyline>>({});
-  final distance = Rx<String?>("");
-  final eta = Rx<String?>("");
   final lastCameraPosition = Rx<CameraPosition?>(null);
-  final selectedVehicleMarkerId = Rx<MarkerId?>(null);
-  final selectedVehicle = Rx<DeliveryVehicleModel?>(null);
-  final String _apiKey = dotenv.env['API_KEY']!;
+
+  /// The car the viewer tapped; the bottom sheet shows its card (TODO item 23).
+  final selectedRequestId = RxnString();
+
+  /// Current height fraction of the live-deliveries sheet, so the map FAB can
+  /// ride its top edge the way the Request Transport FABs do.
+  final RxDouble sheetExtent = 0.0.obs;
 
   /// web socket variables
   final webSocketController = Get.find<WebSocketDeliveryController>();
@@ -55,46 +52,6 @@ class DeliveryLocationController extends GetxController {
       webSocketController.riderLocations,
       (_) => _handleRiderLocationsChanged(),
     );
-  }
-
-  Future<void> getRoute(LatLng location, LatLng destination) async {
-    if (location == LatLng(0, 0) || destination == LatLng(0, 0)) return;
-    final String url =
-        "https://maps.googleapis.com/maps/api/directions/json?origin=${location.latitude},${location.longitude}&destination=${destination.latitude},${destination.longitude}&key=$_apiKey";
-
-    final response = await http.get(Uri.parse(url));
-    final data = json.decode(response.body);
-
-    if (data['status'] == "OK") {
-      String encodedPolyline = data["routes"][0]["overview_polyline"]["points"];
-      List<LatLng> routePoints = _decodePolyline(encodedPolyline);
-
-      polylines.value = {
-        Polyline(
-          polylineId: const PolylineId("route"),
-          points: routePoints,
-          color: Colors.blue,
-          width: 5,
-        ),
-      };
-      distance.value = data["routes"][0]["legs"][0]["distance"]["text"];
-      eta.value = data["routes"][0]["legs"][0]["duration"]["text"];
-    }
-  }
-
-  /// -- Camera Position to view the location and destination
-  LatLngBounds getLatLngBounds(LatLng loc, LatLng des) {
-    final southwest = LatLng(
-      math.min(loc.latitude, des.latitude),
-      math.min(loc.longitude, des.longitude),
-    );
-
-    final northeast = LatLng(
-      math.max(loc.latitude, des.latitude),
-      math.max(loc.longitude, des.longitude),
-    );
-
-    return LatLngBounds(southwest: southwest, northeast: northeast);
   }
 
   Future<void> loadDispatchMarkerIcons() async {
@@ -152,25 +109,12 @@ class DeliveryLocationController extends GetxController {
           ? calculateBearing(previousPosition, position)
           : markerBearings[requestId] ?? 0.0;
       markerBearings[requestId] = bearing;
-      final update = webSocketController.riderLocationUpdates[requestId];
       final marker = Marker(
         markerId: MarkerId(requestId),
         position: position,
-        infoWindow: InfoWindow(
-            title: '${update?.client ?? 'Dispatch'} - $requestId',
-            snippet:
-                'Rider: ${update?.riderInitial ?? ''} ETA: ${update?.eta ?? ''}, Distance: ${update?.distance ?? ''}, Status: ${update?.status ?? ''}',
-            onTap: () async {
-              final String phoneNumber = await userController
-                  .fetchUserPhoneNumberForDriver(update?.riderInitial ?? '');
-
-              if (phoneNumber.isNotEmpty) {
-                CallFunctions.makePhoneCall(phoneNumber);
-              } else {
-                BHelperFunctions.showSnackBar(
-                    'Dispatcher phone number not available.');
-              }
-            }),
+        // No native info window: it truncates to one line and hid the call
+        // action. Tapping a car selects it; the sheet shows the card.
+        onTap: () => selectDelivery(requestId),
         icon: _iconForRequest(requestId),
         rotation: bearing,
       );
@@ -202,11 +146,38 @@ class DeliveryLocationController extends GetxController {
   }
 
   void _handleRiderLocationsChanged() {
+    // A retired car cannot stay selected.
+    final selected = selectedRequestId.value;
+    if (selected != null &&
+        !webSocketController.riderLocations.containsKey(selected)) {
+      selectedRequestId.value = null;
+    }
+
     if (!_hasCenteredInitialRiders &&
-        selectedVehicle.value == null &&
+        selectedRequestId.value == null &&
         webSocketController.riderLocations.isNotEmpty) {
       _hasCenteredInitialRiders = true;
       Future.delayed(const Duration(milliseconds: 300), centerActiveDeliveries);
+    }
+  }
+
+  void selectDelivery(String requestId) {
+    if (!webSocketController.riderLocations.containsKey(requestId)) return;
+    selectedRequestId.value = requestId;
+    centerDispatch(requestId);
+  }
+
+  void clearSelection() => selectedRequestId.value = null;
+
+  /// Dials the courier of [delivery]; the number comes from the local user
+  /// table by the rider's initials.
+  Future<void> callRider(RiderLocationModel delivery) async {
+    final phoneNumber = await userController
+        .fetchUserPhoneNumberForDriver(delivery.riderInitial.trim());
+    if (phoneNumber.isNotEmpty) {
+      CallFunctions.makePhoneCall(phoneNumber);
+    } else {
+      BHelperFunctions.showSnackBar('Courier phone number not available.');
     }
   }
 
@@ -318,53 +289,6 @@ class DeliveryLocationController extends GetxController {
 
   double toDegrees(double radians) {
     return radians * (180.0 / math.pi);
-  }
-
-  Set<Marker> buildMarkers() {
-    final markers = <Marker>{};
-    if (currentLocation.value != LatLng(0, 0) &&
-        selectedVehicle.value == null) {
-      markers.add(
-        Marker(
-          markerId: const MarkerId('myLocation'),
-          position: currentLocation.value,
-          infoWindow: const InfoWindow(title: 'My Location'),
-        ),
-      );
-    }
-    return markers;
-  }
-
-  List<LatLng> _decodePolyline(String encoded) {
-    List<LatLng> polylineCoordinates = [];
-    int index = 0, len = encoded.length;
-    int lat = 0, lng = 0;
-
-    while (index < len) {
-      int shift = 0, result = 0;
-      int byte;
-
-      do {
-        byte = encoded.codeUnitAt(index++) - 63;
-        result |= (byte & 0x1F) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-      int deltaLat = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lat += deltaLat;
-
-      shift = 0;
-      result = 0;
-      do {
-        byte = encoded.codeUnitAt(index++) - 63;
-        result |= (byte & 0x1F) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-      int deltaLng = (result & 1) != 0 ? ~(result >> 1) : (result >> 1);
-      lng += deltaLng;
-
-      polylineCoordinates.add(LatLng(lat / 1E5, lng / 1E5));
-    }
-    return polylineCoordinates;
   }
 
   @override

@@ -31,6 +31,7 @@
 - [x] 22. Proof photos opened in a tinted Material dialog (photo boxed in a card, title bar with an X *and* a Close button, no page indicator) — `S` (done app-only: new full-screen `BPhotoViewer` — dark edge-to-edge canvas, swipe between photos, pinch to zoom, "1 of 3" counter + dots, tap to hide chrome, one close; every proof/delivery-shot caller goes through it)
 - [x] 21. Delivery Details page — information-design pass (unlabelled icon-only facts, truncated timestamps, "Driver:"/"Received By:" rows styled differently from everything else, floating "View Items" / "Item Photo" links, duplicated "Delivery Details" heading) — `M` (done app-only: labelled two-column fact grid, one status chip, left-aligned section titles, chronological labelled timestamps, signature card, actions row with item count; shared by the page and the request modal)
 - [x] 20. Document References take over the request screens when a delivery carries many (15–20 DR/SI/PO numbers, one tall row + copy icon each) — `S` (done app-only: `DocumentReferenceList` rewritten as grouped DR / SI / PO chips, tap-to-copy, "Show all N" past 6, "Copy all"; the courier's Request Transport sheet reuses it)
+- [x] 23. Live map (Delivery Location): hidden drawer, fake "Vehicle 1/2/3" rows, one-line truncated info window — `M` (done app-only: fake vehicle repository/controller/model deleted; edge-swipe drawer replaced by a bottom "N live deliveries" sheet; tapping a car shows a card with **Call** / **Center**; FAB icon now says "show all")
 
 ---
 
@@ -1051,6 +1052,72 @@ Air/Sea pages all get it. The `_ImagePagerDialog` class was removed; `ImageBytes
 
 ---
 
+## 23. Live map — hidden drawer, fake vehicles, truncated info window
+
+**Prompted by** the 2026-09-10 screenshots of the Delivery Location map: (1) the native
+Google info window shows `Alabang Medical Clinic - Main - 2026090071` and a one-line
+snippet `Rider: RDR ETA: 1 min, Distance: 0.2 km, Status…` cut off; (2) the left drawer
+"List of On-Going Delivery" lists the one live rider and then three rows `Vehicle 1`,
+`Vehicle 2`, `Vehicle 3` that mean nothing to the viewer.
+
+**Current behavior found in code** (`lib/features/logistics/screens/delivery_location/location_google.dart`,
+`delivery_location_controller.dart`, `delivery_vehicle_repository.dart`):
+
+- `DeliveryVehicleRepository.getALlVehicle()` returns **three hardcoded Makati coordinates**
+  named Vehicle 1–3. Tapping one draws a Directions route between two invented points and
+  sets `selectedVehicle`, which then blocks the auto-centre on live riders. Demo scaffolding.
+- The `Scaffold` has a `drawer` but **no app bar or menu button** — the list only opens by
+  swiping from the left edge. Nothing on screen says it exists.
+- The marker uses the native `InfoWindow`; Google truncates `snippet` to one line, and the
+  only action (tap the window → **call the rider**) is invisible.
+- The row text `2026090071` is the title and the client the subtitle — the reader knows the
+  clinic, not the number. `Rider: … - ETA: … - …` is a label soup.
+- The FAB icon `Icons.my_location` means "go to *my* position" but it centres on the riders.
+- Empty state text is fine but sits inside the hidden drawer, so an empty map is just a map.
+
+| Before | After | Why |
+|---|---|---|
+| Three hardcoded `Vehicle n` rows + route-to-nowhere | Remove `DeliveryVehicleRepository` demo data and the rows; keep the model only if real fleet data is planned | Fake data on a live screen destroys trust in the real rows above it |
+| Edge-swipe `Drawer` with no trigger | Bottom sheet (collapsed handle with "N live deliveries", drag up for the list) — same `DraggableBottomSheet` pattern as Request Transport | Map content lives at the bottom on every maps app; the thumb is already there; the collapsed handle *is* the affordance |
+| Native `InfoWindow` (one line, hidden call action) | Marker tap selects the delivery and expands the sheet to a **selected-delivery card**: client, request no., `RDR · 1 min · 0.2 km · In Transit`, buttons **Call** and **Center**; X returns to the list | Rich content, explicit actions, and no reliance on a truncated platform widget |
+| Title `2026090071`, subtitle client + `Rider: … - ETA: …` | Client as title, request no. as muted secondary, meta line `RDR · 1 min · 0.2 km`, status chip | People recognise the clinic first; drop the `Label:` prefixes when the values are self-evident |
+| `Icons.my_location` for "centre on riders" | `Iconsax.routing` / fit-bounds icon, tooltip "Show all deliveries" | The icon should match the action |
+| Empty state hidden inside the drawer | Collapsed sheet reads "Waiting for dispatched deliveries" with the truck icon | Visible without a gesture |
+| Sheet / card appear instantly | Card slides in 200 ms ease-out, out 140 ms; marker selection has no animation (done tens of times) | Occasional entrance gets a short ease-out; frequent selection gets none |
+
+**Touch points**
+- `location_google.dart` — drop `drawer`, add the bottom sheet + selected card, fix FAB icon.
+- `delivery_location_controller.dart` — `selectedRequestId` (replaces `selectedVehicle`), marker `onTap`
+  selects instead of `infoWindow`, keep `centerDispatch`, remove `getRoute` for fake vehicles
+  (keep if a rider→destination route is wanted later).
+- `delivery_vehicle_repository.dart` / `delivery_vehicle_controller.dart` / `delivery_floating_button.dart` —
+  remove or park behind real data; unregister from `GeneralBindings`.
+- Reuse `BFactGrid` / `BSectionTitle` (item 21) for the card body.
+- Tests: card shows Call + Center; marker tap selects; sheet empty state.
+
+**Decisions taken (2026-09-10, defaults — say so if either is wrong).** (a) The fake vehicles
+were deleted outright (`delivery_vehicle_repository.dart`, `delivery_vehicle_controller.dart`,
+`delivery_vehicle_model.dart`, `delivery_floating_button.dart`, and their `GeneralBindings`
+registrations); nothing else referenced them. (b) The call to the courier is kept, as an explicit
+**Call** button on the card.
+
+**Implemented (2026-09-10).** `screens/delivery_location/widgets/live_deliveries_sheet.dart` —
+`LiveDeliveriesSheet` (wraps `BDraggableBottomSheet`, collapsed at 11 % showing
+"N live deliveries" / "Waiting for dispatched deliveries"), `LiveDeliveriesBody`, and
+`SelectedDeliveryCard` (client, request no., `RDR · 1 min · 0.2 km`, status chip, Call / Center, X).
+The card replaces the list with a 200 ms ease-out slide-fade and leaves in 140 ms; marker
+selection itself has no animation. `DeliveryLocationController` gained `selectedRequestId`,
+`selectDelivery` (also centres the camera), `clearSelection`, `callRider`, `sheetExtent`; the
+marker's native `InfoWindow` became `onTap: selectDelivery`; a selection is cleared when its car
+retires; the fake-vehicle route code (`getRoute`, polyline decoding, Directions API call and its
+`API_KEY` read) is gone. `location_google.dart` has no `drawer`; the map's zoom buttons are off
+(the sheet covers that corner, pinch works as on Request Transport); tapping the map clears the
+selection; the FAB uses `Iconsax.routing` with tooltip "Show all deliveries" and rides the sheet
+edge. Tests: `test/features/logistics/widgets/live_deliveries_sheet_test.dart` (empty state, row
+order, select, Call / Center / X, stale selection, meta line).
+
+---
+
 ## Cross-cutting notes & risks
 
 - **Backend coordination required** for items 2 (multiple image uploads), 3, 4, 7,
@@ -1083,7 +1150,7 @@ Air/Sea pages all get it. The `_ImagePagerDialog` class was removed; `ImageBytes
 3. **Backend-coupled tracks:** 2 (images) · 3→4 (pull-out items, remarks depends on
    items) · 7 (pick-up categories) · 11 (backload items).
 
-**Status (2026-09-10): all 20 items delivered.** What is still pending is rollout, not code:
+**Status (2026-09-10): all 23 items delivered.** What is still pending is rollout, not code:
 
 - **13 + 16 deploy order:** run `migration_20260910_add_air_sea_shippingmethod.sql` → set
   `;Timezone=Asia/Manila` on the deployed `PostgreSqlDB` connection string → deploy the

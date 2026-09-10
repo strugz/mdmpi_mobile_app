@@ -79,7 +79,6 @@ Important Logistics controllers include:
 - `StockReceiveController`
 - `BackLoadController`
 - `DeliveryLocationController`
-- `DeliveryVehicleController`
 - `RequestTransportController`
 - `WebSocketDeliveryController`
 - `WebSocketDispatcherController`
