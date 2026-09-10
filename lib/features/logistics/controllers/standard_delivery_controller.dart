@@ -431,43 +431,8 @@ class StandardDeliveryController extends GetxController
   // INVENTORY OCR OPERATIONS
   // ========================================================================
 
-  /// Sends [file] (picture or PDF) to the Gemini analyze-file endpoint via
-  /// [InventoryItemRepository] and populates [scannedInventoryItems] with the
-  /// parsed results.
-  ///
-  /// Sets [isAnalyzingFile] while the request is in flight and updates
-  /// [analyzeError] on failure.
-  Future<void> analyzeFileForInventory(File file) async {
-    try {
-      isAnalyzingFile.value = true;
-      analyzeError.value = null;
-
-      final repo = Get.find<InventoryItemRepository>();
-      final result = await repo.analyzeFile(file);
-
-      if (result.isSuccess) {
-        // Merge / deduplicate incoming items with existing scanned items to
-        // prevent duplicates when the same file is processed more than once
-        // or when multiple UI controls trigger analysis.
-        _mergeScannedItems(result.value);
-        logDebug(
-            'StandardDeliveryController: Parsed ${result.value.length} inventory items (merged)');
-      } else {
-        analyzeError.value = result.error;
-        logDebug(
-            'StandardDeliveryController: analyzeFile failed – ${result.error}');
-      }
-    } catch (e) {
-      analyzeError.value = e.toString();
-      logDebug(
-          'StandardDeliveryController: analyzeFileForInventory error – $e');
-    } finally {
-      isAnalyzingFile.value = false;
-    }
-  }
-
   /// Opens the device camera (or camera UI) and forwards the captured image
-  /// file to [analyzeFileForInventory]. This method centralizes permission and
+  /// file to [analyzeFileWithAiToolkit]. This method centralizes permission and
   /// platform handling so the UI widget stays pure.
   Future<void> pickAndAnalyzeFromCamera() async {
     try {
@@ -493,7 +458,7 @@ class StandardDeliveryController extends GetxController
   }
 
   /// Presents a gallery/file chooser and forwards the selected file to
-  /// [analyzeFileForInventory]. Handles bytes-only platforms by writing a
+  /// [analyzeFileWithAiToolkit]. Handles bytes-only platforms by writing a
   /// temporary file when necessary.
   Future<void> pickAndAnalyzeFromFile() async {
     try {

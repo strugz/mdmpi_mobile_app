@@ -25,6 +25,7 @@
 - [x] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (done app-only; "Dispatched At: Sep 9, 2026 03:03 PM." on the For Delivery and Air/Sea Dispatch texts; completion timestamps now formatted the same way; not blocked by item 16 — the SMS prints the phone's local stamp, not the DB value)
 - [ ] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (app-only; system-inset audit across screens)
 - [ ] 17. Live map: one courier drawn as two cars (stale marker of a finished/previous request is never removed; markers are keyed per RequestID, not per courier) — `M` (app-only; `web_socket_delivery_controller.dart` + `delivery_location_controller.dart`; ideally the WS server also stops replaying completed requests)
+- [ ] 18. Gemini OCR key hygiene (decision 2026-09-10: key stays in the mobile client; backend proxy removed) — `S` (ops-side: rotate the key — it is in both repos' git history — restrict it in GCP, set a budget alert; app-side done: key moved from URL to header)
 - [x] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (backend fixed via `TimestampNormalizer` in all five normalizers + `Timezone=Asia/Manila` on the connection string; run `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` **after** deploying to fix existing rows; only the optional app follow-up remains open)
 
 ---
@@ -746,6 +747,7 @@ is `UTC`, the columns would hold the raw digits (15:03) instead — re-check bef
   Do **not** touch `createdat`/`updatedat`. Guard with `WHERE col > updatedat` where
   that holds, and run inside a transaction with a `SELECT` preview first. Remember
   the `_history` tables carry copies of the same columns.
+- [x] (found on re-check, fixed in backend follow-up commit) **Date filters used the UTC day.** `Today/Yesterday/Tomorrow` boundaries came from `DateTime.UtcNow.Date` (Air/Sea, Pick Up) and `DateTime.Today` (Backload; `QueryFilterHelper` for Standard Delivery / Pull Out) — the API container is UTC, so days rolled over at 08:00 Manila, and with `datepickup` now correctly at midnight the Air/Sea + Pick Up "Today" filter would have missed today's rows. Now `TimestampNormalizer.BusinessToday()` / `BusinessDayStartUtc()` everywhere; no `DateTime.Today` / `UtcNow.Date` left in `lib`-equivalent code.
 - [ ] App follow-up (after the backend ships): send an explicit UTC instant —
   `DateTime.now().toUtc().toIso8601String()` in the two data managers and
   `normalizeToIsoDatetime(..., toUtc: true)` in the Air/Sea and Pull Out mappers — so
@@ -813,6 +815,39 @@ colours differ because the icon variant is hashed from the RequestID
 - [ ] Unit tests: applying a completed frame removes the marker; a stale frame for a
   removed request does not resurrect it; render de-dup keeps the newest of two
   same-courier markers.
+
+---
+
+## 18. Gemini OCR — API key hygiene (key stays in the mobile client)
+
+**Decision (2026-09-10).** Receipt OCR keeps calling Google Generative Language
+**directly from the app** (`InventoryItemRepository.analyzeFileWithGemini`). The unused
+backend proxy (`GeminiController` + `IGeminiService` + `GeminiSettings` +
+`InventoryItemDto`, and the client's dead `analyzeFile()` /
+`analyzeFileForInventory()` path) was removed the same day. Trade-off accepted: the key
+is bundled into the APK via `.env` (`pubspec.yaml` assets) and is extractable by anyone
+holding the APK; revoking it therefore requires shipping a new build.
+
+**Done in the app**
+- [x] Key moved from the URL query string (`?key=`) to the `x-goog-api-key` header so it
+  no longer lands in proxy/CDN/device request logs.
+
+**To do — ops side (no code)**
+- [ ] **Rotate the key.** It sat in `.env` in this repo's history (removed in `d74aa51` /
+  `c0bfeb6`) and in `appsettings.json` in the backend's history (2 commits before the
+  file was emptied). Generate a new key in Google AI Studio / GCP, put it in the
+  build machine's `.env` only, build APK, then delete the old key once the new APK is
+  distributed (old APKs stop OCR-ing at that moment — nothing else breaks).
+- [ ] **Restrict the new key in GCP:** API restriction → *Generative Language API* only;
+  application restriction → *Android apps* with the release package name + SHA-1
+  (verify the Gemini REST endpoint honours it for this key type; if not, keep the
+  API-only restriction). Set a **billing budget alert** on the project.
+- [ ] Remove the dead `AI_TOOLKIT_GOOGLE_URL` / `AI_TOOLKIT_AUTH_TYPE` /
+  `AI_TOOLKIT_PROVIDER` lines from `.env.example` and README (only `AI_TOOLKIT_MODEL`,
+  `AI_TOOLKIT_API_KEY`, optional `AI_PROMPT` are read).
+- [ ] Revisit if abuse or cost ever shows up: the safer design is a server-side proxy
+  with an app header + rate/size limits (the code removed on 2026-09-10 is in git
+  history at MDMPI.App `6715105^…` if it is ever wanted back).
 
 ---
 
