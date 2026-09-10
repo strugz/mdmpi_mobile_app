@@ -21,7 +21,7 @@ class OnBoardingDotNavigation extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
 
     return Positioned(
-      bottom: BDevicesUtils.getBottomNavigationBarHeight() + 25,
+      bottom: BDevicesUtils.systemBottomInset(context) + kBottomNavigationBarHeight + 25,
       left: BSizes.defaultSpace,
       child: SmoothPageIndicator(
         controller: controller.pageController,

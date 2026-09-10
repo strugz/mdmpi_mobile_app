@@ -10,26 +10,26 @@ class BDevicesUtils {
     FocusScope.of(context).requestFocus(FocusNode());
   }
 
-  static Future<void> setStatusBarColor(Color color) async {
-    SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(statusBarColor: color),
-    );
-  }
+  // ── System insets ─────────────────────────────────────────────────────────
+  //
+  // The app runs edge-to-edge on Android (main.dart), so the navigation bar
+  // (3-button strip or gesture pill) overlaps the bottom of every screen.
+  // Rule for bottom-anchored widgets:
+  //   * navigation bar  → `SafeArea(top: false)` (or [systemBottomInset]) once,
+  //     at the OUTERMOST bottom widget — never around a whole Scaffold, which
+  //     shortens full-bleed content such as maps and camera previews;
+  //   * keyboard        → [keyboardInset] once — Scaffold already applies it to
+  //     `bottomNavigationBar`, sheet presenters add it themselves;
+  //   * never add the two together, and never use the keyboard height to
+  //     decide whether the navigation bar exists (that was the old bug).
 
-  static bool isLandScapeOrientation(BuildContext context) {
-    final viewInsets = View.of(context).viewInsets;
-    return viewInsets.bottom == 0;
-  }
+  /// Height of the system navigation bar / gesture area under this context.
+  static double systemBottomInset(BuildContext context) =>
+      MediaQuery.paddingOf(context).bottom;
 
-  static bool isPortraitOrientation(BuildContext context) {
-    final viewInsets = View.of(context).viewInsets;
-    return viewInsets.bottom != 0;
-  }
-
-  static void setFullScreen(bool enable) {
-    SystemChrome.setEnabledSystemUIMode(
-        enable ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
-  }
+  /// Height of the on-screen keyboard under this context (0 when closed).
+  static double keyboardInset(BuildContext context) =>
+      MediaQuery.viewInsetsOf(context).bottom;
 
   static double getScreenWidth(BuildContext context) {
     return MediaQuery.of(context).size.width;
@@ -39,27 +39,11 @@ class BDevicesUtils {
     return MediaQuery.of(Get.context!).devicePixelRatio;
   }
 
-  static double getStatusBarHeight() {
-    return MediaQuery.of(Get.context!).padding.top;
-  }
-
-  static double getBottomNavigationBarHeight() {
-    return kBottomNavigationBarHeight;
-  }
-
   static double getAppBarHeight() {
     return kToolbarHeight;
   }
-
-  static double getKeyboardHeight() {
-    final viewInsets = MediaQuery.of(Get.context!).viewInsets;
-    return viewInsets.bottom;
-  }
-
-  static Future<bool> isKeyboardVisible() async {
-    final viewInsets = View.of(Get.context!).viewInsets;
-    return viewInsets.bottom > 0;
-  }
+  // (getBottomNavigationBarHeight was removed: it returned Flutter's 56 dp
+  // Material constant and was being mistaken for the system inset.)
 
   static Future<bool> isPhysicalDevice() async {
     return defaultTargetPlatform == TargetPlatform.android ||
@@ -74,15 +58,6 @@ class BDevicesUtils {
   static Future<void> setPreferredOrientations(
       List<DeviceOrientation> orientation) async {
     await SystemChrome.setPreferredOrientations(orientation);
-  }
-
-  static void hideStatusBar() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: []);
-  }
-
-  static void showStatusBar() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
-        overlays: SystemUiOverlay.values);
   }
 
   static Future<bool> hasInternetConnection() async {

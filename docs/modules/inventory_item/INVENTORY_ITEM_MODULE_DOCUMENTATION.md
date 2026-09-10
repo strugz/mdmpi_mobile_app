@@ -1,6 +1,6 @@
 # INVENTORY_ITEM_MODULE_DOCUMENTATION
 
-Status: Draft
+Status: Active (shipped; see Implementation Status below)
 Area: Logistics
 Routes:
 
@@ -8,7 +8,7 @@ Routes:
 
 ## Overview
 
-This document describes the design and integration details for the Inventory Item feature: a GetX controller that manages inventory item state and a reusable, expandable/collapsible Inventory item view widget. It is intended as a developer-facing module guide (architecture, API, usage examples, testing, and troubleshooting). Implementation files are feature-scoped under `features/logistics` and DI is registered in `lib/bindings/general_bindings.dart`.
+This document describes the design and integration details for the Inventory Item feature: a GetX controller that manages inventory item state and a reusable, expandable/collapsible Inventory item view widget. It is intended as a developer-facing module guide (architecture, API, usage examples, testing, and troubleshooting). Implementation files are feature-scoped under `features/logistics` and DI is registered in `lib/bindings/app/general_bindings.dart`.
 
 Note: This file follows project documentation conventions — placed under `docs/modules/inventory_item/` and named in SCREAMING_SNAKE_CASE.
 
@@ -47,7 +47,7 @@ Note: This file follows project documentation conventions — placed under `docs
   - Class: `InventoryItemRepository` (already present in repo). Controller depends on this repository via `Get.find()` or constructor injection (for tests).
 
 - Bindings change:
-  - File to edit: `lib/bindings/general_bindings.dart`
+  - File to edit: `lib/bindings/app/general_bindings.dart`
   - Register repository and controller using `Get.lazyPut(..., fenix: true)` (repository registration must come before controller registration).
 
 
@@ -164,7 +164,7 @@ Accessibility & performance:
 
 ## DI / Binding Registration
 
-Edit `lib/bindings/general_bindings.dart` (follow existing ordering):
+Edit `lib/bindings/app/general_bindings.dart` (follow existing ordering):
 
 - Under repository registrations (ensure repository is registered before controllers):
 
@@ -258,7 +258,7 @@ flutter test
 ## Troubleshooting
 
 - If `Get.find<InventoryItemRepository>()` fails:
-  - Verify registration in `lib/bindings/general_bindings.dart` and that `GeneralBindings` runs before the screen.
+  - Verify registration in `lib/bindings/app/general_bindings.dart` and that `GeneralBindings` runs before the screen.
 - If expansion state does not persist after navigation:
   - Ensure controller is registered with `fenix: true` so it can be recreated rather than lost unexpectedly. Do NOT use a permanent instance (for example `Get.put(..., permanent: true)`) for feature controllers; permanent singletons are reserved for global services and must be documented in `GeneralBindings`.
 - If parsing errors occur when calling the repository:
@@ -271,7 +271,7 @@ flutter test
 - Controller: `lib/features/logistics/controllers/inventory_item_controller.dart`
 - Widget: `lib/features/logistics/widgets/inventory_item_view.dart`
 - Repository: `lib/data/repositories/inventory/inventory_item_repository.dart` (existing)
-- Bindings: `lib/bindings/general_bindings.dart`
+- Bindings: `lib/bindings/app/general_bindings.dart`
 - Docs: `docs/modules/inventory_item/INVENTORY_ITEM_MODULE_DOCUMENTATION.md` (this file)
 
 ---

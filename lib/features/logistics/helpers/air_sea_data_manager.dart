@@ -191,6 +191,17 @@ class AirSeaDataManager {
         return;
       }
 
+      final shippingMethod =
+          controller.formState.shippingMethodController.text.trim();
+      if (shippingMethod.isEmpty) {
+        controller.errorMessage.value = 'Please select the mode of shipment.';
+        BLoaders.errorSnackBar(
+            title: 'Mode of Shipment',
+            message: 'Please select the mode of shipment.');
+        BFullScreenLoader.stopLoading();
+        return;
+      }
+
       String ensureCategoryId(TextEditingController ctrl, List<dynamic> list) {
         final v = ctrl.text.trim();
         if (v.isEmpty) return '';
@@ -230,6 +241,7 @@ class AirSeaDataManager {
         createdBy: userCtrl.user.value.initial,
         documentReference: docRefs,
         formCategoryID: formCategoryId,
+        shippingMethod: shippingMethod,
       );
 
       // Insert via API (also saves to local DB)

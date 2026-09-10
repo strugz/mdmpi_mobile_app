@@ -47,13 +47,19 @@ class RequestTransport extends StatelessWidget {
       reqTranController.initializeRoute();
     });
 
+    // Left/right only. The map is full-bleed; the dispatcher sheet pads its
+    // own bottom for the navigation bar, and the FABs ride the sheet edge.
     return SafeArea(
       top: false,
+      bottom: false,
       child: Scaffold(
         resizeToAvoidBottomInset: true,
         body: Obx(() {
           final currentRequest =
               requestController.currentSelectedRequest.value ?? request;
+          final sheetExtent = reqTranController.sheetExtent.value;
+          final sheetTop = MediaQuery.of(context).size.height *
+              (sheetExtent == 0 ? 0.45 : sheetExtent);
 
           return Stack(
             children: [
@@ -110,7 +116,7 @@ class RequestTransport extends StatelessWidget {
 
               /// Floating user location button — positioned above initial sheet
               Positioned(
-                bottom: MediaQuery.of(context).size.height * 0.45 + 16,
+                bottom: sheetTop + 16,
                 right: 5,
                 child: FloatingActionButton(
                   heroTag: 'request_transport_my_location',
@@ -132,7 +138,7 @@ class RequestTransport extends StatelessWidget {
 
               if (currentRequest.status == BTexts.statusForDelivery)
                 Positioned(
-                  bottom: MediaQuery.of(context).size.height * 0.45 + 88,
+                  bottom: sheetTop + 88,
                   right: 5,
                   child: FloatingActionButton(
                     heroTag: 'request_transport_external_navigation',

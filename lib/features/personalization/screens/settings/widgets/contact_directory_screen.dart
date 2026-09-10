@@ -58,6 +58,7 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
             BSizes.defaultSpace,
             BSizes.defaultSpace,
             MediaQuery.of(dialogContext).viewInsets.bottom +
+                MediaQuery.paddingOf(dialogContext).bottom +
                 BSizes.defaultSpace,
           ),
           child: Form(

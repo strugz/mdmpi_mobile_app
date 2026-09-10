@@ -19,7 +19,7 @@ class OnBoardingNextButton extends StatelessWidget {
     final controller = Get.find<LogisticsOnboardingController>();
     return Positioned(
         right: BSizes.defaultSpace,
-        bottom: BDevicesUtils.getBottomNavigationBarHeight(),
+        bottom: BDevicesUtils.systemBottomInset(context) + kBottomNavigationBarHeight,
         child: ElevatedButton(
           onPressed: () => controller.nextPage(),
           style: ElevatedButton.styleFrom(

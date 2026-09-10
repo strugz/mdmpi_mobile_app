@@ -106,18 +106,32 @@ class BDispatcher extends StatelessWidget {
       // Clamp initialChildSize so it never exceeds maxChildSize (avoids DraggableScrollableSheet assertion)
       final clampedInitialChildSize = initialChildSize.clamp(minChildSize, maxChildSize);
 
-      return BDraggableBottomSheet(
-        initialChildSize: clampedInitialChildSize,
-        minChildSize: minChildSize,
-        maxChildSize: maxChildSize,
-        body: BRequestDetails(
-          requestController: requestController,
-          userController: userController,
-          requestTransportController: requestTransportController,
-        ),
-        bottomAction: BActionButton(
-          requestController: requestController,
-          requestTransportController: requestTransportController,
+      // Publish the sheet's extent so the map FABs can ride its top edge.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (requestTransportController.sheetExtent.value == 0) {
+          requestTransportController.sheetExtent.value =
+              clampedInitialChildSize;
+        }
+      });
+
+      return NotificationListener<DraggableScrollableNotification>(
+        onNotification: (notification) {
+          requestTransportController.sheetExtent.value = notification.extent;
+          return false;
+        },
+        child: BDraggableBottomSheet(
+          initialChildSize: clampedInitialChildSize,
+          minChildSize: minChildSize,
+          maxChildSize: maxChildSize,
+          body: BRequestDetails(
+            requestController: requestController,
+            userController: userController,
+            requestTransportController: requestTransportController,
+          ),
+          bottomAction: BActionButton(
+            requestController: requestController,
+            requestTransportController: requestTransportController,
+          ),
         ),
       );
     });

@@ -37,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
           // TEXT positioned LOWER, independent of center
           Positioned(
-            bottom: 80, // adjust this value as needed
+            bottom: 80 + MediaQuery.paddingOf(context).bottom,
             left: 0,
             right: 0,
             child: const Center(

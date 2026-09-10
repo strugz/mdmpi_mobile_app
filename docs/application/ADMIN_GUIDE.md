@@ -71,7 +71,8 @@ Request data refresh options:
 
 - Standard Delivery
 - Hotline Direct
-- Air / Sea
+- Air / Sea / Land
+- Air / Sea / Land HD
 - Pick Up
 - Pull Out / Return
 - Stock Receive
@@ -100,7 +101,8 @@ Do not use hard reset as the first response to failed proof uploads. Review Sign
 | Standard Delivery | Refresh request cache, verify status progress, check signature/image outboxes, support BackLoad routing. |
 | Pull Out / Return | Refresh pull-out cache, verify filters/status, confirm cancellation remarks. |
 | Pick Up | Refresh pickup cache, verify status/filter data, confirm cancellation remarks. |
-| Air / Sea | Refresh air/sea cache, verify request data and filters. |
+| Air / Sea / Land | Refresh air/sea/land cache, verify request data and filters. |
+| Air / Sea / Land HD | Separate tile from Air / Sea / Land. Both tabs read one table split by form category, so reset the tab the user is actually looking at. |
 | Hotline Direct | Refresh Hotline Direct cache, remember it reuses Standard Delivery form/data patterns. |
 | Stock Receive | Refresh Stock Receive cache, remember it reuses Pull Out / Return form/data patterns. |
 | BackLoad | Confirm it is opened from a Standard Delivery request context. |

@@ -190,19 +190,44 @@ class WebSocketDeliveryController extends GetxController {
     }
 
     final location = RiderLocationModel.fromJson(locationJson);
-    if (location.requestId.isEmpty ||
-        location.latitude == 0.0 ||
-        location.longitude == 0.0) {
-      logDebug(
-          'WebSocketDelivery: Ignored invalid rider location for RequestID "${location.requestId}".');
+    if (location.requestId.isEmpty) {
+      logDebug('WebSocketDelivery: Ignored rider location without RequestID.');
       return;
     }
 
     final requestId = location.requestId;
 
-    // The server replays the cached latest envelope per RequestID on connect,
-    // and reconnect bursts can arrive out of order — never let an older frame
-    // rewind a marker. Equal timestamps re-apply (idempotent duplicates).
+    // A terminal frame (the courier dropped off / cancelled / stopped
+    // tracking) removes the car instead of moving it. Handled before the
+    // coordinate check so a courier without a GPS fix can still retire it.
+    if (isTerminalStatus(location.status)) {
+      retireRequest(requestId, at: location.timestamp);
+      update();
+      return;
+    }
+
+    if (location.latitude == 0.0 || location.longitude == 0.0) {
+      logDebug(
+          'WebSocketDelivery: Ignored invalid rider location for RequestID "$requestId".');
+      return;
+    }
+
+    // The server replays the cached latest envelope per RequestID on connect
+    // and the courier's offline queue replays old frames: neither may bring a
+    // retired car back. Only a frame newer than the retirement (the same
+    // request genuinely dispatched again) re-adds it.
+    final retiredAt = _retiredAt[requestId];
+    if (retiredAt != null) {
+      if (!location.timestamp.isAfter(retiredAt)) {
+        logDebug(
+            'WebSocketDelivery: Ignored frame for retired RequestID $requestId.');
+        return;
+      }
+      _retiredAt.remove(requestId);
+    }
+
+    // Reconnect bursts can also arrive out of order — never let an older
+    // frame rewind a marker. Equal timestamps re-apply (idempotent duplicates).
     // Caveat: frames with a missing/unparsable Timestamp get DateTime.now()
     // from RiderLocationModel, so they always count as newest.
     final existing = riderLocationUpdates[requestId];
@@ -235,6 +260,87 @@ class WebSocketDeliveryController extends GetxController {
     logDebug(
         'WebSocketDelivery: Updated rider marker for RequestID $requestId at ${location.latitude}, ${location.longitude}.');
     update();
+  }
+
+  // ── Marker lifecycle ────────────────────────────────────────────────────
+  //
+  // Markers are keyed per RequestID and used to live forever: once a request
+  // had sent one frame its car stayed on the map through Done Delivery and
+  // the courier's next dispatch — so one courier showed up as two cars
+  // (TODO item 17). Three things now retire a car: a terminal frame from the
+  // courier, an age cut-off, and — at render time — a newer car for the same
+  // rider.
+
+  /// Statuses the courier sends when a request stops moving.
+  static const Set<String> terminalStatuses = {
+    'completed',
+    'delivered',
+    'cancelled',
+    'tracking_stopped',
+  };
+
+  /// How long a car may sit without a fresh frame before it is dropped
+  /// (a crashed courier phone must not leave a ghost car all day).
+  static const Duration staleMarkerAge = Duration(minutes: 30);
+
+  final Map<String, DateTime> _retiredAt = {};
+
+  /// RequestIDs whose car has been retired and not re-dispatched since.
+  Set<String> get retiredRequestIds => Set.unmodifiable(_retiredAt.keys);
+
+  static bool isTerminalStatus(String status) =>
+      terminalStatuses.contains(status.trim().toLowerCase());
+
+  /// Removes the request's car and remembers when, so replayed frames older
+  /// than [at] cannot resurrect it.
+  void retireRequest(String requestId, {DateTime? at}) {
+    riderLocations.remove(requestId);
+    riderLocationUpdates.remove(requestId);
+    riderMarkerColors.remove(requestId);
+    _retiredAt[requestId] = at ?? DateTime.now();
+    logDebug('WebSocketDelivery: Retired rider marker for RequestID $requestId.');
+  }
+
+  /// Drops cars whose last frame is older than [maxAge].
+  void pruneStale({DateTime? now, Duration maxAge = staleMarkerAge}) {
+    final cutoff = (now ?? DateTime.now()).subtract(maxAge);
+    final stale = riderLocationUpdates.entries
+        .where((e) => e.value.timestamp.isBefore(cutoff))
+        .map((e) => e.key)
+        .toList();
+    for (final id in stale) {
+      retireRequest(id, at: riderLocationUpdates[id]?.timestamp);
+    }
+  }
+
+  /// The RequestIDs worth drawing: fresh within [maxAge], and — when several
+  /// requests share the same rider — only the newest one, since one courier
+  /// cannot be two cars.
+  static Set<String> visibleRequestIds(
+    Map<String, RiderLocationModel> updates, {
+    required DateTime now,
+    Duration maxAge = staleMarkerAge,
+  }) {
+    final cutoff = now.subtract(maxAge);
+    final newestByRider = <String, MapEntry<String, RiderLocationModel>>{};
+    final visible = <String>{};
+
+    for (final entry in updates.entries) {
+      if (entry.value.timestamp.isBefore(cutoff)) continue;
+      final rider = entry.value.riderInitial.trim().toLowerCase();
+      if (rider.isEmpty) {
+        visible.add(entry.key);
+        continue;
+      }
+      final current = newestByRider[rider];
+      if (current == null ||
+          entry.value.timestamp.isAfter(current.value.timestamp)) {
+        newestByRider[rider] = entry;
+      }
+    }
+
+    visible.addAll(newestByRider.values.map((e) => e.key));
+    return visible;
   }
 
   Map<String, dynamic>? _extractLocationPayload(Map<String, dynamic> payload) {

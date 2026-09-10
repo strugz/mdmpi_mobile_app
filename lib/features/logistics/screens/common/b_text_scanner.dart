@@ -38,13 +38,16 @@ class _BTextScannerState extends State<BTextScanner> {
 
   @override
   Widget build(BuildContext context) {
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
+    // Camera preview stays full-bleed; only the control over it clears the
+    // system navigation bar.
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     // Define the overlay for this specific screen
     Widget buildScanTextOverlay() {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: BSizes.defaultSpace),
+        padding: EdgeInsets.only(
+            top: BSizes.defaultSpace,
+            bottom: BSizes.defaultSpace + bottomInset),
         child: Align(
           alignment: Alignment.bottomCenter,
           child: ElevatedButton(
@@ -62,7 +65,8 @@ class _BTextScannerState extends State<BTextScanner> {
     }
 
     return SafeArea(
-      bottom: !isGestureNavigation,
+      top: false,
+      bottom: false,
       child: Scaffold(
         appBar: BAppBar(
           title: const Text('Search Text'),

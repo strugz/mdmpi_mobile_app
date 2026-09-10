@@ -1,8 +1,8 @@
-# Air & Sea Module
+# Air / Sea / Land Module
 
 ## Overview
 
-The Air & Sea module handles air and sea freight logistics requests within the MDMPI Mobile App. It manages the full lifecycle of air/sea shipment requests — from creation through item preparation, guard endorsement, dispatch, drop-off, and receipt.
+The Air / Sea / Land module handles air, sea and land freight logistics requests within the MDMPI Mobile App. It manages the full lifecycle of air/sea shipment requests — from creation through item preparation, guard endorsement, dispatch, drop-off, and receipt.
 
 ### Air / Sea / Land HD variant (2026-09-09)
 
@@ -21,20 +21,69 @@ unaffected. Server migrations:
 `MDMPI.App/migration_20260909_add_air_sea_formcategoryid.sql` and
 `MDMPI.App/migration_20260909_add_air_sea_hd_category.sql`.
 
+### Mode of Shipment (2026-09-10)
+
+Every Air / Sea / Land request (base and HD tab alike) records **how it ships** via a
+required `Mode of Shipment` dropdown on the create form — `Air`, `Sea` or `Land`,
+sourced from `ShippingMethods.all`
+(`lib/features/logistics/constants/shipping_methods.dart`, also used by the Standard
+Delivery / Hotline Direct Shipping Method dropdowns). The value is **create-only**:
+`AirSeaMapper.toUpdateDto` never sends it, `AirSeaDao.updateAirSea` only writes it
+when non-empty, and the shared `AirSeaRequestModalHeader` / `AirSeaRequestCard` show
+it read-only (hidden for legacy rows, where it is NULL). It is informational — the
+status flow does not branch on it. Wire key `ShippingMethod` (nullable
+`varchar(15)`, validated server-side against Air|Sea|Land); local column
+`ShippingMethod TEXT` (DB v18 → v19). Server migration:
+`MDMPI.App/migration_20260910_add_air_sea_shippingmethod.sql` — run **before**
+deploying the backend; old clients simply leave the column NULL.
+
 ## Status Flow
 
 ```
 New Request
   → Getting Supplies Ready
-    → Item Prepared
+    → Item Packed
       → Endorsed to Guard
-        → Item Packed
-          → Dispatched
+        → For Dispatch
+          → Dispatch
             → Drop Off
               → Received
+                → Provincial Pick Up        ┐
+                  → Provincial In Transit   │ provincial extension
+                    → Provincial Delivered  ┘
 
 (Any status) → Cancelled
 ```
+
+Status strings are defined in `lib/base/utils/constants/text_strings.dart:137-157`; the
+role × status action matrix lives in
+`lib/features/logistics/helpers/air_sea_modal_config.dart`. Note there is no "Item
+Prepared" step in this flow, and the dispatch status is `Dispatch`, not "Dispatched".
+
+### Provincial extension
+
+Requests that continue to a provincial destination carry on past Received through three
+further statuses, handled by the `Provincial` role (`BTexts.roleProvincial`) and resolved
+in `air_sea_modal_config.dart` (`_resolveProvincial`). `Provincial Delivered` — not
+`Received` — is the terminal status for these requests.
+
+The seven provincial model fields (`provincialPickUpBy`, `provincialPickUpAt`,
+`provincialInTransitAt`, `provincialInTransitLocation`, `provincialDeliveredEndAt`,
+`provincialDeliveredLocation`, `provincialReceiverName`) are stored as `TEXT DEFAULT ''`
+columns on `a_tblRequestAirSea` (`lib/data/local/db_schema.dart:234-240`) — added to the
+schema directly, with no runtime migration. UI lives in
+`air_sea_provincial_pick_up_section.dart`, `air_sea_provincial_in_transit_section.dart`
+and `air_sea_provincial_delivery_section.dart`.
+
+**Not yet built** (carried over from the provincial delivery plan, removed 2026-09-09):
+
+- Transaction history / audit trail — no `RequestHistoryDto`, `RequestHistoryModel`, or
+  local `a_tblRequestHistory` table exists. Related dead code: the per-status history DTOs
+  under `dtos/air_sea/` and `AirSeaStatusStagesMapper` have no callers, and
+  `screens/air_sea/widgets/air_sea_history_section.dart` is an empty placeholder file.
+  Either finish this or delete the orphans.
+- Tests — there is no DAO round-trip, mapper, controller or widget test covering the
+  provincial statuses.
 
 ## Architecture
 
@@ -118,6 +167,7 @@ Get.lazyPut(() => AirSeaController(), fenix: true);
 - `endorsedBy` (guard endorsement), `receivedBy`, `waybillNumber`, `receivedAt`
 - `tripTicketNumber`, `driver`, `helper`, `dispatchedAt`, `dropOffAt`
 - `status`, `remarks`, `createdBy`, `createdAt`, `updatedAt`
+- `formCategoryID` (empty = base tab, `FormCategoryIds.airSeaHd` = HD tab), `shippingMethod` (`Air` / `Sea` / `Land`; empty on legacy rows)
 - Aggregates: `ClientModel client`, `List<String> documentReference`, `CancelRemarksModel cancelRemarks`
 
 ### Related Shared Components

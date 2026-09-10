@@ -48,7 +48,12 @@ class CategoryDetailScreen extends StatelessWidget {
             Expanded(
               child: ListView.separated(
                 controller: scrollController,
-                padding: const EdgeInsets.all(BSizes.defaultSpace),
+                // Last card clears the system navigation bar.
+                padding: EdgeInsets.fromLTRB(
+                    BSizes.defaultSpace,
+                    BSizes.defaultSpace,
+                    BSizes.defaultSpace,
+                    BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom),
                 itemCount: invoices.length,
                 separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
                 itemBuilder: (context, index) {
@@ -216,7 +221,14 @@ class CategoryDetailScreen extends StatelessWidget {
     Get.bottomSheet(
       SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(BSizes.defaultSpace),
+          // Keyboard + navigation bar, each counted once (the sheet has fields).
+          padding: EdgeInsets.fromLTRB(
+              BSizes.defaultSpace,
+              BSizes.defaultSpace,
+              BSizes.defaultSpace,
+              BSizes.defaultSpace +
+                  MediaQuery.viewInsetsOf(context).bottom +
+                  MediaQuery.paddingOf(context).bottom),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

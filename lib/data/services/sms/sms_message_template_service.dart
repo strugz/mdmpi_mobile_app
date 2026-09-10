@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/data/services/sms/sms_request_payload.dart';
 
@@ -15,7 +16,10 @@ class SmsMessageTemplateService {
         : '${payload.completionActorLabel}: ${payload.completionActor}\n';
     final completionTimeLine = payload.completionAt.isEmpty
         ? ''
-        : '${payload.completionTimeLabel}: ${payload.completionAt}\n';
+        : '${payload.completionTimeLabel}: ${formatTimeForSms(payload.completionAt)}\n';
+    final dispatchTimeLine = payload.dispatchAt.isEmpty
+        ? ''
+        : '\nDispatched At: ${formatTimeForSms(payload.dispatchAt)}.';
     final completionStatus = payload.completionStatusLabel.isEmpty
         ? status.toUpperCase()
         : payload.completionStatusLabel;
@@ -54,12 +58,27 @@ class SmsMessageTemplateService {
             '$documentReferencesText\n'
             'Your items are now out for delivery.\n'
             'Status: For Delivery.'
+            '$dispatchTimeLine'
+            '$targetDateLine';
+      case BTexts.statusDispatch:
+        // Air / Sea / Land courier pressed Dispatch.
+        return '${payload.clientName} \n'
+            'Document References:\n'
+            '$documentReferencesText\n'
+            'Status: $status.'
+            '$dispatchTimeLine'
+            '$targetDateLine';
+      case BTexts.statusInTransit:
+        // Pull Out / Return and Stock Receive: courier started the trip.
+        return '${payload.clientName} \n'
+            'Document References:\n'
+            '$documentReferencesText\n'
+            'Status: $status.'
+            '$dispatchTimeLine'
             '$targetDateLine';
       case BTexts.statusItemPacked:
       case BTexts.statusForDispatch:
       case BTexts.statusForPullOut:
-      case BTexts.statusDispatch:
-      case BTexts.statusInTransit:
       case BTexts.statusEndorsedToGuard:
       case BTexts.statusDropOff:
       case BTexts.statusProvincialPickUp:
@@ -100,6 +119,17 @@ class SmsMessageTemplateService {
             'Status: $status.'
             '$targetDateLine';
     }
+  }
+
+  /// Renders a model timestamp (`DateTime.now().toString()` or ISO-8601) as
+  /// e.g. `Sep 9, 2026 03:03 PM`; falls back to the raw value if unparsable.
+  /// Timestamps are stamped on the courier's phone, so they are already in
+  /// the courier's local time.
+  String formatTimeForSms(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    final formatted = BFormatter.formatDateWithAmPm(trimmed);
+    return formatted.isEmpty ? trimmed : formatted;
   }
 
   String formatDocumentReferencesForSms(List<String> documentReferences) {

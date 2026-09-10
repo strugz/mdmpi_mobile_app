@@ -21,6 +21,17 @@
 - [x] 10. Hotline Direct: support Air/Sea requests — `L` (done as a new "Air / Sea / Land HD" form category, per decision; run `MDMPI.App/migration_20260909_add_air_sea_formcategoryid.sql` first, then `migration_20260909_add_air_sea_hd_category.sql` together with this app build + backend deploy; add the "HD" role in Firestore and assign it to the designated requestors)
 - [x] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (done app + backend via new `a_tblbackloaditem` table; per decision the courier unchecks items at For Delivery before Drop Off — run `MDMPI.App/migration_20260907_add_a_tblbackloaditem.sql` and redeploy in lockstep)
 - [x] 12. Stock Receive: document reference optional — `S` (done app-side only; Pull Out / Return and all other forms keep it required)
+- [x] 13. Air / Sea / Land: per-request Mode of Shipment dropdown (Air / Sea / Land) — `L` (done app + backend as nullable `shippingmethod varchar(15)`; run `MDMPI.App/migration_20260910_add_air_sea_shippingmethod.sql` **before** the backend deploy, then ship the app build — old clients keep working, their rows stay NULL; supersedes the "option a" block under item 8)
+- [x] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (done app-only; "Dispatched At: Sep 9, 2026 03:03 PM." on the For Delivery and Air/Sea Dispatch texts; completion timestamps now formatted the same way; not blocked by item 16 — the SMS prints the phone's local stamp, not the DB value)
+- [x] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (done app-only: edge-to-edge set at startup; the six `viewInsets.bottom > 0` "gesture nav" probes — including the tab bar — replaced; forms stop double-counting the keyboard; nested SafeAreas removed from the modals; ~20 bottom widgets/sheets padded; widget tests + a source-grep test guard the rule)
+- [x] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (backend fixed via `TimestampNormalizer` in all five normalizers + `Timezone=Asia/Manila` on the connection string; run `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` **after** deploying to fix existing rows; only the optional app follow-up remains open)
+- [x] 17. Live map: one courier drawn as two cars — `M` (done app-only: courier sends a terminal frame on Drop Off / request switch, watchers retire the car and refuse replayed older frames, 30-min age-out, and at most one car per rider at render time; WS-relay cache change still recommended, tracked in §17)
+- [x] 18. Gemini OCR key hygiene (decision 2026-09-10: key stays in the mobile client; backend proxy removed) — `S` (done: ops side completed 2026-09-10 — key rotated, restricted in GCP, budget alert set; app side: key sent in the `x-goog-api-key` header, `.env.example` / README trimmed to the three keys actually read)
+- [x] 19. Standard Delivery / Hotline Direct: only the assigned driver or helper can open the courier screen and Dispatch / Drop Off — `M` (done app-only; sole-role couriers no longer see other crews' Item Prepared / For Delivery requests; Release+Courier users see them but get the modal; Dispatch no longer overwrites the driver)
+- [x] 22. Proof photos opened in a tinted Material dialog (photo boxed in a card, title bar with an X *and* a Close button, no page indicator) — `S` (done app-only: new full-screen `BPhotoViewer` — dark edge-to-edge canvas, swipe between photos, pinch to zoom, "1 of 3" counter + dots, tap to hide chrome, one close; every proof/delivery-shot caller goes through it)
+- [x] 21. Delivery Details page — information-design pass (unlabelled icon-only facts, truncated timestamps, "Driver:"/"Received By:" rows styled differently from everything else, floating "View Items" / "Item Photo" links, duplicated "Delivery Details" heading) — `M` (done app-only: labelled two-column fact grid, one status chip, left-aligned section titles, chronological labelled timestamps, signature card, actions row with item count; shared by the page and the request modal)
+- [x] 20. Document References take over the request screens when a delivery carries many (15–20 DR/SI/PO numbers, one tall row + copy icon each) — `S` (done app-only: `DocumentReferenceList` rewritten as grouped DR / SI / PO chips, tap-to-copy, "Show all N" past 6, "Copy all"; the courier's Request Transport sheet reuses it)
+- [x] 23. Live map (Delivery Location): hidden drawer, fake "Vehicle 1/2/3" rows, one-line truncated info window — `M` (done app-only: fake vehicle repository/controller/model deleted; edge-swipe drawer replaced by a bottom "N live deliveries" sheet; tapping a car shows a card with **Call** / **Center**; FAB icon now says "show all")
 
 ---
 
@@ -320,10 +331,11 @@ data UPDATE, no backend code change.
   name still matches its own branch and no earlier branch (no branch tests
   'land').
 
-**If a per-request Land mode is added (option a)**
-- [ ] `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror `standard_delivery_form.dart:146-156`).
-- [ ] Column in local `a_tblRequestAirSea` (`db_schema.dart:210-243`) + `air_sea_dao.dart`; server table + its `_history` table + `trg_a_tblrequestairsea_history_fn()` (`mdmpi_app_db_schema.sql:29-95, 783-812`). **Backend change.**
-- [ ] Status-flow review: Air/Sea statuses (`Endorsed to Guard`, `Drop Off`, `Provincial *`) may not apply to a Land request — `air_sea_modal_config.dart:60-140`, `dashboard_bucket_config.dart:165-235` (has tests: `dashboard_bucket_config_test.dart`).
+**If a per-request Land mode is added (option a)** — *delivered 2026-09-10 as item 13
+(§13); the boxes below are kept for history and are superseded by that section.*
+- [x] (delivered in §13) `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror `standard_delivery_form.dart:146-156`).
+- [x] (delivered in §13) Column in local `a_tblRequestAirSea` (`db_schema.dart:210-243`) + `air_sea_dao.dart`; server table + its `_history` table + `trg_a_tblrequestairsea_history_fn()` (`mdmpi_app_db_schema.sql:29-95, 783-812`). **Backend change.**
+- [x] (decided in §13: no branching) Status-flow review: Air/Sea statuses (`Endorsed to Guard`, `Drop Off`, `Provincial *`) may not apply to a Land request — `air_sea_modal_config.dart:60-140`, `dashboard_bucket_config.dart:165-235` (has tests: `dashboard_bucket_config_test.dart`).
 
 ---
 
@@ -509,6 +521,603 @@ Pull Out** (Stock Receive has no form of its own — it reuses `PullOutForm` /
 
 ---
 
+## 13. Air / Sea / Land — Mode of Shipment dropdown
+
+**Requirement.** An Air / Sea / Land request must record **how it ships** — a
+per-request `Mode of Shipment` dropdown with `Air` / `Sea` / `Land`. Item 8 was
+decided as a **relabel only**, so today the category name mentions three modes
+while the request itself stores none. This item is the deferred "option (a)"
+from §8 — treat the unchecked block there as superseded by this section.
+
+**Current behavior.** `air_sea_form.dart` has no mode selector. Standard Delivery
+and Hotline Direct already have a Shipping Method dropdown of `['Land','Air','Sea']`
+(`standard_delivery_form.dart:146-156`, `hotline_direct_form.dart:71-75`) — mirror
+that widget and option list so the wording matches across forms.
+
+**Scope note.** Both Air/Sea tabs (base and the `Air / Sea / Land HD` category from
+§10) share `AirSeaForm`, `AirSeaModel` and `a_tblrequestairsea`, so a single column
+and a single form change cover both.
+
+**Implemented (2026-09-10).** Decisions locked in: required on create, create-only
+(read-only afterwards; backend still accepts it on PATCH), no status-flow branching
+(Land follows the Air/Sea statuses), shown as a chip on the card and a line in the
+shared modal/page header (both hidden for legacy NULL rows). Values come from the new
+shared `ShippingMethods.all` (`lib/features/logistics/constants/shipping_methods.dart`),
+now also used by the Standard Delivery / Hotline Direct dropdowns. Server-side the
+DTOs carry `[MaxLength(15)] [RegularExpression("^(Air|Sea|Land)$")]`; blank is
+treated as "not sent". Local DB v18 → v19. Both schema dumps updated (the app-side
+copy was stale since the FormCategoryID change and is now in sync). Rollout: migration
+→ backend → app; verified every path the installed 1.1.102 client uses keeps working.
+
+**Touch points**
+- [x] `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a
+  `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror
+  `standard_delivery_form.dart:146-156`). Decide whether it is required on create
+  (Standard Delivery's copy currently has no validator).
+- [x] Local DB column in `a_tblRequestAirSea` (`db_schema.dart:210-243`) +
+  `air_sea_dao.dart` (all write paths) + DB version bump in `database_helper.dart`.
+- [x] **Backend change:** column on the server table, its `_history` table, and a
+  full re-emit of `trg_a_tblrequestairsea_history_fn()`
+  (`mdmpi_app_db_schema.sql:29-95, 783-812`); DTOs set it on insert/update. Nullable
+  column so existing rows and older app builds stay valid; deploy schema first,
+  then backend, then the app (same order as §10).
+- [x] Display: show the mode on the request card / modal header
+  (`air_sea_request_card.dart`, `air_sea_modal_config.dart`) — otherwise the field is
+  write-only and the courier never sees it.
+- [x] Status-flow review (decided: no branching — Land follows the same statuses;
+  `dashboard_bucket_config_test.dart` untouched): Air/Sea statuses (`Endorsed to Guard`, `Drop Off`,
+  `Provincial *`) may not all apply to a **Land** request —
+  `air_sea_modal_config.dart:60-140`, `dashboard_bucket_config.dart:165-235`
+  (has tests: `dashboard_bucket_config_test.dart`). Confirm with Logistics whether
+  Land skips any step before branching the flow.
+
+---
+
+## 14. SMS — Dispatch time when the courier presses Dispatch
+
+**Requirement.** The SMS the client receives when the courier presses **Dispatch**
+must state the time of that dispatch, not just the new status.
+
+**Current behavior.** Two separate "Dispatch" surfaces exist, and neither prints a
+time:
+- **Standard Delivery / Hotline Direct** — the courier's `Dispatch` button
+  (`b_action_button.dart:141`) runs `Item Prepared → For Delivery` via
+  `RequestTransportController.processRequestDispatchOrDropOff`
+  (`request_transport_controller.dart:506`). The template branch for
+  `BTexts.statusForDelivery` (`sms_message_template_service.dart:51-57`) prints only
+  the client, document references, status and target date.
+- **Air / Sea / Land (+ HD)** — the `Dispatch` button
+  (`air_sea_modal_config.dart:136-141`) moves the request to `BTexts.statusDispatch`,
+  which falls into the shared status branch
+  (`sms_message_template_service.dart:58-71`) — same, no time.
+
+**The timestamp already exists** — this is a formatting/plumbing change, not new data
+capture:
+- `deliveredAt` is stamped with `DateTime.now().toString()` on the
+  `For Delivery` transition (`standard_delivery_data_manager.dart:319-322`,
+  `hotline_direct_data_manager.dart:247-250`), and the SMS is sent **after** that with
+  the already-updated model (`standard_delivery_data_manager.dart:249`), so the value
+  is populated at send time.
+- `dispatchedAt` is stamped the same way for Air/Sea
+  (`air_sea_data_manager.dart:396`).
+
+**Implemented (2026-09-10).** `SmsRequestPayload.dispatchAt` (optional, default `''`),
+filled from `deliveredAt` (Standard Delivery / Hotline Direct) and `dispatchedAt`
+(Air / Sea / Land, both tabs). The template appends `Dispatched At: <Sep 9, 2026
+03:03 PM>.` to the `For Delivery` text and to a now-dedicated `Dispatch` case (the
+other statuses in the shared branch are unchanged). Extended the same day to
+**Pull Out / Return and Stock Receive**: their `In Transit` text carries the line from
+`pullOutDateStartAt` (Pause clears it, so an On Hold request prints none). Pick Up has
+no courier trip and Backload sends no SMS, so every module with a dispatch-like step is
+now covered. New
+`SmsMessageTemplateService.formatTimeForSms` renders `DateTime.now().toString()` /
+ISO values via `BFormatter.formatDateWithAmPm` with raw-text fallback, and the
+completion lines (`Date Time Received/Completed/...`) use it too. Not blocked by item
+16: the stamp is taken on the courier's phone and the SMS is built from that local
+model before anything round-trips through the DB. Tests:
+`test/data/services/sms/sms_dispatch_time_test.dart`.
+
+**Touch points**
+- [x] `SmsRequestPayload` (`sms_request_payload.dart`) gains a
+  `dispatchAt` + `dispatchTimeLabel` pair — keep it separate from
+  `completionAt`/`completionTimeLabel`, which the completion branches use.
+- [x] `SmsPayloadBuilder`: fill it from `model.deliveredAt` for
+  `StandardDeliveryModel` and from `model.dispatchedAt` for `AirSeaModel`
+  (`sms_payload_builder.dart:49-147`).
+- [x] `SmsMessageTemplateService`: add a `dispatchTimeLine` (empty when the value is
+  empty, mirroring `completionTimeLine`) and emit it in the `statusForDelivery`
+  branch and in the `statusDispatch` case — split `statusDispatch` out of the shared
+  branch at lines 58-71 rather than adding a time to every status in that group.
+- [x] **Format the value.** `DateTime.now().toString()` yields
+  `2026-09-09 14:03:12.123456`; run it through `BFormatter.formatDateWithAmPm`
+  (`formatters.dart:43`) for the SMS. The existing completion lines print the raw
+  string — fix them in the same pass so all SMS timestamps read alike.
+- [x] ~~Depends on item 16 (timezone)~~ — verified not blocking: the SMS is built from the locally stamped model, so it already prints the courier's local time,
+  so fix the +8h shift first or the message will advertise the wrong hour.
+- [x] Watch SMS length (one extra ~40-char line; unchanged risk profile): templates already carry every document reference, and a
+  longer body can tip a message into a second segment.
+- [x] Add template unit tests (`test/`) for both dispatch branches, including the
+  empty-timestamp fallback.
+
+---
+
+## 15. Android — Fullscreen and navigation-bar (gesture / 3-button) layout
+
+**Requirement.** On Android phones the app must lay out correctly whether the device
+uses a **gesture pill** or a **3-button navigation bar**, and when a screen runs
+fullscreen — no content hidden behind or overlapping the system bars, and no dead
+space where a nav bar isn't.
+
+**Current behavior.**
+- `BDevicesUtils.setFullScreen`, `hideStatusBar` and `showStatusBar`
+  (`device_utility.dart:29-31, 79-85`) exist but are **never called** — nothing in
+  `lib/` uses them, so the app runs in whatever mode the engine defaults to.
+- Only 25 files use `SafeArea` against 61 that build a real `Scaffold` (the earlier "~67"
+  also counted `RequestModalScaffold`), so bottom
+  insets are applied inconsistently — the likely source of the reported clipping
+  under the navigation bar.
+- Newer Android releases force edge-to-edge, so bottom system insets must be
+  honored explicitly rather than assumed to be zero.
+
+**Implemented (2026-09-10).** Full audit instead of a single screen (owner's call: fix for
+both nav styles, keep the system bars, no immersive mode). Findings and fixes:
+- **Root cause #1 — the nav-bar padding was decided from the keyboard.** Six places
+  (`navigation_menu.dart` — the app's tab bar —, `b_single_field_scanner.dart`,
+  `b_text_scanner.dart`, `b_drop_off_capture.dart`, `hotline_direct_form.dart`,
+  `full_screen_loader.dart` user checklist) computed
+  `isGestureNavigation = viewInsets.bottom > 0` and set `SafeArea(bottom: !that)`.
+  `viewInsets.bottom` is the keyboard height, so the padding was on with the keyboard
+  closed and off when open — never tracking the nav bar. All replaced by
+  `SafeArea(top: false)` / `MediaQuery.paddingOf(context).bottom` on the bottom widget.
+- **Root cause #2 — no system UI mode.** `main.dart` now sets `SystemUiMode.edgeToEdge`
+  with transparent system bars on Android (API 35+ / targetSdk 36 forces edge-to-edge
+  anyway; this makes older devices behave the same).
+- Forms (`standard_delivery/pull_out/pick_up/air_sea_form.dart`) stopped adding
+  `viewInsets.bottom` inside `bottomNavigationBar` — Scaffold already lifts it, so the
+  submit button jumped by two keyboard heights.
+- Modals: `RequestModalScaffold` is the one place that pads for the nav bar; the five
+  presenters in `full_screen_loader.dart` no longer wrap it in a second `SafeArea` (nested
+  SafeAreas resolve to zero); `showPickUpDialog` gained the missing keyboard padding.
+- Padded bottom widgets/sheets that had nothing: `BDraggableBottomSheet` pinned action
+  (Request Transport's Dispatch / Drop Off) and its collapsed content,
+  `request_modal_footer_actions.dart` (Standard Delivery page), `location_google.dart`
+  FAB, `showRequestForReleasingDialog1`, search sheet, role checklist, onboarding
+  next/dots ×4 (were positioned by Flutter's 56 dp `kBottomNavigationBarHeight`
+  constant mistaken for the inset), splash tagline, Collection sheets (category detail,
+  payment details, activity history, invoice details, calendar, batch status picker,
+  contact directory).
+- Request Transport: outer `SafeArea` no longer shortens the map; the FABs ride the real
+  sheet extent (`RequestTransportController.sheetExtent`, fed by
+  `DraggableScrollableNotification`) instead of a hard-coded 45 %.
+- `BDevicesUtils`: new `systemBottomInset` / `keyboardInset` with the rule documented;
+  removed the dead/misnamed helpers (`isLandScapeOrientation`, `setFullScreen`,
+  `hideStatusBar`, `showStatusBar`, `getBottomNavigationBarHeight`, …).
+- Tests: `test/common/widgets/bottom_inset_test.dart` — sheet and modal scaffold under a
+  48 px inset, plus a source-grep test that fails if `viewInsets.bottom > 0` /
+  `isGestureNavigation` reappears in `lib/`.
+
+**Touch points**
+- [ ] Reproduce on both nav styles (Settings > System > Gestures on the test device) — **device QA still pending** (both styles, keyboard open and closed; see §15 verification list in the plan)
+  and capture the offending screens first — the fix list should be driven by real
+  screenshots, not a blanket `SafeArea` sweep.
+- [x] Audit bottom-anchored UI: `Scaffold.bottomNavigationBar`, footer action
+  buttons (`b_action_button.dart`, `request_modal_scaffold.dart:64`), FABs, and
+  `showModalBottomSheet` bodies — the usual victims.
+- [x] Prefer `SafeArea` / `MediaQuery.viewPaddingOf` / `.padding` at the layout edge
+  over per-widget magic numbers; do not double-pad a child whose parent already
+  applied `SafeArea`.
+- [x] Decide the intended mode explicitly (`SystemUiMode.edgeToEdge` app-wide vs
+  `immersiveSticky` only for camera/scanner/signature screens) and set it once at
+  bootstrap (`main.dart` / `platform_init.dart`), then either wire up or delete the
+  unused helpers in `device_utility.dart`.
+- [x] Keep keyboard behavior intact — several forms rely on `viewInsets`
+  (`device_utility.dart:19-27` even infers orientation from
+  `viewInsets.bottom`, which is a keyboard signal, not an orientation one; worth
+  fixing while in here).
+- [x] Windows desktop must be unaffected (insets are zero there; `SystemChrome` call is Android-gated) — gate anything Android-specific behind a
+  platform check.
+
+---
+
+## 16. Timezone — client timestamps land in the DB 8 hours late
+
+**Symptom.** Courier presses Dispatch at ~3 PM; `requestdeliveredat` in Postgres reads
+~11 PM. Same +8h on every timestamp the **phone** stamps; timestamps the **server**
+stamps (`updatedat`, `createdat` on lose/backload items) come out right. That
+asymmetry is the tell — it is not the phone clock.
+
+**Root cause (confirmed in code, three links in the chain).**
+1. **App sends a bare local wall clock, no offset.** Standard Delivery / Hotline stamp
+   `DateTime.now().toString()` → `2026-09-09 15:03:12.123456`
+   (`standard_delivery_data_manager.dart:319-322`, `hotline_direct_data_manager.dart:247-250`)
+   and the mapper forwards it verbatim (`standard_delivery_mapper.dart:191`). Air/Sea
+   and Pull Out go through `BFormatter.normalizeToIsoDatetime(..., toUtc: false)`
+   (`formatters.dart:189-197`) → `toIso8601String()` on a *local* `DateTime`, which
+   also carries no `Z`/offset (`air_sea_mapper.dart:91`, `pull_out_mapper.dart:53`).
+2. **Backend relabels it as UTC instead of converting.** Every parse lands in
+   `DateTimeKind.Unspecified`, and every normalizer's fallback arm is
+   `_ => DateTime.SpecifyKind(value, DateTimeKind.Utc)` — 15:03 Manila becomes
+   15:03 **Z** with the digits untouched:
+   `RequestRepository.ParseUtcTimestamp` (`RequestRepository.cs:327-345`, callers
+   278-281), `RequestAirSeaRepository.NormalizeToUtc` (`:344-357`, callers 249-261 —
+   includes `DispatchedAt`), `RequestPickUpRepository.NormalizeToUtc` (`:356-363`),
+   `RequestPullOutReturnPickUpRepository.NormalizeToUtc` (`:284-305`), and the global
+   safety net `PostgreSqlAppDbContext.NormalizeTrackedDateTimesToUtc` on every
+   `SaveChangesAsync` (`PostgreSqlAppDbContext.cs:103-166`).
+3. **Postgres shifts it on the way in.** Npgsql EF 9.0.4 with no
+   `EnableLegacyTimestampBehavior` switch sends a `Kind=Utc` value typed
+   `timestamptz`, but all 56 timestamp columns are `timestamp without time zone`
+   (`mdmpi_app_db_schema.sql`, and the team's own `migration_2026090*.sql`). Postgres'
+   assignment cast `timestamptz → timestamp` renders the instant in the **session
+   `TimeZone`**; with the DB server on `Asia/Manila`, `15:03Z` is written as `23:03`.
+   The same cast is why `DateTime.UtcNow` stamps (`07:03Z`) come out as the correct
+   `15:03` — the server-stamped columns are right *by accident of the same bug*.
+
+Read-back does not hide it: `RequestRepository.cs:147,220` return the stored digits via
+`ToString("yyyy-MM-dd HH:mm:ss")`, and the other repos return `DateTime` values that
+System.Text.Json serializes without offset — after a re-sync the app shows 23:03 too.
+
+**Verify before touching anything** (psql / pgAdmin against `mdmpi_app_db`):
+```sql
+SHOW timezone;                                 -- expect Asia/Manila (or +08)
+SELECT column_name, data_type FROM information_schema.columns
+ WHERE table_name = 'a_tblrequeststandarddelivery' AND data_type LIKE 'timestamp%';
+SELECT requestid, requeststatus, requestdeliveredat, requestdeliveredendat, updatedat
+  FROM a_tblrequeststandarddelivery ORDER BY updatedat DESC LIMIT 10;
+```
+Expected: `requestdeliveredat` / `requestdeliveredendat` are ~8h *after* the phone/SMS
+time; `updatedat` (set from `DateTime.UtcNow`) matches wall-clock. If `SHOW timezone`
+is `UTC`, the columns would hold the raw digits (15:03) instead — re-check before fixing.
+
+**Fix (backend first — MDMPI.App; the app is a follow-up, not a prerequisite).**
+- [x] (done — `MDMPI.App.Common/Utilities/TimestampNormalizer.ToUtc`, wired into `RequestRepository`, `RequestAirSeaRepository`, `RequestPickUpRepository`, `RequestPullOutReturnPickUpRepository` and `PostgreSqlAppDbContext`; the DB server session was confirmed at +08, Asia/Kuala_Lumpur) Replace the `_ => SpecifyKind(value, Utc)` arm in all five normalizers with a
+  real conversion: `TimeZoneInfo.ConvertTimeToUtc(value,
+  TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila"))` (IANA id works on the Linux
+  `aspnet:8.0` image; keep `Utc`/`Local` arms as they are so an explicit `Z`/offset
+  is still honoured). Centralize it in one helper in `MDMPI.App.Common` instead of
+  five private copies. **Old APKs keep working** — the backend now treats an
+  offset-less string as Manila time, which is exactly what they send.
+- [x] (done locally; **`appsettings.json` is git-ignored, so set the same `Timezone=Asia/Manila` on the deployed server's connection string as part of the deploy**) Pin the session zone so the fix does not depend on server config: add
+  `;Timezone=Asia/Manila` to `PostgreSqlDB` in `appsettings*.json`
+  (Npgsql connection-string option). Document in the backend README that `timestamp`
+  columns hold **Manila wall-clock** and every `DateTime` written must be a true UTC
+  instant.
+- [x] (done — `MDMPI.App.Tests/Common/TimestampNormalizerTests.cs`, 7 tests incl. the +08 write-cast round trip and re-save idempotence) Unit tests in `MDMPI.App.Tests` (none exist for this today): offset-less
+  `2026-09-09 15:03:12` → `07:03:12Z`; `...Z` and `...+08:00` unchanged in instant
+  terms; `Kind=Local` still converts.
+- [x] (script ready: `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` — self-scoping via history evidence (value 7-9h ahead of the server `changedat`), idempotent, takes `zz_backup_20260910_*` copies, has a PREVIEW block to review with Logistics before the REPAIR transaction; **run after the backend deploy**) **Data repair** — one-off SQL, reviewed with Logistics, scoped to rows written
+  since the Npgsql 9 backend went live: subtract 8h from the client-stamped columns
+  only (`requestitempreparedat`, `requestitempreparedendat`, `requestdeliveredat`,
+  `requestdeliveredendat` on Standard Delivery; `itempreparedat`, `itempreparedendat`,
+  `dispatchedat`, `dropoffat`, `provincial*at` on Air/Sea; `pulloutdatestartat`,
+  `pulloutdateendat` on Pull Out; `itempreparedat`/`itempreparedendat` on Pick Up).
+  Do **not** touch `createdat`/`updatedat`. Guard with `WHERE col > updatedat` where
+  that holds, and run inside a transaction with a `SELECT` preview first. Remember
+  the `_history` tables carry copies of the same columns.
+- [x] (found on re-check, fixed in backend follow-up commit) **Date filters used the UTC day.** `Today/Yesterday/Tomorrow` boundaries came from `DateTime.UtcNow.Date` (Air/Sea, Pick Up) and `DateTime.Today` (Backload; `QueryFilterHelper` for Standard Delivery / Pull Out) — the API container is UTC, so days rolled over at 08:00 Manila, and with `datepickup` now correctly at midnight the Air/Sea + Pick Up "Today" filter would have missed today's rows. Now `TimestampNormalizer.BusinessToday()` / `BusinessDayStartUtc()` everywhere; no `DateTime.Today` / `UtcNow.Date` left in `lib`-equivalent code.
+- [ ] App follow-up (after the backend ships): send an explicit UTC instant —
+  `DateTime.now().toUtc().toIso8601String()` in the two data managers and
+  `normalizeToIsoDatetime(..., toUtc: true)` in the Air/Sea and Pull Out mappers — so
+  the wire format is unambiguous and no longer relies on the server's Manila
+  assumption. Check `air_sea_dao.dart:14` (already `toUtc()` for the local cache) and
+  the read-back formatters still display local time correctly.
+- [x] ~~Blocks item 14~~ (resolved: the SMS prints the phone's local stamp before it round-trips the DB, so 14 was never blocked) Blocks item 14: do not print the dispatch time in the SMS until the stored
+  value is right, or the message will advertise the wrong hour.
+
+---
+
+## 17. Live map — the same courier appears as two cars
+
+**Symptom (screenshot 2026-09-10, Eton City Square).** One courier, one phone, but the
+Delivery Location map draws two car markers on top of each other (pink + black). The
+colours differ because the icon variant is hashed from the RequestID
+(`WebSocketDeliveryController.dispatchMarkerIndexForRequestId`) — i.e. these are two
+*requests*, not two devices.
+
+**Root cause (confirmed in code).**
+- Markers are **keyed per RequestID**, not per courier: `riderLocations` /
+  `riderLocationUpdates` are `RxMap<String requestId, …>`
+  (`web_socket_delivery_controller.dart:40-41`), and `riderBuildMarkers()` emits one
+  `Marker(markerId: MarkerId(requestId))` per entry
+  (`delivery_location_controller.dart:122-171`).
+- **Entries are never removed.** No `riderLocations.remove/clear` exists anywhere in
+  `lib/`. Once a request has sent a single frame it stays on the map until the app
+  restarts — including after `Done Delivery`, `Cancelled`, or a courier switching to
+  the next request. `stopTracking()` (`rider_realtime_tracking_controller.dart:110-118`)
+  only stops *sending*; it never tells viewers to drop the marker.
+- Two feeders make the stale entry reappear even after a restart:
+  1. The WS server **replays the cached latest envelope per RequestID on connect**
+     (comment at `web_socket_delivery_controller.dart:202-206`), so every finished
+     request the server still remembers comes back as a car.
+  2. The courier's offline queue (`_flushQueuedUpdates`,
+     `rider_realtime_tracking_controller.dart:159-170`) replays frames for whatever
+     request they belonged to, including a previous one, when connectivity returns.
+- Net effect: courier finishes request A (car at its last position), dispatches request
+  B from the same spot → A's stale car and B's live car sit on top of each other.
+  Any viewer who taps the wrong one calls/looks at the finished request.
+
+**Implemented (2026-09-10, app only).** `WebSocketDeliveryController` gained a marker
+lifecycle: `terminalStatuses` (`completed`, `delivered`, `cancelled`, `tracking_stopped`)
+→ `retireRequest()` removes the car and records the retirement time, so a replayed older
+`en_route` frame (server cache on connect, courier offline queue) can no longer bring it
+back — only a genuinely newer frame (re-dispatch) re-adds it; `pruneStale()` drops cars
+with no frame for 30 min; `visibleRequestIds()` keeps one car per rider (newest wins).
+`DeliveryLocationController.riderBuildMarkers` applies both before drawing.
+`RiderRealtimeTrackingController.stopTracking()` now sends a final `completed` frame
+(or `tracking_stopped` when switching requests) from the last known position and purges
+that request's queued frames first, so the flush cannot replay an older one after it.
+Tests: `web_socket_delivery_marker_lifecycle_test.dart`, `rider_tracking_queue_drop_test.dart`.
+
+**Fix (app side; the server change is a nice-to-have, not a prerequisite).**
+- [x] (done via the terminal frame; explicit `NotificationUpdate` parsing not needed) Drop a request's marker when it leaves the "moving" states: on a
+  `location_update` whose `status` is terminal, and on notification/status messages
+  for `Done Delivery` / `Cancelled` (the same WS channel already carries
+  `NotificationUpdate`), call `riderLocations.remove(id)`,
+  `riderLocationUpdates.remove(id)`, `riderMarkerColors.remove(id)` and clear
+  `previousPositions` / `markerBearings` in `DeliveryLocationController`.
+- [x] Have the courier publish a final `type: 'location_update', status: 'completed'`
+  (or `tracking_stopped`) frame from `stopTracking()` so viewers get an explicit
+  removal signal without depending on the request list; `_flushQueuedUpdates` must
+  send it last and must **not** replay frames for a request that already has a
+  completed frame queued.
+- [x] (age-out done — 30 min; the request-list reconciliation was skipped: the render-time one-car-per-rider rule already covers the visible symptom without coupling the map to which lists a viewer has loaded) Belt-and-braces: reconcile against request data — a marker whose RequestID is
+  not in the current For Delivery / In Transit set (Standard Delivery + Hotline
+  Direct lists the viewer already loads) is hidden. Also age out markers whose last
+  `timestamp` is older than a cutoff (e.g. 30 min) so a crashed courier phone does
+  not leave a ghost car all day.
+- [x] (done — by `riderInitial`, newest frame wins; proximity-based de-dup not needed) Optional de-dup at render time: if two markers share the same `riderInitial`
+  (or fall within ~5 m of each other), keep only the newest — this is the visual
+  safety net for the case in the screenshot.
+- [ ] Server (MDMPI WS relay): stop replaying cached envelopes for RequestIDs that
+  have reached a terminal status, or expire the cache after N minutes. Until then the
+  app-side reconciliation above is what protects the map.
+- [x] Unit tests: applying a completed frame removes the marker; a stale frame for a
+  removed request does not resurrect it; render de-dup keeps the newest of two
+  same-courier markers.
+
+---
+
+## 18. Gemini OCR — API key hygiene (key stays in the mobile client)
+
+**Decision (2026-09-10).** Receipt OCR keeps calling Google Generative Language
+**directly from the app** (`InventoryItemRepository.analyzeFileWithGemini`). The unused
+backend proxy (`GeminiController` + `IGeminiService` + `GeminiSettings` +
+`InventoryItemDto`, and the client's dead `analyzeFile()` /
+`analyzeFileForInventory()` path) was removed the same day. Trade-off accepted: the key
+is bundled into the APK via `.env` (`pubspec.yaml` assets) and is extractable by anyone
+holding the APK; revoking it therefore requires shipping a new build.
+
+**Done in the app**
+- [x] Key moved from the URL query string (`?key=`) to the `x-goog-api-key` header so it
+  no longer lands in proxy/CDN/device request logs.
+
+**To do — ops side (no code)**
+- [x] **Rotate the key.** (done 2026-09-10) It sat in `.env` in this repo's history (removed in `d74aa51` /
+  `c0bfeb6`) and in `appsettings.json` in the backend's history (2 commits before the
+  file was emptied). Generate a new key in Google AI Studio / GCP, put it in the
+  build machine's `.env` only, build APK, then delete the old key once the new APK is
+  distributed (old APKs stop OCR-ing at that moment — nothing else breaks).
+- [x] **Restrict the new key in GCP** (done 2026-09-10): API restriction → *Generative Language API* only;
+  application restriction → *Android apps* with the release package name + SHA-1
+  (verify the Gemini REST endpoint honours it for this key type; if not, keep the
+  API-only restriction). Set a **billing budget alert** on the project.
+- [x] Remove the dead `AI_TOOLKIT_GOOGLE_URL` / `AI_TOOLKIT_AUTH_TYPE` /
+  `AI_TOOLKIT_PROVIDER` lines from `.env.example` and README (only `AI_TOOLKIT_MODEL`,
+  `AI_TOOLKIT_API_KEY`, optional `AI_PROMPT` are read).
+- Standing note — revisit if abuse or cost ever shows up: the safer design is a server-side proxy
+  with an app header + rate/size limits (the code removed on 2026-09-10 is in git
+  history at MDMPI.App `6715105^…` if it is ever wanted back).
+
+---
+
+## 19. Standard Delivery — a non-assigned courier could open and complete someone else's delivery
+
+**Symptom (screenshot 2026-09-10).** Request 01002, `For Delivery`, Driver `BPT`, no helper.
+A Courier who is not BPT tapped it, landed on the Request Transport screen (map, **Drop
+Off**, **Change Driver / Helper**) and could have marked the delivery done with their own
+signature/proof.
+
+**Root cause.** `standard_delivery_list.dart` `_handleRequestTap` force-routed *anyone
+holding the Courier role* to `RequestTransport` at Item Prepared / For Delivery, with no
+`deliveredBy`/`helper` check, `return`ing before `StandardDeliveryModalConfig.resolve`
+(which did hold the assigned-only rule but whose `navigateTo` is never invoked). Nothing
+downstream re-checked: `request_transport.dart`, `b_action_button.dart`,
+`RequestTransportController.processRequestDispatchOrDropOff` (which also **overwrote
+`deliveredBy` with whoever pressed Dispatch**) and `updateRequestStatus`. The list filter
+did scope couriers to their assignments — but only when the role string had no comma, so
+a `Release,Courier` account saw everything (and that Release substring is why "Change
+Driver / Helper" appeared).
+
+**Decisions.** Hide from sole-role couriers; restricted statuses = Item Prepared + For
+Delivery; driver **or** helper are crew; Release/Admin holders keep full visibility and the
+reassignment control but get the modal, not the courier screen, on requests they are not
+crew of.
+
+**Implemented (2026-09-10).**
+- [x] `helpers/crew_assignment.dart` — one predicate (`isCrew` trims/case-folds and never
+  matches empty slots, `isCrewOnlyStatus`, `isCourierOnly`, `canOperate`, `describeCrew`).
+- [x] List filters (`standard_delivery_filter_manager.dart`, `hotline_direct_filter_manager.dart`)
+  use `RoleResolver.parseRoles` + `isCourierOnly` instead of the comma heuristic.
+- [x] Tap routing: `standard_delivery_list.dart` routes to `RequestTransport` only for crew;
+  `hotline_direct_role_handler.dart` now gates Item Prepared as well as For Delivery;
+  `standard_delivery_modal_config.dart` uses the shared predicate.
+- [x] Defence in depth: `b_action_button.dart` shows "Assigned to …" instead of the button;
+  `processRequestDispatchOrDropOff` and `updateRequestStatus` refuse For Delivery /
+  Delivered for non-crew; Dispatch fills `deliveredBy` only when empty.
+- [x] `b_request_details.dart` / `request_modal_footer.dart` Release checks use parsed roles.
+- [x] Tests: `test/features/logistics/helpers/crew_assignment_test.dart`.
+
+**Follow-ups (not done).** Dashboard badge counts use the unfiltered `allPendingRequests`
+(`dashboard_controller.dart`), so a sole-role courier's counts still include other crews'
+deliveries. Pull Out / Stock Receive modal configs have no crew check either (their lists
+filter, their modals don't). `StandardDeliveryModalConfig.navigateTo` is dead code.
+
+---
+
+## 20. Document References — compact list for deliveries with many references
+
+**Symptom (screenshot 2026-09-10, Delivery Details).** A delivery carrying 18 DR / SI / PO
+numbers rendered one full-width row per reference, each with its own copy icon — the
+section filled the whole screen and pushed the action button off it.
+
+**Implemented (2026-09-10).** `DocumentReferenceList`
+(`standard_delivery/widgets/request_modal_widgets/b_document_reference_list.dart`) was
+rewritten: references are de-duplicated, trimmed and **grouped by prefix** (`DRNo.` →
+`DR`, `SINo.` → `SI`, `PONo.` → `PO`; anything else shown as typed, prefix-less values in
+their own group), each group is a `Wrap` of small chips holding only the number (tabular
+figures), **tap a chip to copy** the full reference, **Copy all** copies every reference
+one per line, and past **6** references the list folds behind **Show all N / Show less**
+(`collapsedLimit` constructor parameter). Every request modal, the Standard Delivery page
+and the Air/Sea stages page already used this widget; the courier's Request Transport
+sheet (`request_transport/widgets/b_document_reference.dart`) had its own row-per-reference
+list and now delegates to it. Tests:
+`test/features/logistics/widgets/document_reference_list_test.dart`.
+
+---
+
+## 21. Delivery Details page — information-design pass
+
+**Prompted by** the 2026-09-10 screenshot of a Delivered request (Questcare Medical
+Products, 18 document references). The page is functional and the data is all there; what
+is missing is *hierarchy* — every fact is rendered at the same weight, several facts have
+no label, and three different row styles are mixed on one screen. Concrete findings and the
+intended change (rendered as `Before → After`):
+
+| # | Before | After | Why |
+|---|---|---|---|
+| 1 | Icon-only facts with no label: `⊞ Reagents`, `⊙ Land`, `⛟ Full`, `▤ Sep 10, 2026`, `◯ RAL` | Two-column label/value grid: `Item category  Reagents`, `Shipping  Land`, `Terms  Full`, `Delivery date  Sep 10, 2026`, `Requested by  RAL` — label in muted `labelSmall`, value in `bodyMedium` | A courier or dispatcher should not have to decode icons; "RAL" or "Full" mean nothing without a label. Labels also let the eye scan one column |
+| 2 | Two equal chips `Delivered` (green) and `Medium` (orange) side by side | Keep the **status** chip; render preference as a labelled fact (`Priority  Medium`) or a neutral outlined chip with a prefix | Two saturated chips read as two statuses; orange on a delivered request looks like a warning |
+| 3 | Timestamps truncated in a 2-column row: `Sep 10, 2026 12:…` / `Sep 10, 2026 12:…` | Stack them with labels, one per line, date shown once: `Preparation  12:46 PM → 12:52 PM · Sep 10, 2026` | Truncated times carry zero information; the duration is what the reader wants |
+| 4 | Delivery block mixes styles: plain `Driver: BPT`, bold-label `Received By: Audro naperi` wrapping beside the signature, two unlabelled times `06:35 PM` above `12:27 PM` | Same label/value grid as #1: `Driver  BPT`, `Helper  —`, `Dispatched  12:27 PM`, `Delivered  06:35 PM`, `Received by  Audro Naperi`; signature in its own bordered card below, captioned `Receiver signature` | One row style for the whole page; times labelled and in chronological order (dispatch before delivery); the name no longer fights the signature for width |
+| 5 | Centered text links `👁 View Items` and `👥 Item Photo` floating between sections | Two secondary (outlined) buttons in one row under the header: `View items (12)` · `Proof photos (3)` with counts | Actions belong together and should look like actions; counts tell the reader whether it is worth tapping |
+| 6 | Section headers `Document References` / `Preparation Info` / `Delivery Details` as centered text dividers; `Delivery Details` duplicates the app-bar title | Left-aligned uppercase `labelSmall` section titles with consistent 24 px top / 8 px bottom spacing; rename the last section `Delivery` | Centered dividers pull the eye to the middle of the screen on every section; the duplicate title wastes the strongest slot on the page |
+| 7 | Trip ticket `01002` with an unexplained copy icon | `Trip ticket  01002 ⧉` in the grid (label + tap-to-copy like the reference chips) | Same copy affordance as §20, and the number gets its name |
+| 8 | Address as a plain second line | Keep, but make it tappable (opens maps) with a subtle chevron | The address is the one thing a courier acts on |
+
+**Implemented (2026-09-10)** — all eight rows above, on both the full page and the request
+modal (they share the widgets):
+- New shared `BFactGrid` / `BFact` (`lib/common/widgets/texts/b_fact_grid.dart`): muted
+  small label above a normal value, two columns, empty facts skipped, optional tap-to-copy
+  or custom tap. New `BSectionTitle` (`lib/common/widgets/dividers/b_section_title.dart`):
+  left-aligned small-caps title with a hairline, fixed 24 px above / 8 px below.
+- `RequestModalHeader`: one status chip; `Priority`, `Item category`, `Shipping`, `Terms`,
+  `Delivery date`, `Requested by` as a fact grid; address tappable (Google Maps search).
+- `RequestModalBody`: `Prepared by` / `Trip ticket ⧉` grid, and one line
+  `Prepared · 12:46 PM → 12:52 PM · Sep 10, 2026` via the new
+  `BFormatter.formatTimeRange` / `formatTimeAmPm`.
+- New `DeliverySummarySection` replaces `BDeliveryDetailsSection` for Standard Delivery:
+  `Driver`, `Helper`, `Dispatched`, `Delivered` (chronological, labelled), `Received by`
+  emphasised, signature in its own captioned card. The shared `BDeliveryDetailsSection`
+  is untouched for Pull Out / Pick Up / Air-Sea.
+- New `RequestActionsRow` under the header: outlined `View items (n)` (count from
+  `InventoryItemRepository.fetchItems`) and, once delivered, `Proof photos`; replaces the
+  floating `View Items` / `Item Photo` links in `standard_delivery_page.dart` and `b_modal.dart`.
+- `RequestModalScaffold` uses `BSectionTitle('Document references')` (so every module's
+  modal gets the same title style); app-bar title is now `Request` instead of duplicating
+  the section name.
+- Tests: `test/common/widgets/b_fact_grid_test.dart` (grid layout + time formatters).
+
+**Not done here:** the courier's Request Transport sheet (`b_request_details.dart`) still
+uses the old icon rows and centered dividers; the Air/Sea page and Pull Out / Stock
+Receive modals too — apply the same widgets once this layout is approved on device.
+
+**Also pending from this screenshot:** the same per-line audit for the Air/Sea page and the
+Pull Out / Stock Receive modals once the Standard Delivery layout is agreed.
+
+---
+
+## 22. Proof photos — full-screen viewer instead of a dialog
+
+**Prompted by** the 2026-09-10 screenshot of "Delivered Item": the photo sat inside a
+lavender-tinted Material 3 dialog with 12 px insets, a title bar, an **X and a Close
+button** (two ways to do the same thing), and no indication that two more photos existed.
+
+| Before | After | Why |
+|---|---|---|
+| `Dialog` with tinted surface, photo boxed with margins | Full-screen black canvas, photo `BoxFit.contain` edge-to-edge | A photo is the content; the chrome is secondary. The M3 surface tint made the frame the most colourful thing on screen |
+| Title bar + X + bottom "Close" text button | One close control (top-left X) + system back | One exit; the text button only added a row of chrome |
+| Pager with `Title (2/3)` in the title bar; nothing on the single-photo dialog | `1 of 3` counter + animated dots at the bottom, `Request 01002` caption; single photo shows the caption alone | The reader learns there is more to swipe without reading the title; the dots also show *where* |
+| Chrome always on | Tap the photo → chrome fades out (160 ms ease-out), tap again → back | Lets the courier inspect the box labels clean |
+| `showDialog` default fade | Translucent route, 180 ms fade + scale 0.96→1 ease-out in, 140 ms out | Opened occasionally — a short entrance is right; nothing appears from `scale(0)`; exit faster than enter |
+| Zoom min 0.5 (photo could shrink below the frame) | `InteractiveViewer(minScale: 1, maxScale: 4)` | Shrinking below fit-size is never useful |
+| No way to rotate | **Rotate** button in the top bar turns the current photo a quarter turn per tap (200 ms ease-in-out); each photo keeps its own turn while you swipe; the file is untouched | Proof shots are often taken sideways — box labels read wrong until the photo is turned |
+
+**Implemented (2026-09-10).** `lib/common/widgets/dialogs/b_photo_viewer.dart`
+(`BPhotoViewer.show(context, localPaths: …, title:, caption:)`); `showRequestImagesDialog`
+and the local-path branch of `showRequestImageDialog` in `request_image_dialog.dart` route
+through it, so Standard Delivery, Pull Out / Pick Up (`BDeliveryDetailsSection`) and the
+Air/Sea pages all get it. The `_ImagePagerDialog` class was removed; `ImageBytesDialog` /
+`ImageLocalPathDialog` remain for other callers. Network fallback
+(`RequestNetworkImageDialog`) unchanged. Tests: `test/common/widgets/b_photo_viewer_test.dart`.
+
+---
+
+## 23. Live map — hidden drawer, fake vehicles, truncated info window
+
+**Prompted by** the 2026-09-10 screenshots of the Delivery Location map: (1) the native
+Google info window shows `Alabang Medical Clinic - Main - 2026090071` and a one-line
+snippet `Rider: RDR ETA: 1 min, Distance: 0.2 km, Status…` cut off; (2) the left drawer
+"List of On-Going Delivery" lists the one live rider and then three rows `Vehicle 1`,
+`Vehicle 2`, `Vehicle 3` that mean nothing to the viewer.
+
+**Current behavior found in code** (`lib/features/logistics/screens/delivery_location/location_google.dart`,
+`delivery_location_controller.dart`, `delivery_vehicle_repository.dart`):
+
+- `DeliveryVehicleRepository.getALlVehicle()` returns **three hardcoded Makati coordinates**
+  named Vehicle 1–3. Tapping one draws a Directions route between two invented points and
+  sets `selectedVehicle`, which then blocks the auto-centre on live riders. Demo scaffolding.
+- The `Scaffold` has a `drawer` but **no app bar or menu button** — the list only opens by
+  swiping from the left edge. Nothing on screen says it exists.
+- The marker uses the native `InfoWindow`; Google truncates `snippet` to one line, and the
+  only action (tap the window → **call the rider**) is invisible.
+- The row text `2026090071` is the title and the client the subtitle — the reader knows the
+  clinic, not the number. `Rider: … - ETA: … - …` is a label soup.
+- The FAB icon `Icons.my_location` means "go to *my* position" but it centres on the riders.
+- Empty state text is fine but sits inside the hidden drawer, so an empty map is just a map.
+
+| Before | After | Why |
+|---|---|---|
+| Three hardcoded `Vehicle n` rows + route-to-nowhere | Remove `DeliveryVehicleRepository` demo data and the rows; keep the model only if real fleet data is planned | Fake data on a live screen destroys trust in the real rows above it |
+| Edge-swipe `Drawer` with no trigger | Bottom sheet (collapsed handle with "N live deliveries", drag up for the list) — same `DraggableBottomSheet` pattern as Request Transport | Map content lives at the bottom on every maps app; the thumb is already there; the collapsed handle *is* the affordance |
+| Native `InfoWindow` (one line, hidden call action) | Marker tap selects the delivery and expands the sheet to a **selected-delivery card**: client, request no., `RDR · 1 min · 0.2 km · In Transit`, buttons **Call** and **Center**; X returns to the list | Rich content, explicit actions, and no reliance on a truncated platform widget |
+| Title `2026090071`, subtitle client + `Rider: … - ETA: …` | Client as title, request no. as muted secondary, meta line `RDR · 1 min · 0.2 km`, status chip | People recognise the clinic first; drop the `Label:` prefixes when the values are self-evident |
+| `Icons.my_location` for "centre on riders" | `Iconsax.routing` / fit-bounds icon, tooltip "Show all deliveries" | The icon should match the action |
+| Empty state hidden inside the drawer | Collapsed sheet reads "Waiting for dispatched deliveries" with the truck icon | Visible without a gesture |
+| Sheet / card appear instantly | Card slides in 200 ms ease-out, out 140 ms; marker selection has no animation (done tens of times) | Occasional entrance gets a short ease-out; frequent selection gets none |
+
+**Touch points**
+- `location_google.dart` — drop `drawer`, add the bottom sheet + selected card, fix FAB icon.
+- `delivery_location_controller.dart` — `selectedRequestId` (replaces `selectedVehicle`), marker `onTap`
+  selects instead of `infoWindow`, keep `centerDispatch`, remove `getRoute` for fake vehicles
+  (keep if a rider→destination route is wanted later).
+- `delivery_vehicle_repository.dart` / `delivery_vehicle_controller.dart` / `delivery_floating_button.dart` —
+  remove or park behind real data; unregister from `GeneralBindings`.
+- Reuse `BFactGrid` / `BSectionTitle` (item 21) for the card body.
+- Tests: card shows Call + Center; marker tap selects; sheet empty state.
+
+**Decisions taken (2026-09-10, defaults — say so if either is wrong).** (a) The fake vehicles
+were deleted outright (`delivery_vehicle_repository.dart`, `delivery_vehicle_controller.dart`,
+`delivery_vehicle_model.dart`, `delivery_floating_button.dart`, and their `GeneralBindings`
+registrations); nothing else referenced them. (b) The call to the courier is kept, as an explicit
+**Call** button on the card.
+
+**Implemented (2026-09-10).** `screens/delivery_location/widgets/live_deliveries_sheet.dart` —
+`LiveDeliveriesSheet` (wraps `BDraggableBottomSheet`, collapsed at 11 % showing
+"N live deliveries" / "Waiting for dispatched deliveries"), `LiveDeliveriesBody`, and
+`SelectedDeliveryCard` (client, request no., `RDR · 1 min · 0.2 km`, status chip, Call / Center, X).
+The card replaces the list with a 200 ms ease-out slide-fade and leaves in 140 ms; marker
+selection itself has no animation. `DeliveryLocationController` gained `selectedRequestId`,
+`selectDelivery` (also centres the camera), `clearSelection`, `callRider`, `sheetExtent`; the
+marker's native `InfoWindow` became `onTap: selectDelivery`; a selection is cleared when its car
+retires; the fake-vehicle route code (`getRoute`, polyline decoding, Directions API call and its
+`API_KEY` read) is gone. `location_google.dart` has no `drawer`; the map's zoom buttons are off
+(the sheet covers that corner, pinch works as on Request Transport); tapping the map clears the
+selection; the FAB uses `Iconsax.routing` with tooltip "Show all deliveries" and rides the sheet
+edge. Tests: `test/features/logistics/widgets/live_deliveries_sheet_test.dart` (empty state, row
+order, select, Call / Center / X, stale selection, meta line).
+
+---
+
 ## Cross-cutting notes & risks
 
 - **Backend coordination required** for items 2 (multiple image uploads), 3, 4, 7,
@@ -540,3 +1149,15 @@ Pull Out** (Stock Receive has no form of its own — it reuses `PullOutForm` /
    Courier?), 5 (scope of pause), 3 (does Stock Receive get Add Item too?).
 3. **Backend-coupled tracks:** 2 (images) · 3→4 (pull-out items, remarks depends on
    items) · 7 (pick-up categories) · 11 (backload items).
+
+**Status (2026-09-10): all 23 items delivered.** What is still pending is rollout, not code:
+
+- **13 + 16 deploy order:** run `migration_20260910_add_air_sea_shippingmethod.sql` → set
+  `;Timezone=Asia/Manila` on the deployed `PostgreSqlDB` connection string → deploy the
+  backend → run `repair_20260910_fix_plus8h_client_timestamps.sql` (PREVIEW first) → build
+  and distribute APK 1.1.103.
+- **15 device QA:** both navigation styles, keyboard open and closed (checklist in §15).
+- **17 nice-to-have:** WS relay should stop replaying cached envelopes for finished
+  requests; the app already discards them.
+- **19 follow-ups:** dashboard badge counts still use the unfiltered list; Pull Out /
+  Stock Receive modals have no crew check.

@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/item_category_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/common/widgets/chips/b_simple_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 
@@ -161,8 +162,21 @@ class AirSeaRequestCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: BSizes.xxs),
-          // Status chip (e.g., New Request, Item Packed, etc.)
-          StatusChip(status: item.status),
+          // Status chip (e.g., New Request, Item Packed, etc.) plus the mode
+          // of shipment; rows created before the field existed show no mode.
+          Wrap(
+            spacing: BSizes.xs,
+            runSpacing: BSizes.xxs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              StatusChip(status: item.status),
+              if (item.shippingMethod.isNotEmpty)
+                BSimpleChip(
+                  label: item.shippingMethod,
+                  prefix: Icon(Iconsax.ship, size: 12, color: textColorPrimary),
+                ),
+            ],
+          ),
         ],
       ),
     );

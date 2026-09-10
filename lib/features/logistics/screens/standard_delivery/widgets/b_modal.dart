@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/status_action_button.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/b_section_title.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_backload_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
@@ -11,7 +11,7 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_co
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
-import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_actions_row.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/backload_items_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
@@ -94,8 +94,7 @@ class BModal extends StatelessWidget {
         // Inventory items: show a compact 'View Items' button that opens
         // the full items page. Place this immediately after Document References
         // so it is always shown under that section.
-        // Reusable view-items button
-        BViewItemsButton(requestId: requestId),
+        RequestActionsRow(requestModel: requestModel),
         // Cancel Remarks Section
         if (isCancelled)
           Obx(() {
@@ -106,7 +105,7 @@ class BModal extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const BTextDivider(text: 'Cancel Remarks'),
+                const BSectionTitle('Cancel remarks'),
                 BCancelRemarks(
                   remarks: remarks.remarks,
                   date: remarks.date,
@@ -124,7 +123,7 @@ class BModal extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const BTextDivider(text: 'Back Load Remarks'),
+                const BSectionTitle('Back load remarks'),
                 ...entries.map((entry) => BBackLoadRemarks(
                       remarks: entry.remarks,
                       dateReported: entry.dateReported,

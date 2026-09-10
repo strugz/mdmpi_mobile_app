@@ -47,6 +47,10 @@ class AirSeaModel {
   /// FormCategoryIds.airSeaHd for 'Air / Sea / Land HD' requests.
   String formCategoryID;
 
+  /// Mode of shipment chosen on the form: 'Air', 'Sea' or 'Land'
+  /// (see ShippingMethods). Empty for rows created before the field existed.
+  String shippingMethod;
+
   // Aggregates
   ClientModel client;
   List<String> documentReference;
@@ -83,6 +87,7 @@ class AirSeaModel {
     this.createdAt = '',
     this.updatedAt = '',
     this.formCategoryID = '',
+    this.shippingMethod = '',
     ClientModel? client,
     List<String>? documentReference,
     CancelRemarksModel? cancelRemarks,
@@ -213,6 +218,7 @@ class AirSeaModel {
     String? createdAt,
     String? updatedAt,
     String? formCategoryID,
+    String? shippingMethod,
     ClientModel? client,
     List<String>? documentReference,
     CancelRemarksModel? cancelRemarks,
@@ -253,6 +259,7 @@ class AirSeaModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       formCategoryID: formCategoryID ?? this.formCategoryID,
+      shippingMethod: shippingMethod ?? this.shippingMethod,
       client: client ?? this.client,
       documentReference: documentReference ?? this.documentReference,
       cancelRemarks: cancelRemarks ?? this.cancelRemarks,
@@ -293,6 +300,7 @@ class AirSeaModel {
       'CreatedAt': createdAt,
       'UpdatedAt': updatedAt,
       'FormCategoryID': formCategoryID.isEmpty ? null : formCategoryID,
+      'ShippingMethod': shippingMethod.isEmpty ? null : shippingMethod,
       'Client': client.toJson(),
       'DocumentReference': documentReference,
     };
@@ -415,6 +423,9 @@ class AirSeaModel {
         'formCategoryId',
         'formcategoryid'
       ]),
+      // The API emits camelCase on GET and accepts PascalCase on POST.
+      shippingMethod: _firstPresent(
+          json, ['ShippingMethod', 'shippingMethod', 'shippingmethod']),
       client: json['Client'] != null
           ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
           : ClientModel.empty(),
@@ -495,6 +506,7 @@ class AirSeaModel {
       createdAt: (lower['createdat'] ?? '').toString(),
       updatedAt: (lower['updatedat'] ?? '').toString(),
       formCategoryID: (lower['formcategoryid'] ?? '').toString(),
+      shippingMethod: (lower['shippingmethod'] ?? '').toString(),
       // client, documentReference, and cancelRemarks will be loaded by DAO
     );
   }

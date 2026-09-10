@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
-import 'package:mdmpi_mobile_app/base/utils/logger.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -85,6 +85,7 @@ class StandardDeliveryFilterManager {
     final clientQuery = clientNameQuery.value.trim().toLowerCase();
     final documentQuery = documentReferenceQuery.value.trim().toLowerCase();
     final currentUser = userController.user.value;
+    final userRoles = RoleResolver.parseRoles(currentUser.role);
 
     var tempList = allRequests.where((item) {
       DateTime? deliveryDate;
@@ -123,14 +124,18 @@ class StandardDeliveryFilterManager {
       final statusMatches = statusFilter.displayName == StandardDeliveryStatusFilter.all.displayName ||
           item.status == statusFilter.displayName;
 
-      // User role matching (courier sees only their assignments)
+      // Crew gating: a user whose only operating role is Courier sees every
+      // request up to Getting Supplies Ready, but from Item Prepared onwards
+      // only the ones they are driver or helper of. Users holding Release /
+      // Admin as well keep full visibility (they need to reassign crews).
       bool userMatches = true;
-      if (!currentUser.role.contains(',')) {
-        if (currentUser.role.contains(BTexts.roleCourier)) {
-          userMatches = item.helper == currentUser.initial ||
-                       item.deliveredBy == currentUser.initial;
-          logDebug('StandardDeliveryFilter: helper=${item.helper}, deliveredBy=${item.deliveredBy}');
-        }
+      if (CrewAssignment.isCourierOnly(userRoles) &&
+          CrewAssignment.isCrewOnlyStatus(item.status)) {
+        userMatches = CrewAssignment.isCrew(
+          driver: item.deliveredBy,
+          helper: item.helper,
+          userInitial: currentUser.initial,
+        );
       }
 
       final dateFromMatches = dateFrom == null ||

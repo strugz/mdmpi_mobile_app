@@ -37,7 +37,7 @@ Important Logistics entry points:
 - `lib/features/logistics/dtos/`: request DTOs by category.
 - `lib/data/repositories/`: Logistics repositories and shared app-data repositories.
 - `lib/data/local/dao/`: SQLite DAOs used by Logistics.
-- `lib/bindings/general_bindings.dart`: canonical dependency registration.
+- `lib/bindings/app/general_bindings.dart`: canonical dependency registration.
 - `lib/base/utils/routes/app_routes.dart`: Logistics route and form page registration.
 
 Follow the established feature order:
@@ -55,7 +55,7 @@ Supported categories:
 - Standard Delivery
 - Pull Out / Return
 - Pick Up
-- Air / Sea
+- Air / Sea / Land
 - Hotline Direct
 - Stock Receive
 
@@ -79,7 +79,6 @@ Important Logistics controllers include:
 - `StockReceiveController`
 - `BackLoadController`
 - `DeliveryLocationController`
-- `DeliveryVehicleController`
 - `RequestTransportController`
 - `WebSocketDeliveryController`
 - `WebSocketDispatcherController`

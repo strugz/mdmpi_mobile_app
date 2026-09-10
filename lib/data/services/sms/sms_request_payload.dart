@@ -15,6 +15,11 @@ class SmsRequestPayload {
   final String completionStatusLabel;
   final List<InventoryItemModel> inventoryItems;
 
+  /// When the courier pressed Dispatch (Standard Delivery / Hotline Direct:
+  /// `deliveredAt`; Air / Sea / Land: `dispatchedAt`). Raw model string —
+  /// the template formats it. Empty when the request type has no dispatch.
+  final String dispatchAt;
+
   const SmsRequestPayload({
     required this.requestId,
     required this.requesterCode,
@@ -28,6 +33,7 @@ class SmsRequestPayload {
     required this.cancelRemarks,
     required this.completionStatusLabel,
     this.inventoryItems = const [],
+    this.dispatchAt = '',
   });
 }
 

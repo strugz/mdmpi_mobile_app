@@ -11,6 +11,7 @@ class SmsPayloadFixtures {
     String completionTimeLabel = 'Date Time Received',
     String completionStatusLabel = 'DELIVERED',
     List<InventoryItemModel> inventoryItems = const [],
+    String dispatchAt = '',
   }) {
     return SmsRequestPayload(
       requestId: 'REQ-001',
@@ -25,6 +26,7 @@ class SmsPayloadFixtures {
       cancelRemarks: cancelRemarks,
       completionStatusLabel: completionStatusLabel,
       inventoryItems: inventoryItems,
+      dispatchAt: dispatchAt,
     );
   }
 

@@ -74,6 +74,8 @@ class SmsPayloadBuilder {
       cancelRemarks: cancelRemarks,
       completionStatusLabel: isPullOut ? 'PULLED OUT' : 'DELIVERED',
       inventoryItems: inventoryItems ?? [],
+      // Stamped locally on the Item Prepared -> For Delivery (Dispatch) step.
+      dispatchAt: model.deliveredAt,
     );
   }
 
@@ -120,6 +122,9 @@ class SmsPayloadBuilder {
           : model.cancelRemarks.remarks,
       completionStatusLabel: isStockReceive ? 'STOCK RECEIVED' : 'TAKEN OUT',
       inventoryItems: const [],
+      // Stamped locally when the courier moves the request to In Transit
+      // (Pull Out / Return and Stock Receive share this model); Pause clears it.
+      dispatchAt: model.pullOutDateStartAt,
     );
   }
 
@@ -143,6 +148,7 @@ class SmsPayloadBuilder {
           : model.cancelRemarks.remarks,
       completionStatusLabel: _resolveAirSeaCompletionStatusLabel(status),
       inventoryItems: const [],
+      dispatchAt: model.dispatchedAt,
     );
   }
 

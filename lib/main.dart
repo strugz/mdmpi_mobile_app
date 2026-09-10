@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
@@ -47,6 +48,19 @@ Future<void> main() async {
   ///  Widgets binding
   final WidgetsBinding widgetsBinding =
       WidgetsFlutterBinding.ensureInitialized();
+
+  // Android: draw edge-to-edge behind transparent system bars on every OS
+  // version (API 35+ forces this anyway). Screens pad for the navigation bar
+  // themselves via SafeArea / BDevicesUtils.systemBottomInset — see item 15.
+  if (!kIsWeb && Platform.isAndroid) {
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
+    ));
+  }
 
   // Preserve the native splash screen while we perform platform
   // initialization. It will be removed either by the Authentication

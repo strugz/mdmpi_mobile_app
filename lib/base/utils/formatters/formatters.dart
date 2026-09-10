@@ -52,6 +52,35 @@ class BFormatter {
     }
   }
 
+  /// Time of day only, e.g. "04:31 PM". Falls back to the raw value.
+  static String formatTimeAmPm(String value) {
+    if (value.isEmpty) return '';
+    final norm = BFormatter.normalizeToIsoDatetime(value);
+    if (norm == null) return value;
+    try {
+      return DateFormat('hh:mm a').format(DateTime.parse(norm));
+    } catch (_) {
+      return value;
+    }
+  }
+
+  /// "12:46 PM → 12:52 PM · Sep 10, 2026" when both stamps fall on the same
+  /// day; otherwise each stamp is shown with its own date. Either side may be
+  /// empty. Used for start/end pairs where a duration is what the reader wants.
+  static String formatTimeRange(String start, String end) {
+    final hasStart = start.trim().isNotEmpty;
+    final hasEnd = end.trim().isNotEmpty;
+    if (!hasStart && !hasEnd) return '';
+    if (hasStart && hasEnd) {
+      final sameDay = formatDate3(start) == formatDate3(end);
+      if (sameDay) {
+        return '${formatTimeAmPm(start)} → ${formatTimeAmPm(end)} · ${formatDate3(start)}';
+      }
+      return '${formatDateWithAmPm(start)} → ${formatDateWithAmPm(end)}';
+    }
+    return formatDateWithAmPm(hasStart ? start : end);
+  }
+
   static String formatCurrency(double amount) {
     return NumberFormat.currency(locale: 'en_US', symbol: '\$').format(amount);
   }

@@ -3,9 +3,11 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/shipping_methods.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
@@ -142,6 +144,20 @@ class AirSeaForm extends StatelessWidget {
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 
+                      /// Mode of Shipment (required, create-only)
+                      BDropdown(
+                        controller:
+                            controller.formState.shippingMethodController,
+                        label: 'Mode of Shipment',
+                        icon: Iconsax.ship,
+                        dropdownList: ShippingMethods.all,
+                        validator: (v) =>
+                            (v == null || v.toString().trim().isEmpty)
+                                ? 'Please select the mode of shipment'
+                                : null,
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+
                       /// Pick-Up Date (date only)
                       ReadOnlyDateFormField(
                         controller: controller.formState.datePickUpController,
@@ -165,7 +181,7 @@ class AirSeaForm extends StatelessWidget {
             padding: EdgeInsets.only(
               left: BSizes.sm,
               right: BSizes.sm,
-              bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+              bottom: BSizes.sm,
             ),
             child: Obx(() {
               final isSaving = controller.isSaving.value;

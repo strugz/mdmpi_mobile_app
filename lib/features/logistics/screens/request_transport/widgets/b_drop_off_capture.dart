@@ -114,13 +114,16 @@ class _BDropOffCaptureState extends State<BDropOffCapture> {
 
   @override
   Widget build(BuildContext context) {
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
+    // Camera preview stays full-bleed; only the capture button clears the
+    // system navigation bar. (BPhotoReviewScreen has its own SafeArea.)
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
 
     /// Build camera capture overlay with camera button
     Widget buildCaptureOverlay() {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: BSizes.defaultSpace),
+        padding: EdgeInsets.only(
+            top: BSizes.defaultSpace,
+            bottom: BSizes.defaultSpace + bottomInset),
         child: Align(
           alignment: Alignment.bottomCenter,
           child: IconButton(
@@ -140,7 +143,8 @@ class _BDropOffCaptureState extends State<BDropOffCapture> {
         }
       },
       child: SafeArea(
-        bottom: !isGestureNavigation,
+        top: false,
+        bottom: false,
         child: Scaffold(
           appBar: BAppBar(
             title: Text(widget.title),

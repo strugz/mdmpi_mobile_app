@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/offline_data_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
@@ -194,6 +195,18 @@ class StandardDeliveryDataManager {
     String userInitial,
     IDeliveryRequestController controller,
   ) async {
+    // The courier transitions (Dispatch → For Delivery, Drop Off → Delivered)
+    // may only be performed by the assigned driver or helper.
+    if ((newStatus == BTexts.statusForDelivery ||
+            newStatus == BTexts.statusDoneDelivery) &&
+        !CrewAssignment.canOperate(request, userInitial: userInitial)) {
+      BLoaders.warningSnackBar(
+          title: 'Not assigned',
+          message:
+              'Only the assigned driver or helper can update this request.');
+      return;
+    }
+
     if (!await _validateRequiredUpdateFields(
       request: request,
       newStatus: newStatus,
