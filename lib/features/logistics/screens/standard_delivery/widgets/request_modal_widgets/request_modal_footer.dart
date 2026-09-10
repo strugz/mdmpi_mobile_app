@@ -8,10 +8,10 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/b_section_title.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
-import 'package:mdmpi_mobile_app/common/widgets/modals/b_delivery_details_section.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/delivery_summary_section.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/reassign_delivery_crew_section.dart';
@@ -41,10 +41,6 @@ class RequestModalFooter extends StatelessWidget {
     final iconColor = dark ? BColors.light : BColors.black;
     final userController = Get.find<UserInitialController>();
 
-    // Determine request ID for database lookups
-    final requestIdForDb =
-        requestModel.id.isNotEmpty ? requestModel.id : requestModel.requestID;
-
     final isPreparingUser =
         requestModel.status == BTexts.statusGettingSuppliesReady &&
             requestModel.itemPreparedBy ==
@@ -63,9 +59,7 @@ class RequestModalFooter extends StatelessWidget {
       children: [
         /// -- Delivery Info (for preparing user) --
         if (isPreparingUser) ...[
-          const SizedBox(height: BSizes.sm),
-          const BTextDivider(text: 'Delivery Info'),
-          const SizedBox(height: BSizes.spaceBtwItems),
+          const BSectionTitle('Delivery crew'),
           Obx(() {
             final users = userController.userList.toList();
             if (users.isEmpty) {
@@ -119,9 +113,7 @@ class RequestModalFooter extends StatelessWidget {
 
         /// -- Proof of Delivery (for For Delivery status) --
         if (requestModel.status == BTexts.statusForDelivery) ...[
-          const SizedBox(height: BSizes.md),
-          const BTextDivider(text: 'Proof of Delivery'),
-          const SizedBox(height: BSizes.sm),
+          const BSectionTitle('Proof of delivery'),
           BProofPhotoList(
             requestId: requestModel.id,
             iconColor: iconColor,
@@ -189,22 +181,9 @@ class RequestModalFooter extends StatelessWidget {
           }),
         ],
 
-        /// -- Delivery Details --
-        BDeliveryDetailsSection(
-          driver: requestModel.deliveredBy,
-          helper: requestModel.helper,
-          receivedBy: requestModel.receiver,
-          receivedByLabel: 'Received By',
-          departedAt: requestModel.deliveredAt,
-          completedAt: requestModel.deliveredEndAt,
-          completedAtLabel: 'Delivered At',
-          requestId: requestIdForDb,
-          apiController: 'Request',
-          viewItemButtonLabel: 'Item Photo',
-          dialogTitle: 'Delivered Item',
-          imageProofTypes: const ['Proof', 'Proof_2', 'Proof_3'],
-          showViewItemButton: requestModel.status == BTexts.statusDoneDelivery,
-        ),
+        /// -- Delivery (crew, timestamps, receiver, signature) --
+        /// Proof photos moved to RequestActionsRow under the header.
+        DeliverySummarySection(requestModel: requestModel),
       ],
     );
   }

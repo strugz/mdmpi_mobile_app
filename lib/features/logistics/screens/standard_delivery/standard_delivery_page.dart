@@ -4,13 +4,13 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/b_section_title.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_backload_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
-import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_actions_row.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/backload_items_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_body.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/request_modal_footer.dart';
@@ -52,7 +52,7 @@ class StandardDeliveryPage extends StatelessWidget {
       appBar: BAppBar(
         showBackArrow: true,
         leadingOnPressed: () => Navigator.of(context).pop(),
-        title: Text("Delivery Details",
+        title: Text("Request",
           style: Theme.of(context).textTheme.titleMedium,
           overflow: TextOverflow.ellipsis,
           maxLines: 1,
@@ -67,7 +67,7 @@ class StandardDeliveryPage extends StatelessWidget {
               header: RequestModalHeader(requestModel: requestModel),
               documentReferences: requestModel.documentReference,
               children: [
-                BViewItemsButton(requestId: requestId),
+                RequestActionsRow(requestModel: requestModel),
                 if (isCancelled)
                   Obx(() {
                     final remarks = controller.cancelRemarks.value;
@@ -77,7 +77,7 @@ class StandardDeliveryPage extends StatelessWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const BTextDivider(text: 'Cancel Remarks'),
+                        const BSectionTitle('Cancel remarks'),
                         BCancelRemarks(
                           remarks: remarks.remarks,
                           date: remarks.date,
@@ -94,7 +94,7 @@ class StandardDeliveryPage extends StatelessWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const BTextDivider(text: 'Back Load Remarks'),
+                        const BSectionTitle('Back load remarks'),
                         ...entries.map((entry) => BBackLoadRemarks(
                               remarks: entry.remarks,
                               dateReported: entry.dateReported,

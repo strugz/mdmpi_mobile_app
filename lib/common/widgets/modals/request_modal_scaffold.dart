@@ -3,7 +3,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
-import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/b_section_title.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/product_title_text.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/widgets/request_modal_widgets/b_document_reference_list.dart';
 
@@ -52,7 +52,7 @@ class RequestModalScaffold extends StatelessWidget {
             ),
             // Document references
             if (documentReferences.isNotEmpty)
-              BTextDivider(text: 'Document References'),
+              const BSectionTitle('Document references'),
             DocumentReferenceList(
               documentReferences: documentReferences,
               textColor: textColor,
