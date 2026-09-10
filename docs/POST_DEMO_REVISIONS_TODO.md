@@ -24,10 +24,13 @@
 - [x] 13. Air / Sea / Land: per-request Mode of Shipment dropdown (Air / Sea / Land) — `L` (done app + backend as nullable `shippingmethod varchar(15)`; run `MDMPI.App/migration_20260910_add_air_sea_shippingmethod.sql` **before** the backend deploy, then ship the app build — old clients keep working, their rows stay NULL; supersedes the "option a" block under item 8)
 - [x] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (done app-only; "Dispatched At: Sep 9, 2026 03:03 PM." on the For Delivery and Air/Sea Dispatch texts; completion timestamps now formatted the same way; not blocked by item 16 — the SMS prints the phone's local stamp, not the DB value)
 - [x] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (done app-only: edge-to-edge set at startup; the six `viewInsets.bottom > 0` "gesture nav" probes — including the tab bar — replaced; forms stop double-counting the keyboard; nested SafeAreas removed from the modals; ~20 bottom widgets/sheets padded; widget tests + a source-grep test guard the rule)
-- [x] 17. Live map: one courier drawn as two cars — `M` (done app-only: courier sends a terminal frame on Drop Off / request switch, watchers retire the car and refuse replayed older frames, 30-min age-out, and at most one car per rider at render time; WS-relay cache change still recommended, tracked in §17)
-- [x] 19. Standard Delivery / Hotline Direct: only the assigned driver or helper can open the courier screen and Dispatch / Drop Off — `M` (done app-only; sole-role couriers no longer see other crews' Item Prepared / For Delivery requests; Release+Courier users see them but get the modal; Dispatch no longer overwrites the driver)
-- [ ] 18. Gemini OCR key hygiene (decision 2026-09-10: key stays in the mobile client; backend proxy removed) — `S` (ops-side: rotate the key — it is in both repos' git history — restrict it in GCP, set a budget alert; app-side done: key moved from URL to header)
 - [x] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (backend fixed via `TimestampNormalizer` in all five normalizers + `Timezone=Asia/Manila` on the connection string; run `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` **after** deploying to fix existing rows; only the optional app follow-up remains open)
+- [x] 17. Live map: one courier drawn as two cars — `M` (done app-only: courier sends a terminal frame on Drop Off / request switch, watchers retire the car and refuse replayed older frames, 30-min age-out, and at most one car per rider at render time; WS-relay cache change still recommended, tracked in §17)
+- [x] 18. Gemini OCR key hygiene (decision 2026-09-10: key stays in the mobile client; backend proxy removed) — `S` (done: ops side completed 2026-09-10 — key rotated, restricted in GCP, budget alert set; app side: key sent in the `x-goog-api-key` header, `.env.example` / README trimmed to the three keys actually read)
+- [x] 19. Standard Delivery / Hotline Direct: only the assigned driver or helper can open the courier screen and Dispatch / Drop Off — `M` (done app-only; sole-role couriers no longer see other crews' Item Prepared / For Delivery requests; Release+Courier users see them but get the modal; Dispatch no longer overwrites the driver)
+- [x] 22. Proof photos opened in a tinted Material dialog (photo boxed in a card, title bar with an X *and* a Close button, no page indicator) — `S` (done app-only: new full-screen `BPhotoViewer` — dark edge-to-edge canvas, swipe between photos, pinch to zoom, "1 of 3" counter + dots, tap to hide chrome, one close; every proof/delivery-shot caller goes through it)
+- [x] 21. Delivery Details page — information-design pass (unlabelled icon-only facts, truncated timestamps, "Driver:"/"Received By:" rows styled differently from everything else, floating "View Items" / "Item Photo" links, duplicated "Delivery Details" heading) — `M` (done app-only: labelled two-column fact grid, one status chip, left-aligned section titles, chronological labelled timestamps, signature card, actions row with item count; shared by the page and the request modal)
+- [x] 20. Document References take over the request screens when a delivery carries many (15–20 DR/SI/PO numbers, one tall row + copy icon each) — `S` (done app-only: `DocumentReferenceList` rewritten as grouped DR / SI / PO chips, tap-to-copy, "Show all N" past 6, "Copy all"; the courier's Request Transport sheet reuses it)
 
 ---
 
@@ -329,9 +332,9 @@ data UPDATE, no backend code change.
 
 **If a per-request Land mode is added (option a)** — *delivered 2026-09-10 as item 13
 (§13); the boxes below are kept for history and are superseded by that section.*
-- [ ] `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror `standard_delivery_form.dart:146-156`).
-- [ ] Column in local `a_tblRequestAirSea` (`db_schema.dart:210-243`) + `air_sea_dao.dart`; server table + its `_history` table + `trg_a_tblrequestairsea_history_fn()` (`mdmpi_app_db_schema.sql:29-95, 783-812`). **Backend change.**
-- [ ] Status-flow review: Air/Sea statuses (`Endorsed to Guard`, `Drop Off`, `Provincial *`) may not apply to a Land request — `air_sea_modal_config.dart:60-140`, `dashboard_bucket_config.dart:165-235` (has tests: `dashboard_bucket_config_test.dart`).
+- [x] (delivered in §13) `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror `standard_delivery_form.dart:146-156`).
+- [x] (delivered in §13) Column in local `a_tblRequestAirSea` (`db_schema.dart:210-243`) + `air_sea_dao.dart`; server table + its `_history` table + `trg_a_tblrequestairsea_history_fn()` (`mdmpi_app_db_schema.sql:29-95, 783-812`). **Backend change.**
+- [x] (decided in §13: no branching) Status-flow review: Air/Sea statuses (`Endorsed to Guard`, `Drop Off`, `Provincial *`) may not apply to a Land request — `air_sea_modal_config.dart:60-140`, `dashboard_bucket_config.dart:165-235` (has tests: `dashboard_bucket_config_test.dart`).
 
 ---
 
@@ -888,19 +891,19 @@ holding the APK; revoking it therefore requires shipping a new build.
   no longer lands in proxy/CDN/device request logs.
 
 **To do — ops side (no code)**
-- [ ] **Rotate the key.** It sat in `.env` in this repo's history (removed in `d74aa51` /
+- [x] **Rotate the key.** (done 2026-09-10) It sat in `.env` in this repo's history (removed in `d74aa51` /
   `c0bfeb6`) and in `appsettings.json` in the backend's history (2 commits before the
   file was emptied). Generate a new key in Google AI Studio / GCP, put it in the
   build machine's `.env` only, build APK, then delete the old key once the new APK is
   distributed (old APKs stop OCR-ing at that moment — nothing else breaks).
-- [ ] **Restrict the new key in GCP:** API restriction → *Generative Language API* only;
+- [x] **Restrict the new key in GCP** (done 2026-09-10): API restriction → *Generative Language API* only;
   application restriction → *Android apps* with the release package name + SHA-1
   (verify the Gemini REST endpoint honours it for this key type; if not, keep the
   API-only restriction). Set a **billing budget alert** on the project.
-- [ ] Remove the dead `AI_TOOLKIT_GOOGLE_URL` / `AI_TOOLKIT_AUTH_TYPE` /
+- [x] Remove the dead `AI_TOOLKIT_GOOGLE_URL` / `AI_TOOLKIT_AUTH_TYPE` /
   `AI_TOOLKIT_PROVIDER` lines from `.env.example` and README (only `AI_TOOLKIT_MODEL`,
   `AI_TOOLKIT_API_KEY`, optional `AI_PROMPT` are read).
-- [ ] Revisit if abuse or cost ever shows up: the safer design is a server-side proxy
+- Standing note — revisit if abuse or cost ever shows up: the safer design is a server-side proxy
   with an app header + rate/size limits (the code removed on 2026-09-10 is in git
   history at MDMPI.App `6715105^…` if it is ever wanted back).
 
@@ -950,6 +953,104 @@ filter, their modals don't). `StandardDeliveryModalConfig.navigateTo` is dead co
 
 ---
 
+## 20. Document References — compact list for deliveries with many references
+
+**Symptom (screenshot 2026-09-10, Delivery Details).** A delivery carrying 18 DR / SI / PO
+numbers rendered one full-width row per reference, each with its own copy icon — the
+section filled the whole screen and pushed the action button off it.
+
+**Implemented (2026-09-10).** `DocumentReferenceList`
+(`standard_delivery/widgets/request_modal_widgets/b_document_reference_list.dart`) was
+rewritten: references are de-duplicated, trimmed and **grouped by prefix** (`DRNo.` →
+`DR`, `SINo.` → `SI`, `PONo.` → `PO`; anything else shown as typed, prefix-less values in
+their own group), each group is a `Wrap` of small chips holding only the number (tabular
+figures), **tap a chip to copy** the full reference, **Copy all** copies every reference
+one per line, and past **6** references the list folds behind **Show all N / Show less**
+(`collapsedLimit` constructor parameter). Every request modal, the Standard Delivery page
+and the Air/Sea stages page already used this widget; the courier's Request Transport
+sheet (`request_transport/widgets/b_document_reference.dart`) had its own row-per-reference
+list and now delegates to it. Tests:
+`test/features/logistics/widgets/document_reference_list_test.dart`.
+
+---
+
+## 21. Delivery Details page — information-design pass
+
+**Prompted by** the 2026-09-10 screenshot of a Delivered request (Questcare Medical
+Products, 18 document references). The page is functional and the data is all there; what
+is missing is *hierarchy* — every fact is rendered at the same weight, several facts have
+no label, and three different row styles are mixed on one screen. Concrete findings and the
+intended change (rendered as `Before → After`):
+
+| # | Before | After | Why |
+|---|---|---|---|
+| 1 | Icon-only facts with no label: `⊞ Reagents`, `⊙ Land`, `⛟ Full`, `▤ Sep 10, 2026`, `◯ RAL` | Two-column label/value grid: `Item category  Reagents`, `Shipping  Land`, `Terms  Full`, `Delivery date  Sep 10, 2026`, `Requested by  RAL` — label in muted `labelSmall`, value in `bodyMedium` | A courier or dispatcher should not have to decode icons; "RAL" or "Full" mean nothing without a label. Labels also let the eye scan one column |
+| 2 | Two equal chips `Delivered` (green) and `Medium` (orange) side by side | Keep the **status** chip; render preference as a labelled fact (`Priority  Medium`) or a neutral outlined chip with a prefix | Two saturated chips read as two statuses; orange on a delivered request looks like a warning |
+| 3 | Timestamps truncated in a 2-column row: `Sep 10, 2026 12:…` / `Sep 10, 2026 12:…` | Stack them with labels, one per line, date shown once: `Preparation  12:46 PM → 12:52 PM · Sep 10, 2026` | Truncated times carry zero information; the duration is what the reader wants |
+| 4 | Delivery block mixes styles: plain `Driver: BPT`, bold-label `Received By: Audro naperi` wrapping beside the signature, two unlabelled times `06:35 PM` above `12:27 PM` | Same label/value grid as #1: `Driver  BPT`, `Helper  —`, `Dispatched  12:27 PM`, `Delivered  06:35 PM`, `Received by  Audro Naperi`; signature in its own bordered card below, captioned `Receiver signature` | One row style for the whole page; times labelled and in chronological order (dispatch before delivery); the name no longer fights the signature for width |
+| 5 | Centered text links `👁 View Items` and `👥 Item Photo` floating between sections | Two secondary (outlined) buttons in one row under the header: `View items (12)` · `Proof photos (3)` with counts | Actions belong together and should look like actions; counts tell the reader whether it is worth tapping |
+| 6 | Section headers `Document References` / `Preparation Info` / `Delivery Details` as centered text dividers; `Delivery Details` duplicates the app-bar title | Left-aligned uppercase `labelSmall` section titles with consistent 24 px top / 8 px bottom spacing; rename the last section `Delivery` | Centered dividers pull the eye to the middle of the screen on every section; the duplicate title wastes the strongest slot on the page |
+| 7 | Trip ticket `01002` with an unexplained copy icon | `Trip ticket  01002 ⧉` in the grid (label + tap-to-copy like the reference chips) | Same copy affordance as §20, and the number gets its name |
+| 8 | Address as a plain second line | Keep, but make it tappable (opens maps) with a subtle chevron | The address is the one thing a courier acts on |
+
+**Implemented (2026-09-10)** — all eight rows above, on both the full page and the request
+modal (they share the widgets):
+- New shared `BFactGrid` / `BFact` (`lib/common/widgets/texts/b_fact_grid.dart`): muted
+  small label above a normal value, two columns, empty facts skipped, optional tap-to-copy
+  or custom tap. New `BSectionTitle` (`lib/common/widgets/dividers/b_section_title.dart`):
+  left-aligned small-caps title with a hairline, fixed 24 px above / 8 px below.
+- `RequestModalHeader`: one status chip; `Priority`, `Item category`, `Shipping`, `Terms`,
+  `Delivery date`, `Requested by` as a fact grid; address tappable (Google Maps search).
+- `RequestModalBody`: `Prepared by` / `Trip ticket ⧉` grid, and one line
+  `Prepared · 12:46 PM → 12:52 PM · Sep 10, 2026` via the new
+  `BFormatter.formatTimeRange` / `formatTimeAmPm`.
+- New `DeliverySummarySection` replaces `BDeliveryDetailsSection` for Standard Delivery:
+  `Driver`, `Helper`, `Dispatched`, `Delivered` (chronological, labelled), `Received by`
+  emphasised, signature in its own captioned card. The shared `BDeliveryDetailsSection`
+  is untouched for Pull Out / Pick Up / Air-Sea.
+- New `RequestActionsRow` under the header: outlined `View items (n)` (count from
+  `InventoryItemRepository.fetchItems`) and, once delivered, `Proof photos`; replaces the
+  floating `View Items` / `Item Photo` links in `standard_delivery_page.dart` and `b_modal.dart`.
+- `RequestModalScaffold` uses `BSectionTitle('Document references')` (so every module's
+  modal gets the same title style); app-bar title is now `Request` instead of duplicating
+  the section name.
+- Tests: `test/common/widgets/b_fact_grid_test.dart` (grid layout + time formatters).
+
+**Not done here:** the courier's Request Transport sheet (`b_request_details.dart`) still
+uses the old icon rows and centered dividers; the Air/Sea page and Pull Out / Stock
+Receive modals too — apply the same widgets once this layout is approved on device.
+
+**Also pending from this screenshot:** the same per-line audit for the Air/Sea page and the
+Pull Out / Stock Receive modals once the Standard Delivery layout is agreed.
+
+---
+
+## 22. Proof photos — full-screen viewer instead of a dialog
+
+**Prompted by** the 2026-09-10 screenshot of "Delivered Item": the photo sat inside a
+lavender-tinted Material 3 dialog with 12 px insets, a title bar, an **X and a Close
+button** (two ways to do the same thing), and no indication that two more photos existed.
+
+| Before | After | Why |
+|---|---|---|
+| `Dialog` with tinted surface, photo boxed with margins | Full-screen black canvas, photo `BoxFit.contain` edge-to-edge | A photo is the content; the chrome is secondary. The M3 surface tint made the frame the most colourful thing on screen |
+| Title bar + X + bottom "Close" text button | One close control (top-left X) + system back | One exit; the text button only added a row of chrome |
+| Pager with `Title (2/3)` in the title bar; nothing on the single-photo dialog | `1 of 3` counter + animated dots at the bottom, `Request 01002` caption; single photo shows the caption alone | The reader learns there is more to swipe without reading the title; the dots also show *where* |
+| Chrome always on | Tap the photo → chrome fades out (160 ms ease-out), tap again → back | Lets the courier inspect the box labels clean |
+| `showDialog` default fade | Translucent route, 180 ms fade + scale 0.96→1 ease-out in, 140 ms out | Opened occasionally — a short entrance is right; nothing appears from `scale(0)`; exit faster than enter |
+| Zoom min 0.5 (photo could shrink below the frame) | `InteractiveViewer(minScale: 1, maxScale: 4)` | Shrinking below fit-size is never useful |
+| No way to rotate | **Rotate** button in the top bar turns the current photo a quarter turn per tap (200 ms ease-in-out); each photo keeps its own turn while you swipe; the file is untouched | Proof shots are often taken sideways — box labels read wrong until the photo is turned |
+
+**Implemented (2026-09-10).** `lib/common/widgets/dialogs/b_photo_viewer.dart`
+(`BPhotoViewer.show(context, localPaths: …, title:, caption:)`); `showRequestImagesDialog`
+and the local-path branch of `showRequestImageDialog` in `request_image_dialog.dart` route
+through it, so Standard Delivery, Pull Out / Pick Up (`BDeliveryDetailsSection`) and the
+Air/Sea pages all get it. The `_ImagePagerDialog` class was removed; `ImageBytesDialog` /
+`ImageLocalPathDialog` remain for other callers. Network fallback
+(`RequestNetworkImageDialog`) unchanged. Tests: `test/common/widgets/b_photo_viewer_test.dart`.
+
+---
+
 ## Cross-cutting notes & risks
 
 - **Backend coordination required** for items 2 (multiple image uploads), 3, 4, 7,
@@ -982,16 +1083,14 @@ filter, their modals don't). `StandardDeliveryModalConfig.navigateTo` is dead co
 3. **Backend-coupled tracks:** 2 (images) · 3→4 (pull-out items, remarks depends on
    items) · 7 (pick-up categories) · 11 (backload items).
 
-**Open items (1-12 delivered):**
+**Status (2026-09-10): all 20 items delivered.** What is still pending is rollout, not code:
 
-4. **First — backend bug, blocks 14:** 16 (timezone). Verify with the SQL in §16, fix
-   the five normalizers + pin `Timezone=Asia/Manila`, repair data, then release.
-5. **Quick win (no backend):** 14 (dispatch time in SMS) — self-contained; ship as soon
-   as 16 is live so the printed hour is right.
-6. **Device work:** 15 (Android inset audit) — needs a physical phone in both nav
-   styles; verify Windows desktop is untouched.
-6b. **Live map:** 17 (duplicate car markers) — app-only, testable with two requests on
-   one courier account; coordinate the WS-relay cache change separately.
-7. **Backend-coupled:** 13 (Mode of Shipment) — same three-step rollout as item 10:
-   schema migration → backend deploy → app build. Settle the Land status-flow
-   question with Logistics before coding.
+- **13 + 16 deploy order:** run `migration_20260910_add_air_sea_shippingmethod.sql` → set
+  `;Timezone=Asia/Manila` on the deployed `PostgreSqlDB` connection string → deploy the
+  backend → run `repair_20260910_fix_plus8h_client_timestamps.sql` (PREVIEW first) → build
+  and distribute APK 1.1.103.
+- **15 device QA:** both navigation styles, keyboard open and closed (checklist in §15).
+- **17 nice-to-have:** WS relay should stop replaying cached envelopes for finished
+  requests; the app already discards them.
+- **19 follow-ups:** dashboard badge counts still use the unfiltered list; Pull Out /
+  Stock Receive modals have no crew check.

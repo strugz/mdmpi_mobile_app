@@ -35,8 +35,8 @@ feature modules.
   Copy-Item .env.example .env
   ```
 
-  Keys: `API_URL`, `API4_URL`, `API_KEY`, `AI_TOOLKIT_GOOGLE_URL`, `AI_TOOLKIT_MODEL`,
-  `AI_TOOLKIT_API_KEY`, `AI_TOOLKIT_AUTH_TYPE`, `AI_TOOLKIT_PROVIDER`, `AI_PROMPT`,
+  Keys: `API_URL`, `API4_URL`, `API_KEY`, `AI_TOOLKIT_MODEL`, `AI_TOOLKIT_API_KEY`,
+  `AI_PROMPT` (optional),
   `USE_GOOGLE_GENERATIVE`. Never commit secrets.
 
 ## Getting started
