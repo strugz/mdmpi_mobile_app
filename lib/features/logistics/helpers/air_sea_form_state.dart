@@ -17,6 +17,9 @@ class AirSeaFormState {
   final TextEditingController itemPreparedEndAtController =
       TextEditingController();
   final TextEditingController datePickUpController = TextEditingController();
+  // No default: the requestor must choose Air / Sea / Land explicitly.
+  final TextEditingController shippingMethodController =
+      TextEditingController();
   final TextEditingController remarksController = TextEditingController();
   final TextEditingController itemCategoryController = TextEditingController();
   final TextEditingController endorsedToController = TextEditingController();
@@ -86,6 +89,7 @@ class AirSeaFormState {
     provincialRemarksController.text = '';
     receiverSignatureBase64.value = '';
     itemCategoryController.text = '';
+    shippingMethodController.text = '';
     mobileId.value = null;
 
     if (itemCategories.isNotEmpty) {
@@ -131,6 +135,7 @@ class AirSeaFormState {
     dropOffAtController.dispose();
     provincialDeliveredToController.dispose();
     provincialRemarksController.dispose();
+    shippingMethodController.dispose();
     for (var controller in documentReferenceControllers) {
       controller.dispose();
     }

@@ -21,6 +21,11 @@
 - [x] 10. Hotline Direct: support Air/Sea requests — `L` (done as a new "Air / Sea / Land HD" form category, per decision; run `MDMPI.App/migration_20260909_add_air_sea_formcategoryid.sql` first, then `migration_20260909_add_air_sea_hd_category.sql` together with this app build + backend deploy; add the "HD" role in Firestore and assign it to the designated requestors)
 - [x] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (done app + backend via new `a_tblbackloaditem` table; per decision the courier unchecks items at For Delivery before Drop Off — run `MDMPI.App/migration_20260907_add_a_tblbackloaditem.sql` and redeploy in lockstep)
 - [x] 12. Stock Receive: document reference optional — `S` (done app-side only; Pull Out / Return and all other forms keep it required)
+- [x] 13. Air / Sea / Land: per-request Mode of Shipment dropdown (Air / Sea / Land) — `L` (done app + backend as nullable `shippingmethod varchar(15)`; run `MDMPI.App/migration_20260910_add_air_sea_shippingmethod.sql` **before** the backend deploy, then ship the app build — old clients keep working, their rows stay NULL; supersedes the "option a" block under item 8)
+- [ ] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (app-only; the timestamp is already captured, it is just never printed in the message)
+- [ ] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (app-only; system-inset audit across screens)
+- [ ] 17. Live map: one courier drawn as two cars (stale marker of a finished/previous request is never removed; markers are keyed per RequestID, not per courier) — `M` (app-only; `web_socket_delivery_controller.dart` + `delivery_location_controller.dart`; ideally the WS server also stops replaying completed requests)
+- [ ] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (**backend root cause**: local wall-clock relabelled as UTC, then Postgres casts it into the Manila session; fix in MDMPI.App + a one-off data repair; small app follow-up)
 
 ---
 
@@ -320,7 +325,8 @@ data UPDATE, no backend code change.
   name still matches its own branch and no earlier branch (no branch tests
   'land').
 
-**If a per-request Land mode is added (option a)**
+**If a per-request Land mode is added (option a)** — *delivered 2026-09-10 as item 13
+(§13); the boxes below are kept for history and are superseded by that section.*
 - [ ] `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror `standard_delivery_form.dart:146-156`).
 - [ ] Column in local `a_tblRequestAirSea` (`db_schema.dart:210-243`) + `air_sea_dao.dart`; server table + its `_history` table + `trg_a_tblrequestairsea_history_fn()` (`mdmpi_app_db_schema.sql:29-95, 783-812`). **Backend change.**
 - [ ] Status-flow review: Air/Sea statuses (`Endorsed to Guard`, `Drop Off`, `Provincial *`) may not apply to a Land request — `air_sea_modal_config.dart:60-140`, `dashboard_bucket_config.dart:165-235` (has tests: `dashboard_bucket_config_test.dart`).
@@ -509,6 +515,295 @@ Pull Out** (Stock Receive has no form of its own — it reuses `PullOutForm` /
 
 ---
 
+## 13. Air / Sea / Land — Mode of Shipment dropdown
+
+**Requirement.** An Air / Sea / Land request must record **how it ships** — a
+per-request `Mode of Shipment` dropdown with `Air` / `Sea` / `Land`. Item 8 was
+decided as a **relabel only**, so today the category name mentions three modes
+while the request itself stores none. This item is the deferred "option (a)"
+from §8 — treat the unchecked block there as superseded by this section.
+
+**Current behavior.** `air_sea_form.dart` has no mode selector. Standard Delivery
+and Hotline Direct already have a Shipping Method dropdown of `['Land','Air','Sea']`
+(`standard_delivery_form.dart:146-156`, `hotline_direct_form.dart:71-75`) — mirror
+that widget and option list so the wording matches across forms.
+
+**Scope note.** Both Air/Sea tabs (base and the `Air / Sea / Land HD` category from
+§10) share `AirSeaForm`, `AirSeaModel` and `a_tblrequestairsea`, so a single column
+and a single form change cover both.
+
+**Implemented (2026-09-10).** Decisions locked in: required on create, create-only
+(read-only afterwards; backend still accepts it on PATCH), no status-flow branching
+(Land follows the Air/Sea statuses), shown as a chip on the card and a line in the
+shared modal/page header (both hidden for legacy NULL rows). Values come from the new
+shared `ShippingMethods.all` (`lib/features/logistics/constants/shipping_methods.dart`),
+now also used by the Standard Delivery / Hotline Direct dropdowns. Server-side the
+DTOs carry `[MaxLength(15)] [RegularExpression("^(Air|Sea|Land)$")]`; blank is
+treated as "not sent". Local DB v18 → v19. Both schema dumps updated (the app-side
+copy was stale since the FormCategoryID change and is now in sync). Rollout: migration
+→ backend → app; verified every path the installed 1.1.102 client uses keeps working.
+
+**Touch points**
+- [x] `AirSeaModel` + insert/update DTOs + `air_sea_mapper.dart` gain a
+  `shippingMethod` field; `BDropdown` in `air_sea_form.dart` (mirror
+  `standard_delivery_form.dart:146-156`). Decide whether it is required on create
+  (Standard Delivery's copy currently has no validator).
+- [x] Local DB column in `a_tblRequestAirSea` (`db_schema.dart:210-243`) +
+  `air_sea_dao.dart` (all write paths) + DB version bump in `database_helper.dart`.
+- [x] **Backend change:** column on the server table, its `_history` table, and a
+  full re-emit of `trg_a_tblrequestairsea_history_fn()`
+  (`mdmpi_app_db_schema.sql:29-95, 783-812`); DTOs set it on insert/update. Nullable
+  column so existing rows and older app builds stay valid; deploy schema first,
+  then backend, then the app (same order as §10).
+- [x] Display: show the mode on the request card / modal header
+  (`air_sea_request_card.dart`, `air_sea_modal_config.dart`) — otherwise the field is
+  write-only and the courier never sees it.
+- [x] Status-flow review (decided: no branching — Land follows the same statuses;
+  `dashboard_bucket_config_test.dart` untouched): Air/Sea statuses (`Endorsed to Guard`, `Drop Off`,
+  `Provincial *`) may not all apply to a **Land** request —
+  `air_sea_modal_config.dart:60-140`, `dashboard_bucket_config.dart:165-235`
+  (has tests: `dashboard_bucket_config_test.dart`). Confirm with Logistics whether
+  Land skips any step before branching the flow.
+
+---
+
+## 14. SMS — Dispatch time when the courier presses Dispatch
+
+**Requirement.** The SMS the client receives when the courier presses **Dispatch**
+must state the time of that dispatch, not just the new status.
+
+**Current behavior.** Two separate "Dispatch" surfaces exist, and neither prints a
+time:
+- **Standard Delivery / Hotline Direct** — the courier's `Dispatch` button
+  (`b_action_button.dart:141`) runs `Item Prepared → For Delivery` via
+  `RequestTransportController.processRequestDispatchOrDropOff`
+  (`request_transport_controller.dart:506`). The template branch for
+  `BTexts.statusForDelivery` (`sms_message_template_service.dart:51-57`) prints only
+  the client, document references, status and target date.
+- **Air / Sea / Land (+ HD)** — the `Dispatch` button
+  (`air_sea_modal_config.dart:136-141`) moves the request to `BTexts.statusDispatch`,
+  which falls into the shared status branch
+  (`sms_message_template_service.dart:58-71`) — same, no time.
+
+**The timestamp already exists** — this is a formatting/plumbing change, not new data
+capture:
+- `deliveredAt` is stamped with `DateTime.now().toString()` on the
+  `For Delivery` transition (`standard_delivery_data_manager.dart:319-322`,
+  `hotline_direct_data_manager.dart:247-250`), and the SMS is sent **after** that with
+  the already-updated model (`standard_delivery_data_manager.dart:249`), so the value
+  is populated at send time.
+- `dispatchedAt` is stamped the same way for Air/Sea
+  (`air_sea_data_manager.dart:396`).
+
+**Touch points**
+- [ ] `SmsRequestPayload` (`sms_request_payload.dart`) gains a
+  `dispatchAt` + `dispatchTimeLabel` pair — keep it separate from
+  `completionAt`/`completionTimeLabel`, which the completion branches use.
+- [ ] `SmsPayloadBuilder`: fill it from `model.deliveredAt` for
+  `StandardDeliveryModel` and from `model.dispatchedAt` for `AirSeaModel`
+  (`sms_payload_builder.dart:49-147`).
+- [ ] `SmsMessageTemplateService`: add a `dispatchTimeLine` (empty when the value is
+  empty, mirroring `completionTimeLine`) and emit it in the `statusForDelivery`
+  branch and in the `statusDispatch` case — split `statusDispatch` out of the shared
+  branch at lines 58-71 rather than adding a time to every status in that group.
+- [ ] **Format the value.** `DateTime.now().toString()` yields
+  `2026-09-09 14:03:12.123456`; run it through `BFormatter.formatDateWithAmPm`
+  (`formatters.dart:43`) for the SMS. The existing completion lines print the raw
+  string — fix them in the same pass so all SMS timestamps read alike.
+- [ ] Depends on item 16 (timezone) — the SMS must print the courier's local time,
+  so fix the +8h shift first or the message will advertise the wrong hour.
+- [ ] Watch SMS length: templates already carry every document reference, and a
+  longer body can tip a message into a second segment.
+- [ ] Add template unit tests (`test/`) for both dispatch branches, including the
+  empty-timestamp fallback.
+
+---
+
+## 15. Android — Fullscreen and navigation-bar (gesture / 3-button) layout
+
+**Requirement.** On Android phones the app must lay out correctly whether the device
+uses a **gesture pill** or a **3-button navigation bar**, and when a screen runs
+fullscreen — no content hidden behind or overlapping the system bars, and no dead
+space where a nav bar isn't.
+
+**Current behavior.**
+- `BDevicesUtils.setFullScreen`, `hideStatusBar` and `showStatusBar`
+  (`device_utility.dart:29-31, 79-85`) exist but are **never called** — nothing in
+  `lib/` uses them, so the app runs in whatever mode the engine defaults to.
+- Only ~25 files use `SafeArea` against ~67 that build a `Scaffold`, so bottom
+  insets are applied inconsistently — the likely source of the reported clipping
+  under the navigation bar.
+- Newer Android releases force edge-to-edge, so bottom system insets must be
+  honored explicitly rather than assumed to be zero.
+
+**Touch points**
+- [ ] Reproduce on both nav styles (Settings > System > Gestures on the test device)
+  and capture the offending screens first — the fix list should be driven by real
+  screenshots, not a blanket `SafeArea` sweep.
+- [ ] Audit bottom-anchored UI: `Scaffold.bottomNavigationBar`, footer action
+  buttons (`b_action_button.dart`, `request_modal_scaffold.dart:64`), FABs, and
+  `showModalBottomSheet` bodies — the usual victims.
+- [ ] Prefer `SafeArea` / `MediaQuery.viewPaddingOf` / `.padding` at the layout edge
+  over per-widget magic numbers; do not double-pad a child whose parent already
+  applied `SafeArea`.
+- [ ] Decide the intended mode explicitly (`SystemUiMode.edgeToEdge` app-wide vs
+  `immersiveSticky` only for camera/scanner/signature screens) and set it once at
+  bootstrap (`main.dart` / `platform_init.dart`), then either wire up or delete the
+  unused helpers in `device_utility.dart`.
+- [ ] Keep keyboard behavior intact — several forms rely on `viewInsets`
+  (`device_utility.dart:19-27` even infers orientation from
+  `viewInsets.bottom`, which is a keyboard signal, not an orientation one; worth
+  fixing while in here).
+- [ ] Windows desktop must be unaffected — gate anything Android-specific behind a
+  platform check.
+
+---
+
+## 16. Timezone — client timestamps land in the DB 8 hours late
+
+**Symptom.** Courier presses Dispatch at ~3 PM; `requestdeliveredat` in Postgres reads
+~11 PM. Same +8h on every timestamp the **phone** stamps; timestamps the **server**
+stamps (`updatedat`, `createdat` on lose/backload items) come out right. That
+asymmetry is the tell — it is not the phone clock.
+
+**Root cause (confirmed in code, three links in the chain).**
+1. **App sends a bare local wall clock, no offset.** Standard Delivery / Hotline stamp
+   `DateTime.now().toString()` → `2026-09-09 15:03:12.123456`
+   (`standard_delivery_data_manager.dart:319-322`, `hotline_direct_data_manager.dart:247-250`)
+   and the mapper forwards it verbatim (`standard_delivery_mapper.dart:191`). Air/Sea
+   and Pull Out go through `BFormatter.normalizeToIsoDatetime(..., toUtc: false)`
+   (`formatters.dart:189-197`) → `toIso8601String()` on a *local* `DateTime`, which
+   also carries no `Z`/offset (`air_sea_mapper.dart:91`, `pull_out_mapper.dart:53`).
+2. **Backend relabels it as UTC instead of converting.** Every parse lands in
+   `DateTimeKind.Unspecified`, and every normalizer's fallback arm is
+   `_ => DateTime.SpecifyKind(value, DateTimeKind.Utc)` — 15:03 Manila becomes
+   15:03 **Z** with the digits untouched:
+   `RequestRepository.ParseUtcTimestamp` (`RequestRepository.cs:327-345`, callers
+   278-281), `RequestAirSeaRepository.NormalizeToUtc` (`:344-357`, callers 249-261 —
+   includes `DispatchedAt`), `RequestPickUpRepository.NormalizeToUtc` (`:356-363`),
+   `RequestPullOutReturnPickUpRepository.NormalizeToUtc` (`:284-305`), and the global
+   safety net `PostgreSqlAppDbContext.NormalizeTrackedDateTimesToUtc` on every
+   `SaveChangesAsync` (`PostgreSqlAppDbContext.cs:103-166`).
+3. **Postgres shifts it on the way in.** Npgsql EF 9.0.4 with no
+   `EnableLegacyTimestampBehavior` switch sends a `Kind=Utc` value typed
+   `timestamptz`, but all 56 timestamp columns are `timestamp without time zone`
+   (`mdmpi_app_db_schema.sql`, and the team's own `migration_2026090*.sql`). Postgres'
+   assignment cast `timestamptz → timestamp` renders the instant in the **session
+   `TimeZone`**; with the DB server on `Asia/Manila`, `15:03Z` is written as `23:03`.
+   The same cast is why `DateTime.UtcNow` stamps (`07:03Z`) come out as the correct
+   `15:03` — the server-stamped columns are right *by accident of the same bug*.
+
+Read-back does not hide it: `RequestRepository.cs:147,220` return the stored digits via
+`ToString("yyyy-MM-dd HH:mm:ss")`, and the other repos return `DateTime` values that
+System.Text.Json serializes without offset — after a re-sync the app shows 23:03 too.
+
+**Verify before touching anything** (psql / pgAdmin against `mdmpi_app_db`):
+```sql
+SHOW timezone;                                 -- expect Asia/Manila (or +08)
+SELECT column_name, data_type FROM information_schema.columns
+ WHERE table_name = 'a_tblrequeststandarddelivery' AND data_type LIKE 'timestamp%';
+SELECT requestid, requeststatus, requestdeliveredat, requestdeliveredendat, updatedat
+  FROM a_tblrequeststandarddelivery ORDER BY updatedat DESC LIMIT 10;
+```
+Expected: `requestdeliveredat` / `requestdeliveredendat` are ~8h *after* the phone/SMS
+time; `updatedat` (set from `DateTime.UtcNow`) matches wall-clock. If `SHOW timezone`
+is `UTC`, the columns would hold the raw digits (15:03) instead — re-check before fixing.
+
+**Fix (backend first — MDMPI.App; the app is a follow-up, not a prerequisite).**
+- [ ] Replace the `_ => SpecifyKind(value, Utc)` arm in all five normalizers with a
+  real conversion: `TimeZoneInfo.ConvertTimeToUtc(value,
+  TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila"))` (IANA id works on the Linux
+  `aspnet:8.0` image; keep `Utc`/`Local` arms as they are so an explicit `Z`/offset
+  is still honoured). Centralize it in one helper in `MDMPI.App.Common` instead of
+  five private copies. **Old APKs keep working** — the backend now treats an
+  offset-less string as Manila time, which is exactly what they send.
+- [ ] Pin the session zone so the fix does not depend on server config: add
+  `;Timezone=Asia/Manila` to `PostgreSqlDB` in `appsettings*.json`
+  (Npgsql connection-string option). Document in the backend README that `timestamp`
+  columns hold **Manila wall-clock** and every `DateTime` written must be a true UTC
+  instant.
+- [ ] Unit tests in `MDMPI.App.Tests` (none exist for this today): offset-less
+  `2026-09-09 15:03:12` → `07:03:12Z`; `...Z` and `...+08:00` unchanged in instant
+  terms; `Kind=Local` still converts.
+- [ ] **Data repair** — one-off SQL, reviewed with Logistics, scoped to rows written
+  since the Npgsql 9 backend went live: subtract 8h from the client-stamped columns
+  only (`requestitempreparedat`, `requestitempreparedendat`, `requestdeliveredat`,
+  `requestdeliveredendat` on Standard Delivery; `itempreparedat`, `itempreparedendat`,
+  `dispatchedat`, `dropoffat`, `provincial*at` on Air/Sea; `pulloutdatestartat`,
+  `pulloutdateendat` on Pull Out; `itempreparedat`/`itempreparedendat` on Pick Up).
+  Do **not** touch `createdat`/`updatedat`. Guard with `WHERE col > updatedat` where
+  that holds, and run inside a transaction with a `SELECT` preview first. Remember
+  the `_history` tables carry copies of the same columns.
+- [ ] App follow-up (after the backend ships): send an explicit UTC instant —
+  `DateTime.now().toUtc().toIso8601String()` in the two data managers and
+  `normalizeToIsoDatetime(..., toUtc: true)` in the Air/Sea and Pull Out mappers — so
+  the wire format is unambiguous and no longer relies on the server's Manila
+  assumption. Check `air_sea_dao.dart:14` (already `toUtc()` for the local cache) and
+  the read-back formatters still display local time correctly.
+- [ ] Blocks item 14: do not print the dispatch time in the SMS until the stored
+  value is right, or the message will advertise the wrong hour.
+
+---
+
+## 17. Live map — the same courier appears as two cars
+
+**Symptom (screenshot 2026-09-10, Eton City Square).** One courier, one phone, but the
+Delivery Location map draws two car markers on top of each other (pink + black). The
+colours differ because the icon variant is hashed from the RequestID
+(`WebSocketDeliveryController.dispatchMarkerIndexForRequestId`) — i.e. these are two
+*requests*, not two devices.
+
+**Root cause (confirmed in code).**
+- Markers are **keyed per RequestID**, not per courier: `riderLocations` /
+  `riderLocationUpdates` are `RxMap<String requestId, …>`
+  (`web_socket_delivery_controller.dart:40-41`), and `riderBuildMarkers()` emits one
+  `Marker(markerId: MarkerId(requestId))` per entry
+  (`delivery_location_controller.dart:122-171`).
+- **Entries are never removed.** No `riderLocations.remove/clear` exists anywhere in
+  `lib/`. Once a request has sent a single frame it stays on the map until the app
+  restarts — including after `Done Delivery`, `Cancelled`, or a courier switching to
+  the next request. `stopTracking()` (`rider_realtime_tracking_controller.dart:110-118`)
+  only stops *sending*; it never tells viewers to drop the marker.
+- Two feeders make the stale entry reappear even after a restart:
+  1. The WS server **replays the cached latest envelope per RequestID on connect**
+     (comment at `web_socket_delivery_controller.dart:202-206`), so every finished
+     request the server still remembers comes back as a car.
+  2. The courier's offline queue (`_flushQueuedUpdates`,
+     `rider_realtime_tracking_controller.dart:159-170`) replays frames for whatever
+     request they belonged to, including a previous one, when connectivity returns.
+- Net effect: courier finishes request A (car at its last position), dispatches request
+  B from the same spot → A's stale car and B's live car sit on top of each other.
+  Any viewer who taps the wrong one calls/looks at the finished request.
+
+**Fix (app side; the server change is a nice-to-have, not a prerequisite).**
+- [ ] Drop a request's marker when it leaves the "moving" states: on a
+  `location_update` whose `status` is terminal, and on notification/status messages
+  for `Done Delivery` / `Cancelled` (the same WS channel already carries
+  `NotificationUpdate`), call `riderLocations.remove(id)`,
+  `riderLocationUpdates.remove(id)`, `riderMarkerColors.remove(id)` and clear
+  `previousPositions` / `markerBearings` in `DeliveryLocationController`.
+- [ ] Have the courier publish a final `type: 'location_update', status: 'completed'`
+  (or `tracking_stopped`) frame from `stopTracking()` so viewers get an explicit
+  removal signal without depending on the request list; `_flushQueuedUpdates` must
+  send it last and must **not** replay frames for a request that already has a
+  completed frame queued.
+- [ ] Belt-and-braces: reconcile against request data — a marker whose RequestID is
+  not in the current For Delivery / In Transit set (Standard Delivery + Hotline
+  Direct lists the viewer already loads) is hidden. Also age out markers whose last
+  `timestamp` is older than a cutoff (e.g. 30 min) so a crashed courier phone does
+  not leave a ghost car all day.
+- [ ] Optional de-dup at render time: if two markers share the same `riderInitial`
+  (or fall within ~5 m of each other), keep only the newest — this is the visual
+  safety net for the case in the screenshot.
+- [ ] Server (MDMPI WS relay): stop replaying cached envelopes for RequestIDs that
+  have reached a terminal status, or expire the cache after N minutes. Until then the
+  app-side reconciliation above is what protects the map.
+- [ ] Unit tests: applying a completed frame removes the marker; a stale frame for a
+  removed request does not resurrect it; render de-dup keeps the newest of two
+  same-courier markers.
+
+---
+
 ## Cross-cutting notes & risks
 
 - **Backend coordination required** for items 2 (multiple image uploads), 3, 4, 7,
@@ -540,3 +835,17 @@ Pull Out** (Stock Receive has no form of its own — it reuses `PullOutForm` /
    Courier?), 5 (scope of pause), 3 (does Stock Receive get Add Item too?).
 3. **Backend-coupled tracks:** 2 (images) · 3→4 (pull-out items, remarks depends on
    items) · 7 (pick-up categories) · 11 (backload items).
+
+**Open items (1-12 delivered):**
+
+4. **First — backend bug, blocks 14:** 16 (timezone). Verify with the SQL in §16, fix
+   the five normalizers + pin `Timezone=Asia/Manila`, repair data, then release.
+5. **Quick win (no backend):** 14 (dispatch time in SMS) — self-contained; ship as soon
+   as 16 is live so the printed hour is right.
+6. **Device work:** 15 (Android inset audit) — needs a physical phone in both nav
+   styles; verify Windows desktop is untouched.
+6b. **Live map:** 17 (duplicate car markers) — app-only, testable with two requests on
+   one courier account; coordinate the WS-relay cache change separately.
+7. **Backend-coupled:** 13 (Mode of Shipment) — same three-step rollout as item 10:
+   schema migration → backend deploy → app build. Settle the Land status-flow
+   question with Logistics before coding.

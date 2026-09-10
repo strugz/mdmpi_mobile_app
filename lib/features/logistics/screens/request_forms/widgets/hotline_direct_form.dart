@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/shipping_methods.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
@@ -71,7 +72,7 @@ class HotlineDirectForm extends StatelessWidget {
                       BDropdown(
                         controller: requestController.formState.shippingMethod,
                         label: 'Shipping Method',
-                        dropdownList: ['Land', 'Air', 'Sea'],
+                        dropdownList: ShippingMethods.all,
                       ),
                       const SizedBox(height: BSizes.spaceBtwItems),
 

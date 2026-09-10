@@ -243,7 +243,8 @@ Future<void> createAllTables(Database db) async {
       CreatedBy TEXT,
       CreatedAt TEXT,
       UpdatedAt TEXT,
-      FormCategoryID TEXT
+      FormCategoryID TEXT,
+      ShippingMethod TEXT
     )
   ''');
 

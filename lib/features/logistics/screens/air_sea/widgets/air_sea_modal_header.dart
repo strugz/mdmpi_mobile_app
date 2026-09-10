@@ -31,6 +31,7 @@ class AirSeaRequestModalHeader extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
 
     final hasAddress = requestModel.client.address.isNotEmpty;
+    final hasShippingMethod = requestModel.shippingMethod.isNotEmpty;
 
     return SingleChildScrollView(
       child: Column(
@@ -50,6 +51,15 @@ class AirSeaRequestModalHeader extends StatelessWidget {
               showLabel: false,
               maxLines: 3,
               copyable: true,
+              smallSize: true,
+            )
+          ],
+          if (hasShippingMethod) ...[
+            const SizedBox(height: BSizes.xxs),
+            BLabelValueText(
+              label: 'Mode of Shipment',
+              value: requestModel.shippingMethod,
+              icon: Iconsax.ship,
               smallSize: true,
             )
           ],

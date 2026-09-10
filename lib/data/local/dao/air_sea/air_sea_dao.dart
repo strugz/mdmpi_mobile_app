@@ -134,6 +134,7 @@ class AirSeaDao {
       'CreatedAt': airSeaModel.createdAt,
       'UpdatedAt': airSeaModel.updatedAt,
       'FormCategoryID': airSeaModel.formCategoryID,
+      'ShippingMethod': airSeaModel.shippingMethod,
     };
 
     final int requestId = await db.insert(
@@ -219,6 +220,7 @@ class AirSeaDao {
         'CreatedAt': airSeaModel.createdAt,
         'UpdatedAt': airSeaModel.updatedAt,
         'FormCategoryID': airSeaModel.formCategoryID,
+        'ShippingMethod': airSeaModel.shippingMethod,
       };
 
       batch.insert(
@@ -323,6 +325,13 @@ class AirSeaDao {
       'CreatedBy': airSeaModel.createdBy,
       'CreatedAt': airSeaModel.createdAt,
       'UpdatedAt': airSeaModel.updatedAt,
+      // Create-only fields: the model passed here is usually rebuilt from a
+      // partial PATCH payload, so '' means "not in this payload", never
+      // "clear". Only write them when a value is actually present.
+      if (airSeaModel.formCategoryID.isNotEmpty)
+        'FormCategoryID': airSeaModel.formCategoryID,
+      if (airSeaModel.shippingMethod.isNotEmpty)
+        'ShippingMethod': airSeaModel.shippingMethod,
     };
 
     await db.update(

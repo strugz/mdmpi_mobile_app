@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/features/logistics/constants/shipping_methods.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
@@ -151,7 +152,7 @@ class StandardDelivery extends StatelessWidget {
                       controller:
                           stdDeliveryController.formState.shippingMethod,
                       label: 'Shipping Method',
-                      dropdownList: ['Land', 'Air', 'Sea'],
+                      dropdownList: ShippingMethods.all,
                       validator: (v) =>
                           (v == null || v.toString().trim().isEmpty)
                               ? 'Please select a shipping method'

@@ -41,7 +41,7 @@ BEGIN
             provincialpickupby, provincialpickupat,
             provincialintransitat, provincialintransitlocation, provincialreceivername,
             provincialdeliveredendat, provincialdeliveredlocation,
-            createdat, updatedat,
+            createdat, updatedat, formcategoryid, shippingmethod,
             actiontype, changedat, changedby
         )
         VALUES (
@@ -52,7 +52,7 @@ BEGIN
             NEW.provincialpickupby, NEW.provincialpickupat,
             NEW.provincialintransitat, NEW.provincialintransitlocation, NEW.provincialreceivername,
             NEW.provincialdeliveredendat, NEW.provincialdeliveredlocation,
-            NEW.createdat, NEW.updatedat,
+            NEW.createdat, NEW.updatedat, NEW.formcategoryid, NEW.shippingmethod,
             'INSERT', CURRENT_TIMESTAMP, NEW.updatedby
         );
 
@@ -69,7 +69,7 @@ BEGIN
             provincialpickupby, provincialpickupat,
             provincialintransitat, provincialintransitlocation, provincialreceivername,
             provincialdeliveredendat, provincialdeliveredlocation,
-            createdat, updatedat,
+            createdat, updatedat, formcategoryid, shippingmethod,
             actiontype, changedat, changedby
         )
         VALUES (
@@ -80,7 +80,7 @@ BEGIN
             NEW.provincialpickupby, NEW.provincialpickupat,
             NEW.provincialintransitat, NEW.provincialintransitlocation, NEW.provincialreceivername,
             NEW.provincialdeliveredendat, NEW.provincialdeliveredlocation,
-            NEW.createdat, NEW.updatedat,
+            NEW.createdat, NEW.updatedat, NEW.formcategoryid, NEW.shippingmethod,
             'UPDATE', CURRENT_TIMESTAMP, NEW.updatedby
         );
 
@@ -808,7 +808,9 @@ CREATE TABLE public.a_tblrequestairsea (
     provincialdeliveredlocation character varying(100),
     createdat timestamp without time zone,
     updatedat timestamp without time zone,
-    updatedby character varying(4)
+    updatedby character varying(4),
+    formcategoryid bigint,
+    shippingmethod character varying(15)
 );
 
 
@@ -850,7 +852,9 @@ CREATE TABLE public.a_tblrequestairsea_history (
     provincialdeliveredlocation character varying(100),
     createdat timestamp without time zone,
     updatedat timestamp without time zone,
-    changedby character varying(50)
+    changedby character varying(50),
+    formcategoryid bigint,
+    shippingmethod character varying(15)
 );
 
 

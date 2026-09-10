@@ -21,6 +21,22 @@ unaffected. Server migrations:
 `MDMPI.App/migration_20260909_add_air_sea_formcategoryid.sql` and
 `MDMPI.App/migration_20260909_add_air_sea_hd_category.sql`.
 
+### Mode of Shipment (2026-09-10)
+
+Every Air / Sea / Land request (base and HD tab alike) records **how it ships** via a
+required `Mode of Shipment` dropdown on the create form — `Air`, `Sea` or `Land`,
+sourced from `ShippingMethods.all`
+(`lib/features/logistics/constants/shipping_methods.dart`, also used by the Standard
+Delivery / Hotline Direct Shipping Method dropdowns). The value is **create-only**:
+`AirSeaMapper.toUpdateDto` never sends it, `AirSeaDao.updateAirSea` only writes it
+when non-empty, and the shared `AirSeaRequestModalHeader` / `AirSeaRequestCard` show
+it read-only (hidden for legacy rows, where it is NULL). It is informational — the
+status flow does not branch on it. Wire key `ShippingMethod` (nullable
+`varchar(15)`, validated server-side against Air|Sea|Land); local column
+`ShippingMethod TEXT` (DB v18 → v19). Server migration:
+`MDMPI.App/migration_20260910_add_air_sea_shippingmethod.sql` — run **before**
+deploying the backend; old clients simply leave the column NULL.
+
 ## Status Flow
 
 ```
@@ -151,6 +167,7 @@ Get.lazyPut(() => AirSeaController(), fenix: true);
 - `endorsedBy` (guard endorsement), `receivedBy`, `waybillNumber`, `receivedAt`
 - `tripTicketNumber`, `driver`, `helper`, `dispatchedAt`, `dropOffAt`
 - `status`, `remarks`, `createdBy`, `createdAt`, `updatedAt`
+- `formCategoryID` (empty = base tab, `FormCategoryIds.airSeaHd` = HD tab), `shippingMethod` (`Air` / `Sea` / `Land`; empty on legacy rows)
 - Aggregates: `ClientModel client`, `List<String> documentReference`, `CancelRemarksModel cancelRemarks`
 
 ### Related Shared Components
