@@ -40,7 +40,21 @@ helper afterwards via `reassign_delivery_crew_section.dart`.
 
 `screens/request_transport/` is where the courier does everything: dispatch, live location,
 receiver details, signature, proof photos, item backload and drop off. It is entered from
-Item Prepared or For Delivery; the user may need to be the assigned driver or helper.
+Item Prepared or For Delivery **by the assigned crew only** (driver or helper — see
+`helpers/crew_assignment.dart`, decided 2026-09-10):
+
+- A user whose only operating role is Courier does not even see other crews' Item
+  Prepared / For Delivery requests (`StandardDeliveryFilterManager`; Viewer does not
+  count as an operating role).
+- Users who also hold Release/Admin keep full visibility, but tapping a request they are
+  not crew of opens the role-priority modal (view + Change Driver / Helper), never the
+  courier screen (`standard_delivery_list.dart` `_handleRequestTap`).
+- Defence in depth: `BActionButton` renders an "Assigned to …" note instead of
+  Dispatch / Drop Off, and both `RequestTransportController.processRequestDispatchOrDropOff`
+  and `StandardDeliveryDataManager.updateRequestStatus` refuse the For Delivery /
+  Delivered transitions for non-crew. Dispatch no longer overwrites the driver with
+  whoever pressed it (a helper dispatching keeps the Release-assigned driver).
+- Hotline Direct shares the model, screen and rule (`hotline_direct_role_handler.dart`).
 
 - **Proof photos** — up to three, capped by `CameraController.maxProofPhotos = 3`
   (`lib/common/controllers/camera_controller.dart:34`). UI is `b_proof_photo_list.dart`

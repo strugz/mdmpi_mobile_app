@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_text_form_field.dart';
@@ -51,7 +52,8 @@ class RequestModalFooter extends StatelessWidget {
 
     // Release can re-assign the driver/helper after preparation, while the
     // request is Item Prepared or For Delivery.
-    final canReassignCrew = requestController.userController.user.value.role
+    final canReassignCrew = RoleResolver.parseRoles(
+                requestController.userController.user.value.role)
             .contains(BTexts.roleRelease) &&
         (requestModel.status == BTexts.statusItemPrepared ||
             requestModel.status == BTexts.statusForDelivery);

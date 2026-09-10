@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/request_transport.dart';
@@ -133,9 +134,12 @@ class StandardDeliveryModalConfig {
 
       // ── Courier role ──────────────────────────────────────────────────
       case BTexts.roleCourier:
-        if (status == BTexts.statusItemPrepared &&
-            (request.deliveredBy == userInitial ||
-                request.helper == userInitial)) {
+        final isCrew = CrewAssignment.isCrew(
+          driver: request.deliveredBy,
+          helper: request.helper,
+          userInitial: userInitial,
+        );
+        if (status == BTexts.statusItemPrepared && isCrew) {
           return StandardDeliveryModalConfig(
             role: role,
             isActionVisible: true,
@@ -147,9 +151,7 @@ class StandardDeliveryModalConfig {
             ),
           );
         }
-        if (status == BTexts.statusForDelivery &&
-            (request.deliveredBy == userInitial ||
-                request.helper == userInitial)) {
+        if (status == BTexts.statusForDelivery && isCrew) {
           return StandardDeliveryModalConfig(
             role: role,
             isActionVisible: false,

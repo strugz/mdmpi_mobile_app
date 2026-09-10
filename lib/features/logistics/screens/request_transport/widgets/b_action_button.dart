@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 import '../../../../../base/utils/helpers/helper_functions.dart';
@@ -57,6 +58,23 @@ class BActionButton extends StatelessWidget {
 
         final userController = Get.find<UserController>();
 
+        // Dispatch / Drop Off belong to the assigned crew. Any other viewer
+        // of this screen (e.g. a Release+Courier dispatcher who reached it
+        // through another route) sees who is assigned instead of a button.
+        if (!CrewAssignment.canOperate(updatedRequest,
+            userInitial: userController.user.value.initial)) {
+          final crew = CrewAssignment.describeCrew(updatedRequest);
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              crew.isEmpty
+                  ? 'No driver assigned yet. Only the assigned driver or helper can update this request.'
+                  : 'Assigned to $crew. Only the assigned driver or helper can update this request.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          );
+        }
 
         return ElevatedButton(
           onPressed: isLoading

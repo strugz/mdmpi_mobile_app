@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart' show BuildContext;
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/request_transport.dart';
 
 import '../../../../base/utils/constants/text_strings.dart';
@@ -154,18 +155,21 @@ class HotlineDirectCourierRoleHandler extends HotlineDirectActionHandler {
     } else if (request.status == BTexts.statusGettingSuppliesReady) {
       BFullScreenLoader.showRequestForReleasingDialog(
           context, request, () {}, false, requestController);
-    } else if (request.status == BTexts.statusItemPrepared) {
-      Get.to(() => RequestTransport(
-          request: request, requestController: requestController));
-    } else if (request.status == BTexts.statusForDelivery &&
-        request.deliveredBy != userInitial &&
-        request.helper != userInitial) {
-      BFullScreenLoader.showRequestForReleasingDialog(
-          context, request, () {}, false, requestController);
-    } else if (request.status == BTexts.statusForDelivery &&
-        (request.deliveredBy == userInitial || request.helper == userInitial)) {
-      Get.to(() => RequestTransport(
-          request: request, requestController: requestController));
+    } else if (CrewAssignment.isCrewOnlyStatus(request.status)) {
+      // Item Prepared / For Delivery: the courier screen is for the assigned
+      // driver or helper; everyone else gets the read-only request dialog.
+      final isCrew = CrewAssignment.isCrew(
+        driver: request.deliveredBy,
+        helper: request.helper,
+        userInitial: userInitial,
+      );
+      if (isCrew) {
+        Get.to(() => RequestTransport(
+            request: request, requestController: requestController));
+      } else {
+        BFullScreenLoader.showRequestForReleasingDialog(
+            context, request, () {}, false, requestController);
+      }
     }
   }
 }

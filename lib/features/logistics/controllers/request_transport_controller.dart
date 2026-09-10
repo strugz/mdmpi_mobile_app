@@ -17,6 +17,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_deliver
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/backload_item_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/backload_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/location_alternative_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -509,6 +510,18 @@ class RequestTransportController extends GetxController {
     IDeliveryRequestController requestController,
   ) async {
     if (isLoadingAction.value) return;
+
+    // Dispatch / Drop Off are reserved for the assigned driver or helper. The
+    // list and the action button already enforce this; this is the last line
+    // of defence for any other route into the screen.
+    if (!CrewAssignment.canOperate(currentRequest, userInitial: userInitial)) {
+      BLoaders.warningSnackBar(
+          title: 'Not assigned',
+          message:
+              'Only the assigned driver or helper can update this request.');
+      return;
+    }
+
     isLoadingAction.value = true; // <--- Start loading
 
     if ((eta.value?.isEmpty ?? true) &&
@@ -523,7 +536,12 @@ class RequestTransportController extends GetxController {
       String newStatus = "";
       if (currentRequest.status == BTexts.statusItemPrepared) {
         newStatus = BTexts.statusForDelivery;
-        currentRequest.deliveredBy = userInitial;
+        // Release assigns the driver at Item Prepared; keep it. Only fill the
+        // slot when it is empty so a helper pressing Dispatch does not become
+        // the driver.
+        if (currentRequest.deliveredBy.trim().isEmpty) {
+          currentRequest.deliveredBy = userInitial;
+        }
         currentRequest.locationStartedAt =
             '${currentLocation.value.latitude} ${currentLocation.value.longitude}';
 

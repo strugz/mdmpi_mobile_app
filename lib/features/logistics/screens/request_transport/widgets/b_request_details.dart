@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
+import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
@@ -212,7 +213,8 @@ class BRequestDetails extends StatelessWidget {
             // Multi-role users with Courier are routed to this screen instead
             // of the request modal, so the Release re-assignment section must
             // also live here.
-            if (userController.user.value.role.contains(BTexts.roleRelease) &&
+            if (RoleResolver.parseRoles(userController.user.value.role)
+                    .contains(BTexts.roleRelease) &&
                 (updatedRequest.status == BTexts.statusItemPrepared ||
                     updatedRequest.status == BTexts.statusForDelivery))
               ReassignDeliveryCrewSection(

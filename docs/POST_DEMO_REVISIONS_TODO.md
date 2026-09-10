@@ -25,6 +25,7 @@
 - [x] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (done app-only; "Dispatched At: Sep 9, 2026 03:03 PM." on the For Delivery and Air/Sea Dispatch texts; completion timestamps now formatted the same way; not blocked by item 16 — the SMS prints the phone's local stamp, not the DB value)
 - [ ] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (app-only; system-inset audit across screens)
 - [ ] 17. Live map: one courier drawn as two cars (stale marker of a finished/previous request is never removed; markers are keyed per RequestID, not per courier) — `M` (app-only; `web_socket_delivery_controller.dart` + `delivery_location_controller.dart`; ideally the WS server also stops replaying completed requests)
+- [x] 19. Standard Delivery / Hotline Direct: only the assigned driver or helper can open the courier screen and Dispatch / Drop Off — `M` (done app-only; sole-role couriers no longer see other crews' Item Prepared / For Delivery requests; Release+Courier users see them but get the modal; Dispatch no longer overwrites the driver)
 - [ ] 18. Gemini OCR key hygiene (decision 2026-09-10: key stays in the mobile client; backend proxy removed) — `S` (ops-side: rotate the key — it is in both repos' git history — restrict it in GCP, set a budget alert; app-side done: key moved from URL to header)
 - [x] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (backend fixed via `TimestampNormalizer` in all five normalizers + `Timezone=Asia/Manila` on the connection string; run `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` **after** deploying to fix existing rows; only the optional app follow-up remains open)
 
@@ -852,6 +853,50 @@ holding the APK; revoking it therefore requires shipping a new build.
 - [ ] Revisit if abuse or cost ever shows up: the safer design is a server-side proxy
   with an app header + rate/size limits (the code removed on 2026-09-10 is in git
   history at MDMPI.App `6715105^…` if it is ever wanted back).
+
+---
+
+## 19. Standard Delivery — a non-assigned courier could open and complete someone else's delivery
+
+**Symptom (screenshot 2026-09-10).** Request 01002, `For Delivery`, Driver `BPT`, no helper.
+A Courier who is not BPT tapped it, landed on the Request Transport screen (map, **Drop
+Off**, **Change Driver / Helper**) and could have marked the delivery done with their own
+signature/proof.
+
+**Root cause.** `standard_delivery_list.dart` `_handleRequestTap` force-routed *anyone
+holding the Courier role* to `RequestTransport` at Item Prepared / For Delivery, with no
+`deliveredBy`/`helper` check, `return`ing before `StandardDeliveryModalConfig.resolve`
+(which did hold the assigned-only rule but whose `navigateTo` is never invoked). Nothing
+downstream re-checked: `request_transport.dart`, `b_action_button.dart`,
+`RequestTransportController.processRequestDispatchOrDropOff` (which also **overwrote
+`deliveredBy` with whoever pressed Dispatch**) and `updateRequestStatus`. The list filter
+did scope couriers to their assignments — but only when the role string had no comma, so
+a `Release,Courier` account saw everything (and that Release substring is why "Change
+Driver / Helper" appeared).
+
+**Decisions.** Hide from sole-role couriers; restricted statuses = Item Prepared + For
+Delivery; driver **or** helper are crew; Release/Admin holders keep full visibility and the
+reassignment control but get the modal, not the courier screen, on requests they are not
+crew of.
+
+**Implemented (2026-09-10).**
+- [x] `helpers/crew_assignment.dart` — one predicate (`isCrew` trims/case-folds and never
+  matches empty slots, `isCrewOnlyStatus`, `isCourierOnly`, `canOperate`, `describeCrew`).
+- [x] List filters (`standard_delivery_filter_manager.dart`, `hotline_direct_filter_manager.dart`)
+  use `RoleResolver.parseRoles` + `isCourierOnly` instead of the comma heuristic.
+- [x] Tap routing: `standard_delivery_list.dart` routes to `RequestTransport` only for crew;
+  `hotline_direct_role_handler.dart` now gates Item Prepared as well as For Delivery;
+  `standard_delivery_modal_config.dart` uses the shared predicate.
+- [x] Defence in depth: `b_action_button.dart` shows "Assigned to …" instead of the button;
+  `processRequestDispatchOrDropOff` and `updateRequestStatus` refuse For Delivery /
+  Delivered for non-crew; Dispatch fills `deliveredBy` only when empty.
+- [x] `b_request_details.dart` / `request_modal_footer.dart` Release checks use parsed roles.
+- [x] Tests: `test/features/logistics/helpers/crew_assignment_test.dart`.
+
+**Follow-ups (not done).** Dashboard badge counts use the unfiltered `allPendingRequests`
+(`dashboard_controller.dart`), so a sole-role courier's counts still include other crews'
+deliveries. Pull Out / Stock Receive modal configs have no crew check either (their lists
+filter, their modals don't). `StandardDeliveryModalConfig.navigateTo` is dead code.
 
 ---
 

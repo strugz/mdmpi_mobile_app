@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/standard_delivery/standard_delivery_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_modal_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/back_load/backload_transaction_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/backload_controller.dart';
@@ -183,10 +184,18 @@ void _handleRequestTap(
     return;
   }
 
-  // Force Courier for Item Prepared / For Delivery
-  if ((request.status == BTexts.statusItemPrepared ||
-          request.status == BTexts.statusForDelivery) &&
-      roles.contains(BTexts.roleCourier)) {
+  // Item Prepared / For Delivery: the courier screen (map, Dispatch / Drop
+  // Off) belongs to the assigned crew only. Anyone else — a Release+Courier
+  // dispatcher, for instance — falls through to the role-priority modal below
+  // (view, and Change Driver / Helper for Release). A sole-role Courier who is
+  // not crew never gets here: the list filter hides the request.
+  if (CrewAssignment.isCrewOnlyStatus(request.status) &&
+      roles.contains(BTexts.roleCourier) &&
+      CrewAssignment.isCrew(
+        driver: request.deliveredBy,
+        helper: request.helper,
+        userInitial: userController.user.value.initial,
+      )) {
     BHelperFunctions.navigateWithSlide(
       context,
       RequestTransport(
