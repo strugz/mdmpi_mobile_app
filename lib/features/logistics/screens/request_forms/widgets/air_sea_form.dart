@@ -181,7 +181,7 @@ class AirSeaForm extends StatelessWidget {
             padding: EdgeInsets.only(
               left: BSizes.sm,
               right: BSizes.sm,
-              bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+              bottom: BSizes.sm,
             ),
             child: Obx(() {
               final isSaving = controller.isSaving.value;

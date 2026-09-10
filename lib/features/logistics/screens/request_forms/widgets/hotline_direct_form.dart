@@ -26,12 +26,10 @@ class HotlineDirectForm extends StatelessWidget {
     final userCNTMSTController = Get.find<UserMdmpiController>();
     userCNTMSTController.filterUserFromLocal();
 
-    // Get the bottom padding of the device
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
-
+    // Left/right only: the bottom inset belongs to the submit bar below.
     return SafeArea(
-      bottom: !isGestureNavigation,
+      top: false,
+      bottom: false,
       child: Scaffold(
         appBar: BAppBar(
           title: Text(
@@ -146,8 +144,9 @@ class HotlineDirectForm extends StatelessWidget {
             ],
           ),
         ),
-        bottomNavigationBar: Padding(
-          padding: const EdgeInsets.all(BSizes.sm),
+        bottomNavigationBar: SafeArea(
+          top: false,
+          minimum: const EdgeInsets.all(BSizes.sm),
           child: ElevatedButton(
               onPressed: () => requestController.saveRequest(),
               child: Text('Create Request')),

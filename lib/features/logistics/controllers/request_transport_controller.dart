@@ -64,7 +64,10 @@ class RequestTransportController extends GetxController {
   final Rx<LatLng?> _currentRouteDestination = Rx<LatLng?>(null);
 
   /// FAB bottom offset
-  final RxDouble fabBottomOffset = 16.0.obs;
+  /// Current height of the dispatcher sheet as a fraction of the screen
+  /// (0 until the sheet reports). Map FABs sit just above it, and follow it
+  /// as it is dragged, instead of guessing a fixed 45 %.
+  final RxDouble sheetExtent = 0.0.obs;
 
   final FocusNode searchFocusNode = FocusNode();
 

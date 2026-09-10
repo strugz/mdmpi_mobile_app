@@ -180,7 +180,9 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             top: BSizes.defaultSpace,
             left: BSizes.defaultSpace,
             right: BSizes.defaultSpace,
-            bottom: MediaQuery.of(context).viewInsets.bottom + BSizes.defaultSpace,
+            bottom: MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.paddingOf(context).bottom +
+                BSizes.defaultSpace,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,

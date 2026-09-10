@@ -152,7 +152,7 @@ class _LocationPageState extends State<LocationPageGoogle> {
               ),
               Positioned(
                 right: 8,
-                bottom: 100,
+                bottom: 100 + MediaQuery.paddingOf(context).bottom,
                 child: FloatingActionButton.small(
                   heroTag: 'center-active-deliveries',
                   backgroundColor: BColors.primary,

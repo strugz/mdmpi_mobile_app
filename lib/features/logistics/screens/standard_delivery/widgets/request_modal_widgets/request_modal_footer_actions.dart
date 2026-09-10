@@ -20,8 +20,11 @@ class RequestModalFooterActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(12.0),
+    // Used as a Scaffold.bottomNavigationBar: keep the button above the
+    // system navigation bar (Scaffold already lifts it for the keyboard).
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.all(12.0),
       child: SizedBox(
         width: double.infinity,
         child: StatusActionButton(

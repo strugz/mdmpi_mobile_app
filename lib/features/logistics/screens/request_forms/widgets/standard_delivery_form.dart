@@ -267,7 +267,9 @@ class StandardDelivery extends StatelessWidget {
           padding: EdgeInsets.only(
             left: BSizes.sm,
             right: BSizes.sm,
-            bottom: BSizes.sm + MediaQuery.of(context).viewInsets.bottom,
+            // Scaffold already lifts bottomNavigationBar for the keyboard;
+            // SafeArea handles the navigation bar. Never add viewInsets here.
+            bottom: BSizes.sm,
           ),
           child: ElevatedButton(
               onPressed: () {

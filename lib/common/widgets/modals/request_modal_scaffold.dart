@@ -60,10 +60,14 @@ class RequestModalScaffold extends StatelessWidget {
             // Body
             ...children,
             const SizedBox(height: BSizes.xs),
-            if (bottomAction != null)
+            // The single place this modal pads for the system navigation bar:
+            // presenters (full_screen_loader.dart) must NOT wrap it in another
+            // SafeArea, or this one resolves to zero.
+            if (bottomAction != null) ...[
               SafeArea(top: false, child: bottomAction!),
-            if (bottomAction != null)
               const SizedBox(height: BSizes.xs),
+            ] else
+              SizedBox(height: MediaQuery.paddingOf(context).bottom),
           ],
         ),
       ),

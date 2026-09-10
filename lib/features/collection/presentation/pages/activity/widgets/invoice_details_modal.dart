@@ -22,7 +22,11 @@ class InvoiceDetailsModal extends StatelessWidget {
           color: BColors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
         ),
-        padding: const EdgeInsets.all(BSizes.defaultSpace),
+        padding: EdgeInsets.fromLTRB(
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -224,7 +224,7 @@ class BFullScreenLoader {
                     ],
                   ),
                   Positioned(
-                    bottom: 20.0,
+                    bottom: 20.0 + MediaQuery.paddingOf(context).bottom,
                     left: 0,
                     right: 0,
                     child: requestModel.status == BTexts.statusDoneDelivery
@@ -273,8 +273,10 @@ class BFullScreenLoader {
         });
 
         return Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          // Keyboard + navigation bar, each counted once.
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom +
+                  MediaQuery.paddingOf(context).bottom),
           child: Container(
             height: MediaQuery.of(context).size.height * 0.7,
             padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
@@ -327,8 +329,9 @@ class BFullScreenLoader {
       isScrollControlled: true, // Important for height
       builder: (BuildContext context) {
         return Padding(
-          padding:
-              EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom +
+                  MediaQuery.paddingOf(context).bottom),
           child: Container(
             height: MediaQuery.of(context).size.height * 0.3,
             padding: EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
@@ -379,9 +382,6 @@ class BFullScreenLoader {
       currentSelectionController.text =
           selectedUser.isEmpty ? '' : selectedUser.join(', ');
     }
-
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
 
     showModalBottomSheet<void>(
       context: context,
@@ -440,7 +440,7 @@ class BFullScreenLoader {
                   ),
                   SizedBox(height: BSizes.spaceBtwSections),
                   SafeArea(
-                    bottom: !isGestureNavigation,
+                    top: false,
                     child: SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -510,12 +510,12 @@ class BFullScreenLoader {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: SafeArea(
-            child: BModal(
-              requestModel: requestModel,
-              config: config,
-              requestController: requestController,
-            ),
+          // RequestModalScaffold pads its own bottom for the navigation bar;
+          // wrapping it in another SafeArea would zero that out.
+          child: BModal(
+            requestModel: requestModel,
+            config: config,
+            requestController: requestController,
           ),
         );
       },
@@ -567,11 +567,9 @@ class BFullScreenLoader {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: SafeArea(
-            child: PullOutModal(
-              requestModel: requestModel,
-              config: config,
-            ),
+          child: PullOutModal(
+            requestModel: requestModel,
+            config: config,
           ),
         );
       },
@@ -600,7 +598,11 @@ class BFullScreenLoader {
       context: context,
       isScrollControlled: true,
       builder: (BuildContext context) {
-        return SafeArea(
+        return Padding(
+          // Keyboard only — the modal pads for the navigation bar itself.
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
           child: PickUpModal(
             requestModel: requestModel,
             onPressed: onPressed,
@@ -627,11 +629,9 @@ class BFullScreenLoader {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: SafeArea(
-            child: AirSeaModal(
-              requestModel: requestModel,
-              config: config,
-            ),
+          child: AirSeaModal(
+            requestModel: requestModel,
+            config: config,
           ),
         );
       },
@@ -665,11 +665,9 @@ class BFullScreenLoader {
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(context).viewInsets.bottom,
           ),
-          child: SafeArea(
-            child: StockReceiveModal(
-              requestModel: requestModel,
-              config: config,
-            ),
+          child: StockReceiveModal(
+            requestModel: requestModel,
+            config: config,
           ),
         );
       },

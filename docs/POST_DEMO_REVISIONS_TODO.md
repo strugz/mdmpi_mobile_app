@@ -23,8 +23,8 @@
 - [x] 12. Stock Receive: document reference optional — `S` (done app-side only; Pull Out / Return and all other forms keep it required)
 - [x] 13. Air / Sea / Land: per-request Mode of Shipment dropdown (Air / Sea / Land) — `L` (done app + backend as nullable `shippingmethod varchar(15)`; run `MDMPI.App/migration_20260910_add_air_sea_shippingmethod.sql` **before** the backend deploy, then ship the app build — old clients keep working, their rows stay NULL; supersedes the "option a" block under item 8)
 - [x] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (done app-only; "Dispatched At: Sep 9, 2026 03:03 PM." on the For Delivery and Air/Sea Dispatch texts; completion timestamps now formatted the same way; not blocked by item 16 — the SMS prints the phone's local stamp, not the DB value)
-- [ ] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (app-only; system-inset audit across screens)
-- [ ] 17. Live map: one courier drawn as two cars (stale marker of a finished/previous request is never removed; markers are keyed per RequestID, not per courier) — `M` (app-only; `web_socket_delivery_controller.dart` + `delivery_location_controller.dart`; ideally the WS server also stops replaying completed requests)
+- [x] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (done app-only: edge-to-edge set at startup; the six `viewInsets.bottom > 0` "gesture nav" probes — including the tab bar — replaced; forms stop double-counting the keyboard; nested SafeAreas removed from the modals; ~20 bottom widgets/sheets padded; widget tests + a source-grep test guard the rule)
+- [x] 17. Live map: one courier drawn as two cars — `M` (done app-only: courier sends a terminal frame on Drop Off / request switch, watchers retire the car and refuse replayed older frames, 30-min age-out, and at most one car per rider at render time; WS-relay cache change still recommended, tracked in §17)
 - [x] 19. Standard Delivery / Hotline Direct: only the assigned driver or helper can open the courier screen and Dispatch / Drop Off — `M` (done app-only; sole-role couriers no longer see other crews' Item Prepared / For Delivery requests; Release+Courier users see them but get the modal; Dispatch no longer overwrites the driver)
 - [ ] 18. Gemini OCR key hygiene (decision 2026-09-10: key stays in the mobile client; backend proxy removed) — `S` (ops-side: rotate the key — it is in both repos' git history — restrict it in GCP, set a budget alert; app-side done: key moved from URL to header)
 - [x] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (backend fixed via `TimestampNormalizer` in all five normalizers + `Timezone=Asia/Manila` on the connection string; run `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` **after** deploying to fix existing rows; only the optional app follow-up remains open)
@@ -648,31 +648,69 @@ space where a nav bar isn't.
 - `BDevicesUtils.setFullScreen`, `hideStatusBar` and `showStatusBar`
   (`device_utility.dart:29-31, 79-85`) exist but are **never called** — nothing in
   `lib/` uses them, so the app runs in whatever mode the engine defaults to.
-- Only ~25 files use `SafeArea` against ~67 that build a `Scaffold`, so bottom
+- Only 25 files use `SafeArea` against 61 that build a real `Scaffold` (the earlier "~67"
+  also counted `RequestModalScaffold`), so bottom
   insets are applied inconsistently — the likely source of the reported clipping
   under the navigation bar.
 - Newer Android releases force edge-to-edge, so bottom system insets must be
   honored explicitly rather than assumed to be zero.
 
+**Implemented (2026-09-10).** Full audit instead of a single screen (owner's call: fix for
+both nav styles, keep the system bars, no immersive mode). Findings and fixes:
+- **Root cause #1 — the nav-bar padding was decided from the keyboard.** Six places
+  (`navigation_menu.dart` — the app's tab bar —, `b_single_field_scanner.dart`,
+  `b_text_scanner.dart`, `b_drop_off_capture.dart`, `hotline_direct_form.dart`,
+  `full_screen_loader.dart` user checklist) computed
+  `isGestureNavigation = viewInsets.bottom > 0` and set `SafeArea(bottom: !that)`.
+  `viewInsets.bottom` is the keyboard height, so the padding was on with the keyboard
+  closed and off when open — never tracking the nav bar. All replaced by
+  `SafeArea(top: false)` / `MediaQuery.paddingOf(context).bottom` on the bottom widget.
+- **Root cause #2 — no system UI mode.** `main.dart` now sets `SystemUiMode.edgeToEdge`
+  with transparent system bars on Android (API 35+ / targetSdk 36 forces edge-to-edge
+  anyway; this makes older devices behave the same).
+- Forms (`standard_delivery/pull_out/pick_up/air_sea_form.dart`) stopped adding
+  `viewInsets.bottom` inside `bottomNavigationBar` — Scaffold already lifts it, so the
+  submit button jumped by two keyboard heights.
+- Modals: `RequestModalScaffold` is the one place that pads for the nav bar; the five
+  presenters in `full_screen_loader.dart` no longer wrap it in a second `SafeArea` (nested
+  SafeAreas resolve to zero); `showPickUpDialog` gained the missing keyboard padding.
+- Padded bottom widgets/sheets that had nothing: `BDraggableBottomSheet` pinned action
+  (Request Transport's Dispatch / Drop Off) and its collapsed content,
+  `request_modal_footer_actions.dart` (Standard Delivery page), `location_google.dart`
+  FAB, `showRequestForReleasingDialog1`, search sheet, role checklist, onboarding
+  next/dots ×4 (were positioned by Flutter's 56 dp `kBottomNavigationBarHeight`
+  constant mistaken for the inset), splash tagline, Collection sheets (category detail,
+  payment details, activity history, invoice details, calendar, batch status picker,
+  contact directory).
+- Request Transport: outer `SafeArea` no longer shortens the map; the FABs ride the real
+  sheet extent (`RequestTransportController.sheetExtent`, fed by
+  `DraggableScrollableNotification`) instead of a hard-coded 45 %.
+- `BDevicesUtils`: new `systemBottomInset` / `keyboardInset` with the rule documented;
+  removed the dead/misnamed helpers (`isLandScapeOrientation`, `setFullScreen`,
+  `hideStatusBar`, `showStatusBar`, `getBottomNavigationBarHeight`, …).
+- Tests: `test/common/widgets/bottom_inset_test.dart` — sheet and modal scaffold under a
+  48 px inset, plus a source-grep test that fails if `viewInsets.bottom > 0` /
+  `isGestureNavigation` reappears in `lib/`.
+
 **Touch points**
-- [ ] Reproduce on both nav styles (Settings > System > Gestures on the test device)
+- [ ] Reproduce on both nav styles (Settings > System > Gestures on the test device) — **device QA still pending** (both styles, keyboard open and closed; see §15 verification list in the plan)
   and capture the offending screens first — the fix list should be driven by real
   screenshots, not a blanket `SafeArea` sweep.
-- [ ] Audit bottom-anchored UI: `Scaffold.bottomNavigationBar`, footer action
+- [x] Audit bottom-anchored UI: `Scaffold.bottomNavigationBar`, footer action
   buttons (`b_action_button.dart`, `request_modal_scaffold.dart:64`), FABs, and
   `showModalBottomSheet` bodies — the usual victims.
-- [ ] Prefer `SafeArea` / `MediaQuery.viewPaddingOf` / `.padding` at the layout edge
+- [x] Prefer `SafeArea` / `MediaQuery.viewPaddingOf` / `.padding` at the layout edge
   over per-widget magic numbers; do not double-pad a child whose parent already
   applied `SafeArea`.
-- [ ] Decide the intended mode explicitly (`SystemUiMode.edgeToEdge` app-wide vs
+- [x] Decide the intended mode explicitly (`SystemUiMode.edgeToEdge` app-wide vs
   `immersiveSticky` only for camera/scanner/signature screens) and set it once at
   bootstrap (`main.dart` / `platform_init.dart`), then either wire up or delete the
   unused helpers in `device_utility.dart`.
-- [ ] Keep keyboard behavior intact — several forms rely on `viewInsets`
+- [x] Keep keyboard behavior intact — several forms rely on `viewInsets`
   (`device_utility.dart:19-27` even infers orientation from
   `viewInsets.bottom`, which is a keyboard signal, not an orientation one; worth
   fixing while in here).
-- [ ] Windows desktop must be unaffected — gate anything Android-specific behind a
+- [x] Windows desktop must be unaffected (insets are zero there; `SystemChrome` call is Android-gated) — gate anything Android-specific behind a
   platform check.
 
 ---
@@ -794,30 +832,42 @@ colours differ because the icon variant is hashed from the RequestID
   B from the same spot → A's stale car and B's live car sit on top of each other.
   Any viewer who taps the wrong one calls/looks at the finished request.
 
+**Implemented (2026-09-10, app only).** `WebSocketDeliveryController` gained a marker
+lifecycle: `terminalStatuses` (`completed`, `delivered`, `cancelled`, `tracking_stopped`)
+→ `retireRequest()` removes the car and records the retirement time, so a replayed older
+`en_route` frame (server cache on connect, courier offline queue) can no longer bring it
+back — only a genuinely newer frame (re-dispatch) re-adds it; `pruneStale()` drops cars
+with no frame for 30 min; `visibleRequestIds()` keeps one car per rider (newest wins).
+`DeliveryLocationController.riderBuildMarkers` applies both before drawing.
+`RiderRealtimeTrackingController.stopTracking()` now sends a final `completed` frame
+(or `tracking_stopped` when switching requests) from the last known position and purges
+that request's queued frames first, so the flush cannot replay an older one after it.
+Tests: `web_socket_delivery_marker_lifecycle_test.dart`, `rider_tracking_queue_drop_test.dart`.
+
 **Fix (app side; the server change is a nice-to-have, not a prerequisite).**
-- [ ] Drop a request's marker when it leaves the "moving" states: on a
+- [x] (done via the terminal frame; explicit `NotificationUpdate` parsing not needed) Drop a request's marker when it leaves the "moving" states: on a
   `location_update` whose `status` is terminal, and on notification/status messages
   for `Done Delivery` / `Cancelled` (the same WS channel already carries
   `NotificationUpdate`), call `riderLocations.remove(id)`,
   `riderLocationUpdates.remove(id)`, `riderMarkerColors.remove(id)` and clear
   `previousPositions` / `markerBearings` in `DeliveryLocationController`.
-- [ ] Have the courier publish a final `type: 'location_update', status: 'completed'`
+- [x] Have the courier publish a final `type: 'location_update', status: 'completed'`
   (or `tracking_stopped`) frame from `stopTracking()` so viewers get an explicit
   removal signal without depending on the request list; `_flushQueuedUpdates` must
   send it last and must **not** replay frames for a request that already has a
   completed frame queued.
-- [ ] Belt-and-braces: reconcile against request data — a marker whose RequestID is
+- [x] (age-out done — 30 min; the request-list reconciliation was skipped: the render-time one-car-per-rider rule already covers the visible symptom without coupling the map to which lists a viewer has loaded) Belt-and-braces: reconcile against request data — a marker whose RequestID is
   not in the current For Delivery / In Transit set (Standard Delivery + Hotline
   Direct lists the viewer already loads) is hidden. Also age out markers whose last
   `timestamp` is older than a cutoff (e.g. 30 min) so a crashed courier phone does
   not leave a ghost car all day.
-- [ ] Optional de-dup at render time: if two markers share the same `riderInitial`
+- [x] (done — by `riderInitial`, newest frame wins; proximity-based de-dup not needed) Optional de-dup at render time: if two markers share the same `riderInitial`
   (or fall within ~5 m of each other), keep only the newest — this is the visual
   safety net for the case in the screenshot.
 - [ ] Server (MDMPI WS relay): stop replaying cached envelopes for RequestIDs that
   have reached a terminal status, or expire the cache after N minutes. Until then the
   app-side reconciliation above is what protects the map.
-- [ ] Unit tests: applying a completed frame removes the marker; a stale frame for a
+- [x] Unit tests: applying a completed frame removes the marker; a stale frame for a
   removed request does not resurrect it; render de-dup keeps the newest of two
   same-courier markers.
 

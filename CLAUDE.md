@@ -51,6 +51,11 @@ under `lib/features/<domain>/` (controllers, screens, helpers); repositories und
 - No business logic in widget `build`; wrap minimal subtrees in `Obx`.
 - Utility classes use the `B` prefix (`BRoutes`, `BFormatter`, `BHttpHelper`).
 - Files snake_case, classes PascalCase.
+- Bottom-anchored widgets (Android is edge-to-edge): pad for the navigation bar with
+  `SafeArea(top: false)` / `BDevicesUtils.systemBottomInset` **once**, at the outermost
+  bottom widget — never around a whole `Scaffold`; keyboard via `viewInsets` once
+  (`Scaffold` already does it for `bottomNavigationBar`); never gate one on the other
+  (`viewInsets.bottom > 0` is the keyboard, not "gesture navigation" — a test fails on it).
 
 ## API routing boundary (do not break)
 

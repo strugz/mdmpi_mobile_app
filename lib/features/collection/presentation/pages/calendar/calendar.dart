@@ -146,7 +146,12 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
                         ),
-                        builder: (_) => const ActivityTypeModal(),
+                        builder: (sheetContext) => Padding(
+                          padding: EdgeInsets.only(
+                              bottom:
+                                  MediaQuery.paddingOf(sheetContext).bottom),
+                          child: const ActivityTypeModal(),
+                        ),
                       );
                     },
                     icon: const Icon(Iconsax.add_circle, size: 20),

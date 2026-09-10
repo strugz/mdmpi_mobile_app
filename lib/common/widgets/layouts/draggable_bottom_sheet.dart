@@ -67,10 +67,14 @@ class BDraggableBottomSheet extends StatelessWidget {
           ),
           child: LayoutBuilder(
             builder: (context, constraints) {
+              // The sheet sits on the screen edge, under the system navigation
+              // bar (edge-to-edge). Pad for it exactly once: on the pinned
+              // action when shown, otherwise at the end of the scroll content.
+              final bottomInset = MediaQuery.paddingOf(context).bottom;
               // Hide bottomAction when the sheet is too collapsed
               // (drag handle = 30px, need at least ~90px for handle + button)
-              final showAction =
-                  bottomAction != null && constraints.maxHeight > 100;
+              final showAction = bottomAction != null &&
+                  constraints.maxHeight > 100 + bottomInset;
 
               return Column(
                 children: [
@@ -94,14 +98,22 @@ class BDraggableBottomSheet extends StatelessWidget {
                                 horizontal: horizontalPadding),
                             sliver: SliverToBoxAdapter(child: bottomInfo!),
                           ),
+                        // Keep the last row above the navigation bar when no
+                        // pinned action is taking the inset.
+                        if (!showAction)
+                          SliverToBoxAdapter(
+                              child: SizedBox(height: bottomInset)),
                       ],
                     ),
                   ),
                   // Action button — pinned at the bottom, hidden when collapsed
                   if (showAction)
-                    Padding(
-                      padding: const EdgeInsets.all(BSizes.sm),
-                      child: bottomAction!,
+                    SafeArea(
+                      top: false,
+                      child: Padding(
+                        padding: const EdgeInsets.all(BSizes.sm),
+                        child: bottomAction!,
+                      ),
                     ),
                 ],
               );

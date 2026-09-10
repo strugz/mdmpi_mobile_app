@@ -13,13 +13,13 @@ class NavigationMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(NavigationController());
 
-    final double bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final bool isGestureNavigation = bottomPadding > 0.0;
     final dark = BHelperFunctions.isDarkMode(context);
 
+    // Same shell layout as before item 15 (SafeArea around the Scaffold, so the
+    // area under the tab bar is the Scaffold's own background), minus the
+    // keyboard-height probe that used to switch the bottom padding off.
     return SafeArea(
       top: false,
-      bottom: !isGestureNavigation,
       child: Scaffold(
         bottomNavigationBar: Obx(
           () => CurvedNavigationBar(
