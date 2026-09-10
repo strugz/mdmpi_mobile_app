@@ -22,10 +22,10 @@
 - [x] 11. Backload: single-item backload from a batch delivery + backload item table — `L` (done app + backend via new `a_tblbackloaditem` table; per decision the courier unchecks items at For Delivery before Drop Off — run `MDMPI.App/migration_20260907_add_a_tblbackloaditem.sql` and redeploy in lockstep)
 - [x] 12. Stock Receive: document reference optional — `S` (done app-side only; Pull Out / Return and all other forms keep it required)
 - [x] 13. Air / Sea / Land: per-request Mode of Shipment dropdown (Air / Sea / Land) — `L` (done app + backend as nullable `shippingmethod varchar(15)`; run `MDMPI.App/migration_20260910_add_air_sea_shippingmethod.sql` **before** the backend deploy, then ship the app build — old clients keep working, their rows stay NULL; supersedes the "option a" block under item 8)
-- [ ] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (app-only; the timestamp is already captured, it is just never printed in the message)
+- [x] 14. SMS: include the dispatch time when the courier presses Dispatch — `S` (done app-only; "Dispatched At: Sep 9, 2026 03:03 PM." on the For Delivery and Air/Sea Dispatch texts; completion timestamps now formatted the same way; not blocked by item 16 — the SMS prints the phone's local stamp, not the DB value)
 - [ ] 15. Android: correct layout under fullscreen / gesture pill / 3-button navigation bar — `M` (app-only; system-inset audit across screens)
 - [ ] 17. Live map: one courier drawn as two cars (stale marker of a finished/previous request is never removed; markers are keyed per RequestID, not per courier) — `M` (app-only; `web_socket_delivery_controller.dart` + `delivery_location_controller.dart`; ideally the WS server also stops replaying completed requests)
-- [ ] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (**backend root cause**: local wall-clock relabelled as UTC, then Postgres casts it into the Manila session; fix in MDMPI.App + a one-off data repair; small app follow-up)
+- [x] 16. Timestamps saved +8h (3 PM dispatch stored as 11 PM) — `M` (backend fixed via `TimestampNormalizer` in all five normalizers + `Timezone=Asia/Manila` on the connection string; run `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` **after** deploying to fix existing rows; only the optional app follow-up remains open)
 
 ---
 
@@ -595,26 +595,38 @@ capture:
 - `dispatchedAt` is stamped the same way for Air/Sea
   (`air_sea_data_manager.dart:396`).
 
+**Implemented (2026-09-10).** `SmsRequestPayload.dispatchAt` (optional, default `''`),
+filled from `deliveredAt` (Standard Delivery / Hotline Direct) and `dispatchedAt`
+(Air / Sea / Land, both tabs). The template appends `Dispatched At: <Sep 9, 2026
+03:03 PM>.` to the `For Delivery` text and to a now-dedicated `Dispatch` case (the
+other statuses in the shared branch are unchanged). New
+`SmsMessageTemplateService.formatTimeForSms` renders `DateTime.now().toString()` /
+ISO values via `BFormatter.formatDateWithAmPm` with raw-text fallback, and the
+completion lines (`Date Time Received/Completed/...`) use it too. Not blocked by item
+16: the stamp is taken on the courier's phone and the SMS is built from that local
+model before anything round-trips through the DB. Tests:
+`test/data/services/sms/sms_dispatch_time_test.dart`.
+
 **Touch points**
-- [ ] `SmsRequestPayload` (`sms_request_payload.dart`) gains a
+- [x] `SmsRequestPayload` (`sms_request_payload.dart`) gains a
   `dispatchAt` + `dispatchTimeLabel` pair — keep it separate from
   `completionAt`/`completionTimeLabel`, which the completion branches use.
-- [ ] `SmsPayloadBuilder`: fill it from `model.deliveredAt` for
+- [x] `SmsPayloadBuilder`: fill it from `model.deliveredAt` for
   `StandardDeliveryModel` and from `model.dispatchedAt` for `AirSeaModel`
   (`sms_payload_builder.dart:49-147`).
-- [ ] `SmsMessageTemplateService`: add a `dispatchTimeLine` (empty when the value is
+- [x] `SmsMessageTemplateService`: add a `dispatchTimeLine` (empty when the value is
   empty, mirroring `completionTimeLine`) and emit it in the `statusForDelivery`
   branch and in the `statusDispatch` case — split `statusDispatch` out of the shared
   branch at lines 58-71 rather than adding a time to every status in that group.
-- [ ] **Format the value.** `DateTime.now().toString()` yields
+- [x] **Format the value.** `DateTime.now().toString()` yields
   `2026-09-09 14:03:12.123456`; run it through `BFormatter.formatDateWithAmPm`
   (`formatters.dart:43`) for the SMS. The existing completion lines print the raw
   string — fix them in the same pass so all SMS timestamps read alike.
-- [ ] Depends on item 16 (timezone) — the SMS must print the courier's local time,
+- [x] ~~Depends on item 16 (timezone)~~ — verified not blocking: the SMS is built from the locally stamped model, so it already prints the courier's local time,
   so fix the +8h shift first or the message will advertise the wrong hour.
-- [ ] Watch SMS length: templates already carry every document reference, and a
+- [x] Watch SMS length (one extra ~40-char line; unchanged risk profile): templates already carry every document reference, and a
   longer body can tip a message into a second segment.
-- [ ] Add template unit tests (`test/`) for both dispatch branches, including the
+- [x] Add template unit tests (`test/`) for both dispatch branches, including the
   empty-timestamp fallback.
 
 ---
@@ -710,22 +722,22 @@ time; `updatedat` (set from `DateTime.UtcNow`) matches wall-clock. If `SHOW time
 is `UTC`, the columns would hold the raw digits (15:03) instead — re-check before fixing.
 
 **Fix (backend first — MDMPI.App; the app is a follow-up, not a prerequisite).**
-- [ ] Replace the `_ => SpecifyKind(value, Utc)` arm in all five normalizers with a
+- [x] (done — `MDMPI.App.Common/Utilities/TimestampNormalizer.ToUtc`, wired into `RequestRepository`, `RequestAirSeaRepository`, `RequestPickUpRepository`, `RequestPullOutReturnPickUpRepository` and `PostgreSqlAppDbContext`; the DB server session was confirmed at +08, Asia/Kuala_Lumpur) Replace the `_ => SpecifyKind(value, Utc)` arm in all five normalizers with a
   real conversion: `TimeZoneInfo.ConvertTimeToUtc(value,
   TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila"))` (IANA id works on the Linux
   `aspnet:8.0` image; keep `Utc`/`Local` arms as they are so an explicit `Z`/offset
   is still honoured). Centralize it in one helper in `MDMPI.App.Common` instead of
   five private copies. **Old APKs keep working** — the backend now treats an
   offset-less string as Manila time, which is exactly what they send.
-- [ ] Pin the session zone so the fix does not depend on server config: add
+- [x] (done locally; **`appsettings.json` is git-ignored, so set the same `Timezone=Asia/Manila` on the deployed server's connection string as part of the deploy**) Pin the session zone so the fix does not depend on server config: add
   `;Timezone=Asia/Manila` to `PostgreSqlDB` in `appsettings*.json`
   (Npgsql connection-string option). Document in the backend README that `timestamp`
   columns hold **Manila wall-clock** and every `DateTime` written must be a true UTC
   instant.
-- [ ] Unit tests in `MDMPI.App.Tests` (none exist for this today): offset-less
+- [x] (done — `MDMPI.App.Tests/Common/TimestampNormalizerTests.cs`, 7 tests incl. the +08 write-cast round trip and re-save idempotence) Unit tests in `MDMPI.App.Tests` (none exist for this today): offset-less
   `2026-09-09 15:03:12` → `07:03:12Z`; `...Z` and `...+08:00` unchanged in instant
   terms; `Kind=Local` still converts.
-- [ ] **Data repair** — one-off SQL, reviewed with Logistics, scoped to rows written
+- [x] (script ready: `MDMPI.App/repair_20260910_fix_plus8h_client_timestamps.sql` — self-scoping via history evidence (value 7-9h ahead of the server `changedat`), idempotent, takes `zz_backup_20260910_*` copies, has a PREVIEW block to review with Logistics before the REPAIR transaction; **run after the backend deploy**) **Data repair** — one-off SQL, reviewed with Logistics, scoped to rows written
   since the Npgsql 9 backend went live: subtract 8h from the client-stamped columns
   only (`requestitempreparedat`, `requestitempreparedendat`, `requestdeliveredat`,
   `requestdeliveredendat` on Standard Delivery; `itempreparedat`, `itempreparedendat`,
@@ -740,7 +752,7 @@ is `UTC`, the columns would hold the raw digits (15:03) instead — re-check bef
   the wire format is unambiguous and no longer relies on the server's Manila
   assumption. Check `air_sea_dao.dart:14` (already `toUtc()` for the local cache) and
   the read-back formatters still display local time correctly.
-- [ ] Blocks item 14: do not print the dispatch time in the SMS until the stored
+- [x] ~~Blocks item 14~~ (resolved: the SMS prints the phone's local stamp before it round-trips the DB, so 14 was never blocked) Blocks item 14: do not print the dispatch time in the SMS until the stored
   value is right, or the message will advertise the wrong hour.
 
 ---

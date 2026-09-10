@@ -74,6 +74,8 @@ class SmsPayloadBuilder {
       cancelRemarks: cancelRemarks,
       completionStatusLabel: isPullOut ? 'PULLED OUT' : 'DELIVERED',
       inventoryItems: inventoryItems ?? [],
+      // Stamped locally on the Item Prepared -> For Delivery (Dispatch) step.
+      dispatchAt: model.deliveredAt,
     );
   }
 
@@ -143,6 +145,7 @@ class SmsPayloadBuilder {
           : model.cancelRemarks.remarks,
       completionStatusLabel: _resolveAirSeaCompletionStatusLabel(status),
       inventoryItems: const [],
+      dispatchAt: model.dispatchedAt,
     );
   }
 
