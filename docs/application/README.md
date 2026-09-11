@@ -11,6 +11,8 @@ This folder contains practical Logistics Department documentation for the MDMPI 
 | Android Workflow Training | [Workflow Presentation](ANDROID_LOGISTICS_WORKFLOW_PRESENTATION.md) | You need presentation-ready process diagrams, role matrices, and exercises. |
 | Logistics Operations Admins | [Admin Guide](ADMIN_GUIDE.md) | You support Logistics users, local sync, request data refresh, outboxes, and troubleshooting. |
 | Logistics Developers | [Developer Guide](DEVELOPER_GUIDE.md) | You maintain or extend Logistics request modules, data flows, and support tooling. |
+| ISO / QMS Documentation (Logistics) | [Logistics Process Flow and System Narrative (.docx)](LOGISTICS_PROCESS_FLOW_AND_NARRATIVE.docx) | You need the Logistics process flow and user narrative in Word format for the quality management system. |
+| ISO / QMS Documentation (Collection) | [Collection Process Flow and System Narrative (.docx)](COLLECTION_PROCESS_FLOW_AND_NARRATIVE.docx) | You need the Collection process flow and user narrative in Word format for the quality management system. |
 
 ## Logistics Scope
 
