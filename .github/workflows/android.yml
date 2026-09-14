@@ -69,6 +69,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.1.106' }}
+          name: ${{ github.ref_type == 'tag' && github.ref_name || 'Release v1.1.106' }}
           draft: false
           prerelease: false
           generate_release_notes: true
