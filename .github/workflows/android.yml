@@ -38,7 +38,7 @@ jobs:
       # 5. Decode Android Keystore from Secrets
       - name: Decode Android Keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/mdmpi-app-keystore.jks
+          echo "${{ secrets.MDMPIAPP }}" | base64 --decode > android/app/mdmpi-app-keystore.jks
 
       # 6. Generate .env File Dynamically
       - name: Create .env File
