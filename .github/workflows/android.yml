@@ -1,6 +1,7 @@
 name: Build & Release Android APK
 
 on:
+  workflow_dispatch: # Enables manual run button in GitHub Actions UI
   push:
     tags:
       - 'v*' # Triggers when you push a tag like v1.0.0
@@ -39,18 +40,33 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/mdmpi-app-keystore.jks
 
-      # 6. Build Signed Release APK
+      # 6. Generate .env File Dynamically
+      - name: Create .env File
+        run: |
+          touch .env
+          echo "API_URL=${{ secrets.API_URL }}" >> .env
+          echo "API4_URL=${{ secrets.API4_URL }}" >> .env
+          echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+          echo "AI_TOOLKIT_GOOGLE_URL=${{ secrets.AI_TOOLKIT_GOOGLE_URL }}" >> .env
+          echo "AI_TOOLKIT_MODEL=${{ secrets.AI_TOOLKIT_MODEL }}" >> .env
+          echo "AI_TOOLKIT_API_KEY=${{ secrets.AI_TOOLKIT_API_KEY }}" >> .env
+          echo "AI_TOOLKIT_AUTH_TYPE=${{ secrets.AI_TOOLKIT_AUTH_TYPE }}" >> .env
+          echo "AI_TOOLKIT_PROVIDER=${{ secrets.AI_TOOLKIT_PROVIDER }}" >> .env
+          echo "AI_PROMPT=${{ secrets.AI_PROMPT }}" >> .env
+          echo "USE_GOOGLE_GENERATIVE=${{ secrets.USE_GOOGLE_GENERATIVE }}" >> .env
+
+      # 7. Build Signed Release APK
       - name: Build Signed Release APK
         run: flutter build apk --release
         env:
-          KEYSTORE_FILE: mdmpi-app-keystore.jks
+          KEYSTORE_FILE: android/app/mdmpi-app-keystore.jks # Corrected relative path from root
           KEYSTORE_PASSWORD: ${{ secrets.MDMPIAPP }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
-      # 7. Publish to GitHub Releases
+      # 8. Publish to GitHub Releases
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           files: build/app/outputs/flutter-apk/app-release.apk
           draft: false
@@ -58,4 +74,3 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
