@@ -59,10 +59,10 @@ jobs:
       - name: Build Signed Release APK
         run: flutter build apk --release
         env:
-          KEYSTORE_FILE: android/app/mdmpi-app-keystore.jks # Corrected relative path from root
-          KEYSTORE_PASSWORD: ${{ secrets.MDMPIAPP }}
-          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }} # Corrected relative path from root
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       # 8. Publish to GitHub Releases
       - name: Create GitHub Release
