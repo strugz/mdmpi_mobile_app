@@ -44,7 +44,7 @@ jobs:
         run: flutter build apk --release
         env:
           KEYSTORE_FILE: release.jks
-          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.MDMPIAPP }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
 
