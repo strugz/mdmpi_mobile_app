@@ -121,6 +121,63 @@ void main() {
 
       expect(find.text('1 item to collect'), findsOneWidget);
     });
+
+    // The tap animation is the card's personality, but it must never gate
+    // navigation the way it once did (a full second before the push started).
+    testWidgets('navigates shortly after the tap, not after the animation',
+        (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_inUnboundedColumn(
+        CollectionBucketButton(itemCount: 5, onTap: () => taps++),
+      ));
+      await tester.pump();
+
+      await tester.tap(find.byType(CollectionBucketButton));
+      await tester.pump();
+      expect(taps, 0, reason: 'a beat of animation plays first');
+
+      await tester.pump(const Duration(milliseconds: 240));
+      expect(taps, 1,
+          reason: 'push starts well before the 2.66s animation ends');
+
+      // Let the reset timer retire so the test ends clean.
+      await tester.pump(const Duration(milliseconds: 1200));
+    });
+
+    testWidgets('navigates immediately when the delay is zero', (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_inUnboundedColumn(
+        CollectionBucketButton(
+          itemCount: 5,
+          navigateDelay: Duration.zero,
+          onTap: () => taps++,
+        ),
+      ));
+      await tester.pump();
+
+      await tester.tap(find.byType(CollectionBucketButton));
+      expect(taps, 1);
+
+      await tester.pump(const Duration(milliseconds: 1200));
+    });
+
+    testWidgets('a second tap while opening does not push twice',
+        (tester) async {
+      var taps = 0;
+      await tester.pumpWidget(_inUnboundedColumn(
+        CollectionBucketButton(itemCount: 5, onTap: () => taps++),
+      ));
+      await tester.pump();
+
+      await tester.tap(find.byType(CollectionBucketButton));
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.byType(CollectionBucketButton));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(taps, 1);
+
+      await tester.pump(const Duration(milliseconds: 1200));
+    });
   });
 
   group('CollectionTotalsCardView', () {
