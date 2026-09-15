@@ -53,6 +53,7 @@ import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.
 import 'package:mdmpi_mobile_app/data/repositories/standard_delivery/standard_delivery_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/forget_password_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/verify_email_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_onboarding_controller.dart';
@@ -241,5 +242,6 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionActivityController(), fenix: true);
     Get.lazyPut(() => CollectionRepository(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
+    Get.lazyPut(() => CollectionSmsService(), fenix: true);
   }
 }
