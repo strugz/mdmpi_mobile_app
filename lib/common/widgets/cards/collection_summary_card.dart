@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 
-/// A small reusable card used on collection home to show a KPI/value.
+/// A small KPI tile used on the collection home grid.
+///
+/// Colour carries the category, so the type can stay modest: a 12pt label
+/// that may wrap to two lines (never truncates) and a 24pt value.
 class CollectionSummaryCard extends StatelessWidget {
   final String title;
   final String value;
@@ -24,44 +29,54 @@ class CollectionSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = color.withAlpha((0.08 * 255).round());
+    final theme = Theme.of(context);
 
-    return GestureDetector(
+    return BPressableScale(
       onTap: onTap,
       child: Container(
-        // Respect `expand` when used inside a Row. If not expanding, let the
-        // width be null so the parent (e.g., Expanded) controls sizing.
         width: expand ? double.infinity : null,
-        padding: const EdgeInsets.all(BSizes.defaultSpace / 2),
+        padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 25),
-                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(width: BSizes.sm),
                 Expanded(
                   child: Text(
                     title,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: BColors.darkerGrey,
+                      height: 1.2,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: BSizes.fontSizeLg * 1.5,
-                  ),
+            const SizedBox(height: BSizes.sm),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 24,
+                  height: 1.1,
+                ),
+              ),
             ),
           ],
         ),
