@@ -319,6 +319,12 @@ class CollectionActivityController extends GetxController {
   /// Case-insensitive prefix match against the selected area (see BCollectionArea).
   bool _matchesArea(String code) => BCollectionArea.matches(code, selectedArea.value);
 
+  /// Number of bucket accounts in [area] (a BCollectionArea code, the "Others"
+  /// sentinel, or '' for every account). Ignores the other bucket filters so
+  /// the Filter by Area screen shows what each choice would reveal.
+  int accountCountForArea(String area) =>
+      masterAccountList.where((c) => BCollectionArea.matches(c.code, area)).length;
+
   /// True when any bucket-narrowing input (search, amount/invoice range, area)
   /// is active. Drives the empty-state copy and the "Clear all filters" action.
   bool get hasActiveBucketFilter =>

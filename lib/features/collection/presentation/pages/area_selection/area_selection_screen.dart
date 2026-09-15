@@ -3,9 +3,50 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+
+/// One tile on the area picker. [codes] is what the tile represents: a single
+/// territory code, several (a parent like Luzon), or empty for "All areas".
+class _AreaOption {
+  const _AreaOption({
+    required this.name,
+    required this.icon,
+    this.code,
+    this.children = const [],
+  });
+
+  final String name;
+  final IconData icon;
+
+  /// Selectable code. Null for a parent that drills down.
+  final String? code;
+  final List<_AreaOption> children;
+
+  bool get hasChildren => children.isNotEmpty;
+
+  /// Codes to count accounts for.
+  List<String> get codes =>
+      hasChildren ? children.map((c) => c.code!).toList() : [code ?? ''];
+}
+
+const List<_AreaOption> _luzonRegions = [
+  _AreaOption(name: 'North Luzon', icon: Iconsax.arrow_up_1, code: 'NLN'),
+  _AreaOption(name: 'Central Luzon', icon: Iconsax.record_circle, code: 'CLN'),
+  _AreaOption(name: 'South Luzon', icon: Iconsax.arrow_down, code: 'SLN'),
+  _AreaOption(name: 'NCR', icon: Iconsax.buildings_2, code: 'NCR'),
+];
+
+const List<_AreaOption> _mainAreas = [
+  _AreaOption(name: 'Luzon', icon: Iconsax.map, children: _luzonRegions),
+  _AreaOption(name: 'Visayas', icon: Iconsax.global, code: 'VIS'),
+  _AreaOption(name: 'Mindanao', icon: Iconsax.routing_2, code: 'MIN'),
+  _AreaOption(name: 'Medical Imaging', icon: Iconsax.scan, code: 'RAD'),
+  // Every code whose prefix is not one of the named territories (VET, CSAT, …).
+  _AreaOption(name: 'Others', icon: Iconsax.category, code: BCollectionArea.others),
+];
 
 class AreaSelectionScreen extends StatefulWidget {
   final Widget Function()? targetScreenBuilder;
@@ -24,27 +65,15 @@ class AreaSelectionScreen extends StatefulWidget {
 }
 
 class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
-  String? selectedMainCategory;
+  /// Parent currently drilled into (Luzon), or null for the top level.
+  _AreaOption? _parent;
 
-  final List<Map<String, dynamic>> mainCategories = [
-    {'name': 'Luzon', 'icon': Iconsax.map, 'hasSub': true},
-    {'name': 'Visayas', 'icon': Iconsax.map_1, 'code': 'VIS'},
-    {'name': 'Mindanao', 'icon': Iconsax.map, 'code': 'MIN'},
-    {'name': 'Medical Imaging', 'icon': Iconsax.mask, 'code': 'RAD'},
-    // Every code whose prefix is not one of the named territories (VET, CSAT, …).
-    {'name': 'Others', 'icon': Iconsax.more_square, 'code': BCollectionArea.others},
-  ];
+  static const Duration _stateDuration = Duration(milliseconds: 220);
 
-  final List<Map<String, String>> luzonSubCategories = [
-    {'name': 'North Luzon', 'code': 'NLN'},
-    {'name': 'South Luzon', 'code': 'SLN'},
-    {'name': 'Central Luzon', 'code': 'CLN'},
-    {'name': 'NCR', 'code': 'NCR'},
-  ];
+  CollectionActivityController get _controller => CollectionActivityController.instance;
 
-  void _onSelect(String code) {
-    final controller = CollectionActivityController.instance;
-    controller.selectedArea.value = code;
+  void _select(String code) {
+    _controller.selectedArea.value = code;
     if (widget.isFilterMode) {
       Get.back();
     } else if (widget.targetScreenBuilder != null) {
@@ -52,130 +81,388 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
     }
   }
 
+  void _drillInto(_AreaOption parent) => setState(() => _parent = parent);
+  void _drillOut() => setState(() => _parent = null);
+
+  int _countFor(_AreaOption option) =>
+      option.codes.fold(0, (sum, code) => sum + _controller.accountCountForArea(code));
+
+  bool _isSelected(_AreaOption option, String selected) {
+    if (option.hasChildren) return option.children.any((c) => c.code == selected);
+    return (option.code ?? '') == selected;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: BAppBar(
-        title: Text(widget.isFilterMode ? 'Filter by Area' : 'Select Area - ${widget.title}'),
-        showBackArrow: true,
-        actions: widget.isFilterMode ? [
-          TextButton(
-            onPressed: () {
-              CollectionActivityController.instance.selectedArea.value = '';
-              Get.back();
-            },
-            child: const Text('Clear', style: TextStyle(color: BColors.primary)),
-          ),
-        ] : null,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(BSizes.defaultSpace),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              selectedMainCategory == null 
-                  ? 'Choose a main category' 
-                  : 'Choose a region in $selectedMainCategory',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: BSizes.spaceBtwSections),
-            
-            Expanded(
-              child: selectedMainCategory == null 
-                  ? _buildMainGrid() 
-                  : _buildSubGrid(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    final theme = Theme.of(context);
+    final drilled = _parent != null;
 
-  Widget _buildMainGrid() {
-    return GridView.builder(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: BSizes.spaceBtwItems,
-        mainAxisSpacing: BSizes.spaceBtwItems,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: mainCategories.length,
-      itemBuilder: (context, index) {
-        final item = mainCategories[index];
-        return _buildAreaCard(
-          name: item['name'],
-          icon: item['icon'],
-          onTap: () {
-            if (item['hasSub'] == true) {
-              setState(() => selectedMainCategory = item['name']);
-            } else {
-              _onSelect(item['code']);
-            }
-          },
-        );
+    // System back returns to the top level first instead of leaving the screen.
+    return PopScope(
+      canPop: !drilled,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && drilled) _drillOut();
       },
+      child: Scaffold(
+        appBar: BAppBar(
+          showBackArrow: !drilled,
+          leadingIcon: drilled ? Iconsax.arrow_left : null,
+          leadingOnPressed: _drillOut,
+          title: Text(
+            drilled
+                ? _parent!.name
+                : (widget.isFilterMode ? 'Filter by Area' : 'Select Area - ${widget.title}'),
+          ),
+        ),
+        body: Obx(() {
+          final selected = _controller.selectedArea.value;
+          final options = drilled ? _parent!.children : _mainAreas;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  BSizes.defaultSpace,
+                  BSizes.sm,
+                  BSizes.defaultSpace,
+                  0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      drilled ? 'Choose a region' : 'Choose an area',
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: BSizes.xs),
+                    Text(
+                      drilled
+                          ? 'Accounts in ${_parent!.name} are grouped by region code.'
+                          : 'Counts show accounts currently in your bucket.',
+                      style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              Expanded(
+                // Slide between levels: forward into a parent, back out again.
+                child: AnimatedSwitcher(
+                  duration: _stateDuration,
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) {
+                    final incomingIsSub = child.key == const ValueKey('sub');
+                    final offset = Tween<Offset>(
+                      begin: Offset(incomingIsSub ? 0.08 : -0.08, 0),
+                      end: Offset.zero,
+                    ).animate(anim);
+                    return FadeTransition(
+                      opacity: anim,
+                      child: SlideTransition(position: offset, child: child),
+                    );
+                  },
+                  child: _AreaGrid(
+                    key: ValueKey(drilled ? 'sub' : 'main'),
+                    options: options,
+                    selected: selected,
+                    showAllAreas: widget.isFilterMode && !drilled,
+                    totalCount: _controller.accountCountForArea(''),
+                    countFor: _countFor,
+                    isSelected: (o) => _isSelected(o, selected),
+                    onTap: (o) => o.hasChildren ? _drillInto(o) : _select(o.code ?? ''),
+                    onTapAll: () => _select(''),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }),
+      ),
     );
   }
+}
 
-  Widget _buildSubGrid() {
-    return Column(
-      children: [
-        Expanded(
-          child: GridView.builder(
+class _AreaGrid extends StatelessWidget {
+  const _AreaGrid({
+    super.key,
+    required this.options,
+    required this.selected,
+    required this.showAllAreas,
+    required this.totalCount,
+    required this.countFor,
+    required this.isSelected,
+    required this.onTap,
+    required this.onTapAll,
+  });
+
+  final List<_AreaOption> options;
+  final String selected;
+  final bool showAllAreas;
+  final int totalCount;
+  final int Function(_AreaOption) countFor;
+  final bool Function(_AreaOption) isSelected;
+  final void Function(_AreaOption) onTap;
+  final VoidCallback onTapAll;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        if (showAllAreas)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              BSizes.defaultSpace,
+              0,
+              BSizes.defaultSpace,
+              BSizes.spaceBtwItems,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: _AllAreasTile(
+                count: totalCount,
+                selected: selected.isEmpty,
+                onTap: onTapAll,
+              ),
+            ),
+          ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+            BSizes.defaultSpace,
+            0,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+          ),
+          sliver: SliverGrid(
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: BSizes.spaceBtwItems,
-              mainAxisSpacing: BSizes.spaceBtwItems,
-              childAspectRatio: 1.1,
+              crossAxisSpacing: BSizes.spaceBtwItemsLight,
+              mainAxisSpacing: BSizes.spaceBtwItemsLight,
+              childAspectRatio: 1.25,
             ),
-            itemCount: luzonSubCategories.length,
-            itemBuilder: (context, index) {
-              final sub = luzonSubCategories[index];
-              return _buildAreaCard(
-                name: sub['name']!,
-                icon: Iconsax.location,
-                onTap: () => _onSelect(sub['code']!),
-              );
-            },
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final option = options[index];
+                return _AreaTile(
+                  option: option,
+                  count: countFor(option),
+                  selected: isSelected(option),
+                  onTap: () => onTap(option),
+                );
+              },
+              childCount: options.length,
+            ),
           ),
-        ),
-        TextButton.icon(
-          onPressed: () => setState(() => selectedMainCategory = null),
-          icon: const Icon(Icons.arrow_back),
-          label: const Text('Back to Main Categories'),
         ),
       ],
     );
   }
+}
 
-  Widget _buildAreaCard({required String name, required IconData icon, required VoidCallback onTap}) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BSizes.borderRadiusLg)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(BSizes.md),
-              decoration: BoxDecoration(
-                color: BColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+/// Shared visual language for the tiles: flat surface, 1.5px border that turns
+/// primary when selected, soft tint, and a check badge. Colours animate so a
+/// selection reads as the same tile changing state.
+BoxDecoration _tileDecoration(bool selected) => BoxDecoration(
+      color: selected ? BColors.primary.withValues(alpha: 0.06) : BColors.white,
+      borderRadius: BorderRadius.circular(BSizes.cardRadiusLg),
+      border: Border.all(
+        color: selected ? BColors.primary : BColors.grey,
+        width: 1.5,
+      ),
+    );
+
+const Duration _tileDuration = Duration(milliseconds: 160);
+
+class _AreaTile extends StatelessWidget {
+  const _AreaTile({
+    required this.option,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _AreaOption option;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final empty = count == 0;
+
+    return BPressableScale(
+      onTap: onTap,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: '${option.name}, $count account${count == 1 ? '' : 's'}'
+            '${option.hasChildren ? ', has regions' : ''}',
+        child: AnimatedContainer(
+          duration: _tileDuration,
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(BSizes.md),
+          decoration: _tileDecoration(selected),
+          child: Stack(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _IconBadge(icon: option.icon, selected: selected, muted: empty),
+                  const Spacer(),
+                  Text(
+                    option.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: empty ? BColors.darkGrey : BColors.dark,
+                    ),
+                  ),
+                  const SizedBox(height: BSizes.xxs),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          empty ? 'No accounts' : '$count account${count == 1 ? '' : 's'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                        ),
+                      ),
+                      if (option.hasChildren)
+                        Text(
+                          '${option.children.length} regions',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: BColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-              child: Icon(icon, color: BColors.primary, size: 32),
-            ),
-            const SizedBox(height: BSizes.sm),
-            Text(
-              name,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ],
+              // Top-right affordance: check when selected, chevron for parents.
+              Positioned(
+                top: 0,
+                right: 0,
+                child: AnimatedSwitcher(
+                  duration: _tileDuration,
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: Tween<double>(begin: 0.85, end: 1).animate(anim),
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: selected
+                      ? const Icon(
+                          Iconsax.tick_circle5,
+                          key: ValueKey('check'),
+                          size: 22,
+                          color: BColors.primary,
+                        )
+                      : option.hasChildren
+                          ? const Icon(
+                              Iconsax.arrow_right_3,
+                              key: ValueKey('chevron'),
+                              size: 18,
+                              color: BColors.darkGrey,
+                            )
+                          : const SizedBox.shrink(key: ValueKey('none')),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Full-width "All areas" row shown at the top in filter mode; selected when
+/// no area filter is set, so clearing the filter is a visible choice rather
+/// than a separate action.
+class _AllAreasTile extends StatelessWidget {
+  const _AllAreasTile({required this.count, required this.selected, required this.onTap});
+
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return BPressableScale(
+      onTap: onTap,
+      pressedScale: 0.985,
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: 'All areas, $count account${count == 1 ? '' : 's'}',
+        child: AnimatedContainer(
+          duration: _tileDuration,
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: BSizes.md, vertical: BSizes.md),
+          decoration: _tileDecoration(selected),
+          child: Row(
+            children: [
+              _IconBadge(icon: Iconsax.global_search, selected: selected, muted: false, size: 40),
+              const SizedBox(width: BSizes.spaceBtwItemsLight),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'All areas',
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '$count account${count == 1 ? '' : 's'} in your bucket',
+                      style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                    ),
+                  ],
+                ),
+              ),
+              AnimatedOpacity(
+                duration: _tileDuration,
+                opacity: selected ? 1 : 0,
+                child: const Icon(Iconsax.tick_circle5, size: 22, color: BColors.primary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _IconBadge extends StatelessWidget {
+  const _IconBadge({
+    required this.icon,
+    required this.selected,
+    required this.muted,
+    this.size = 44,
+  });
+
+  final IconData icon;
+  final bool selected;
+  final bool muted;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = muted ? BColors.darkGrey : BColors.primary;
+
+    return AnimatedContainer(
+      duration: _tileDuration,
+      curve: Curves.easeOut,
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: selected ? BColors.primary : color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, size: size * 0.5, color: selected ? BColors.white : color),
     );
   }
 }
