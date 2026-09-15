@@ -83,6 +83,32 @@ void main() {
       expect(loaded.history.first.checkNumber, '123');
     });
 
+    test('re-downloading the bucket does not duplicate history rows', () async {
+      final item = CollectionItemModel(
+        id: 'INV-9',
+        client: ClientModel(id: 'C9', code: 'C9', name: 'Beta', address: '', contact: '', emailAddress: ''),
+        toBeCollected: 600,
+        totalCollected: 400,
+        history: const [
+          CollectionHistoryModel(date: '2026-09-15', collectorName: 'Juan', status: 'Partially Collected', totalCollected: 400),
+        ],
+      );
+
+      // Download → download again (background sync) → download after clearing.
+      await dao.insertCollectionItems([item]);
+      await dao.insertCollectionItems([item]);
+      expect(await dao.getHistoryRowCount(), 1, reason: 'replace, not append');
+
+      await dao.deleteAllCollectionItems();
+      expect(await dao.getHistoryRowCount(), 0, reason: 'history goes with its items');
+
+      await dao.insertCollectionItems([item]);
+      final loaded = await dao.getCollectionItemById('INV-9');
+      expect(loaded!.history.length, 1);
+      final total = loaded.history.fold<double>(0, (p, h) => p + h.totalCollected);
+      expect(total, 400);
+    });
+
     test('pending queue add / count / remove', () async {
       final id = await pendingDao.addPendingChange(PendingChange(
         operation: 'SAVE_ACTIVITY',

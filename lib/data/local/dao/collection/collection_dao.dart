@@ -74,7 +74,12 @@ class CollectionDao {
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
 
-      // Insert history records if present
+      // Replace history records (see insertCollectionItems).
+      await db.delete(
+        'a_tblCollectionHistory',
+        where: 'itemId = ?',
+        whereArgs: [item.id],
+      );
       if (item.history.isNotEmpty) {
         for (var history in item.history) {
           await _insertHistoryRecord(item.id, history);
@@ -97,6 +102,15 @@ class CollectionDao {
         'a_tblCollectionItems',
         dbJson,
         conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+      // History is replaced together with its item. sqflite does not enable
+      // foreign keys, so the ON DELETE CASCADE on this table never fires and a
+      // re-download used to append a second copy of every history row.
+      batch.delete(
+        'a_tblCollectionHistory',
+        where: 'itemId = ?',
+        whereArgs: [item.id],
       );
 
       // Insert history records
@@ -184,7 +198,15 @@ class CollectionDao {
 
   /// Delete all collection items (for refresh/sync).
   Future<void> deleteAllCollectionItems() async {
+    // Explicit: the FK cascade is inert without PRAGMA foreign_keys.
+    await db.delete('a_tblCollectionHistory');
     await db.delete('a_tblCollectionItems');
+  }
+
+  /// Number of history rows (all items).
+  Future<int> getHistoryRowCount() async {
+    final result = await db.rawQuery('SELECT COUNT(*) AS count FROM a_tblCollectionHistory');
+    return (result.first['count'] as int?) ?? 0;
   }
 
   /// Get count of collection items.
