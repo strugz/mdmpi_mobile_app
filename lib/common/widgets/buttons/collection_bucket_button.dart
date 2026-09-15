@@ -13,11 +13,13 @@ import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart'
 /// navigation: playback starts, [navigateDelay] later the push begins, and the
 /// animation keeps running on the outgoing page while it slides away.
 ///
-/// Why it is cheap now. The source GIF is 640x640, 127 frames, 2.66s. It is
-/// drawn at 64pt, but Flutter decoded every frame at full size, which is about
-/// eleven times more pixels than the screen can use and enough main-thread
-/// work to stutter the page transition. [decodePx] decodes at display size
-/// instead, and the asset is precached so the first tap costs no bundle read.
+/// Why it is cheap. The GIF was 640x640 over 127 frames (2.0MB), drawn at
+/// 64pt: every frame decoded at about eleven times the pixels the screen can
+/// use, which was enough main-thread work to stutter the page transition. The
+/// asset is now authored at 192x192 over 64 frames (481KB, same 2.66s), and
+/// [decodePx] additionally caps decoding at display size so an oversized
+/// replacement could never reintroduce the stutter. It is precached on first
+/// build so the first tap costs no bundle read.
 class CollectionBucketButton extends StatefulWidget {
   final int itemCount;
   final VoidCallback onTap;
