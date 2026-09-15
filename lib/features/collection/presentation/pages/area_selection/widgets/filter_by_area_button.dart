@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_selection_screen.dart';
 
@@ -35,7 +36,7 @@ class BFilterByAreaButton extends StatelessWidget {
               color: hasFilter ? BColors.primary : BColors.darkGrey,
             ),
             label: Text(
-              hasFilter ? 'Filter by Area: $area' : 'Filter by Area',
+              hasFilter ? 'Filter by Area: ${BCollectionArea.labelFor(area)}' : 'Filter by Area',
               style: TextStyle(
                 color: hasFilter ? BColors.primary : BColors.darkGrey,
                 fontWeight: hasFilter ? FontWeight.bold : FontWeight.normal,

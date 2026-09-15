@@ -31,7 +31,14 @@ class LocalStorageDataController extends GetxController {
     'a_tblFormCategory',
     'a_tblLocationAlternative',
     'a_tblClientContactPerson',
-    'a_tblRequestBackload'
+    'a_tblRequestBackload',
+    'a_tblCollectionItems',
+    'a_tblCollectionHistory',
+    'a_tblCollectionPending',
+    'a_tblCollectionActivity',
+    'a_tblCollectionAdvance',
+    'a_tblCollectionAccountHistory',
+    'a_tblCollectionTarget'
   ];
 
   @override

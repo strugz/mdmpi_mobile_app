@@ -2,7 +2,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 
 /// Controller for the Total Collected this Month screen and card.
 class TotalCollectedController extends GetxController {
@@ -19,26 +19,44 @@ class TotalCollectedController extends GetxController {
 
   final _activityController = CollectionActivityController.instance;
 
+  /// yyyy-MM key of the selected month (target storage key).
+  String get _yearMonth => DateFormat('yyyy-MM').format(selectedMonth.value);
+
+  @override
+  void onInit() {
+    super.onInit();
+    reloadTarget();
+    ever(selectedMonth, (_) => reloadTarget());
+    // A server download may replace the stored targets.
+    ever(CollectionRepository.instance.localDataVersion, (_) => reloadTarget());
+  }
+
+  /// Targets used to live only in memory; now read from SQLite per month.
+  Future<void> reloadTarget() async {
+    final stored = await CollectionRepository.instance.getTarget(_yearMonth);
+    targetAmount.value = stored ?? 0.0;
+  }
+
   /// Returns a list of flattened history entries for the selected month.
   List<MonthlyEntry> get monthlyEntries {
     final List<MonthlyEntry> entries = [];
 
-    // Combine activity and bucket items to ensure we capture all history
-    final allItems = <CollectionItemModel>[..._activityController.activityItems, ..._activityController.bucketItems];
+    // Every invoice once — an id can sit in both lists right after Upload All.
+    final allItems = _activityController.allItems;
 
     for (final item in allItems) {
       for (final h in item.history) {
         final dt = _parseDateSafe(h.date);
         if (dt == null) continue;
         if (dt.year == selectedMonth.value.year && dt.month == selectedMonth.value.month) {
-          final amount = h.totalCollected ?? 0.0;
+          final amount = h.totalCollected;
           if (amount > 0) {
             entries.add(MonthlyEntry(
               date: dt,
               amount: amount,
               accountName: item.client.name,
               invoiceNumber: item.id,
-              collectorName: h.collectorName ?? item.collectorName ?? 'Unknown',
+              collectorName: h.collectorName.isNotEmpty ? h.collectorName : item.collectorName,
             ));
           }
         }
@@ -129,11 +147,14 @@ class TotalCollectedController extends GetxController {
   /// Set target amount for the month
   void setTargetAmount(double value) {
     targetAmount.value = value;
+    // Persist + queue SET_TARGET for the selected month.
+    CollectionRepository.instance.setTarget(_yearMonth, value);
   }
 
   /// Clear target amount
   void clearTargetAmount() {
     targetAmount.value = 0.0;
+    CollectionRepository.instance.setTarget(_yearMonth, 0.0);
   }
 }
 

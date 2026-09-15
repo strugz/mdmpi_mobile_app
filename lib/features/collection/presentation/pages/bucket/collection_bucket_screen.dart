@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_filter_modal.dart';
@@ -52,6 +53,12 @@ class CollectionBucketScreen extends StatelessWidget {
                   colorText: BColors.white,
                 );
               },
+            )
+          else
+            IconButton(
+              tooltip: 'Add to bucket',
+              icon: const Icon(Iconsax.add_circle),
+              onPressed: () => Get.toNamed(BRoutes.addToBucket),
             ),
         ],
       ),

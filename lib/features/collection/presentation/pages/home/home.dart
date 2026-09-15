@@ -20,6 +20,7 @@ import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_sync_bar.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
   const CollectionHomeScreen({super.key});
@@ -88,6 +89,11 @@ class CollectionHomeScreen extends StatelessWidget {
                     );
                   }),
                 ),
+
+                const SizedBox(height: BSizes.spaceBtwItems),
+
+                // Download bucket / Upload All (offline sync controls)
+                const CollectionSyncBar(),
 
                 const SizedBox(height: BSizes.spaceBtwSections),
 

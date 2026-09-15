@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
 class AreaSelectionScreen extends StatefulWidget {
@@ -30,12 +31,15 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
     {'name': 'Visayas', 'icon': Iconsax.map_1, 'code': 'VIS'},
     {'name': 'Mindanao', 'icon': Iconsax.map, 'code': 'MIN'},
     {'name': 'Medical Imaging', 'icon': Iconsax.mask, 'code': 'RAD'},
+    // Every code whose prefix is not one of the named territories (VET, CSAT, …).
+    {'name': 'Others', 'icon': Iconsax.more_square, 'code': BCollectionArea.others},
   ];
 
   final List<Map<String, String>> luzonSubCategories = [
     {'name': 'North Luzon', 'code': 'NLN'},
     {'name': 'South Luzon', 'code': 'SLN'},
     {'name': 'Central Luzon', 'code': 'CLN'},
+    {'name': 'NCR', 'code': 'NCR'},
   ];
 
   void _onSelect(String code) {
