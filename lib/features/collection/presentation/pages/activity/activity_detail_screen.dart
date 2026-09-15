@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
@@ -8,7 +9,24 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 
+/// How the money came in. Drives whether the check fields exist at all.
+enum PaymentMethod { cash, check }
+
+/// Record a collection against one invoice.
+///
+/// Built around typing as little as possible, because this is filled in the
+/// field, one-handed, many times a day. Everything the app already knows is
+/// offered as a tap:
+///
+///  - Cash is the default method, so the three check fields are not rendered
+///    at all unless Check is chosen. That is the single biggest reduction.
+///  - The balance is a chip, so a full payment is one tap instead of typing
+///    eight digits. It is also the common case.
+///  - The outcome follows the amount (full pays Collected, part pays
+///    Partially Collected) and stops following the moment it is set by hand.
+///  - Bank names already used are chips; the check date defaults to today.
 class ActivityDetailScreen extends StatefulWidget {
   const ActivityDetailScreen({super.key, required this.item});
 
@@ -20,42 +38,78 @@ class ActivityDetailScreen extends StatefulWidget {
 
 class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   late String selectedStatus;
-  late TextEditingController totalCollectedController;
-  late TextEditingController bankNameController;
-  late TextEditingController checkNumberController;
-  late TextEditingController checkDateController;
-  late TextEditingController othersRemarkController;
+  late PaymentMethod _method;
+
+  late final TextEditingController totalCollectedController;
+  late final TextEditingController bankNameController;
+  late final TextEditingController checkNumberController;
+  late final TextEditingController checkDateController;
+  late final TextEditingController othersRemarkController;
+
+  /// Once the outcome is chosen by hand, the amount stops overriding it.
+  /// Changing a field under the user is worse than making them tap once.
+  bool _statusSetByHand = false;
+
+  late final List<String> _bankSuggestions;
+
+  double get _balance => widget.item.toBeCollected;
+
+  double get _enteredAmount => _parseAmount(totalCollectedController.text);
+
+  /// Tolerant of thousands separators, spaces and a stray peso sign. The
+  /// previous parse handled none of these and silently recorded 0.
+  static double _parseAmount(String raw) {
+    final cleaned = raw.replaceAll(RegExp(r'[^0-9.]'), '');
+    if (cleaned.isEmpty) return 0;
+    return double.tryParse(cleaned) ?? 0;
+  }
 
   @override
   void initState() {
     super.initState();
-    // Default to 'Collected' if current status is not a user-updatable outcome.
+
     if (widget.item.status.trim().isEmpty ||
-        !CollectionStatusColors.updatableStatuses.contains(widget.item.status)) {
+        !CollectionStatusColors.updatableStatuses
+            .contains(widget.item.status)) {
       selectedStatus = CollectionStatusColors.statusCollected;
     } else {
       selectedStatus = widget.item.status;
     }
-    totalCollectedController = TextEditingController(); // Start empty
 
-    // Pre-fill bank details from the most recent history entry that contains them
+    totalCollectedController = TextEditingController();
+    totalCollectedController.addListener(_onAmountChanged);
+
+    // Carry over the bank details last used on this invoice.
     CollectionHistoryModel? lastBankInfo;
-    for (var h in widget.item.history.reversed) {
+    for (final h in widget.item.history.reversed) {
       if (h.bankName != null && h.bankName!.isNotEmpty) {
         lastBankInfo = h;
         break;
       }
     }
 
-    bankNameController = TextEditingController(text: lastBankInfo?.bankName ?? '');
-    checkNumberController = TextEditingController(text: lastBankInfo?.checkNumber ?? '');
-    checkDateController = TextEditingController(text: lastBankInfo?.checkDate ?? '');
-
+    bankNameController =
+        TextEditingController(text: lastBankInfo?.bankName ?? '');
+    checkNumberController =
+        TextEditingController(text: lastBankInfo?.checkNumber ?? '');
+    checkDateController =
+        TextEditingController(text: lastBankInfo?.checkDate ?? '');
     othersRemarkController = TextEditingController();
+
+    // If this invoice was last paid by check, start there; otherwise cash,
+    // which is both the common case and the one with nothing to fill in.
+    _method = lastBankInfo != null ? PaymentMethod.check : PaymentMethod.cash;
+
+    // Suggestions are a convenience, never a requirement: if the controller
+    // is not around the form still works, it just offers no bank chips.
+    _bankSuggestions = Get.isRegistered<CollectionActivityController>()
+        ? CollectionActivityController.instance.recentBankNames()
+        : const <String>[];
   }
 
   @override
   void dispose() {
+    totalCollectedController.removeListener(_onAmountChanged);
     totalCollectedController.dispose();
     bankNameController.dispose();
     checkNumberController.dispose();
@@ -64,193 +118,175 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     super.dispose();
   }
 
+  /// The outcome implied by an amount. Null means "no opinion": a zero amount
+  /// says nothing about whether this was a follow-up, a refusal or a visit.
+  String? _statusForAmount(double amount) {
+    if (amount <= 0) return null;
+    if (amount >= _balance) return CollectionStatusColors.statusCollected;
+    return CollectionStatusColors.statusPartial;
+  }
+
+  void _onAmountChanged() {
+    final implied = _statusForAmount(_enteredAmount);
+    setState(() {
+      if (!_statusSetByHand && implied != null) selectedStatus = implied;
+    });
+  }
+
+  void _fillFullAmount() {
+    final text = _balance.toStringAsFixed(2);
+    totalCollectedController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  Future<void> _pickCheckDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      // Checks are often post-dated, so the future stays open.
+      lastDate: DateTime(2100),
+    );
+    if (date != null) {
+      setState(() => checkDateController.text = BFormatter.formatDate(date));
+    }
+  }
+
   void _saveActivity() {
     final controller = CollectionActivityController.instance;
+    final isOthers = selectedStatus == CollectionStatusColors.statusOthers;
+    final customRemark = othersRemarkController.text.trim();
 
-    // If "Others" is selected, use the custom remark as both status and remark
-    final String finalStatus = selectedStatus == CollectionStatusColors.statusOthers
-        ? othersRemarkController.text.trim()
-        : selectedStatus;
-
-    final String finalRemarks = selectedStatus == CollectionStatusColors.statusOthers
-        ? othersRemarkController.text.trim()
-        : selectedStatus;
-
-    if (selectedStatus == CollectionStatusColors.statusOthers && othersRemarkController.text.trim().isEmpty) {
-      Get.snackbar('Required', 'Please enter a remark for "Others"', backgroundColor: BColors.warning);
+    if (isOthers && customRemark.isEmpty) {
+      Get.snackbar('Required', 'Please enter a remark for "Others"',
+          backgroundColor: BColors.warning);
       return;
     }
+
+    final finalStatus = isOthers ? customRemark : selectedStatus;
+    final usingCheck = _method == PaymentMethod.check;
 
     controller.saveActivity(
       id: widget.item.id,
       status: finalStatus.isEmpty ? 'Others' : finalStatus,
-      remarks: finalRemarks.isEmpty ? 'Others' : finalRemarks,
-      totalCollected: double.tryParse(totalCollectedController.text) ?? 0,
-      bankName: bankNameController.text.trim().isEmpty ? null : bankNameController.text.trim(),
-      checkNumber: checkNumberController.text.trim().isEmpty ? null : checkNumberController.text.trim(),
-      checkDate: checkDateController.text.trim().isEmpty ? null : checkDateController.text.trim(),
-      purposeOfVisit: selectedStatus == CollectionStatusColors.statusPreCollection ? 'Pre-Collection' : 'Collection',
+      remarks: finalStatus.isEmpty ? 'Others' : finalStatus,
+      totalCollected: _enteredAmount,
+      // Cash records no check details, the same as leaving them blank before.
+      bankName: usingCheck && bankNameController.text.trim().isNotEmpty
+          ? bankNameController.text.trim()
+          : null,
+      checkNumber: usingCheck && checkNumberController.text.trim().isNotEmpty
+          ? checkNumberController.text.trim()
+          : null,
+      checkDate: usingCheck && checkDateController.text.trim().isNotEmpty
+          ? checkDateController.text.trim()
+          : null,
+      purposeOfVisit:
+          selectedStatus == CollectionStatusColors.statusPreCollection
+              ? 'Pre-Collection'
+              : 'Collection',
     );
 
     Get.back();
     Get.snackbar(
-      'Success',
+      'Saved',
       'Engagement updated',
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: BColors.success.withValues(alpha: 0.8),
+      backgroundColor: BColors.success.withValues(alpha: 0.9),
       colorText: Colors.white,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final amount = _enteredAmount;
+    final remaining = (_balance - amount).clamp(0, double.infinity).toDouble();
+    final overpaid = amount > _balance;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Engagement Details'),
+      appBar: AppBar(title: const Text('Engagement Details')),
+      // Save stays reachable without scrolling back down.
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(
+            BSizes.defaultSpace,
+            BSizes.spaceBtwItemsLight,
+            BSizes.defaultSpace,
+            BSizes.spaceBtwItemsLight,
+          ),
+          decoration: const BoxDecoration(
+            color: BColors.white,
+            border: Border(top: BorderSide(color: BColors.grey)),
+          ),
+          child: ElevatedButton.icon(
+            onPressed: _saveActivity,
+            icon: const Icon(Iconsax.tick_circle, size: 18),
+            label: const Text('Save engagement'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 50),
+              elevation: 0,
+              backgroundColor: BColors.primary,
+              foregroundColor: BColors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
+              ),
+            ),
+          ),
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(BSizes.defaultSpace),
+        padding: const EdgeInsets.fromLTRB(
+          BSizes.defaultSpace,
+          BSizes.spaceBtwItemsLight,
+          BSizes.defaultSpace,
+          BSizes.spaceBtwSections,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    'Invoice #${widget.item.id}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Text(
-                  BFormatter.formatPesoCurrency(widget.item.toBeCollected),
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: BColors.primary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+            _summary(context),
+            const SizedBox(height: BSizes.spaceBtwSections),
+
+            _sectionLabel(context, 'Amount collected'),
             const SizedBox(height: BSizes.sm),
-
-            Wrap(
-              spacing: BSizes.sm,
-              runSpacing: BSizes.sm,
-              children: [
-                _buildInfoTile(context, 'Due Date', widget.item.dueDate, Iconsax.timer, valueColor: BColors.error),
-                _buildInfoTile(context, 'Invoice Date', widget.item.postingDate, Iconsax.calendar),
-                _buildInfoTile(context, 'Account Name', widget.item.client.name, Iconsax.user, valueColor: BColors.primary),
-                _buildInfoTile(context, 'Status', widget.item.status, Iconsax.activity, isBadge: true),
-              ],
-            ),
-
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: BSizes.spaceBtwSections),
-              child: Divider(),
-            ),
-
-            /// 1. Bank Details
-            Text('Bank Details (Optional)', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            
-            TextField(
-              controller: bankNameController,
-              decoration: const InputDecoration(
-                hintText: 'Bank Name',
-                prefixIcon: Icon(Iconsax.bank),
-              ),
-            ),
-            const SizedBox(height: BSizes.spaceBtwInputFields),
-            
-            TextField(
-              controller: checkNumberController,
-              decoration: const InputDecoration(
-                hintText: 'Check Number',
-                prefixIcon: Icon(Iconsax.card_edit),
-              ),
-            ),
-            const SizedBox(height: BSizes.spaceBtwInputFields),
-            
-            TextField(
-              controller: checkDateController,
-              readOnly: true,
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
-                );
-                if (date != null) {
-                  checkDateController.text = BFormatter.formatDate(date);
-                }
-              },
-              decoration: const InputDecoration(
-                hintText: 'Check Date',
-                prefixIcon: Icon(Iconsax.calendar_1),
-              ),
-            ),
+            _amountField(),
+            const SizedBox(height: BSizes.sm),
+            _amountHelpers(context, amount, remaining, overpaid),
 
             const SizedBox(height: BSizes.spaceBtwSections),
-
-            /// 3. Paid to invoice
-            Text('Paid to invoice', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            TextField(
-              controller: totalCollectedController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                hintText: 'Enter amount collected...',
-                prefixText: '₱ ',
-              ),
-            ),
-
-            const SizedBox(height: BSizes.spaceBtwSections),
-
-            /// 4. Update Status / Remarks
-            Text('Update Status / Outcome', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: BSizes.spaceBtwItems),
-            DropdownButtonFormField<String>(
-              value: selectedStatus,
-              decoration: const InputDecoration(
-                hintText: 'Select status...',
-                prefixIcon: Icon(Iconsax.status),
-              ),
-              items: CollectionStatusColors.updatableStatuses.map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-              onChanged: (newValue) {
-                setState(() {
-                  selectedStatus = newValue!;
-                });
-              },
-            ),
-
+            _sectionLabel(context, 'Outcome'),
+            const SizedBox(height: BSizes.sm),
+            _statusChips(),
             if (selectedStatus == CollectionStatusColors.statusOthers) ...[
-              const SizedBox(height: BSizes.spaceBtwInputFields),
+              const SizedBox(height: BSizes.spaceBtwItemsLight),
               TextField(
                 controller: othersRemarkController,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
-                  hintText: 'Enter custom remarks...',
+                  hintText: 'What happened?',
                   prefixIcon: Icon(Iconsax.edit),
                 ),
                 maxLines: 2,
               ),
             ],
 
-            const SizedBox(height: BSizes.spaceBtwSections * 1.5),
+            const SizedBox(height: BSizes.spaceBtwSections),
+            _sectionLabel(context, 'Payment method'),
+            const SizedBox(height: BSizes.sm),
+            _methodChips(),
 
-            /// 5. Save Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saveActivity,
-                child: const Text('Save'),
-              ),
+            // Only exists for checks. Cash collections never see these three
+            // fields, which is the whole point.
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _method == PaymentMethod.check
+                  ? _checkFields(context)
+                  : const SizedBox(width: double.infinity),
             ),
           ],
         ),
@@ -258,48 +294,71 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     );
   }
 
-  Widget _buildInfoTile(
-    BuildContext context, 
-    String label, 
-    String value, 
-    IconData icon, 
-    {bool isBadge = false, Color? valueColor}
-  ) {
-    final width = (MediaQuery.of(context).size.width - (BSizes.defaultSpace * 2) - BSizes.sm) / 2;
+  Widget _sectionLabel(BuildContext context, String text) => Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .titleMedium
+            ?.copyWith(fontWeight: FontWeight.w700),
+      );
+
+  /// Invoice, balance and the two dates that matter, in one block.
+  ///
+  /// Replaces four boxed tiles that between them pushed the form below the
+  /// fold and included an often-empty Status tile and the account name, which
+  /// the collector just came from.
+  Widget _summary(BuildContext context) {
+    final theme = Theme.of(context);
+    final overdue = widget.item.isOverdue;
+
     return Container(
-      width: width,
-      padding: const EdgeInsets.all(BSizes.sm),
+      width: double.infinity,
+      padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
       decoration: BoxDecoration(
-        color: BColors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
+        color: BColors.primary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
+        border: Border.all(color: BColors.primary.withValues(alpha: 0.18)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: BColors.primary),
-          const SizedBox(width: BSizes.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: Theme.of(context).textTheme.labelSmall),
-                if (isBadge)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: _buildStatusBadge(context, value),
-                  )
-                else
-                  Text(
-                    value, 
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: valueColor,
-                      fontSize: 12,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  '#${widget.item.id}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: BColors.darkerGrey,
+                    fontWeight: FontWeight.w600,
                   ),
-              ],
+                ),
+              ),
+              Text(
+                widget.item.client.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: BColors.darkGrey),
+              ),
+            ],
+          ),
+          const SizedBox(height: BSizes.xs),
+          Text(
+            BFormatter.formatPesoCurrency(_balance),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: BColors.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: BSizes.xxs),
+          Text(
+            'Balance due · ${_dueLabel()}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: overdue ? BColors.error : BColors.darkGrey,
+              fontWeight: overdue ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
         ],
@@ -307,26 +366,197 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     );
   }
 
-  Widget _buildStatusBadge(BuildContext context, String status) {
-    final (bg, fg) = CollectionStatusColors.colorsForAuto(context, status);
-    
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: BSizes.sm,
-        vertical: BSizes.xxs,
-      ),
-      decoration: BoxDecoration(
-        color: bg.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-      ),
-      child: Text(
-        status,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: fg == BColors.white ? bg : fg,
-              fontWeight: FontWeight.w600,
-              fontSize: 10,
+  String _dueLabel() {
+    final due = widget.item.dueDate.trim();
+    if (due.isEmpty || due == 'N/A') return 'no due date';
+    final date = BFormatter.formatDate3(due);
+    if (!widget.item.isOverdue) return 'due $date';
+    return '${BFormatter.formatDaysOverdue(widget.item.daysPastDue).toLowerCase()} ($date)';
+  }
+
+  Widget _amountField() => TextField(
+        controller: totalCollectedController,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        // Digits and a single decimal point only: no way to type a character
+        // the parser would have to throw away.
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+          TextInputFormatter.withFunction((oldValue, newValue) {
+            final dots = '.'.allMatches(newValue.text).length;
+            return dots > 1 ? oldValue : newValue;
+          }),
+        ],
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        decoration: const InputDecoration(
+          hintText: '0.00',
+          // prefixIcon rather than prefixText: a prefix only paints once the
+          // field has focus or content, so the peso sign would vanish exactly
+          // when the field is empty and the label matters most.
+          prefixIcon: Padding(
+            padding: EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
+            child: Text(
+              '₱',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: BColors.darkGrey,
+              ),
             ),
-      ),
+          ),
+          prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+        ),
+      );
+
+  /// One tap for the whole balance, plus a running total so the collector
+  /// never has to do the subtraction in their head.
+  Widget _amountHelpers(
+      BuildContext context, double amount, double remaining, bool overpaid) {
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: BSizes.sm,
+          runSpacing: BSizes.sm,
+          children: [
+            BQuickFillChip(
+              label: 'Full ${BFormatter.formatPesoCurrency(_balance)}',
+              icon: Iconsax.wallet_check,
+              selected: amount > 0 && amount >= _balance,
+              onTap: _fillFullAmount,
+            ),
+            if (totalCollectedController.text.isNotEmpty)
+              BQuickFillChip(
+                label: 'Clear',
+                icon: Iconsax.close_circle,
+                onTap: () {
+                  totalCollectedController.clear();
+                  FocusManager.instance.primaryFocus?.unfocus();
+                },
+              ),
+          ],
+        ),
+        if (amount > 0) ...[
+          const SizedBox(height: BSizes.sm),
+          Text(
+            overpaid
+                ? 'That is ${BFormatter.formatPesoCurrency(amount - _balance)} more than the balance'
+                : remaining == 0
+                    ? 'Settles this invoice in full'
+                    : '${BFormatter.formatPesoCurrency(remaining)} will remain',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: overpaid ? BColors.warning : BColors.darkGrey,
+              fontWeight: overpaid ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Chips rather than a dropdown: one tap instead of open-then-choose, and
+  /// the whole set is readable without opening anything.
+  Widget _statusChips() => Wrap(
+        spacing: BSizes.sm,
+        runSpacing: BSizes.sm,
+        children: [
+          for (final status in CollectionStatusColors.updatableStatuses)
+            BQuickFillChip(
+              label: status,
+              selected: selectedStatus == status,
+              onTap: () => setState(() {
+                selectedStatus = status;
+                _statusSetByHand = true;
+              }),
+            ),
+        ],
+      );
+
+  Widget _methodChips() => Wrap(
+        spacing: BSizes.sm,
+        runSpacing: BSizes.sm,
+        children: [
+          BQuickFillChip(
+            label: 'Cash',
+            icon: Iconsax.money,
+            selected: _method == PaymentMethod.cash,
+            onTap: () => setState(() => _method = PaymentMethod.cash),
+          ),
+          BQuickFillChip(
+            label: 'Check',
+            icon: Iconsax.card,
+            selected: _method == PaymentMethod.check,
+            onTap: () => setState(() => _method = PaymentMethod.check),
+          ),
+        ],
+      );
+
+  Widget _checkFields(BuildContext context) {
+    final today = BFormatter.formatDate(DateTime.now());
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: BSizes.spaceBtwItems),
+        TextField(
+          controller: bankNameController,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'Bank name',
+            prefixIcon: Icon(Iconsax.bank),
+          ),
+        ),
+        // Banks this collector already uses, so the name is picked not typed.
+        if (_bankSuggestions.isNotEmpty) ...[
+          const SizedBox(height: BSizes.sm),
+          Wrap(
+            spacing: BSizes.sm,
+            runSpacing: BSizes.sm,
+            children: [
+              for (final bank in _bankSuggestions)
+                BQuickFillChip(
+                  label: bank,
+                  selected: bankNameController.text.trim().toLowerCase() ==
+                      bank.toLowerCase(),
+                  onTap: () => setState(() => bankNameController.text = bank),
+                ),
+            ],
+          ),
+        ],
+        const SizedBox(height: BSizes.spaceBtwInputFields),
+        TextField(
+          controller: checkNumberController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'Check number',
+            prefixIcon: Icon(Iconsax.card_edit),
+          ),
+        ),
+        const SizedBox(height: BSizes.spaceBtwInputFields),
+        TextField(
+          controller: checkDateController,
+          readOnly: true,
+          onTap: _pickCheckDate,
+          decoration: InputDecoration(
+            hintText: 'Check date',
+            prefixIcon: const Icon(Iconsax.calendar_1),
+            suffixIcon: IconButton(
+              tooltip: 'Pick a date',
+              icon: const Icon(Iconsax.arrow_down_1, size: 18),
+              onPressed: _pickCheckDate,
+            ),
+          ),
+        ),
+        const SizedBox(height: BSizes.sm),
+        // Most checks handed over are dated today.
+        BQuickFillChip(
+          label: 'Today',
+          icon: Iconsax.calendar_tick,
+          selected: checkDateController.text == today,
+          onTap: () => setState(() => checkDateController.text = today),
+        ),
+      ],
     );
   }
 }

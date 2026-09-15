@@ -417,6 +417,27 @@ class CollectionActivityController extends GetxController {
   bool _matchesArea(String code) =>
       BCollectionArea.matches(code, selectedArea.value);
 
+  /// Bank names this collector has already recorded, most used first.
+  ///
+  /// Offered as one-tap fills on the engagement form so a bank name is picked
+  /// rather than retyped; collectors work the same few banks repeatedly.
+  List<String> recentBankNames({int limit = 4}) {
+    final counts = <String, int>{};
+    final display = <String, String>{};
+    for (final item in allItems) {
+      for (final h in item.history) {
+        final name = h.bankName?.trim() ?? '';
+        if (name.isEmpty) continue;
+        final key = name.toLowerCase();
+        counts[key] = (counts[key] ?? 0) + 1;
+        display[key] = name;
+      }
+    }
+    final keys = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+    return [for (final k in keys.take(limit)) display[k]!];
+  }
+
   /// Number of bucket accounts in [area] (a BCollectionArea code, the "Others"
   /// sentinel, or '' for every account). Ignores the other bucket filters so
   /// the Filter by Area screen shows what each choice would reveal.
