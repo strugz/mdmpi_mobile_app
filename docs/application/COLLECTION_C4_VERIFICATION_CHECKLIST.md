@@ -15,7 +15,7 @@ Companion to `COLLECTION_NORMALIZATION_STAGE_C_PLAN.md` §4 C4.
 ## 2. Deployment prerequisites (manual, ordered)
 
 1. Apply Postgres scripts in this order, each once:
-   `migration_20260915_add_collection_client.sql` → `..._stage_a.sql` → `..._stage_b.sql` → `..._stage_c.sql` (C1) → `..._stage_c3.sql`.
+   `migration_20260915_add_collection_client.sql` → `..._stage_a.sql` → `..._stage_b.sql` → `..._stage_c.sql` (C1) → `..._stage_c3.sql` → `..._stage_d.sql` (drops the invoice snapshot columns; backs them up first).
 2. Deploy the MDMPI.App backend build that includes `GET /api4/Collection/workspace`.
 3. Install the mobile build (local DB v21 upgrades itself; nothing to wipe).
 4. Contact Directory: at least one contact with department **Collection** and a mobile number (SMS recipient).
