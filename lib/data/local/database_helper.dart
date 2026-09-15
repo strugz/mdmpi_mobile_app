@@ -30,6 +30,10 @@ import 'dao/common/client_contact_person_dao.dart';
 import 'dao/common/contact_dao.dart';
 import 'dao/collection/collection_dao.dart';
 import 'dao/collection/collection_pending_dao.dart';
+import 'dao/collection/collection_activity_dao.dart';
+import 'dao/collection/collection_advance_dao.dart';
+import 'dao/collection/collection_account_history_dao.dart';
+import 'dao/collection/collection_target_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -60,6 +64,10 @@ class DatabaseHelper {
   ContactDao? _contactDao;
   CollectionDao? _collectionDao;
   CollectionPendingDao? _collectionPendingDao;
+  CollectionActivityDao? _collectionActivityDao;
+  CollectionAdvanceDao? _collectionAdvanceDao;
+  CollectionAccountHistoryDao? _collectionAccountHistoryDao;
+  CollectionTargetDao? _collectionTargetDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -72,7 +80,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 20,
+      version: 21,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -322,6 +330,34 @@ class DatabaseHelper {
     final db = await database;
     _collectionPendingDao = CollectionPendingDao(db);
     return _collectionPendingDao!;
+  }
+
+  Future<CollectionActivityDao> get collectionActivityDao async {
+    if (_collectionActivityDao != null) return _collectionActivityDao!;
+    final db = await database;
+    _collectionActivityDao = CollectionActivityDao(db);
+    return _collectionActivityDao!;
+  }
+
+  Future<CollectionAdvanceDao> get collectionAdvanceDao async {
+    if (_collectionAdvanceDao != null) return _collectionAdvanceDao!;
+    final db = await database;
+    _collectionAdvanceDao = CollectionAdvanceDao(db);
+    return _collectionAdvanceDao!;
+  }
+
+  Future<CollectionAccountHistoryDao> get collectionAccountHistoryDao async {
+    if (_collectionAccountHistoryDao != null) return _collectionAccountHistoryDao!;
+    final db = await database;
+    _collectionAccountHistoryDao = CollectionAccountHistoryDao(db);
+    return _collectionAccountHistoryDao!;
+  }
+
+  Future<CollectionTargetDao> get collectionTargetDao async {
+    if (_collectionTargetDao != null) return _collectionTargetDao!;
+    final db = await database;
+    _collectionTargetDao = CollectionTargetDao(db);
+    return _collectionTargetDao!;
   }
 
   Future<List<String>> getContactPhoneNumbers() async {

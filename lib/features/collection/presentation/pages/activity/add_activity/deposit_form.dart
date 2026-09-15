@@ -44,6 +44,8 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
     final controller = CollectionActivityController.instance;
     controller.saveGlobalActivity(
       type: 'Deposit',
+      clientId: selectedClient!.id,
+      documentIds: selectedInvoiceIds,
       accountName: selectedClient!.name,
       remarks: 'Deposit for Invoice(s) #${selectedInvoiceIds.join(', ')}. ${remarksController.text}',
       totalCollected: double.tryParse(amountController.text.replaceAll(',', '')) ?? 0,

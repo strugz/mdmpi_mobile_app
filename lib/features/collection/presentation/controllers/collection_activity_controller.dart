@@ -1,8 +1,7 @@
-import 'dart:math';
-
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
@@ -10,6 +9,8 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 
   /// Manages the Collection Bucket → Activity flow with a simplified status model.
 class CollectionActivityController extends GetxController {
@@ -27,6 +28,48 @@ class CollectionActivityController extends GetxController {
 
   final RxList<CollectionItemModel> bucketItems = <CollectionItemModel>[].obs;
   final RxList<CollectionItemModel> activityItems = <CollectionItemModel>[].obs;
+
+  /// Claimed by this collector and still open → Activity; everything else →
+  /// Bucket. The server only ever returns the shared pool plus *my* claims, so
+  /// a non-empty `assignedAt` means mine. `'N/A'` is how the model spells null.
+  static bool isClaimedOpen(CollectionItemModel item) {
+    final assigned = item.assignedAt.trim();
+    return assigned.isNotEmpty && assigned != 'N/A' && item.toBeCollected > 0;
+  }
+
+  /// Every known invoice exactly once. An id can transiently live in both
+  /// lists; the Activity copy wins because it carries the freshest history.
+  static List<CollectionItemModel> mergeUnique(
+      Iterable<CollectionItemModel> bucket, Iterable<CollectionItemModel> activity) {
+    final byId = <String, CollectionItemModel>{};
+    for (final i in bucket) {
+      byId[i.id] = i;
+    }
+    for (final i in activity) {
+      byId[i.id] = i;
+    }
+    return byId.values.toList();
+  }
+
+  List<CollectionItemModel> get allItems => mergeUnique(bucketItems, activityItems);
+
+  /// Replace both lists (and the account list) from a full set of items.
+  void _setItems(List<CollectionItemModel> items) {
+    final claimed = <CollectionItemModel>[];
+    final pool = <CollectionItemModel>[];
+    for (final i in items) {
+      (isClaimedOpen(i) ? claimed : pool).add(i);
+    }
+    activityItems.assignAll(claimed);
+    bucketItems.assignAll(pool);
+    selectedBucketIds.removeWhere((id) => !pool.any((p) => p.id == id));
+
+    final clientMap = <String, ClientModel>{};
+    for (final item in items) {
+      clientMap[item.client.id] = item.client;
+    }
+    masterAccountList.assignAll(clientMap.values.toList());
+  }
   final RxSet<String> selectedBucketIds = <String>{}.obs;
   final RxBool isLoading = false.obs;
 
@@ -81,6 +124,14 @@ class CollectionActivityController extends GetxController {
     syncManager = Get.find<SyncManager>();
     // Load data
     loadBucket();
+    _loadPersistedExtras();
+    // A server download replaces the local cache; mirror it in memory. Local
+    // read only (no network), so this cannot loop back into a sync.
+    ever(repository.localDataVersion, (_) async {
+      _loadPersistedExtras();
+      final items = await repository.getLocalCollectionItems();
+      _setItems(items);
+    });
   }
 
   /// Load collection bucket items from repository.
@@ -91,14 +142,7 @@ class CollectionActivityController extends GetxController {
       errorMessage.value = null;
 
       final items = await repository.getAll();
-      bucketItems.assignAll(items);
-
-      // Extract unique clients for account list
-      final clientMap = <String, ClientModel>{};
-      for (final item in items) {
-        clientMap[item.client.id] = item.client;
-      }
-      masterAccountList.assignAll(clientMap.values.toList());
+      _setItems(items);
 
       logDebug('[CollectionActivityController] Loaded ${items.length} bucket items');
       isLoading.value = false;
@@ -106,20 +150,114 @@ class CollectionActivityController extends GetxController {
       logDebug('[CollectionActivityController] loadBucket error: $e');
       errorMessage.value = 'Failed to load collection items: $e';
       isLoading.value = false;
-
-      // Fallback to sample data if available, or empty list
-      _loadSampleBucketItemsAsFallback();
     }
   }
 
-  /// Fallback to sample data if real data fails to load.
-  /// This is only for development/demo purposes.
-  void _loadSampleBucketItemsAsFallback() {
+  /// Number of un-uploaded (queued) changes; drives the Upload All badge.
+  int get pendingUploadCount => syncManager.pendingCount.value;
+
+  /// Download a fresh bucket from the server.
+  ///
+  /// Guarded: refuses to overwrite the local cache while un-uploaded field work
+  /// is still queued (process-flow requirement 7), since a force-refresh clears
+  /// the local table.
+  Future<void> downloadBucket() async {
+    final pending = await syncManager.getPendingChangeCount();
+    if (pending > 0) {
+      Get.defaultDialog(
+        title: 'Upload first',
+        middleText:
+            'You have $pending un-uploaded collection${pending == 1 ? '' : 's'}.\n\n'
+            'Upload them before downloading a new bucket, so no field work is lost.',
+        textConfirm: 'OK',
+        onConfirm: () => Get.back(),
+      );
+      return;
+    }
+
     try {
-      logDebug('[CollectionActivityController] Loading sample data as fallback...');
-      _loadSampleBucketItems();
+      isLoading.value = true;
+      errorMessage.value = null;
+
+      final items = await repository.refreshFromApi();
+      _setItems(items);
+
+      logDebug('[CollectionActivityController] Downloaded ${items.length} bucket items');
     } catch (e) {
-      logDebug('[CollectionActivityController] Fallback also failed: $e');
+      logDebug('[CollectionActivityController] downloadBucket error: $e');
+      errorMessage.value = 'Failed to download bucket: $e';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Supervisor "Add to Bucket": create an invoice on the server (saved to the
+  /// DB first) and add it to the local bucket on success. Returns true on success.
+  Future<bool> addInvoiceToBucket({
+    required String clientId,
+    required String clientName,
+    String clientCode = '',
+    String clientAddress = '',
+    String clientContact = '',
+    List<String> documentReferences = const [],
+    required double toBeCollected,
+    String? bankName,
+    String? remarks,
+    String? documentDate,
+    String? postingDate,
+    String? dueDate,
+  }) async {
+    final item = await repository.createInvoice(
+      clientId: clientId,
+      clientName: clientName,
+      clientCode: clientCode,
+      clientAddress: clientAddress,
+      clientContact: clientContact,
+      documentReferences: documentReferences,
+      toBeCollected: toBeCollected,
+      bankName: bankName,
+      remarks: remarks,
+      documentDate: documentDate,
+      postingDate: postingDate,
+      dueDate: dueDate,
+    );
+
+    if (item == null) return false;
+
+    bucketItems.add(item);
+    if (!masterAccountList.any((c) => c.id == item.client.id)) {
+      masterAccountList.add(item.client);
+    }
+    return true;
+  }
+
+  /// End-of-day "Upload All": push every queued change to the server and refresh
+  /// the local bucket on success.
+  Future<void> uploadAll() async {
+    final result = await syncManager.uploadAll();
+
+    if (result == null) {
+      BLoaders.warningSnackBar(
+        title: 'Upload',
+        message: syncManager.syncErrorMessage.value ?? 'Upload could not complete.',
+      );
+      return;
+    }
+
+    if (result.hasRejections) {
+      BLoaders.warningSnackBar(
+        title: 'Uploaded with issues',
+        message:
+            'Uploaded ${result.accepted}. ${result.rejectedCount} rejected — review in the outbox.',
+      );
+    } else {
+      BLoaders.successSnackBar(
+        title: 'Uploaded',
+        message:
+            'Uploaded ${result.accepted} collection${result.accepted == 1 ? '' : 's'}.',
+      );
+      // Refresh the local bucket now that the queue is clear.
+      await loadBucket();
     }
   }
 
@@ -151,14 +289,16 @@ class CollectionActivityController extends GetxController {
       bucketItems.isNotEmpty &&
       selectedBucketIds.length == bucketItems.length;
 
+  /// Territory code from Filter by Area ('' = all, 'OTHERS' = unnamed prefixes).
   final RxString selectedArea = ''.obs;
+
+  /// Case-insensitive prefix match against the selected area (see BCollectionArea).
+  bool _matchesArea(String code) => BCollectionArea.matches(code, selectedArea.value);
 
   List<ClientModel> get bucketAccounts {
     return masterAccountList.where((client) {
       // Territory Filter
-      if (selectedArea.value.isNotEmpty) {
-        if (!client.code.startsWith(selectedArea.value)) return false;
-      }
+      if (!_matchesArea(client.code)) return false;
 
       final invoiceCount = getAccountInvoiceCount(client.id);
       if (invoiceCount == 0) return false;
@@ -210,14 +350,14 @@ class CollectionActivityController extends GetxController {
   }
 
   double getAccountTotalDue(String clientId) {
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     return allItems
         .where((item) => item.client.id == clientId)
         .fold(0.0, (sum, item) => sum + item.toBeCollected);
   }
 
   double getAccountTotalCollected(String clientId) {
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     return allItems
         .where((item) => item.client.id == clientId)
         .fold(0.0, (sum, item) => sum + item.totalCollected);
@@ -300,7 +440,7 @@ class CollectionActivityController extends GetxController {
     final now = DateTime.now();
     final firstDayOfCurrentMonth = DateTime(now.year, now.month, 1);
     
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     final accountInvoices = allItems.where((item) => item.client.id == clientId).toList();
     
     double totalPastDue = 0;
@@ -334,7 +474,7 @@ class CollectionActivityController extends GetxController {
   /// Returns combined history for all invoices of a specific account (both bucket and activity)
   /// Now returns a list of maps containing the history model and the full invoice item.
   List<Map<String, dynamic>> getAccountHistory(String clientId) {
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     final accountItems = allItems.where((item) => item.client.id == clientId).toList();
 
     final List<Map<String, dynamic>> combined = [];
@@ -370,7 +510,7 @@ class CollectionActivityController extends GetxController {
     final List<Map<String, dynamic>> combined = [];
     
     // 1. Add invoice-level history
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     for (var item in allItems) {
       for (var history in item.history) {
         combined.add({
@@ -443,20 +583,20 @@ class CollectionActivityController extends GetxController {
 
   /// Completed: invoices that reach 0 total amount due, filtered by area
   List<CollectionItemModel> get completedItems {
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     return allItems.where((item) {
       if (item.toBeCollected != 0) return false;
-      if (selectedArea.value.isNotEmpty && !item.bpCode.startsWith(selectedArea.value)) return false;
+      if (!_matchesArea(item.bpCode)) return false;
       return true;
     }).toList();
   }
 
   /// Due Date: invoices past their due date, filtered by area
   List<CollectionItemModel> get overdueItems {
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     final now = DateTime.now();
     return allItems.where((item) {
-      if (selectedArea.value.isNotEmpty && !item.bpCode.startsWith(selectedArea.value)) return false;
+      if (!_matchesArea(item.bpCode)) return false;
       try {
         final dueDate = DateTime.parse(item.dueDate);
         return dueDate.isBefore(now);
@@ -490,11 +630,11 @@ class CollectionActivityController extends GetxController {
 
   /// Reconciliation: invoices marked for reconciliation, filtered by area
   List<CollectionItemModel> get reconciliationItems {
-    final allItems = [...bucketItems, ...activityItems];
+    final allItems = this.allItems;
     return allItems.where((item) {
       if (item.status != 'Reconciliation') return false;
       if (item.toBeCollected <= 0) return false;
-      if (selectedArea.value.isNotEmpty && !item.bpCode.startsWith(selectedArea.value)) return false;
+      if (!_matchesArea(item.bpCode)) return false;
       return true;
     }).toList();
   }
@@ -504,7 +644,7 @@ class CollectionActivityController extends GetxController {
     return unassignedAdvancedPayments.where((entry) {
       final clientId = entry['clientId'];
       final client = masterAccountList.firstWhere((c) => c.id == clientId, orElse: () => ClientModel.empty());
-      if (selectedArea.value.isNotEmpty && !client.code.startsWith(selectedArea.value)) return false;
+      if (!_matchesArea(client.code)) return false;
       return true;
     }).toList();
   }
@@ -549,77 +689,79 @@ class CollectionActivityController extends GetxController {
   // Process Logic
   // ========================================================================
 
-  void markInvoicesForReconciliation(String clientId, List<String> invoiceIds, String remarks) {
+  Future<void> markInvoicesForReconciliation(String clientId, List<String> invoiceIds, String remarks) async {
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final collectorInitials = UserController.instance.user.value.initials;
+    final updated = <CollectionItemModel>[];
+
+    CollectionItemModel mark(CollectionItemModel item) => item.copyWith(
+          status: 'Reconciliation',
+          history: [
+            ...item.history,
+            CollectionHistoryModel(
+              date: now,
+              collectorName: collectorInitials,
+              status: 'Reconciliation',
+              remarks: remarks,
+            )
+          ],
+        );
 
     for (final id in invoiceIds) {
       // Find in bucket or activity
       int idx = bucketItems.indexWhere((e) => e.id == id);
       if (idx != -1) {
-        final item = bucketItems[idx];
-        final updated = item.copyWith(
-          status: 'Reconciliation',
-          history: [
-            ...item.history,
-            CollectionHistoryModel(
-              date: now,
-              collectorName: collectorInitials,
-              status: 'Reconciliation',
-              remarks: remarks,
-            )
-          ],
-        );
-        bucketItems[idx] = updated;
+        bucketItems[idx] = mark(bucketItems[idx]);
+        updated.add(bucketItems[idx]);
         continue;
       }
 
       idx = activityItems.indexWhere((e) => e.id == id);
       if (idx != -1) {
-        final item = activityItems[idx];
-        final updated = item.copyWith(
-          status: 'Reconciliation',
-          history: [
-            ...item.history,
-            CollectionHistoryModel(
-              date: now,
-              collectorName: collectorInitials,
-              status: 'Reconciliation',
-              remarks: remarks,
-            )
-          ],
-        );
-        activityItems[idx] = updated;
+        activityItems[idx] = mark(activityItems[idx]);
+        updated.add(activityItems[idx]);
       }
     }
+
+    // Persist the marked invoices and queue the office activity for upload.
+    await repository.saveOfficeActivity(
+      type: 'Reconciliation',
+      clientId: clientId,
+      clientName: _clientNameFor(clientId),
+      remarks: remarks,
+      documentIds: invoiceIds,
+      updatedInvoices: updated,
+    );
     logDebug('[CollectionActivityController] Marked ${invoiceIds.length} invoices for Reconciliation');
   }
 
-  void saveAdvancedPayment({
+  Future<void> saveAdvancedPayment({
     required String clientId,
     required double amount,
     required String remarks,
-  }) {
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    final collectorInitials = UserController.instance.user.value.initials;
+  }) async {
+    // Persisted + queued (ADVANCED_PAYMENT) so it survives a restart and uploads.
+    final record = await repository.saveAdvance(
+      clientId: clientId,
+      clientName: _clientNameFor(clientId),
+      amount: amount,
+      remarks: remarks,
+    );
+    if (record == null) {
+      errorMessage.value = 'Failed to save advanced payment';
+      return;
+    }
 
-    unassignedAdvancedPayments.add({
-      'id': 'AP-${DateTime.now().millisecondsSinceEpoch}',
-      'clientId': clientId,
-      'amount': amount,
-      'remarks': remarks,
-      'date': now,
-      'collectorName': collectorInitials,
-    });
-    logDebug('[CollectionActivityController] Saved Advanced Payment for $clientId: ₱$amount');
+    unassignedAdvancedPayments.add(_advanceToMap(record));
+    logDebug('[CollectionActivityController] Saved Advanced Payment ${record.externalRef} for $clientId: ₱$amount');
   }
 
-  void assignInvoiceToPayment({
+  Future<void> assignInvoiceToPayment({
     required String paymentId,
     required String invoiceNumber,
     required double amountDue,
     required String dueDate,
-  }) {
+  }) async {
     final paymentIdx = unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
     if (paymentIdx == -1) return;
 
@@ -653,6 +795,23 @@ class CollectionActivityController extends GetxController {
       history: [historyEntry],
     );
 
+    // Persist locally and queue ASSIGN_ADVANCE (the server creates the invoice if
+    // new and allocates the advance to it).
+    await repository.assignAdvance(
+      advance: CollectionAdvanceRecord(
+        externalRef: paymentId,
+        clientId: clientId,
+        clientName: client.name,
+        amount: paidAmount,
+        date: (payment['date'] ?? now).toString(),
+        remarks: (payment['remarks'] ?? '').toString(),
+        collectorName: collectorInitials.toString(),
+      ),
+      newInvoice: newItem,
+      amountDue: amountDue,
+      dueDate: dueDate,
+    );
+
     // Add to bucket (if fully paid it shows in settled, if not it waits for next collection)
     bucketItems.add(newItem);
     
@@ -666,10 +825,11 @@ class CollectionActivityController extends GetxController {
   // Claims
   // ========================================================================
 
-  void unclaimAccount(String clientId) {
+  Future<void> unclaimAccount(String clientId) async {
     final invoices = activityItems.where((item) => item.client.id == clientId).toList();
     if (invoices.isEmpty) return;
 
+    final released = <CollectionItemModel>[];
     for (final inv in invoices) {
       final index = activityItems.indexWhere((e) => e.id == inv.id);
       if (index != -1) {
@@ -680,16 +840,21 @@ class CollectionActivityController extends GetxController {
         );
         bucketItems.add(restored);
         activityItems.removeAt(index);
+        released.add(restored);
       }
     }
+
+    // Clear Engagement: release locally + queue CLEAR (no reason/history).
+    await repository.releaseInvoices(clientId: clientId, releasedInvoices: released);
     logDebug('[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
   }
 
-  void unclaimWithReason(String clientId, String reason, String remarks) {
+  Future<void> unclaimWithReason(String clientId, String reason, String remarks) async {
     // 1. Move all invoices back to bucket without adding history to them
     final invoices = activityItems.where((item) => item.client.id == clientId).toList();
     if (invoices.isEmpty) return;
 
+    final released = <CollectionItemModel>[];
     for (final inv in invoices) {
       final index = activityItems.indexWhere((e) => e.id == inv.id);
       if (index != -1) {
@@ -700,16 +865,24 @@ class CollectionActivityController extends GetxController {
         );
         bucketItems.add(restored);
         activityItems.removeAt(index);
+        released.add(restored);
       }
     }
 
-    // 2. Add a single account-level history entry
+    // 2. Deferred Engagement: persist the release, record the reason once for the
+    //    account, and queue DEFER (the server keeps one entry per account).
+    final record = await repository.releaseInvoices(
+      clientId: clientId,
+      releasedInvoices: released,
+      reason: reason,
+      remarks: remarks,
+    );
+
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final collectorInitials = UserController.instance.user.value.initials;
-
     final historyEntry = CollectionHistoryModel(
-      date: now,
-      collectorName: collectorInitials,
+      date: record?.date ?? now,
+      collectorName: record?.collectorName ?? collectorInitials,
       status: reason,
       remarks: remarks,
       totalCollected: 0,
@@ -1005,16 +1178,34 @@ class CollectionActivityController extends GetxController {
      }
    }
 
-  void saveGlobalActivity({
+  Future<void> saveGlobalActivity({
     required String type,
     required String accountName,
     required String remarks,
     double totalCollected = 0,
     String? bankName,
     String? checkNumber,
-  }) {
+    String? clientId,
+    List<String> documentIds = const [],
+  }) async {
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final collectorInitials = UserController.instance.user.value.initials;
+
+    // Persist + queue (DEPOSIT / CWT_PICKUP). Forms that only know the account
+    // name (CWT) get the id resolved from the loaded account list.
+    final resolvedClientId = (clientId != null && clientId.isNotEmpty)
+        ? clientId
+        : _clientIdFor(accountName);
+    await repository.saveOfficeActivity(
+      type: type,
+      clientId: resolvedClientId,
+      clientName: accountName,
+      amount: totalCollected,
+      bankName: bankName,
+      checkNumber: checkNumber,
+      remarks: remarks,
+      documentIds: documentIds,
+    );
 
     final historyEntry = CollectionHistoryModel(
       date: now,
@@ -1032,65 +1223,79 @@ class CollectionActivityController extends GetxController {
       'invoiceId': null,
       'item': null,
     });
-    
+
     globalActivities.refresh();
     logDebug('[CollectionActivityController] Global activity saved: $type');
   }
 
   // ========================================================================
-  // Sample Data
+  // Persisted account-level concepts (Stage C2)
   // ========================================================================
 
-  void _loadSampleBucketItems() {
-    final List<ClientModel> clients = [
-      ClientModel(id: 'C001', code: 'NLN-001', name: 'ABC Corporation', address: '123 Main St, Laoag', contact: '09171234567', emailAddress: 'abc@corp.com'),
-      ClientModel(id: 'C002', code: 'SLN-001', name: 'XYZ Trading', address: '456 Rizal Ave, Batangas', contact: '09189876543', emailAddress: 'xyz@trading.ph'),
-      ClientModel(id: 'C003', code: 'CLN-001', name: 'LMN Enterprises', address: '789 EDSA, Pampanga', contact: '09201112233', emailAddress: 'lmn@ent.com'),
-      ClientModel(id: 'C004', code: 'VIS-001', name: 'PQR Industries', address: '321 Ayala Blvd, Cebu', contact: '09334455667', emailAddress: 'pqr@ind.com'),
-      ClientModel(id: 'C005', code: 'MIN-001', name: 'STU Holdings', address: '654 Shaw Blvd, Davao', contact: '09557788990', emailAddress: 'stu@hold.com'),
-      ClientModel(id: 'C006', code: 'RAD-001', name: 'VWX Solutions', address: '987 Aurora Blvd, QC', contact: '09664433221', emailAddress: 'vwx@sol.com'),
-      ClientModel(id: 'C007', code: 'NLN-002', name: 'Global Logistics Inc.', address: '555 Port Area, Manila', contact: '09771230000', emailAddress: 'global@logistics.com'),
-      ClientModel(id: 'C008', code: 'VIS-002', name: 'Prime Manufacturing', address: '222 Industrial Ave, Iloilo', contact: '09885551234', emailAddress: 'prime@mfg.com'),
-    ];
-    masterAccountList.assignAll(clients);
+  /// Rebuild the in-memory lists from SQLite so activities, advances and
+  /// account history survive an app restart.
+  Future<void> _loadPersistedExtras() async {
+    try {
+      final activities = await repository.loadOfficeActivities();
+      globalActivities.assignAll(activities
+          // Reconciliation is shown through invoice status, not as an activity card.
+          .where((a) => a.type != 'Reconciliation')
+          .map((a) => {
+                'history': CollectionHistoryModel(
+                  date: a.date,
+                  collectorName: a.collectorName,
+                  status: a.type,
+                  remarks: a.remarks,
+                  totalCollected: a.amount,
+                  bankName: a.bankName,
+                  checkNumber: a.checkNumber,
+                ),
+                'accountName': a.clientName,
+                'invoiceId': null,
+                'item': null,
+              })
+          .toList());
 
-    final List<CollectionItemModel> generatedItems = [];
-    final random = Random();
-    for (var client in clients) {
-      final invoiceCount = 3 + random.nextInt(5);
-      for (int i = 1; i <= invoiceCount; i++) {
-        final amount = 5000.0 + random.nextInt(20000);
-        final id = 'INV-${client.id}-${100 + i}';
-        final now = DateTime.now();
-        // Create a variety of due dates: some past (overdue), some today, some future
-        final possibleOffsets = [-60, -45, -20, -5, 0, 5, 15, 40];
-        final offset = possibleOffsets[random.nextInt(possibleOffsets.length)];
-        final postingDate = DateFormat('yyyy-MM-dd').format(now.subtract(Duration(days: 60 + random.nextInt(50))));
-        final dueDate = DateFormat('yyyy-MM-dd').format(now.add(Duration(days: offset)));
+      final advances = await repository.loadUnassignedAdvances();
+      unassignedAdvancedPayments.assignAll(advances.map(_advanceToMap).toList());
 
-        generatedItems.add(CollectionItemModel(
-          id: id,
-          client: client,
-          bpCode: client.code,
-          postingDate: postingDate,
-          dueDate: dueDate,
-          documentReferences: ['REF-$id'],
-          bankName: ['BDO', 'BPI', 'Metrobank'][random.nextInt(3)],
-          toBeCollected: amount,
-          // Start with an empty/unknown status (remove 'Pending')
-          status: '',
-          history: [
-            CollectionHistoryModel(
-              date: '2026-02-01 08:00',
-              collectorName: 'System',
-              status: '',
-              remarks: 'Invoice #$id Created',
-            ),
-          ],
-        ));
+      final history = await repository.loadAccountHistory();
+      final grouped = <String, List<CollectionHistoryModel>>{};
+      for (final h in history) {
+        grouped.putIfAbsent(h.clientId, () => []).add(CollectionHistoryModel(
+              date: h.date,
+              collectorName: h.collectorName,
+              status: h.reason,
+              remarks: h.remarks,
+              totalCollected: 0,
+            ));
       }
+      clientHistory.assignAll(grouped);
+
+      logDebug('[CollectionActivityController] Loaded ${activities.length} activities, '
+          '${advances.length} advances, ${history.length} account history entries');
+    } catch (e) {
+      logDebug('[CollectionActivityController] _loadPersistedExtras error: $e');
     }
-    bucketItems.assignAll(generatedItems);
-    activityItems.clear();
+  }
+
+  Map<String, dynamic> _advanceToMap(CollectionAdvanceRecord r) => {
+        'id': r.externalRef,
+        'clientId': r.clientId,
+        'amount': r.amount,
+        'remarks': r.remarks,
+        'date': r.date,
+        'collectorName': r.collectorName,
+      };
+
+  String _clientNameFor(String clientId) {
+    final c = masterAccountList.firstWhereOrNull((c) => c.id == clientId);
+    return c?.name ?? clientId;
+  }
+
+  String _clientIdFor(String accountName) {
+    final c = masterAccountList.firstWhereOrNull(
+        (c) => c.name.trim().toLowerCase() == accountName.trim().toLowerCase());
+    return c?.id ?? '';
   }
 }

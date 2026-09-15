@@ -392,4 +392,58 @@ Future<void> ensureCollectionTables(Database db) async {
       lastRetryAt TEXT
     )
   ''');
+
+  // --- Stage C2: concepts that previously lived only in memory -------------
+
+  // Table: a_tblCollectionActivity (Deposit / CWT Pick-up / Reconciliation)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionActivity (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      clientId TEXT,
+      clientName TEXT,
+      date TEXT,
+      amount REAL DEFAULT 0,
+      bankName TEXT,
+      checkNumber TEXT,
+      remarks TEXT,
+      documentIds TEXT,
+      collectorName TEXT,
+      localRef TEXT
+    )
+  ''');
+
+  // Table: a_tblCollectionAdvance (Advanced Payments awaiting an invoice)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionAdvance (
+      externalRef TEXT PRIMARY KEY,
+      clientId TEXT,
+      clientName TEXT,
+      amount REAL DEFAULT 0,
+      date TEXT,
+      remarks TEXT,
+      collectorName TEXT,
+      assignedDocumentId TEXT
+    )
+  ''');
+
+  // Table: a_tblCollectionAccountHistory (Deferred Engagement reasons per account)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionAccountHistory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      clientId TEXT NOT NULL,
+      date TEXT,
+      reason TEXT,
+      remarks TEXT,
+      collectorName TEXT
+    )
+  ''');
+
+  // Table: a_tblCollectionTarget (monthly target, keyed yyyy-MM)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionTarget (
+      yearMonth TEXT PRIMARY KEY,
+      amount REAL DEFAULT 0
+    )
+  ''');
 }
