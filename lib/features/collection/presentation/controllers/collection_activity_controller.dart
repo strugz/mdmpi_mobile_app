@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
@@ -43,7 +44,8 @@ class CollectionActivityController extends GetxController {
   /// Every known invoice exactly once. An id can transiently live in both
   /// lists; the Activity copy wins because it carries the freshest history.
   static List<CollectionItemModel> mergeUnique(
-      Iterable<CollectionItemModel> bucket, Iterable<CollectionItemModel> activity) {
+      Iterable<CollectionItemModel> bucket,
+      Iterable<CollectionItemModel> activity) {
     final byId = <String, CollectionItemModel>{};
     for (final i in bucket) {
       byId[i.id] = i;
@@ -54,7 +56,75 @@ class CollectionActivityController extends GetxController {
     return byId.values.toList();
   }
 
-  List<CollectionItemModel> get allItems => mergeUnique(bucketItems, activityItems);
+  // ========================================================================
+  // Cached per-client aggregates
+  //
+  // [allItems] and the per-account totals are read once per account while
+  // building the bucket list, and again by every visible card. Recomputing
+  // them meant merging and scanning all items on each call, so listing N
+  // accounts over M invoices cost N x M (at 3870 invoices that stalled the
+  // page transition into the bucket). They are now folded once per change
+  // and served from maps.
+  //
+  // Invalidated by any change to bucketItems / activityItems. Every mutation
+  // in this controller goes through the RxList API (assignAll, add, removeAt,
+  // index assignment), so the listeners registered in onInit see them all;
+  // models are replaced rather than mutated in place.
+  // ========================================================================
+
+  bool _aggregatesDirty = true;
+  List<CollectionItemModel> _allItemsCache = const [];
+  final Map<String, int> _invoiceCountByClient = {};
+  final Map<String, double> _totalDueByClient = {};
+  final Map<String, double> _totalCollectedByClient = {};
+
+  /// Marks the cached aggregates stale. Call after changing item contents in
+  /// a way that bypasses the observable lists (nothing does today).
+  void invalidateAggregates() => _aggregatesDirty = true;
+
+  /// Invalidates the cached aggregates on every change to either item list.
+  /// Called from [onInit]; exposed so tests can wire a bare controller.
+  @visibleForTesting
+  void startAggregateTracking() {
+    ever(bucketItems, (_) => invalidateAggregates());
+    ever(activityItems, (_) => invalidateAggregates());
+  }
+
+  void _rebuildAggregates() {
+    _allItemsCache = mergeUnique(bucketItems, activityItems);
+    _invoiceCountByClient.clear();
+    _totalDueByClient.clear();
+    _totalCollectedByClient.clear();
+
+    // Money spans bucket + activity, so it folds over the merged list.
+    for (final item in _allItemsCache) {
+      final id = item.client.id;
+      _totalDueByClient[id] = (_totalDueByClient[id] ?? 0) + item.toBeCollected;
+      _totalCollectedByClient[id] =
+          (_totalCollectedByClient[id] ?? 0) + item.totalCollected;
+    }
+    // Invoice count is bucket-only and ignores fully-settled invoices,
+    // matching the previous getter exactly.
+    for (final item in bucketItems) {
+      if (item.toBeCollected > 0) {
+        final id = item.client.id;
+        _invoiceCountByClient[id] = (_invoiceCountByClient[id] ?? 0) + 1;
+      }
+    }
+    _aggregatesDirty = false;
+  }
+
+  void _ensureAggregates() {
+    if (_aggregatesDirty) _rebuildAggregates();
+  }
+
+  /// Bucket and Activity items merged by id (Activity wins).
+  ///
+  /// Returns a cached list: read it, never mutate it.
+  List<CollectionItemModel> get allItems {
+    _ensureAggregates();
+    return _allItemsCache;
+  }
 
   /// Replace both lists (and the account list) from a full set of items.
   void _setItems(List<CollectionItemModel> items) {
@@ -73,13 +143,15 @@ class CollectionActivityController extends GetxController {
     }
     masterAccountList.assignAll(clientMap.values.toList());
   }
+
   final RxSet<String> selectedBucketIds = <String>{}.obs;
   final RxBool isLoading = false.obs;
 
   /// Phase of the explicit "Download Bucket" action; drives the full-screen
   /// download transition on the Collection home screen. Separate from
   /// [isLoading] so the silent initial load never shows the overlay.
-  final Rx<BucketDownloadPhase> bucketDownloadPhase = BucketDownloadPhase.idle.obs;
+  final Rx<BucketDownloadPhase> bucketDownloadPhase =
+      BucketDownloadPhase.idle.obs;
 
   /// Items received by the most recent successful bucket download.
   final RxInt lastDownloadedCount = 0.obs;
@@ -118,13 +190,16 @@ class CollectionActivityController extends GetxController {
   final RxSet<String> selectedActivityInvoiceIds = <String>{}.obs;
 
   /// Account-level history (for unclaiming/no collection)
-  final RxMap<String, List<CollectionHistoryModel>> clientHistory = <String, List<CollectionHistoryModel>>{}.obs;
+  final RxMap<String, List<CollectionHistoryModel>> clientHistory =
+      <String, List<CollectionHistoryModel>>{}.obs;
 
   /// Global activities (Deposit, CWT Pick-up, Reconciliation)
-  final RxList<Map<String, dynamic>> globalActivities = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> globalActivities =
+      <Map<String, dynamic>>[].obs;
 
   /// Advanced payments without an invoice yet
-  final RxList<Map<String, dynamic>> unassignedAdvancedPayments = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> unassignedAdvancedPayments =
+      <Map<String, dynamic>>[].obs;
 
   // ========================================================================
   // Lifecycle
@@ -136,6 +211,9 @@ class CollectionActivityController extends GetxController {
     // Initialize repository and sync manager from DI
     repository = Get.find<CollectionRepository>();
     syncManager = Get.find<SyncManager>();
+    // Any change to either list invalidates the cached per-client aggregates.
+    // Registered before the first load so nothing can serve a stale map.
+    startAggregateTracking();
     // Load data
     loadBucket();
     _loadPersistedExtras();
@@ -158,7 +236,8 @@ class CollectionActivityController extends GetxController {
       final items = await repository.getAll();
       _setItems(items);
 
-      logDebug('[CollectionActivityController] Loaded ${items.length} bucket items');
+      logDebug(
+          '[CollectionActivityController] Loaded ${items.length} bucket items');
       isLoading.value = false;
     } catch (e) {
       logDebug('[CollectionActivityController] loadBucket error: $e');
@@ -200,7 +279,8 @@ class CollectionActivityController extends GetxController {
       _setItems(items);
       lastDownloadedCount.value = items.length;
 
-      logDebug('[CollectionActivityController] Downloaded ${items.length} bucket items');
+      logDebug(
+          '[CollectionActivityController] Downloaded ${items.length} bucket items');
       bucketDownloadPhase.value = BucketDownloadPhase.success;
     } catch (e) {
       logDebug('[CollectionActivityController] downloadBucket error: $e');
@@ -263,7 +343,8 @@ class CollectionActivityController extends GetxController {
     if (result == null) {
       BLoaders.warningSnackBar(
         title: 'Upload',
-        message: syncManager.syncErrorMessage.value ?? 'Upload could not complete.',
+        message:
+            syncManager.syncErrorMessage.value ?? 'Upload could not complete.',
       );
       return;
     }
@@ -310,20 +391,21 @@ class CollectionActivityController extends GetxController {
   bool isSelected(String id) => selectedBucketIds.contains(id);
 
   bool get allSelected =>
-      bucketItems.isNotEmpty &&
-      selectedBucketIds.length == bucketItems.length;
+      bucketItems.isNotEmpty && selectedBucketIds.length == bucketItems.length;
 
   /// Territory code from Filter by Area ('' = all, 'OTHERS' = unnamed prefixes).
   final RxString selectedArea = ''.obs;
 
   /// Case-insensitive prefix match against the selected area (see BCollectionArea).
-  bool _matchesArea(String code) => BCollectionArea.matches(code, selectedArea.value);
+  bool _matchesArea(String code) =>
+      BCollectionArea.matches(code, selectedArea.value);
 
   /// Number of bucket accounts in [area] (a BCollectionArea code, the "Others"
   /// sentinel, or '' for every account). Ignores the other bucket filters so
   /// the Filter by Area screen shows what each choice would reveal.
-  int accountCountForArea(String area) =>
-      masterAccountList.where((c) => BCollectionArea.matches(c.code, area)).length;
+  int accountCountForArea(String area) => masterAccountList
+      .where((c) => BCollectionArea.matches(c.code, area))
+      .length;
 
   /// True when any bucket-narrowing input (search, amount/invoice range, area)
   /// is active. Drives the empty-state copy and the "Clear all filters" action.
@@ -354,37 +436,50 @@ class CollectionActivityController extends GetxController {
       if (invoiceCount == 0) return false;
 
       if (bucketSearchQuery.value.isNotEmpty &&
-          !client.name.toLowerCase().contains(bucketSearchQuery.value.toLowerCase())) {
+          !client.name
+              .toLowerCase()
+              .contains(bucketSearchQuery.value.toLowerCase())) {
         return false;
       }
       final totalAmount = getAccountTotalDue(client.id);
 
-      if (bucketMinAmount.value > 0 && totalAmount < bucketMinAmount.value) return false;
-      if (bucketMaxAmount.value > 0 && totalAmount > bucketMaxAmount.value) return false;
-      if (bucketMinInvoices.value > 0 && invoiceCount < bucketMinInvoices.value) return false;
-      if (bucketMaxInvoices.value > 0 && invoiceCount > bucketMaxInvoices.value) return false;
+      if (bucketMinAmount.value > 0 && totalAmount < bucketMinAmount.value)
+        return false;
+      if (bucketMaxAmount.value > 0 && totalAmount > bucketMaxAmount.value)
+        return false;
+      if (bucketMinInvoices.value > 0 && invoiceCount < bucketMinInvoices.value)
+        return false;
+      if (bucketMaxInvoices.value > 0 && invoiceCount > bucketMaxInvoices.value)
+        return false;
 
       return true;
     }).toList();
   }
 
   List<CollectionItemModel> getInvoicesByAccount(String clientId) {
-    final invoices = bucketItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).toList();
+    final invoices = bucketItems
+        .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+        .toList();
     // Apply search query if present
     var results = invoices;
     if (invoiceSearchQuery.value.isNotEmpty) {
       final query = invoiceSearchQuery.value.toLowerCase();
       results = results.where((item) {
         return item.id.toLowerCase().contains(query) ||
-            item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
+            item.documentReferences
+                .any((ref) => ref.toLowerCase().contains(query));
       }).toList();
     }
 
     // Apply amount range filter when set (bucket-level filter used for account invoices)
     if (bucketMinAmount.value > 0 || bucketMaxAmount.value > 0) {
       results = results.where((item) {
-        final minOk = bucketMinAmount.value > 0 ? item.toBeCollected >= bucketMinAmount.value : true;
-        final maxOk = bucketMaxAmount.value > 0 ? item.toBeCollected <= bucketMaxAmount.value : true;
+        final minOk = bucketMinAmount.value > 0
+            ? item.toBeCollected >= bucketMinAmount.value
+            : true;
+        final maxOk = bucketMaxAmount.value > 0
+            ? item.toBeCollected <= bucketMaxAmount.value
+            : true;
         return minOk && maxOk;
       }).toList();
     }
@@ -400,41 +495,48 @@ class CollectionActivityController extends GetxController {
   }
 
   double getAccountTotalDue(String clientId) {
-    final allItems = this.allItems;
-    return allItems
-        .where((item) => item.client.id == clientId)
-        .fold(0.0, (sum, item) => sum + item.toBeCollected);
+    _ensureAggregates();
+    return _totalDueByClient[clientId] ?? 0.0;
   }
 
   double getAccountTotalCollected(String clientId) {
-    final allItems = this.allItems;
-    return allItems
-        .where((item) => item.client.id == clientId)
-        .fold(0.0, (sum, item) => sum + item.totalCollected);
+    _ensureAggregates();
+    return _totalCollectedByClient[clientId] ?? 0.0;
   }
 
-  int getAccountInvoiceCount(String clientId) => 
-      bucketItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).length;
+  int getAccountInvoiceCount(String clientId) {
+    _ensureAggregates();
+    return _invoiceCountByClient[clientId] ?? 0;
+  }
 
   // ========================================================================
   // Activity helpers
   // ========================================================================
 
   List<ClientModel> get activityAccounts {
-    final activeClientIds = activityItems.where((e) => e.toBeCollected > 0).map((e) => e.client.id).toSet();
+    final activeClientIds = activityItems
+        .where((e) => e.toBeCollected > 0)
+        .map((e) => e.client.id)
+        .toSet();
     return masterAccountList.where((client) {
       if (!activeClientIds.contains(client.id)) return false;
       if (activitySearchQuery.value.isNotEmpty &&
-          !client.name.toLowerCase().contains(activitySearchQuery.value.toLowerCase())) {
+          !client.name
+              .toLowerCase()
+              .contains(activitySearchQuery.value.toLowerCase())) {
         return false;
       }
       final totalAmount = getActivityAccountTotalDue(client.id);
       final invoiceCount = getActivityAccountInvoiceCount(client.id);
 
-      if (activityMinAmount.value > 0 && totalAmount < activityMinAmount.value) return false;
-      if (activityMaxAmount.value > 0 && totalAmount > activityMaxAmount.value) return false;
-      if (activityMinInvoices.value > 0 && invoiceCount < activityMinInvoices.value) return false;
-      if (activityMaxInvoices.value > 0 && invoiceCount > activityMaxInvoices.value) return false;
+      if (activityMinAmount.value > 0 && totalAmount < activityMinAmount.value)
+        return false;
+      if (activityMaxAmount.value > 0 && totalAmount > activityMaxAmount.value)
+        return false;
+      if (activityMinInvoices.value > 0 &&
+          invoiceCount < activityMinInvoices.value) return false;
+      if (activityMaxInvoices.value > 0 &&
+          invoiceCount > activityMaxInvoices.value) return false;
 
       return true;
     }).toList();
@@ -448,25 +550,33 @@ class CollectionActivityController extends GetxController {
       .where((item) => item.client.id == clientId)
       .fold(0.0, (sum, item) => sum + item.totalCollected);
 
-  int getActivityAccountInvoiceCount(String clientId) => 
-      activityItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).length;
+  int getActivityAccountInvoiceCount(String clientId) => activityItems
+      .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+      .length;
 
   List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) {
-    final invoices = activityItems.where((item) => item.client.id == clientId && item.toBeCollected > 0).toList();
+    final invoices = activityItems
+        .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+        .toList();
     var results = invoices;
     if (invoiceSearchQuery.value.isNotEmpty) {
       final query = invoiceSearchQuery.value.toLowerCase();
       results = results.where((item) {
         return item.id.toLowerCase().contains(query) ||
-            item.documentReferences.any((ref) => ref.toLowerCase().contains(query));
+            item.documentReferences
+                .any((ref) => ref.toLowerCase().contains(query));
       }).toList();
     }
 
     // Apply activity amount range filter when set
     if (activityMinAmount.value > 0 || activityMaxAmount.value > 0) {
       results = results.where((item) {
-        final minOk = activityMinAmount.value > 0 ? item.toBeCollected >= activityMinAmount.value : true;
-        final maxOk = activityMaxAmount.value > 0 ? item.toBeCollected <= activityMaxAmount.value : true;
+        final minOk = activityMinAmount.value > 0
+            ? item.toBeCollected >= activityMinAmount.value
+            : true;
+        final maxOk = activityMaxAmount.value > 0
+            ? item.toBeCollected <= activityMaxAmount.value
+            : true;
         return minOk && maxOk;
       }).toList();
     }
@@ -489,10 +599,11 @@ class CollectionActivityController extends GetxController {
   Map<String, dynamic> getAccountFinancialStats(String clientId) {
     final now = DateTime.now();
     final firstDayOfCurrentMonth = DateTime(now.year, now.month, 1);
-    
+
     final allItems = this.allItems;
-    final accountInvoices = allItems.where((item) => item.client.id == clientId).toList();
-    
+    final accountInvoices =
+        allItems.where((item) => item.client.id == clientId).toList();
+
     double totalPastDue = 0;
     int pastDueCount = 0;
     double totalCurrentDue = 0;
@@ -525,10 +636,11 @@ class CollectionActivityController extends GetxController {
   /// Now returns a list of maps containing the history model and the full invoice item.
   List<Map<String, dynamic>> getAccountHistory(String clientId) {
     final allItems = this.allItems;
-    final accountItems = allItems.where((item) => item.client.id == clientId).toList();
+    final accountItems =
+        allItems.where((item) => item.client.id == clientId).toList();
 
     final List<Map<String, dynamic>> combined = [];
-    
+
     // 1. Add invoice-level history
     for (var item in accountItems) {
       for (var history in item.history) {
@@ -558,7 +670,7 @@ class CollectionActivityController extends GetxController {
   /// Returns combined history for all invoices in the system, sorted by date (newest first).
   List<Map<String, dynamic>> get allRecentHistory {
     final List<Map<String, dynamic>> combined = [];
-    
+
     // 1. Add invoice-level history
     final allItems = this.allItems;
     for (var item in allItems) {
@@ -574,7 +686,8 @@ class CollectionActivityController extends GetxController {
 
     // 2. Add account-level history
     clientHistory.forEach((clientId, historyEntries) {
-      final client = masterAccountList.firstWhere((c) => c.id == clientId, orElse: () => ClientModel.empty());
+      final client = masterAccountList.firstWhere((c) => c.id == clientId,
+          orElse: () => ClientModel.empty());
       for (var history in historyEntries) {
         combined.add({
           'history': history,
@@ -605,7 +718,7 @@ class CollectionActivityController extends GetxController {
         final datePart = history.date.split(' ')[0];
         final date = DateTime.parse(datePart);
         final normalizedDate = DateTime(date.year, date.month, date.day);
-        
+
         if (!grouped.containsKey(normalizedDate)) {
           grouped[normalizedDate] = [];
         }
@@ -659,13 +772,17 @@ class CollectionActivityController extends GetxController {
   /// Returns accounts that have settled invoices
   List<ClientModel> get settledAccounts {
     final settledInvoiceIds = completedItems.map((e) => e.client.id).toSet();
-    return masterAccountList.where((c) => settledInvoiceIds.contains(c.id)).toList();
+    return masterAccountList
+        .where((c) => settledInvoiceIds.contains(c.id))
+        .toList();
   }
 
   /// Returns accounts that have overdue invoices
   List<ClientModel> get overdueAccounts {
     final overdueInvoiceIds = overdueItems.map((e) => e.client.id).toSet();
-    return masterAccountList.where((c) => overdueInvoiceIds.contains(c.id)).toList();
+    return masterAccountList
+        .where((c) => overdueInvoiceIds.contains(c.id))
+        .toList();
   }
 
   /// Returns settled invoices for a specific account
@@ -693,7 +810,8 @@ class CollectionActivityController extends GetxController {
   List<Map<String, dynamic>> get filteredUnassignedAdvancedPayments {
     return unassignedAdvancedPayments.where((entry) {
       final clientId = entry['clientId'];
-      final client = masterAccountList.firstWhere((c) => c.id == clientId, orElse: () => ClientModel.empty());
+      final client = masterAccountList.firstWhere((c) => c.id == clientId,
+          orElse: () => ClientModel.empty());
       if (!_matchesArea(client.code)) return false;
       return true;
     }).toList();
@@ -711,35 +829,45 @@ class CollectionActivityController extends GetxController {
 
   /// Returns accounts that have unassigned advanced payments
   List<ClientModel> get advancedPaymentAccounts {
-    final clientIds = unassignedAdvancedPayments.map((e) => e['clientId'] as String).toSet();
+    final clientIds =
+        unassignedAdvancedPayments.map((e) => e['clientId'] as String).toSet();
     return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
   }
 
   /// Number of assigned advanced payments (invoices created from advanced payments)
   int get assignedAdvancedPaymentCount {
     final fromBucket = bucketItems
-        .where((item) => item.toBeCollected > 0 && item.history.any((h) => h.status == 'Advanced Payment Applied'))
+        .where((item) =>
+            item.toBeCollected > 0 &&
+            item.history.any((h) => h.status == 'Advanced Payment Applied'))
         .map((i) => i.id);
     final fromActivity = activityItems
-        .where((item) => item.toBeCollected > 0 && item.history.any((h) => h.status == 'Advanced Payment Applied'))
+        .where((item) =>
+            item.toBeCollected > 0 &&
+            item.history.any((h) => h.status == 'Advanced Payment Applied'))
         .map((i) => i.id);
     final assignedIds = {...fromBucket, ...fromActivity};
     return assignedIds.length;
   }
 
   /// Total advanced payments: assigned (invoices created and still unpaid) + unassigned payments
-  int get advancedPaymentsCount => assignedAdvancedPaymentCount + unassignedAdvancedPayments.length;
+  int get advancedPaymentsCount =>
+      assignedAdvancedPaymentCount + unassignedAdvancedPayments.length;
 
   /// Returns reconciliation invoices for a specific account
-  List<CollectionItemModel> getReconciliationInvoicesByAccount(String clientId) {
-    return reconciliationItems.where((item) => item.client.id == clientId).toList();
+  List<CollectionItemModel> getReconciliationInvoicesByAccount(
+      String clientId) {
+    return reconciliationItems
+        .where((item) => item.client.id == clientId)
+        .toList();
   }
 
   // ========================================================================
   // Process Logic
   // ========================================================================
 
-  Future<void> markInvoicesForReconciliation(String clientId, List<String> invoiceIds, String remarks) async {
+  Future<void> markInvoicesForReconciliation(
+      String clientId, List<String> invoiceIds, String remarks) async {
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
     final collectorInitials = UserController.instance.user.value.initials;
     final updated = <CollectionItemModel>[];
@@ -782,7 +910,8 @@ class CollectionActivityController extends GetxController {
       documentIds: invoiceIds,
       updatedInvoices: updated,
     );
-    logDebug('[CollectionActivityController] Marked ${invoiceIds.length} invoices for Reconciliation');
+    logDebug(
+        '[CollectionActivityController] Marked ${invoiceIds.length} invoices for Reconciliation');
   }
 
   Future<void> saveAdvancedPayment({
@@ -803,7 +932,8 @@ class CollectionActivityController extends GetxController {
     }
 
     unassignedAdvancedPayments.add(_advanceToMap(record));
-    logDebug('[CollectionActivityController] Saved Advanced Payment ${record.externalRef} for $clientId: ₱$amount');
+    logDebug(
+        '[CollectionActivityController] Saved Advanced Payment ${record.externalRef} for $clientId: ₱$amount');
   }
 
   Future<void> assignInvoiceToPayment({
@@ -812,16 +942,19 @@ class CollectionActivityController extends GetxController {
     required double amountDue,
     required String dueDate,
   }) async {
-    final paymentIdx = unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
+    final paymentIdx =
+        unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
     if (paymentIdx == -1) return;
 
     final payment = unassignedAdvancedPayments[paymentIdx];
     final clientId = payment['clientId'] as String;
     final paidAmount = payment['amount'] as double;
-    final client = masterAccountList.firstWhere((c) => c.id == clientId, orElse: () => ClientModel.empty());
+    final client = masterAccountList.firstWhere((c) => c.id == clientId,
+        orElse: () => ClientModel.empty());
 
     final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    final collectorInitials = payment['collectorName'] ?? UserController.instance.user.value.initials;
+    final collectorInitials =
+        payment['collectorName'] ?? UserController.instance.user.value.initials;
 
     final remainingDue = (amountDue - paidAmount).clamp(0.0, double.infinity);
     final isFullyPaid = remainingDue == 0;
@@ -864,11 +997,12 @@ class CollectionActivityController extends GetxController {
 
     // Add to bucket (if fully paid it shows in settled, if not it waits for next collection)
     bucketItems.add(newItem);
-    
+
     // Remove from unassigned (use removeWhere to be robust against id type mismatches or duplicates)
     unassignedAdvancedPayments.removeWhere((e) => e['id'] == paymentId);
-    
-    logDebug('[CollectionActivityController] Assigned invoice $invoiceNumber to payment. Fully paid: $isFullyPaid');
+
+    logDebug(
+        '[CollectionActivityController] Assigned invoice $invoiceNumber to payment. Fully paid: $isFullyPaid');
   }
 
   // ========================================================================
@@ -876,7 +1010,8 @@ class CollectionActivityController extends GetxController {
   // ========================================================================
 
   Future<void> unclaimAccount(String clientId) async {
-    final invoices = activityItems.where((item) => item.client.id == clientId).toList();
+    final invoices =
+        activityItems.where((item) => item.client.id == clientId).toList();
     if (invoices.isEmpty) return;
 
     final released = <CollectionItemModel>[];
@@ -895,13 +1030,17 @@ class CollectionActivityController extends GetxController {
     }
 
     // Clear Engagement: release locally + queue CLEAR (no reason/history).
-    await repository.releaseInvoices(clientId: clientId, releasedInvoices: released);
-    logDebug('[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
+    await repository.releaseInvoices(
+        clientId: clientId, releasedInvoices: released);
+    logDebug(
+        '[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
   }
 
-  Future<void> unclaimWithReason(String clientId, String reason, String remarks) async {
+  Future<void> unclaimWithReason(
+      String clientId, String reason, String remarks) async {
     // 1. Move all invoices back to bucket without adding history to them
-    final invoices = activityItems.where((item) => item.client.id == clientId).toList();
+    final invoices =
+        activityItems.where((item) => item.client.id == clientId).toList();
     if (invoices.isEmpty) return;
 
     final released = <CollectionItemModel>[];
@@ -941,61 +1080,65 @@ class CollectionActivityController extends GetxController {
     final historyList = clientHistory[clientId] ?? [];
     clientHistory[clientId] = [...historyList, historyEntry];
 
-    logDebug('[CollectionActivityController] Account $clientId unclaimed with account-level reason: $reason');
+    logDebug(
+        '[CollectionActivityController] Account $clientId unclaimed with account-level reason: $reason');
   }
 
-   void claimAccount(String clientId) {
-     // Prefer claiming reconciliation-marked invoices that are still in the bucket.
-     final reconInvoices = getReconciliationInvoicesByAccount(clientId);
-     final bucketReconIds = reconInvoices
-         .where((i) => bucketItems.any((b) => b.id == i.id))
-         .map((i) => i.id)
-         .toList();
+  void claimAccount(String clientId) {
+    // Prefer claiming reconciliation-marked invoices that are still in the bucket.
+    final reconInvoices = getReconciliationInvoicesByAccount(clientId);
+    final bucketReconIds = reconInvoices
+        .where((i) => bucketItems.any((b) => b.id == i.id))
+        .map((i) => i.id)
+        .toList();
 
-     if (bucketReconIds.isNotEmpty) {
-       claimItemsByIds(bucketReconIds);
-       logDebug('[CollectionActivityController] Account $clientId claimed (${bucketReconIds.length} reconciliation invoices)');
-       return;
-     }
+    if (bucketReconIds.isNotEmpty) {
+      claimItemsByIds(bucketReconIds);
+      logDebug(
+          '[CollectionActivityController] Account $clientId claimed (${bucketReconIds.length} reconciliation invoices)');
+      return;
+    }
 
-     // Fallback: claim all bucket items (legacy behavior)
-     final invoices = bucketItems.where((item) => item.client.id == clientId).toList();
-     if (invoices.isEmpty) return;
+    // Fallback: claim all bucket items (legacy behavior)
+    final invoices =
+        bucketItems.where((item) => item.client.id == clientId).toList();
+    if (invoices.isEmpty) return;
 
-     final ids = invoices.map((e) => e.id).toList();
-     claimItemsByIds(ids);
-     logDebug('[CollectionActivityController] Account $clientId claimed (${invoices.length} invoices)');
-   }
+    final ids = invoices.map((e) => e.id).toList();
+    claimItemsByIds(ids);
+    logDebug(
+        '[CollectionActivityController] Account $clientId claimed (${invoices.length} invoices)');
+  }
 
-   /// Claim items by IDs (move to activity).
-   /// Updates both UI and calls repository for persistence.
-   Future<void> claimItemsByIds(List<String> ids) async {
-     if (ids.isEmpty) return;
+  /// Claim items by IDs (move to activity).
+  /// Updates both UI and calls repository for persistence.
+  Future<void> claimItemsByIds(List<String> ids) async {
+    if (ids.isEmpty) return;
 
-     try {
-       // Update UI optimistically
-       final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-       for (final id in ids) {
-         final index = bucketItems.indexWhere((e) => e.id == id);
-         if (index == -1) continue;
-         final item = bucketItems[index];
-         final moved = item.copyWith(
-           status: item.status == 'Reconciliation' ? 'Reconciliation' : '',
-           assignedAt: now,
-         );
-         activityItems.add(moved);
-         bucketItems.removeAt(index);
-       }
-       selectedBucketIds.removeWhere((id) => ids.contains(id));
+    try {
+      // Update UI optimistically
+      final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+      for (final id in ids) {
+        final index = bucketItems.indexWhere((e) => e.id == id);
+        if (index == -1) continue;
+        final item = bucketItems[index];
+        final moved = item.copyWith(
+          status: item.status == 'Reconciliation' ? 'Reconciliation' : '',
+          assignedAt: now,
+        );
+        activityItems.add(moved);
+        bucketItems.removeAt(index);
+      }
+      selectedBucketIds.removeWhere((id) => ids.contains(id));
 
-       // Persist to repository
-       await repository.claimItemsByIds(ids, silent: true);
-       logDebug('[CollectionActivityController] Claimed ${ids.length} items');
-     } catch (e) {
-       logDebug('[CollectionActivityController] claimItemsByIds error: $e');
-       errorMessage.value = 'Failed to claim items: $e';
-     }
-   }
+      // Persist to repository
+      await repository.claimItemsByIds(ids, silent: true);
+      logDebug('[CollectionActivityController] Claimed ${ids.length} items');
+    } catch (e) {
+      logDebug('[CollectionActivityController] claimItemsByIds error: $e');
+      errorMessage.value = 'Failed to claim items: $e';
+    }
+  }
 
   // ========================================================================
   // Multi-select Account logic
@@ -1025,96 +1168,102 @@ class CollectionActivityController extends GetxController {
 
   void claimSelectedAccounts() {
     if (selectedAccountIds.isEmpty) return;
-    
+
     final idsToClaim = selectedAccountIds.toList();
     for (final clientId in idsToClaim) {
       claimAccount(clientId);
     }
-    
+
     exitSelectionMode();
   }
 
-   /// Save activity for an invoice item.
-   /// Updates UI optimistically and persists to repository.
-   Future<void> saveActivity({
-     required String id,
-     required String status,
-     required String remarks,
-     double? totalCollected,
-     String? bankName,
-     String? checkNumber,
-     String? checkDate,
-     String? purposeOfVisit,
-   }) async {
-     try {
-       final index = activityItems.indexWhere((e) => e.id == id);
-       if (index == -1) {
-         errorMessage.value = 'Item not found';
-         return;
-       }
+  /// Save activity for an invoice item.
+  /// Updates UI optimistically and persists to repository.
+  Future<void> saveActivity({
+    required String id,
+    required String status,
+    required String remarks,
+    double? totalCollected,
+    String? bankName,
+    String? checkNumber,
+    String? checkDate,
+    String? purposeOfVisit,
+  }) async {
+    try {
+      final index = activityItems.indexWhere((e) => e.id == id);
+      if (index == -1) {
+        errorMessage.value = 'Item not found';
+        return;
+      }
 
-       final oldItem = activityItems[index];
-       final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-       final double newlyCollected = totalCollected ?? 0;
-       final double updatedTotalCollected = oldItem.totalCollected + newlyCollected;
-       final double updatedToBeCollected = (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
+      final oldItem = activityItems[index];
+      final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+      final double newlyCollected = totalCollected ?? 0;
+      final double updatedTotalCollected =
+          oldItem.totalCollected + newlyCollected;
+      final double updatedToBeCollected =
+          (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
 
-       final bool isFullyPaid = updatedToBeCollected == 0;
-       final bool wasReconciliation = oldItem.status == CollectionStatusColors.statusReconciliation;
-       final String finalStatus = isFullyPaid
-           ? CollectionStatusColors.statusCollected
-           : (wasReconciliation ? CollectionStatusColors.statusReconciliation : '');
+      final bool isFullyPaid = updatedToBeCollected == 0;
+      final bool wasReconciliation =
+          oldItem.status == CollectionStatusColors.statusReconciliation;
+      final String finalStatus = isFullyPaid
+          ? CollectionStatusColors.statusCollected
+          : (wasReconciliation
+              ? CollectionStatusColors.statusReconciliation
+              : '');
 
-       final historyEntry = CollectionHistoryModel(
-         date: now,
-         collectorName: UserController.instance.user.value.initials,
-         status: status,
-         remarks: remarks,
-         totalCollected: newlyCollected,
-         bankName: bankName,
-         checkNumber: checkNumber,
-         checkDate: checkDate,
-         purposeOfVisit: purposeOfVisit,
-       );
+      final historyEntry = CollectionHistoryModel(
+        date: now,
+        collectorName: UserController.instance.user.value.initials,
+        status: status,
+        remarks: remarks,
+        totalCollected: newlyCollected,
+        bankName: bankName,
+        checkNumber: checkNumber,
+        checkDate: checkDate,
+        purposeOfVisit: purposeOfVisit,
+      );
 
-       final updatedItem = oldItem.copyWith(
-         status: finalStatus,
-         lastOutcome: status,
-         remarks: remarks,
-         toBeCollected: updatedToBeCollected,
-         totalCollected: updatedTotalCollected,
-         history: [...oldItem.history, historyEntry],
-         assignedAt: isFullyPaid ? '' : oldItem.assignedAt,
-         collectorName: isFullyPaid ? 'Unassigned' : oldItem.collectorName,
-       );
+      final updatedItem = oldItem.copyWith(
+        status: finalStatus,
+        lastOutcome: status,
+        remarks: remarks,
+        toBeCollected: updatedToBeCollected,
+        totalCollected: updatedTotalCollected,
+        history: [...oldItem.history, historyEntry],
+        assignedAt: isFullyPaid ? '' : oldItem.assignedAt,
+        collectorName: isFullyPaid ? 'Unassigned' : oldItem.collectorName,
+      );
 
-       // Update UI optimistically
-       if (isFullyPaid) {
-         bucketItems.add(updatedItem);
-         activityItems.removeAt(index);
-       } else {
-         activityItems[index] = updatedItem;
-       }
+      // Update UI optimistically
+      if (isFullyPaid) {
+        bucketItems.add(updatedItem);
+        activityItems.removeAt(index);
+      } else {
+        activityItems[index] = updatedItem;
+      }
 
-       // Persist to repository
-       await repository.saveActivity(
-         id: id,
-         status: status,
-         remarks: remarks,
-         totalCollected: totalCollected,
-         bankName: bankName,
-         checkNumber: checkNumber,
-         checkDate: checkDate,
-         purposeOfVisit: purposeOfVisit,
-         silent: true,
-       );
+      // Persist to repository
+      await repository.saveActivity(
+        id: id,
+        status: status,
+        remarks: remarks,
+        totalCollected: totalCollected,
+        bankName: bankName,
+        checkNumber: checkNumber,
+        checkDate: checkDate,
+        purposeOfVisit: purposeOfVisit,
+        silent: true,
+      );
 
-       logDebug('[CollectionActivityController] Activity $id saved. Move to bucket: $isFullyPaid');
-     } catch (e) {
-       logDebug('[CollectionActivityController] saveActivity error: $e');
-       errorMessage.value = 'Failed to save activity: $e';
-     }
-   }
+      logDebug(
+          '[CollectionActivityController] Activity $id saved. Move to bucket: $isFullyPaid');
+    } catch (e) {
+      logDebug('[CollectionActivityController] saveActivity error: $e');
+      errorMessage.value = 'Failed to save activity: $e';
+    }
+  }
 
   // ========================================================================
   // Multi-select Activity Invoice logic
@@ -1137,96 +1286,104 @@ class CollectionActivityController extends GetxController {
     selectedActivityInvoiceIds.clear();
   }
 
-   /// Save batch activity for multiple items.
-   /// Updates UI optimistically and persists to repository.
-   Future<void> saveBatchActivity({
-     required List<String> ids,
-     required Map<String, String> statuses,
-     required Map<String, String> remarks,
-     required Map<String, double> amounts,
-     required double totalAmountReceived,
-     String? bankName,
-     String? checkNumber,
-     String? checkDate,
-     String? purposeOfVisit,
-   }) async {
-     try {
-       final selectedItems = activityItems.where((item) => ids.contains(item.id)).toList();
-       final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+  /// Save batch activity for multiple items.
+  /// Updates UI optimistically and persists to repository.
+  Future<void> saveBatchActivity({
+    required List<String> ids,
+    required Map<String, String> statuses,
+    required Map<String, String> remarks,
+    required Map<String, double> amounts,
+    required double totalAmountReceived,
+    String? bankName,
+    String? checkNumber,
+    String? checkDate,
+    String? purposeOfVisit,
+  }) async {
+    try {
+      final selectedItems =
+          activityItems.where((item) => ids.contains(item.id)).toList();
+      final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
 
-       for (var item in selectedItems) {
-         final double manualAmount = amounts[item.id] ?? 0;
-         final String itemRemarks = remarks[item.id] ?? 'Batch Recording';
+      for (var item in selectedItems) {
+        final double manualAmount = amounts[item.id] ?? 0;
+        final String itemRemarks = remarks[item.id] ?? 'Batch Recording';
 
-         final double updatedTotalCollected = item.totalCollected + manualAmount;
-         final double updatedToBeCollected = (item.toBeCollected - manualAmount).clamp(0, double.infinity);
+        final double updatedTotalCollected = item.totalCollected + manualAmount;
+        final double updatedToBeCollected =
+            (item.toBeCollected - manualAmount).clamp(0, double.infinity);
 
-         final bool isFullyPaid = updatedToBeCollected == 0;
-         final bool wasReconciliation = item.status == CollectionStatusColors.statusReconciliation;
+        final bool isFullyPaid = updatedToBeCollected == 0;
+        final bool wasReconciliation =
+            item.status == CollectionStatusColors.statusReconciliation;
 
-         final String itemStatus = statuses[item.id] ??
-             (isFullyPaid
-                 ? CollectionStatusColors.statusCollected
-                 : (wasReconciliation ? CollectionStatusColors.statusReconciliation : ''));
+        final String itemStatus = statuses[item.id] ??
+            (isFullyPaid
+                ? CollectionStatusColors.statusCollected
+                : (wasReconciliation
+                    ? CollectionStatusColors.statusReconciliation
+                    : ''));
 
-         final historyEntry = CollectionHistoryModel(
-           date: now,
-           collectorName: UserController.instance.user.value.initials,
-           status: itemStatus,
-           remarks: itemRemarks,
-           totalCollected: manualAmount,
-           bankName: bankName,
-           checkNumber: checkNumber,
-           checkDate: checkDate,
-           purposeOfVisit: purposeOfVisit,
-         );
+        final historyEntry = CollectionHistoryModel(
+          date: now,
+          collectorName: UserController.instance.user.value.initials,
+          status: itemStatus,
+          remarks: itemRemarks,
+          totalCollected: manualAmount,
+          bankName: bankName,
+          checkNumber: checkNumber,
+          checkDate: checkDate,
+          purposeOfVisit: purposeOfVisit,
+        );
 
-         final updatedItem = item.copyWith(
-           status: isFullyPaid
-               ? CollectionStatusColors.statusCollected
-               : (wasReconciliation ? CollectionStatusColors.statusReconciliation : ''),
-           lastOutcome: itemStatus,
-           remarks: itemRemarks,
-           toBeCollected: updatedToBeCollected,
-           totalCollected: updatedTotalCollected,
-           history: [...item.history, historyEntry],
-           assignedAt: isFullyPaid ? '' : item.assignedAt,
-           collectorName: isFullyPaid ? 'Unassigned' : item.collectorName,
-         );
+        final updatedItem = item.copyWith(
+          status: isFullyPaid
+              ? CollectionStatusColors.statusCollected
+              : (wasReconciliation
+                  ? CollectionStatusColors.statusReconciliation
+                  : ''),
+          lastOutcome: itemStatus,
+          remarks: itemRemarks,
+          toBeCollected: updatedToBeCollected,
+          totalCollected: updatedTotalCollected,
+          history: [...item.history, historyEntry],
+          assignedAt: isFullyPaid ? '' : item.assignedAt,
+          collectorName: isFullyPaid ? 'Unassigned' : item.collectorName,
+        );
 
-         // Update in lists
-         final idx = activityItems.indexWhere((e) => e.id == item.id);
-         if (idx != -1) {
-           if (isFullyPaid) {
-             activityItems.removeAt(idx);
-             bucketItems.add(updatedItem);
-           } else {
-             activityItems[idx] = updatedItem;
-           }
-         }
-       }
+        // Update in lists
+        final idx = activityItems.indexWhere((e) => e.id == item.id);
+        if (idx != -1) {
+          if (isFullyPaid) {
+            activityItems.removeAt(idx);
+            bucketItems.add(updatedItem);
+          } else {
+            activityItems[idx] = updatedItem;
+          }
+        }
+      }
 
-       // Persist to repository
-       await repository.saveBatchActivity(
-         ids: ids,
-         statuses: statuses,
-         remarks: remarks,
-         amounts: amounts,
-         totalAmountReceived: totalAmountReceived,
-         bankName: bankName,
-         checkNumber: checkNumber,
-         checkDate: checkDate,
-         purposeOfVisit: purposeOfVisit,
-         silent: true,
-       );
+      // Persist to repository
+      await repository.saveBatchActivity(
+        ids: ids,
+        statuses: statuses,
+        remarks: remarks,
+        amounts: amounts,
+        totalAmountReceived: totalAmountReceived,
+        bankName: bankName,
+        checkNumber: checkNumber,
+        checkDate: checkDate,
+        purposeOfVisit: purposeOfVisit,
+        silent: true,
+      );
 
-       exitActivitySelectionMode();
-       logDebug('[CollectionActivityController] Batch activity saved for ${ids.length} items');
-     } catch (e) {
-       logDebug('[CollectionActivityController] saveBatchActivity error: $e');
-       errorMessage.value = 'Failed to save batch activity: $e';
-     }
-   }
+      exitActivitySelectionMode();
+      logDebug(
+          '[CollectionActivityController] Batch activity saved for ${ids.length} items');
+    } catch (e) {
+      logDebug('[CollectionActivityController] saveBatchActivity error: $e');
+      errorMessage.value = 'Failed to save batch activity: $e';
+    }
+  }
 
   Future<void> saveGlobalActivity({
     required String type,
@@ -1307,7 +1464,8 @@ class CollectionActivityController extends GetxController {
           .toList());
 
       final advances = await repository.loadUnassignedAdvances();
-      unassignedAdvancedPayments.assignAll(advances.map(_advanceToMap).toList());
+      unassignedAdvancedPayments
+          .assignAll(advances.map(_advanceToMap).toList());
 
       final history = await repository.loadAccountHistory();
       final grouped = <String, List<CollectionHistoryModel>>{};
@@ -1322,7 +1480,8 @@ class CollectionActivityController extends GetxController {
       }
       clientHistory.assignAll(grouped);
 
-      logDebug('[CollectionActivityController] Loaded ${activities.length} activities, '
+      logDebug(
+          '[CollectionActivityController] Loaded ${activities.length} activities, '
           '${advances.length} advances, ${history.length} account history entries');
     } catch (e) {
       logDebug('[CollectionActivityController] _loadPersistedExtras error: $e');

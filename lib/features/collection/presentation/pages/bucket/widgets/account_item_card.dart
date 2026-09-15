@@ -36,9 +36,13 @@ class AccountItemCard extends StatelessWidget {
   /// speed so the card reads as one surface changing state, not two.
   static const Duration _stateDuration = Duration(milliseconds: 160);
 
+  /// Built once, not per card per frame: constructing a NumberFormat parses
+  /// its pattern, and this rebuilds for every visible row while scrolling.
+  static final NumberFormat _currencyFormat = NumberFormat.currency(symbol: '₱');
+
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(symbol: '₱');
+    final currencyFormat = _currencyFormat;
     final theme = Theme.of(context);
 
     return BPressableScale(
