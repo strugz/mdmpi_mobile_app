@@ -12,7 +12,10 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 
-  /// Manages the Collection Bucket → Activity flow with a simplified status model.
+/// Lifecycle of the explicit "Download Bucket" action.
+enum BucketDownloadPhase { idle, downloading, success, error }
+
+/// Manages the Collection Bucket → Activity flow with a simplified status model.
 class CollectionActivityController extends GetxController {
   static CollectionActivityController get instance => Get.find();
 
@@ -72,6 +75,17 @@ class CollectionActivityController extends GetxController {
   }
   final RxSet<String> selectedBucketIds = <String>{}.obs;
   final RxBool isLoading = false.obs;
+
+  /// Phase of the explicit "Download Bucket" action; drives the full-screen
+  /// download transition on the Collection home screen. Separate from
+  /// [isLoading] so the silent initial load never shows the overlay.
+  final Rx<BucketDownloadPhase> bucketDownloadPhase = BucketDownloadPhase.idle.obs;
+
+  /// Items received by the most recent successful bucket download.
+  final RxInt lastDownloadedCount = 0.obs;
+
+  /// How long the success/error result stays on screen before the overlay fades.
+  static const Duration downloadResultHold = Duration(milliseconds: 1400);
 
   /// Error message observable for UI feedback
   final RxnString errorMessage = RxnString();
@@ -175,20 +189,30 @@ class CollectionActivityController extends GetxController {
       return;
     }
 
+    if (bucketDownloadPhase.value != BucketDownloadPhase.idle) return;
+
     try {
       isLoading.value = true;
       errorMessage.value = null;
+      bucketDownloadPhase.value = BucketDownloadPhase.downloading;
 
       final items = await repository.refreshFromApi();
       _setItems(items);
+      lastDownloadedCount.value = items.length;
 
       logDebug('[CollectionActivityController] Downloaded ${items.length} bucket items');
+      bucketDownloadPhase.value = BucketDownloadPhase.success;
     } catch (e) {
       logDebug('[CollectionActivityController] downloadBucket error: $e');
       errorMessage.value = 'Failed to download bucket: $e';
+      bucketDownloadPhase.value = BucketDownloadPhase.error;
     } finally {
       isLoading.value = false;
     }
+
+    // Let the result (check / error) register before the overlay fades out.
+    await Future<void>.delayed(downloadResultHold);
+    if (!isClosed) bucketDownloadPhase.value = BucketDownloadPhase.idle;
   }
 
   /// Supervisor "Add to Bucket": create an invoice on the server (saved to the

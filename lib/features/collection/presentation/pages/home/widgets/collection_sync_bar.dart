@@ -23,15 +23,25 @@ class CollectionSyncBar extends StatelessWidget {
       child: Obx(() {
         final pending = controller.pendingUploadCount;
         final busy = controller.isLoading.value;
+        final downloading =
+            controller.bucketDownloadPhase.value == BucketDownloadPhase.downloading;
 
         return Row(
           children: [
-            // Download bucket (guarded)
+            // Download bucket (guarded). While a download is in flight the
+            // icon becomes a spinner and the label reflects progress; the
+            // full-screen transition is rendered by the home screen.
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: busy ? null : controller.downloadBucket,
-                icon: const Icon(Iconsax.import_1, size: 18),
-                label: const Text('Download Bucket'),
+                icon: downloading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Iconsax.import_1, size: 18),
+                label: Text(downloading ? 'Downloading…' : 'Download Bucket'),
               ),
             ),
             const SizedBox(width: BSizes.spaceBtwItems),

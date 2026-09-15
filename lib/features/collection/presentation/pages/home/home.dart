@@ -20,6 +20,7 @@ import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/bucket_download_overlay.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_sync_bar.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
@@ -30,243 +31,254 @@ class CollectionHomeScreen extends StatelessWidget {
     final controller = Get.find<CollectionActivityController>();
 
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Top: Dashboard Area
-            Column(
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Column(
               children: [
-                // Header
-                const BPrimaryHeaderContainer(
-                  child: Column(
-                    children: [
-                      BHomeAppBar(),
-                      SizedBox(height: BSizes.spaceBtwSections),
-                    ],
-                  ),
-                ),
-
-                // Actual Collection Card
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                  child: ActualCollectionCard(
-                    color: Colors.indigo,
-                    onTap: () => Get.to(
-                      () => const MonthlySummaryScreen(type: 'Deposit'),
-                      transition: Transition.cupertino,
-                      duration: const Duration(milliseconds: 300),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: BSizes.sm),
-
-                // Total Collected Card
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                  child: TotalCollectedCard(
-                    color: Colors.green,
-                    onTap: () => Get.to(
-                      () => const MonthlySummaryScreen(type: 'Collection'),
-                      transition: Transition.cupertino,
-                      duration: const Duration(milliseconds: 300),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: BSizes.sm),
-
-                // Collection bucket button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                  child: Obx(() {
-                    return CollectionBucketButton(
-                      itemCount: controller.bucketItems.length,
-                      onTap: () => Get.to(
-                        () => const CollectionBucketScreen(),
-                        transition: Transition.cupertino,
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      ),
-                    );
-                  }),
-                ),
-
-                const SizedBox(height: BSizes.spaceBtwItems),
-
-                // Download bucket / Upload All (offline sync controls)
-                const CollectionSyncBar(),
-
-                const SizedBox(height: BSizes.spaceBtwSections),
-
-                // Summary cards grid
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Obx(() => CollectionSummaryCard(
-                              title: 'Settled',
-                              value: controller.completedItems.length.toString(),
-                              icon: Iconsax.tick_circle,
-                              color: BColors.success,
-                              onTap: () {
-                                Get.to(
-                                  () => const CategoryDetailScreen(title: 'Settled', color: BColors.success),
-                                  transition: Transition.cupertino,
-                                  duration: const Duration(milliseconds: 300),
-                                );
-                              },
-                            )),
-                          ),
-                          const SizedBox(width: BSizes.spaceBtwItems),
-                          Expanded(
-                            child: Obx(() => CollectionSummaryCard(
-                              title: 'Due Date',
-                              value: controller.overdueItems.length.toString(),
-                              icon: Iconsax.timer,
-                              color: BColors.error,
-                              expand: false,
-                              onTap: () {
-                                Get.to(
-                                  () => const CategoryDetailScreen(title: 'Due Date', color: BColors.error),
-                                  transition: Transition.cupertino,
-                                  duration: const Duration(milliseconds: 300),
-                                );
-                              },
-                            )),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: BSizes.spaceBtwItems),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Obx(() => CollectionSummaryCard(
-                              title: 'Reconciliation',
-                              value: controller.reconciliationItems.length.toString(),
-                              icon: Iconsax.status_up,
-                              color: Colors.purple,
-                              onTap: () {
-                                Get.to(
-                                  () => const CategoryDetailScreen(title: 'Reconciliation', color: Colors.purple),
-                                  transition: Transition.cupertino,
-                                  duration: const Duration(milliseconds: 300),
-                                );
-                              },
-                            )),
-                          ),
-                          const SizedBox(width: BSizes.spaceBtwItems),
-                          Expanded(
-                            child: Obx(() => CollectionSummaryCard(
-                              title: 'Advanced Payment',
-                              value: controller.advancedPaymentsCount.toString(),
-                              icon: Iconsax.card_send,
-                              color: Colors.orange,
-                              expand: false,
-                              onTap: () {
-                                Get.to(
-                                  () => const CategoryDetailScreen(title: 'Advanced Payment', color: Colors.orange),
-                                  transition: Transition.cupertino,
-                                  duration: const Duration(milliseconds: 300),
-                                );
-                              },
-                            )),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: BSizes.spaceBtwSections),
-              ],
-            ),
-
-            // Bottom: Recent Activities
-            Container(
-              decoration: BoxDecoration(
-                color: BColors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
-                boxShadow: [
-                  BoxShadow(
-                    color: BColors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-                child: Column(
+                // Top: Dashboard Area
+                Column(
                   children: [
-                    // Recent Activities Header with Show All button
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Expanded bounds the heading's width inside this Row
-                        // (its internal Row uses Expanded for ellipsizing).
-                        const Expanded(
-                          child: BSectionSubHeading(
-                            title: BTexts.collectionHomeSubTitle1,
-                            showActionButton: false,
-                          ),
+                    // Header
+                    const BPrimaryHeaderContainer(
+                      child: Column(
+                        children: [
+                          BHomeAppBar(),
+                          SizedBox(height: BSizes.spaceBtwSections),
+                        ],
+                      ),
+                    ),
+
+                    // Actual Collection Card
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                      child: ActualCollectionCard(
+                        color: Colors.indigo,
+                        onTap: () => Get.to(
+                          () => const MonthlySummaryScreen(type: 'Deposit'),
+                          transition: Transition.cupertino,
+                          duration: const Duration(milliseconds: 300),
                         ),
-                        TextButton(
-                          onPressed: () => Get.to(
-                            () => const RecentActivitiesScreen(),
+                      ),
+                    ),
+                    const SizedBox(height: BSizes.sm),
+
+                    // Total Collected Card
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                      child: TotalCollectedCard(
+                        color: Colors.green,
+                        onTap: () => Get.to(
+                          () => const MonthlySummaryScreen(type: 'Collection'),
+                          transition: Transition.cupertino,
+                          duration: const Duration(milliseconds: 300),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: BSizes.sm),
+
+                    // Collection bucket button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                      child: Obx(() {
+                        return CollectionBucketButton(
+                          itemCount: controller.bucketItems.length,
+                          onTap: () => Get.to(
+                            () => const CollectionBucketScreen(),
                             transition: Transition.cupertino,
                             duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
                           ),
-                          child: const Text('Show All'),
-                        ),
-                      ],
+                        );
+                      }),
                     ),
 
-                    Obx(() {
-                      final recentItems = controller.allRecentHistory;
+                    const SizedBox(height: BSizes.spaceBtwItems),
 
-                      if (recentItems.isEmpty) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: BSizes.lg),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                    // Download bucket / Upload All (offline sync controls)
+                    const CollectionSyncBar(),
+
+                    const SizedBox(height: BSizes.spaceBtwSections),
+
+                    // Summary cards grid
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                      child: Column(
+                        children: [
+                          Row(
                             children: [
-                              const Icon(Iconsax.clock, size: 48, color: BColors.darkGrey),
-                              const SizedBox(height: BSizes.sm),
-                              Text(
-                                'No engagement history yet',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                  title: 'Settled',
+                                  value: controller.completedItems.length.toString(),
+                                  icon: Iconsax.tick_circle,
+                                  color: BColors.success,
+                                  onTap: () {
+                                    Get.to(
+                                      () => const CategoryDetailScreen(title: 'Settled', color: BColors.success),
+                                      transition: Transition.cupertino,
+                                      duration: const Duration(milliseconds: 300),
+                                    );
+                                  },
+                                )),
+                              ),
+                              const SizedBox(width: BSizes.spaceBtwItems),
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                  title: 'Due Date',
+                                  value: controller.overdueItems.length.toString(),
+                                  icon: Iconsax.timer,
+                                  color: BColors.error,
+                                  expand: false,
+                                  onTap: () {
+                                    Get.to(
+                                      () => const CategoryDetailScreen(title: 'Due Date', color: BColors.error),
+                                      transition: Transition.cupertino,
+                                      duration: const Duration(milliseconds: 300),
+                                    );
+                                  },
+                                )),
                               ),
                             ],
                           ),
-                        );
-                      }
+                          const SizedBox(height: BSizes.spaceBtwItems),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                  title: 'Reconciliation',
+                                  value: controller.reconciliationItems.length.toString(),
+                                  icon: Iconsax.status_up,
+                                  color: Colors.purple,
+                                  onTap: () {
+                                    Get.to(
+                                      () => const CategoryDetailScreen(title: 'Reconciliation', color: Colors.purple),
+                                      transition: Transition.cupertino,
+                                      duration: const Duration(milliseconds: 300),
+                                    );
+                                  },
+                                )),
+                              ),
+                              const SizedBox(width: BSizes.spaceBtwItems),
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                  title: 'Advanced Payment',
+                                  value: controller.advancedPaymentsCount.toString(),
+                                  icon: Iconsax.card_send,
+                                  color: Colors.orange,
+                                  expand: false,
+                                  onTap: () {
+                                    Get.to(
+                                      () => const CategoryDetailScreen(title: 'Advanced Payment', color: Colors.orange),
+                                      transition: Transition.cupertino,
+                                      duration: const Duration(milliseconds: 300),
+                                    );
+                                  },
+                                )),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
 
-                      // Limit to the most recent 3 entries
-                      final recentThree = recentItems.take(3).toList();
-
-                      final historyList = recentThree.map((e) => e['history'] as CollectionHistoryModel).toList();
-                      final accountNames = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['accountName'].toString() };
-                      final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId']?.toString() };
-                      final items = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['item'] as CollectionItemModel? };
-
-                      return ActivityHistoryList(
-                        history: historyList,
-                        accountNames: accountNames,
-                        invoiceIds: invoiceIds,
-                        items: items,
-                      );
-                    }),
-
-                    // Add extra space at the bottom for scrolling comfort
-                    const SizedBox(height: BSizes.spaceBtwSections * 2),
+                    const SizedBox(height: BSizes.spaceBtwSections),
                   ],
                 ),
-              ),
+
+                // Bottom: Recent Activities
+                Container(
+                  decoration: BoxDecoration(
+                    color: BColors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: BColors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                    child: Column(
+                      children: [
+                        // Recent Activities Header with Show All button
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Expanded bounds the heading's width inside this Row
+                            // (its internal Row uses Expanded for ellipsizing).
+                            const Expanded(
+                              child: BSectionSubHeading(
+                                title: BTexts.collectionHomeSubTitle1,
+                                showActionButton: false,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => Get.to(
+                                () => const RecentActivitiesScreen(),
+                                transition: Transition.cupertino,
+                                duration: const Duration(milliseconds: 300),
+                              ),
+                              child: const Text('Show All'),
+                            ),
+                          ],
+                        ),
+
+                        Obx(() {
+                          final recentItems = controller.allRecentHistory;
+
+                          if (recentItems.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: BSizes.lg),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Iconsax.clock, size: 48, color: BColors.darkGrey),
+                                  const SizedBox(height: BSizes.sm),
+                                  Text(
+                                    'No engagement history yet',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          // Limit to the most recent 3 entries
+                          final recentThree = recentItems.take(3).toList();
+
+                          final historyList = recentThree.map((e) => e['history'] as CollectionHistoryModel).toList();
+                          final accountNames = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['accountName'].toString() };
+                          final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId']?.toString() };
+                          final items = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['item'] as CollectionItemModel? };
+
+                          return ActivityHistoryList(
+                            history: historyList,
+                            accountNames: accountNames,
+                            invoiceIds: invoiceIds,
+                            items: items,
+                          );
+                        }),
+
+                        // Add extra space at the bottom for scrolling comfort
+                        const SizedBox(height: BSizes.spaceBtwSections * 2),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+
+          // "Download Bucket" transition: server → bucket data-transfer
+          // animation over a blurred scrim, resolving to a check / error.
+          Obx(() => BucketDownloadOverlay(
+                phase: controller.bucketDownloadPhase.value,
+                itemCount: controller.lastDownloadedCount.value,
+              )),
+        ],
       ),
     );
   }
