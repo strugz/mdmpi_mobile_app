@@ -32,6 +32,7 @@
 - [x] 21. Delivery Details page — information-design pass (unlabelled icon-only facts, truncated timestamps, "Driver:"/"Received By:" rows styled differently from everything else, floating "View Items" / "Item Photo" links, duplicated "Delivery Details" heading) — `M` (done app-only: labelled two-column fact grid, one status chip, left-aligned section titles, chronological labelled timestamps, signature card, actions row with item count; shared by the page and the request modal)
 - [x] 20. Document References take over the request screens when a delivery carries many (15–20 DR/SI/PO numbers, one tall row + copy icon each) — `S` (done app-only: `DocumentReferenceList` rewritten as grouped DR / SI / PO chips, tap-to-copy, "Show all N" past 6, "Copy all"; the courier's Request Transport sheet reuses it)
 - [x] 23. Live map (Delivery Location): hidden drawer, fake "Vehicle 1/2/3" rows, one-line truncated info window — `M` (done app-only: fake vehicle repository/controller/model deleted; edge-swipe drawer replaced by a bottom "N live deliveries" sheet; tapping a car shows a card with **Call** / **Center**; FAB icon now says "show all")
+- [ ] 24. App-wide: keep the screen awake while the app is open (no screen dim/lock in use) — `S/M`
 
 ---
 
@@ -1118,6 +1119,36 @@ order, select, Call / Center / X, stale selection, meta line).
 
 ---
 
+## 24. App-wide — keep the screen awake while the app is open
+
+**Requirement.** While the app is in the **foreground**, the device screen never dims
+or locks — the phone "stays alive" for as long as the app is open. The moment the app
+goes to the background (home, another app, screen off by power button), the wakelock
+is released so it does not drain the battery or keep the screen on from the launcher.
+
+**Current behavior (verified 2026-09-11).** No screen wakelock exists anywhere in the
+app. The only related flag is `enableWakeLock: true` in
+`lib/common/services/implementations/location_tracking_service.dart:76` — that is a
+**CPU** wake lock for the background location-tracking service (keeps GPS updates
+flowing with the screen off), not a screen-on lock. On every screen the display still
+times out and locks according to the phone's system settings.
+
+**Plan**
+- [ ] Add the `wakelock_plus` package (supports both targets: Android and Windows).
+- [ ] Tie it to the app lifecycle, not to individual screens: a single
+      `WidgetsBindingObserver` registered once at bootstrap (alongside the init in
+      `lib/main.dart` / `lib/base/utils/platform_init.dart`) that calls
+      `WakelockPlus.enable()` on `resumed` and `WakelockPlus.disable()` on
+      `paused` / `inactive` / `detached`, plus an initial `enable()` at startup.
+- [ ] No backend, no local-DB, no version-gated behavior — app-only, `S/M`.
+
+**Open questions (settle at implementation time)**
+- Always-on for everyone, or a Settings toggle (default ON)? Couriers on long shifts
+  may prefer the toggle for battery.
+- Confirm with ops there is no battery-policy objection for field devices.
+
+---
+
 ## Cross-cutting notes & risks
 
 - **Backend coordination required** for items 2 (multiple image uploads), 3, 4, 7,
@@ -1150,7 +1181,8 @@ order, select, Call / Center / X, stale selection, meta line).
 3. **Backend-coupled tracks:** 2 (images) · 3→4 (pull-out items, remarks depends on
    items) · 7 (pick-up categories) · 11 (backload items).
 
-**Status (2026-09-10): all 23 items delivered.** What is still pending is rollout, not code:
+**Status (2026-09-11): items 1–23 delivered; item 24 (keep screen awake) is open.**
+What is still pending from 1–23 is rollout, not code:
 
 - **13 + 16 deploy order:** run `migration_20260910_add_air_sea_shippingmethod.sql` → set
   `;Timezone=Asia/Manila` on the deployed `PostgreSqlDB` connection string → deploy the
