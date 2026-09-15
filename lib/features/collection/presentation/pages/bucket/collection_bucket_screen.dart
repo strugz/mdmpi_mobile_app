@@ -239,7 +239,7 @@ class _BucketEmptyState extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: Icon(
-                  filtered ? Iconsax.search_status : Iconsax.box,
+                  filtered ? Iconsax.search_status : Icons.shopping_basket_rounded,
                   size: 40,
                   color: BColors.primary.withValues(alpha: 0.7),
                 ),
