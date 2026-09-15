@@ -1,6 +1,6 @@
 # Collection — Stage E Plan (web client enrichment)
 
-**Date:** 2026-09-15 · **Status:** PROPOSED — awaiting go-ahead
+**Date:** 2026-09-15 · **Status:** E1 IMPLEMENTED 2026-09-15 — backend `8aea616` (163 tests; apply `migration_20260915_collection_stage_e1_client_audit.sql` first), web `ClientsView.vue` + `clientsApi.js` built. E2/E3 pending.
 Follows Stage D (`COLLECTION_NORMALIZATION_STAGE_D_PLAN.md`, deployed 2026-09-15).
 Web app: `mdmpi_collection_web`. Backend: MDMPI.App `master`.
 
