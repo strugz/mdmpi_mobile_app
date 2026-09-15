@@ -200,13 +200,18 @@ class CollectionDao {
   // ========================================================================
 
   /// Convert API JSON to database JSON (add timestamps if missing).
+  ///
+  /// The nested `Client` object is serialized by [ClientModel.toJson] with ACCMST
+  /// keys (ACCMID/ACCMNM/ACCMAD/...); read those, tolerating the plain
+  /// id/name/address variants a raw API response might use.
   Map<String, dynamic> _apiJsonToDbJson(Map<String, dynamic> apiJson) {
     final now = DateTime.now().toIso8601String();
+    final client = apiJson['Client'] as Map<String, dynamic>?;
     return {
       'id': apiJson['id'],
-      'clientId': apiJson['Client']?['id'] ?? '',
-      'clientName': apiJson['Client']?['name'] ?? '',
-      'clientAddress': apiJson['Client']?['address'] ?? '',
+      'clientId': client?['ACCMID'] ?? client?['id'] ?? '',
+      'clientName': client?['ACCMNM'] ?? client?['name'] ?? '',
+      'clientAddress': client?['ACCMAD'] ?? client?['address'] ?? '',
       'documentReferences': (apiJson['DocumentReferences'] as List?)?.join(',') ?? '',
       'bankName': apiJson['BankName'] ?? '',
       'toBeCollected': apiJson['ToBeCollected'] ?? 0.0,
@@ -226,16 +231,19 @@ class CollectionDao {
   }
 
   /// Convert database JSON back to API JSON format.
+  ///
+  /// Emit the nested `Client` with ACCMST keys so [ClientModel.fromJson] maps
+  /// every field (including the id via ACCMID) correctly.
   Map<String, dynamic> _dbJsonToApiJson(Map<String, dynamic> dbJson) {
     return {
       'id': dbJson['id'],
       'Client': {
-        'id': dbJson['clientId'],
-        'name': dbJson['clientName'],
-        'address': dbJson['clientAddress'],
-        'code': dbJson['bpCode'] ?? '',
-        'contact': '',
-        'emailAddress': '',
+        'ACCMID': dbJson['clientId'],
+        'ACCMSC': dbJson['bpCode'] ?? '',
+        'ACCMNM': dbJson['clientName'],
+        'ACCMAD': dbJson['clientAddress'],
+        'ACCMPH': '',
+        'ACCMEM': '',
       },
       'DocumentReferences': (dbJson['documentReferences'] as String?)?.split(',').where((e) => e.isNotEmpty).toList() ?? [],
       'BankName': dbJson['bankName'],
