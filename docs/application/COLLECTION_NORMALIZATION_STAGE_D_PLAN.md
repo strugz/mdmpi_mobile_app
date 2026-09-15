@@ -1,6 +1,6 @@
 # Collection Normalization — Stage D Plan (drop redundancy)
 
-**Date:** 2026-09-15 · **Status:** PROPOSED — awaiting go-ahead
+**Date:** 2026-09-15 · **Status:** IMPLEMENTED 2026-09-15 — `migration_20260915_collection_normalization_stage_d.sql` + backend build; 154/154 tests. Apply the migration (after A, B, C1, C3) before deploying.
 Parent design: `COLLECTION_DATA_MODEL_NORMALIZATION.md` §6 row D. Stages A–C are live
 (mobile PR #19, MDMPI.App `476b81e`).
 
@@ -74,7 +74,7 @@ Runs in one transaction. Order matters.
 5. `ALTER TABLE a_tblcollectioninvoice DROP COLUMN clientid, DROP COLUMN clientname, DROP COLUMN clientaddress, DROP COLUMN clientcontact, DROP COLUMN clientemail, DROP COLUMN bankname;`
 6. `ALTER TABLE a_tblcollectionengagement DROP COLUMN bankname, DROP COLUMN checkno, DROP COLUMN checkdate;`
 7. **Recompute function** `fn_collection_recompute_invoice_caches(p_documentid text DEFAULT NULL)` that sets `totalcollected = Σ allocations`, `tobecollected = originalamount − Σ`, `status = 'Collected'` when balance is 0, for one invoice or all. Run it once at the end of the migration.
-8. Replace the invoice **history trigger function** so it no longer references the dropped columns (the trigger copies `NEW.*` into `a_tblcollectioninvoice_history`; that table gets the same columns dropped, after its own backup).
+8. Replace the invoice **history trigger function** so it no longer references the dropped `clientid`. The audit table `a_tblcollectioninvoice_history` is left untouched (no rows or columns lost); its existing `clientid` column now receives the client **code**.
 
 Append to `mdmpi_app_db_schema.sql`.
 
