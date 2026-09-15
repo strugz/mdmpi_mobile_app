@@ -73,6 +73,7 @@ class CollectionActivityController extends GetxController {
   // ========================================================================
 
   bool _aggregatesDirty = true;
+  int _cachedSourceLength = -1;
   List<CollectionItemModel> _allItemsCache = const [];
   final Map<String, int> _invoiceCountByClient = {};
   final Map<String, double> _totalDueByClient = {};
@@ -111,11 +112,27 @@ class CollectionActivityController extends GetxController {
         _invoiceCountByClient[id] = (_invoiceCountByClient[id] ?? 0) + 1;
       }
     }
+    _cachedSourceLength = bucketItems.length + activityItems.length;
     _aggregatesDirty = false;
   }
 
+  /// Serving a warm cache must still *read* both lists.
+  ///
+  /// An Obx subscribes to whatever observables its builder touches. Before
+  /// caching, every aggregate walked bucketItems/activityItems, so any Obx
+  /// reading one was automatically rebuilt when items changed. A cached read
+  /// touches nothing, which both throws "improper use of a GetX" when the
+  /// builder reads no other observable, and silently stops the widget
+  /// updating when it reads one.
+  ///
+  /// Reading the lengths here re-registers both lists for the enclosing Obx.
+  /// The length is also compared against the cache, so a change that somehow
+  /// escaped the dirty flag still forces a rebuild.
   void _ensureAggregates() {
-    if (_aggregatesDirty) _rebuildAggregates();
+    final sourceLength = bucketItems.length + activityItems.length;
+    if (_aggregatesDirty || sourceLength != _cachedSourceLength) {
+      _rebuildAggregates();
+    }
   }
 
   /// Bucket and Activity items merged by id (Activity wins).
