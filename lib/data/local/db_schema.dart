@@ -323,4 +323,73 @@ Future<void> createAllTables(Database db) async {
       created_at TEXT NOT NULL
     )
   ''');
+
+  // Collection tables (bucket cache, engagement history, pending upload queue).
+  await ensureCollectionTables(db);
+}
+
+/// Creates the Collection tables idempotently.
+///
+/// These hold the collector's offline field work (downloaded bucket, recorded
+/// engagements, and the pending upload queue). They are created with
+/// `CREATE TABLE IF NOT EXISTS` and are deliberately EXCLUDED from the
+/// destructive `_recreateAllTables` rebuild in [DatabaseHelper], so un-uploaded
+/// work survives app upgrades. Columns match `CollectionDao` and
+/// `CollectionPendingDao`.
+Future<void> ensureCollectionTables(Database db) async {
+  // Table: a_tblCollectionItems (downloaded bucket + in-progress edits)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionItems (
+      id TEXT PRIMARY KEY,
+      clientId TEXT,
+      clientName TEXT,
+      clientAddress TEXT,
+      documentReferences TEXT,
+      bankName TEXT,
+      toBeCollected REAL DEFAULT 0,
+      totalCollected REAL DEFAULT 0,
+      remarks TEXT,
+      documentDate TEXT,
+      bpCode TEXT,
+      postingDate TEXT,
+      dueDate TEXT,
+      status TEXT,
+      lastOutcome TEXT,
+      assignedAt TEXT,
+      collectorName TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )
+  ''');
+
+  // Table: a_tblCollectionHistory (engagement history per item)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionHistory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      itemId TEXT NOT NULL,
+      date TEXT,
+      collectorName TEXT,
+      status TEXT,
+      remarks TEXT,
+      totalCollected REAL DEFAULT 0,
+      bankName TEXT,
+      checkNumber TEXT,
+      checkDate TEXT,
+      purposeOfVisit TEXT,
+      FOREIGN KEY (itemId) REFERENCES a_tblCollectionItems (id) ON DELETE CASCADE
+    )
+  ''');
+
+  // Table: a_tblCollectionPending (offline change queue for end-of-day upload)
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionPending (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      operation TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      itemId TEXT,
+      createdAt TEXT NOT NULL,
+      retryCount INTEGER DEFAULT 0,
+      lastRetryAt TEXT
+    )
+  ''');
 }

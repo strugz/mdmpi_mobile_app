@@ -28,6 +28,8 @@ import 'dao/common/item_category_dao.dart';
 import 'dao/common/form_category_dao.dart';
 import 'dao/common/client_contact_person_dao.dart';
 import 'dao/common/contact_dao.dart';
+import 'dao/collection/collection_dao.dart';
+import 'dao/collection/collection_pending_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -56,6 +58,8 @@ class DatabaseHelper {
   FormCategoryDao? _formCategoryDao;
   ClientContactPersonDao? _clientContactPersonDao;
   ContactDao? _contactDao;
+  CollectionDao? _collectionDao;
+  CollectionPendingDao? _collectionPendingDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -68,7 +72,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 19,
+      version: 20,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -106,6 +110,11 @@ class DatabaseHelper {
     await _addColumnIfNotExists(db, 'a_tblRequestReceiverSignature',
         'ApiStatus', "TEXT DEFAULT 'Pending'");
     await _ensureImageOutboxTable(db);
+
+    // Collection tables hold un-uploaded offline field work. Create them
+    // non-destructively and keep them OUT of _recreateAllTables so an app
+    // upgrade never wipes a collector's pending collections.
+    await ensureCollectionTables(db);
   }
 
   /// Drop cache-backed tables and recreate from the canonical schema.
@@ -299,6 +308,20 @@ class DatabaseHelper {
     final db = await database;
     _contactDao = ContactDao(db);
     return _contactDao!;
+  }
+
+  Future<CollectionDao> get collectionDao async {
+    if (_collectionDao != null) return _collectionDao!;
+    final db = await database;
+    _collectionDao = CollectionDao(db);
+    return _collectionDao!;
+  }
+
+  Future<CollectionPendingDao> get collectionPendingDao async {
+    if (_collectionPendingDao != null) return _collectionPendingDao!;
+    final db = await database;
+    _collectionPendingDao = CollectionPendingDao(db);
+    return _collectionPendingDao!;
   }
 
   Future<List<String>> getContactPhoneNumbers() async {
