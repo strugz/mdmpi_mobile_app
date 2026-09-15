@@ -37,6 +37,8 @@ class BFilterByAreaButton extends StatelessWidget {
             ),
             label: Text(
               hasFilter ? 'Filter by Area: ${BCollectionArea.labelFor(area)}' : 'Filter by Area',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: hasFilter ? BColors.primary : BColors.darkGrey,
                 fontWeight: hasFilter ? FontWeight.bold : FontWeight.normal,

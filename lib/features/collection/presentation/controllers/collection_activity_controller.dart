@@ -319,6 +319,26 @@ class CollectionActivityController extends GetxController {
   /// Case-insensitive prefix match against the selected area (see BCollectionArea).
   bool _matchesArea(String code) => BCollectionArea.matches(code, selectedArea.value);
 
+  /// True when any bucket-narrowing input (search, amount/invoice range, area)
+  /// is active. Drives the empty-state copy and the "Clear all filters" action.
+  bool get hasActiveBucketFilter =>
+      bucketSearchQuery.value.trim().isNotEmpty ||
+      bucketMinAmount.value > 0 ||
+      bucketMaxAmount.value > 0 ||
+      bucketMinInvoices.value > 0 ||
+      bucketMaxInvoices.value > 0 ||
+      selectedArea.value.isNotEmpty;
+
+  /// Reset every bucket filter, including the area selection.
+  void clearBucketFilters() {
+    bucketSearchQuery.value = '';
+    bucketMinAmount.value = 0;
+    bucketMaxAmount.value = 0;
+    bucketMinInvoices.value = 0;
+    bucketMaxInvoices.value = 0;
+    selectedArea.value = '';
+  }
+
   List<ClientModel> get bucketAccounts {
     return masterAccountList.where((client) {
       // Territory Filter
