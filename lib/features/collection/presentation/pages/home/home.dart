@@ -72,7 +72,8 @@ class CollectionHomeScreen extends StatelessWidget {
                             duration: _pageDuration,
                           ),
                           onCollectedTap: () => Get.to(
-                            () => const MonthlySummaryScreen(type: 'Collection'),
+                            () =>
+                                const MonthlySummaryScreen(type: 'Collection'),
                             transition: _pageTransition,
                             duration: _pageDuration,
                           ),
@@ -95,57 +96,72 @@ class CollectionHomeScreen extends StatelessWidget {
                         const CollectionSyncBar(),
                         const SizedBox(height: _sectionGap),
 
-                        // Summary tiles
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: Obx(() => CollectionSummaryCard(
-                                    title: 'Settled',
-                                    value: controller.completedItems.length.toString(),
-                                    icon: Iconsax.tick_circle,
-                                    color: BColors.success,
-                                    onTap: () => _openCategory('Settled', BColors.success),
-                                  )),
-                            ),
-                            const SizedBox(width: _gap),
-                            Expanded(
-                              child: Obx(() => CollectionSummaryCard(
-                                    title: 'Due Date',
-                                    value: controller.overdueItems.length.toString(),
-                                    icon: Iconsax.timer,
-                                    color: BColors.error,
-                                    expand: false,
-                                    onTap: () => _openCategory('Due Date', BColors.error),
-                                  )),
-                            ),
-                          ],
+                        // Summary tiles. IntrinsicHeight bounds the row so the
+                        // two tiles can match heights: cross-axis stretch alone
+                        // is unbounded inside a scroll view and fails layout.
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                      title: 'Settled',
+                                      value: controller.completedItems.length
+                                          .toString(),
+                                      icon: Iconsax.tick_circle,
+                                      color: BColors.success,
+                                      onTap: () => _openCategory(
+                                          'Settled', BColors.success),
+                                    )),
+                              ),
+                              const SizedBox(width: _gap),
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                      title: 'Due Date',
+                                      value: controller.overdueItems.length
+                                          .toString(),
+                                      icon: Iconsax.timer,
+                                      color: BColors.error,
+                                      expand: false,
+                                      onTap: () => _openCategory(
+                                          'Due Date', BColors.error),
+                                    )),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: _gap),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: Obx(() => CollectionSummaryCard(
-                                    title: 'Reconciliation',
-                                    value: controller.reconciliationItems.length.toString(),
-                                    icon: Iconsax.status_up,
-                                    color: Colors.purple,
-                                    onTap: () => _openCategory('Reconciliation', Colors.purple),
-                                  )),
-                            ),
-                            const SizedBox(width: _gap),
-                            Expanded(
-                              child: Obx(() => CollectionSummaryCard(
-                                    title: 'Advanced Payment',
-                                    value: controller.advancedPaymentsCount.toString(),
-                                    icon: Iconsax.card_send,
-                                    color: Colors.orange,
-                                    expand: false,
-                                    onTap: () => _openCategory('Advanced Payment', Colors.orange),
-                                  )),
-                            ),
-                          ],
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                      title: 'Reconciliation',
+                                      value: controller
+                                          .reconciliationItems.length
+                                          .toString(),
+                                      icon: Iconsax.status_up,
+                                      color: Colors.purple,
+                                      onTap: () => _openCategory(
+                                          'Reconciliation', Colors.purple),
+                                    )),
+                              ),
+                              const SizedBox(width: _gap),
+                              Expanded(
+                                child: Obx(() => CollectionSummaryCard(
+                                      title: 'Advanced Payment',
+                                      value: controller.advancedPaymentsCount
+                                          .toString(),
+                                      icon: Iconsax.card_send,
+                                      color: Colors.orange,
+                                      expand: false,
+                                      onTap: () => _openCategory(
+                                          'Advanced Payment', Colors.orange),
+                                    )),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: _sectionGap),
                       ],
@@ -156,7 +172,8 @@ class CollectionHomeScreen extends StatelessWidget {
                   Container(
                     decoration: BoxDecoration(
                       color: BColors.white,
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(BSizes.borderRadiusLg)),
                       boxShadow: [
                         BoxShadow(
                           color: BColors.black.withValues(alpha: 0.05),
@@ -197,15 +214,20 @@ class CollectionHomeScreen extends StatelessWidget {
 
                             if (recentItems.isEmpty) {
                               return Padding(
-                                padding: const EdgeInsets.symmetric(vertical: BSizes.lg),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: BSizes.lg),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Iconsax.clock, size: 48, color: BColors.darkGrey),
+                                    const Icon(Iconsax.clock,
+                                        size: 48, color: BColors.darkGrey),
                                     const SizedBox(height: BSizes.sm),
                                     Text(
                                       'No engagement history yet',
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(color: BColors.darkGrey),
                                     ),
                                   ],
                                 ),
@@ -215,10 +237,23 @@ class CollectionHomeScreen extends StatelessWidget {
                             // Limit to the most recent 3 entries
                             final recentThree = recentItems.take(3).toList();
 
-                            final historyList = recentThree.map((e) => e['history'] as CollectionHistoryModel).toList();
-                            final accountNames = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['accountName'].toString() };
-                            final invoiceIds = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['invoiceId']?.toString() };
-                            final items = { for (var i = 0; i < recentThree.length; i++) i : recentThree[i]['item'] as CollectionItemModel? };
+                            final historyList = recentThree
+                                .map((e) =>
+                                    e['history'] as CollectionHistoryModel)
+                                .toList();
+                            final accountNames = {
+                              for (var i = 0; i < recentThree.length; i++)
+                                i: recentThree[i]['accountName'].toString()
+                            };
+                            final invoiceIds = {
+                              for (var i = 0; i < recentThree.length; i++)
+                                i: recentThree[i]['invoiceId']?.toString()
+                            };
+                            final items = {
+                              for (var i = 0; i < recentThree.length; i++)
+                                i: recentThree[i]['item']
+                                    as CollectionItemModel?
+                            };
 
                             return ActivityHistoryList(
                               history: historyList,

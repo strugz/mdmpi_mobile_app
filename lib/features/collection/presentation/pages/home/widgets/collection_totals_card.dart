@@ -33,6 +33,46 @@ class CollectionTotalsCard extends StatelessWidget {
     }
     final controller = Get.find<TotalCollectedController>();
 
+    return Obx(() {
+      final actual = controller.actualCollectionTotal;
+      final target = controller.targetAmount.value;
+      final total = controller.monthlyTotal;
+
+      return CollectionTotalsCardView(
+        actual: BFormatter.formatPesoCurrency(actual),
+        actualFootnote: target > 0
+            ? 'Target ${BFormatter.formatPesoCurrency(target)}'
+            : 'No target set',
+        collected: BFormatter.formatPesoCurrency(total),
+        onActualTap: onActualTap,
+        onCollectedTap: onCollectedTap,
+      );
+    });
+  }
+}
+
+/// Presentational half of [CollectionTotalsCard]: takes preformatted strings
+/// so the layout can be rendered (and tested) without the controller.
+class CollectionTotalsCardView extends StatelessWidget {
+  const CollectionTotalsCardView({
+    super.key,
+    required this.actual,
+    required this.actualFootnote,
+    required this.collected,
+    this.collectedFootnote = 'View breakdown',
+    this.onActualTap,
+    this.onCollectedTap,
+  });
+
+  final String actual;
+  final String actualFootnote;
+  final String collected;
+  final String collectedFootnote;
+  final VoidCallback? onActualTap;
+  final VoidCallback? onCollectedTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -40,42 +80,37 @@ class CollectionTotalsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(BSizes.cardRadiusLg),
         border: Border.all(color: BColors.grey, width: 1),
       ),
-      child: Obx(() {
-        final actual = controller.actualCollectionTotal;
-        final target = controller.targetAmount.value;
-        final total = controller.monthlyTotal;
-
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _TotalsHalf(
-                  icon: Iconsax.bank,
-                  color: _actualColor,
-                  label: 'Actual Collection',
-                  value: BFormatter.formatPesoCurrency(actual),
-                  footnote: target > 0
-                      ? 'Target ${BFormatter.formatPesoCurrency(target)}'
-                      : 'No target set',
-                  onTap: onActualTap,
-                ),
+      // IntrinsicHeight bounds the row so both halves match heights and the
+      // divider spans them. Cross-axis stretch alone would be unbounded
+      // inside a scroll view and fail layout.
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _TotalsHalf(
+                icon: Iconsax.bank,
+                color: CollectionTotalsCard._actualColor,
+                label: 'Actual Collection',
+                value: actual,
+                footnote: actualFootnote,
+                onTap: onActualTap,
               ),
-              const VerticalDivider(width: 1, thickness: 1, color: BColors.grey),
-              Expanded(
-                child: _TotalsHalf(
-                  icon: Iconsax.money,
-                  color: _collectedColor,
-                  label: 'Collected this Month',
-                  value: BFormatter.formatPesoCurrency(total),
-                  footnote: 'View breakdown',
-                  onTap: onCollectedTap,
-                ),
+            ),
+            const VerticalDivider(width: 1, thickness: 1, color: BColors.grey),
+            Expanded(
+              child: _TotalsHalf(
+                icon: Iconsax.money,
+                color: CollectionTotalsCard._collectedColor,
+                label: 'Collected this Month',
+                value: collected,
+                footnote: collectedFootnote,
+                onTap: onCollectedTap,
               ),
-            ],
-          ),
-        );
-      }),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -122,7 +157,8 @@ class _TotalsHalf extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelMedium?.copyWith(color: BColors.darkerGrey),
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: BColors.darkerGrey),
                   ),
                 ),
               ],
@@ -149,7 +185,8 @@ class _TotalsHalf extends StatelessWidget {
               footnote,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+              style:
+                  theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
             ),
           ],
         ),
