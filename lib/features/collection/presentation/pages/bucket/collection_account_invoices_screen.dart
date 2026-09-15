@@ -5,8 +5,8 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'widgets/collection_search_filter_bar.dart';
-import 'widgets/invoice_item_card.dart';
 import 'widgets/bucket_filter_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 
@@ -101,11 +101,7 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
                       separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
                       itemBuilder: (context, index) {
                         final item = invoices[index];
-                        return InvoiceItemCard(
-                          item: item,
-                          isSelected: false,
-                          onTap: () {}, // No selection in bucket view anymore
-                        );
+                        return InvoiceCard(item: item);
                       },
                     ),
             ),
