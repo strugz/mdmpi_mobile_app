@@ -1,6 +1,6 @@
 # Collection Normalization — Stage D Plan (drop redundancy)
 
-**Date:** 2026-09-15 · **Status:** DEPLOYED 2026-09-15 — migration applied (3870 invoices backed up, FK + recompute function present), backend `074cd32` live, Download Bucket verified on device. Drop the two `_stage_d_backup` tables after the next clean monthly import.
+**Date:** 2026-09-15 · **Status:** DEPLOYED 2026-09-15 — migration applied (3870 invoices backed up, FK + recompute function present), backend `074cd32` live, Download Bucket verified on device. Backup tables dropped 2026-09-15 by the user; the column drops are final.
 Parent design: `COLLECTION_DATA_MODEL_NORMALIZATION.md` §6 row D. Stages A–C are live
 (mobile PR #19, MDMPI.App `476b81e`).
 
