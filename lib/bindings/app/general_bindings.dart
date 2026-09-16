@@ -84,6 +84,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import '../../data/repositories/collection/collection_repository.dart';
 import '../../features/collection/helpers/sync_manager.dart';
 import '../../features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -241,6 +242,7 @@ class GeneralBindings extends Bindings {
     /// Collection Activity Controller
     Get.lazyPut(() => CollectionActivityController(), fenix: true);
     Get.lazyPut(() => CollectionRepository(), fenix: true);
+    Get.lazyPut(() => BankRepository(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
   }

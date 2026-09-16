@@ -9,6 +9,8 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_c
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/bank_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
@@ -24,7 +26,8 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 ///    eight digits. It is also the common case.
 ///  - The outcome follows the amount (full pays Collected, part pays
 ///    Partially Collected) and stops following the moment it is set by hand.
-///  - Bank names already used are chips; the check date defaults to today.
+///  - Banks already used are chips, the rest are a searchable list, and the
+///    check date defaults to today.
 class ActivityDetailScreen extends StatefulWidget {
   const ActivityDetailScreen({super.key, required this.item});
 
@@ -135,6 +138,23 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       selection: TextSelection.collapsed(offset: text.length),
     );
     FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  /// The company bank list, held by the controller. Empty until the first
+  /// successful download, which is the case the field falls back for.
+  List<BankModel> get _banks => Get.isRegistered<CollectionActivityController>()
+      ? CollectionActivityController.instance.banks
+      : const <BankModel>[];
+
+  Future<void> _pickBank() async {
+    final picked = await BankPickerSheet.show(
+      context,
+      banks: _banks,
+      selected: bankNameController.text,
+    );
+    if (picked != null) {
+      setState(() => bankNameController.text = picked.label);
+    }
   }
 
   Future<void> _pickCheckDate() async {
@@ -472,12 +492,23 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: BSizes.spaceBtwItems),
+        // Read-only and opened as a picker: the bank was free text, so one
+        // bank reached the server as "BPI", "bpi" and "Bank of the Philippine
+        // Islands" depending on who recorded it. It stays a plain field only
+        // when the company list has not downloaded yet, so a collector is
+        // never blocked by a list they do not have.
         TextField(
           controller: bankNameController,
+          readOnly: _banks.isNotEmpty,
+          onTap: _banks.isEmpty ? null : _pickBank,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             hintText: 'Bank name',
-            prefixIcon: Icon(Iconsax.bank),
+            prefixIcon: const Icon(Iconsax.bank),
+            suffixIcon: _banks.isEmpty
+                ? null
+                : const Icon(Iconsax.arrow_down_1,
+                    size: 18, color: BColors.darkGrey),
           ),
         ),
         // Banks this collector already uses, so the name is picked not typed.

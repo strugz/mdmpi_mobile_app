@@ -393,6 +393,20 @@ Future<void> ensureCollectionTables(Database db) async {
     )
   ''');
 
+  // Table: a_tblCollectionBank (the company bank list, cached)
+  //
+  // Reference data from the server, but cached like field work rather than
+  // like a lookup: a collector standing in front of a customer with a check
+  // in their hand has no guarantee of signal, and an empty bank picker would
+  // send them back to typing the name by hand.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionBank (
+      mid TEXT PRIMARY KEY,
+      bankcode TEXT,
+      bank TEXT
+    )
+  ''');
+
   // --- Stage C2: concepts that previously lived only in memory -------------
 
   // Table: a_tblCollectionActivity (Deposit / CWT Pick-up / Reconciliation)

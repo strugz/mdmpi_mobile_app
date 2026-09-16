@@ -12,6 +12,8 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/collection_reposit
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
 
 /// Lifecycle of the explicit "Download Bucket" action.
 enum BucketDownloadPhase { idle, downloading, success, error }
@@ -234,6 +236,9 @@ class CollectionActivityController extends GetxController {
     // Load data
     loadBucket();
     _loadPersistedExtras();
+    // Reference data for the check fields. Independent of the bucket, and
+    // nothing waits on it.
+    loadBanks();
     // A server download replaces the local cache; mirror it in memory. Local
     // read only (no network), so this cannot loop back into a sync.
     ever(repository.localDataVersion, (_) async {
@@ -421,6 +426,23 @@ class CollectionActivityController extends GetxController {
   ///
   /// Offered as one-tap fills on the engagement form so a bank name is picked
   /// rather than retyped; collectors work the same few banks repeatedly.
+  // ── Bank list ───────────────────────────────────────────────────────────
+
+  /// The company bank list, for the check fields.
+  final RxList<BankModel> banks = <BankModel>[].obs;
+
+  /// Load the cached bank list and refresh it behind the collector.
+  ///
+  /// Never blocks anything: a failure here leaves the picker on whatever was
+  /// cached, and an empty picker leaves the bank field as plain text.
+  Future<void> loadBanks() async {
+    if (!Get.isRegistered<BankRepository>()) return;
+    final repository = Get.find<BankRepository>();
+    banks.assignAll(await repository.cached());
+    final result = await repository.refresh();
+    if (result.isSuccess) banks.assignAll(result.value);
+  }
+
   List<String> recentBankNames({int limit = 4}) {
     final counts = <String, int>{};
     final display = <String, String>{};
