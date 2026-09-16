@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_history_m
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Record one payment against several invoices at once.
 ///
@@ -272,12 +273,10 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     );
 
     Get.back();
-    Get.snackbar(
-      'Saved',
-      'Recorded ${BFormatter.formatPesoCurrency(_targetTotal)} across ${widget.items.length} invoices.',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: BColors.success,
-      colorText: Colors.white,
+    BLoaders.successSnackBar(
+      title: 'Saved',
+      message:
+          'Recorded ${BFormatter.formatPesoCurrency(_targetTotal)} across ${widget.items.length} invoices.',
     );
   }
 

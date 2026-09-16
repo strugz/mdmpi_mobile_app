@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Controller to manage local storage data viewing
 class LocalStorageDataController extends GetxController {
@@ -66,10 +67,9 @@ class LocalStorageDataController extends GetxController {
       logDebug('Loaded ${result.length} rows from ${selectedTable.value}');
     } catch (e) {
       logDebug('Error loading table data: $e');
-      Get.snackbar(
-        'Error',
-        'Failed to load data from ${selectedTable.value}: $e',
-        snackPosition: SnackPosition.BOTTOM,
+      BLoaders.errorSnackBar(
+        title: 'Error',
+        message: 'Failed to load data from ${selectedTable.value}: $e',
       );
     } finally {
       isLoading.value = false;
@@ -107,26 +107,23 @@ class LocalStorageDataController extends GetxController {
           whereArgs: [pkValue],
         );
 
-        Get.snackbar(
-          'Success',
-          'Row deleted successfully',
-          snackPosition: SnackPosition.BOTTOM,
+        BLoaders.successSnackBar(
+          title: 'Success',
+          message: 'Row deleted successfully',
         );
 
         loadTableData();
       } else {
-        Get.snackbar(
-          'Error',
-          'Cannot delete: No primary key found',
-          snackPosition: SnackPosition.BOTTOM,
+        BLoaders.errorSnackBar(
+          title: 'Error',
+          message: 'Cannot delete: No primary key found',
         );
       }
     } catch (e) {
       logDebug('Error deleting row: $e');
-      Get.snackbar(
-        'Error',
-        'Failed to delete row: $e',
-        snackPosition: SnackPosition.BOTTOM,
+      BLoaders.errorSnackBar(
+        title: 'Error',
+        message: 'Failed to delete row: $e',
       );
     }
   }
@@ -155,20 +152,18 @@ class LocalStorageDataController extends GetxController {
         final db = await _dbHelper.database;
         await db.delete(selectedTable.value);
 
-        Get.snackbar(
-          'Success',
-          'Table cleared successfully',
-          snackPosition: SnackPosition.BOTTOM,
+        BLoaders.successSnackBar(
+          title: 'Success',
+          message: 'Table cleared successfully',
         );
 
         loadTableData();
       }
     } catch (e) {
       logDebug('Error clearing table: $e');
-      Get.snackbar(
-        'Error',
-        'Failed to clear table: $e',
-        snackPosition: SnackPosition.BOTTOM,
+      BLoaders.errorSnackBar(
+        title: 'Error',
+        message: 'Failed to clear table: $e',
       );
     }
   }

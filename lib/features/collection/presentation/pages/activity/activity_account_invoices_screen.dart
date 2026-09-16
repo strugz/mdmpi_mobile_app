@@ -13,6 +13,7 @@ import 'widgets/invoice_details_modal.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 class CollectionActivityAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -92,8 +93,8 @@ class _CollectionActivityAccountInvoicesScreenState
 
         if (rawReason == CollectionStatusColors.statusOthers &&
             customRemark.isEmpty) {
-          Get.snackbar('Required', 'Please enter a reason',
-              backgroundColor: BColors.warning);
+          BLoaders.warningSnackBar(
+              title: 'Required', message: 'Please enter a reason');
           return;
         }
 
@@ -109,12 +110,9 @@ class _CollectionActivityAccountInvoicesScreenState
         Get.back(); // Close dialog
         Get.back(); // Return to Activity list
 
-        Get.snackbar(
-          'Account Released',
-          '${widget.client.name} moved back to bucket.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: BColors.success,
-          colorText: Colors.white,
+        BLoaders.successSnackBar(
+          title: 'Account Released',
+          message: '${widget.client.name} moved back to bucket.',
         );
       },
     );
@@ -123,12 +121,9 @@ class _CollectionActivityAccountInvoicesScreenState
   void _clearEngagement() {
     controller.unclaimAccount(widget.client.id);
     Get.back();
-    Get.snackbar(
-      'Engagement cleared',
-      '${widget.client.name} is no longer assigned to you.',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: BColors.success,
-      colorText: BColors.white,
+    BLoaders.successSnackBar(
+      title: 'Engagement cleared',
+      message: '${widget.client.name} is no longer assigned to you.',
     );
   }
 

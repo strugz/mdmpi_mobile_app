@@ -12,6 +12,7 @@ import 'collection_account_information_screen.dart';
 import 'widgets/collection_search_filter_bar.dart';
 
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Collection Bucket Screen (Account-Centric)
 ///
@@ -27,12 +28,10 @@ class CollectionBucketScreen extends StatelessWidget {
   void _acquireSelected(CollectionActivityController controller) {
     final count = controller.selectedAccountIds.length;
     controller.claimSelectedAccounts();
-    Get.snackbar(
-      'Accounts Acquired',
-      '$count account${count == 1 ? '' : 's'} moved to Field Engagement.',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: BColors.success,
-      colorText: BColors.white,
+    BLoaders.successSnackBar(
+      title: 'Accounts Acquired',
+      message:
+          '$count account${count == 1 ? '' : 's'} moved to Field Engagement.',
     );
   }
 
@@ -175,12 +174,10 @@ class CollectionBucketScreen extends StatelessWidget {
                                 Get.to(() => CollectionAccountInformationScreen(client: client)),
                             onClaimTap: () {
                               controller.claimAccount(client.id);
-                              Get.snackbar(
-                                'Account Acquired',
-                                'All invoices for ${client.name} moved to Field Engagement.',
-                                snackPosition: SnackPosition.BOTTOM,
-                                backgroundColor: BColors.success,
-                                colorText: BColors.white,
+                              BLoaders.successSnackBar(
+                                title: 'Account Acquired',
+                                message:
+                                    'All invoices for ${client.name} moved to Field Engagement.',
                               );
                             },
                           );

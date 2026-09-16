@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_history_m
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Record a collection against one invoice.
 ///
@@ -155,8 +156,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     final customRemark = othersRemarkController.text.trim();
 
     if (isOthers && customRemark.isEmpty) {
-      Get.snackbar('Required', 'Please enter a remark for "Others"',
-          backgroundColor: BColors.warning);
+      BLoaders.warningSnackBar(
+          title: 'Required', message: 'Please enter a remark for "Others"');
       return;
     }
 
@@ -185,13 +186,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     );
 
     Get.back();
-    Get.snackbar(
-      'Saved',
-      'Engagement updated',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: BColors.success.withValues(alpha: 0.9),
-      colorText: Colors.white,
-    );
+    BLoaders.successSnackBar(title: 'Saved', message: 'Engagement updated');
   }
 
   @override

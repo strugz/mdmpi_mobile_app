@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/data/repositories/pick_up/pick_up_repository.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Debug utility to check pick-up local database status.
 ///
@@ -92,10 +93,9 @@ class PickUpDbDebug {
               final repo = Get.find<PickUpRepository>();
               await repo.clearLocalData();
               Navigator.of(context).pop();
-              Get.snackbar(
-                'Cleared',
-                'Local DB data has been cleared',
-                snackPosition: SnackPosition.BOTTOM,
+              BLoaders.successSnackBar(
+                title: 'Cleared',
+                message: 'Local DB data has been cleared',
               );
             },
             child: const Text('Clear DB'),

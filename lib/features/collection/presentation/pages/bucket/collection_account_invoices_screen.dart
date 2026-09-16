@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoic
 import 'widgets/collection_search_filter_bar.dart';
 import 'widgets/bucket_filter_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -44,12 +45,10 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
               onPressed: () {
                 controller.claimAccount(widget.client.id);
                 Get.back();
-                Get.snackbar(
-                  'Account Claimed',
-                  'All invoices for ${widget.client.name} have been moved to Activity.',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: BColors.success,
-                  colorText: BColors.white,
+                BLoaders.successSnackBar(
+                  title: 'Account Claimed',
+                  message:
+                      'All invoices for ${widget.client.name} have been moved to Activity.',
                 );
               },
               icon: const Icon(Iconsax.tick_circle),
