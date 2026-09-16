@@ -30,7 +30,11 @@ class BankModel {
       );
 
   /// What gets recorded against a collection, and what is shown in the field.
-  String get label => name.isNotEmpty ? name : code;
+  ///
+  /// The code, because that is what the company's own records key on and it
+  /// fits a field next to a check number. The full name is still what the
+  /// picker lists and searches, so nobody has to know the code to find it.
+  String get label => code.isNotEmpty ? code : name;
 
   /// True when [query] matches the code or any part of the name, so typing
   /// "bpi" and typing "philippine" both find the same bank.

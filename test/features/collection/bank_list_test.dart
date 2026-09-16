@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/bank_picker_sheet.dart';
 
 /// The bank was free text, so one bank reached the server as "BPI", "bpi" and
@@ -51,8 +56,9 @@ void main() {
       expect(bank.id, '3');
       expect(bank.code, 'BPI');
       expect(bank.name, 'Bank of the Philippine Islands');
-      // What gets recorded against the collection.
-      expect(bank.label, 'Bank of the Philippine Islands');
+      // The code is what gets recorded: it is what the company's own records
+      // key on, and it fits a field next to a check number.
+      expect(bank.label, 'BPI');
     });
 
     test('survives a row with missing fields', () {
@@ -63,10 +69,11 @@ void main() {
       expect(bank.label, '');
     });
 
-    test('falls back to the code when only a code is given', () {
-      final bank = BankModel.fromJson(const {'mid': '1', 'bankcode': 'BDO'});
+    test('falls back to the name when a row carries no code', () {
+      final bank =
+          BankModel.fromJson(const {'mid': '1', 'bank': 'Banco de Oro'});
 
-      expect(bank.label, 'BDO');
+      expect(bank.label, 'Banco de Oro');
     });
 
     test('round-trips through the local cache', () {
@@ -92,6 +99,86 @@ void main() {
 
     test('an empty query matches everything', () {
       expect(_banks.where((b) => b.matches('  ')).length, _banks.length);
+    });
+  });
+
+  group('what the picker hands back', () {
+    testWidgets('the code, not the full name', (tester) async {
+      BankModel? chosen;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                chosen = await BankPickerSheet.show(context, banks: _banks);
+              },
+              child: const Text('pick'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('pick'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bank of the Philippine Islands'));
+      await tester.pumpAndSettle();
+
+      expect(chosen?.label, 'BPI');
+    });
+  });
+
+  group('legacy values', () {
+    test('a full name recorded before the picker resolves to its code', () {
+      final c = CollectionActivityController();
+      c.startAggregateTracking();
+      c.banks.assignAll(_banks);
+
+      expect(c.canonicalBankName('Bank of the Philippine Islands'), 'BPI');
+      expect(c.canonicalBankName('bank of the philippine islands'), 'BPI');
+      expect(c.canonicalBankName('BPI'), 'BPI');
+    });
+
+    test('a bank that is not on the company list is kept as recorded', () {
+      final c = CollectionActivityController();
+      c.startAggregateTracking();
+      c.banks.assignAll(_banks);
+
+      // Better offered as it was typed than dropped on the floor.
+      expect(c.canonicalBankName('Some Rural Bank'), 'Some Rural Bank');
+      expect(c.canonicalBankName('   '), '');
+    });
+
+    test('the same bank recorded two ways counts as one recent bank', () {
+      final c = CollectionActivityController();
+      c.startAggregateTracking();
+      c.banks.assignAll(_banks);
+      c.bucketItems.assignAll([
+        CollectionItemModel(
+          id: '1',
+          client: ClientModel(
+              id: 'A',
+              code: 'c',
+              name: 'A',
+              address: '',
+              contact: '',
+              emailAddress: ''),
+          toBeCollected: 100,
+          history: const [
+            CollectionHistoryModel(
+                date: '2026-09-01',
+                collectorName: 'Juan',
+                status: 'Collected',
+                bankName: 'BPI'),
+            CollectionHistoryModel(
+                date: '2026-09-02',
+                collectorName: 'Juan',
+                status: 'Collected',
+                bankName: 'Bank of the Philippine Islands'),
+          ],
+        ),
+      ]);
+
+      expect(c.recentBankNames(), ['BPI']);
     });
   });
 

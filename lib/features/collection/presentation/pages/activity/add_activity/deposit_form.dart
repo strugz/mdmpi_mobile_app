@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 
 class DepositFormScreen extends StatefulWidget {
   const DepositFormScreen({super.key});
@@ -126,13 +127,11 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                   const SizedBox(height: BSizes.spaceBtwInputFields),
                 ],
 
-                TextFormField(
+                BBankField(
                   controller: bankNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Bank Name',
-                    prefixIcon: Icon(Iconsax.bank),
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'Bank name is required' : null,
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Bank is required'
+                      : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 

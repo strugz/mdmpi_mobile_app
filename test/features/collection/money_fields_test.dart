@@ -340,7 +340,7 @@ void main() {
     testWidgets('the three check fields are off by default', (tester) async {
       await pump(tester);
 
-      expect(find.text('Bank name'), findsNothing);
+      expect(find.text('Bank'), findsNothing);
       expect(find.text('Check number'), findsNothing);
       expect(find.text('Check date'), findsNothing);
     });
@@ -354,7 +354,7 @@ void main() {
       await tester.tap(toggle);
       await tester.pumpAndSettle();
 
-      expect(find.text('Bank name'), findsOneWidget);
+      expect(find.text('Bank'), findsOneWidget);
       expect(find.text('Check number'), findsOneWidget);
       expect(find.text('Check date'), findsOneWidget);
     });

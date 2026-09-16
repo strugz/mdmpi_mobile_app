@@ -6,13 +6,12 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
-import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/bank_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 
 /// Record one payment against several invoices at once.
 ///
@@ -576,21 +575,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: BSizes.spaceBtwInputFields),
-        // Picked from the company list, like the single-invoice form, so a
-        // batch cannot introduce a bank spelling of its own.
-        TextField(
-          controller: bankNameController,
-          readOnly: _banks.isNotEmpty,
-          onTap: _banks.isEmpty ? null : _pickBank,
-          decoration: InputDecoration(
-            labelText: 'Bank name',
-            prefixIcon: const Icon(Iconsax.bank),
-            suffixIcon: _banks.isEmpty
-                ? null
-                : const Icon(Iconsax.arrow_down_1,
-                    size: 18, color: BColors.darkGrey),
-          ),
-        ),
+        BBankField(controller: bankNameController),
         if (_bankSuggestions.isNotEmpty) ...[
           const SizedBox(height: BSizes.sm),
           Wrap(
@@ -641,21 +626,6 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         ),
       ],
     );
-  }
-
-  List<BankModel> get _banks => Get.isRegistered<CollectionActivityController>()
-      ? CollectionActivityController.instance.banks
-      : const <BankModel>[];
-
-  Future<void> _pickBank() async {
-    final picked = await BankPickerSheet.show(
-      context,
-      banks: _banks,
-      selected: bankNameController.text,
-    );
-    if (picked != null) {
-      setState(() => bankNameController.text = picked.label);
-    }
   }
 
   Future<void> _pickCheckDate() async {

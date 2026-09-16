@@ -69,7 +69,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Paid by check'), findsOneWidget);
-      expect(find.text('Bank name'), findsNothing);
+      expect(find.text('Bank'), findsNothing);
       expect(find.text('Check number'), findsNothing);
       expect(find.text('Check date'), findsNothing);
     });
@@ -80,7 +80,7 @@ void main() {
 
       await _tapCheckToggle(tester);
 
-      expect(find.text('Bank name'), findsOneWidget);
+      expect(find.text('Bank'), findsOneWidget);
       expect(find.text('Check number'), findsOneWidget);
       expect(find.text('Check date'), findsOneWidget);
     });
@@ -99,7 +99,7 @@ void main() {
       ])));
       await tester.pumpAndSettle();
 
-      expect(find.text('Bank name'), findsOneWidget);
+      expect(find.text('Bank'), findsOneWidget);
       expect(find.text('BPI'), findsOneWidget, reason: 'carried over');
     });
 

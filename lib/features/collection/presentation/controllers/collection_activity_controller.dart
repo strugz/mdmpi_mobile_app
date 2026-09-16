@@ -443,12 +443,31 @@ class CollectionActivityController extends GetxController {
     if (result.isSuccess) banks.assignAll(result.value);
   }
 
+  /// The company's own name for whatever was recorded against a collection.
+  ///
+  /// History predates the picker, so the same bank sits in it as "BPI" and as
+  /// "Bank of the Philippine Islands". Resolving both onto the code means one
+  /// chip instead of two, and a chip that writes what the picker would.
+  String canonicalBankName(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return '';
+    final lower = value.toLowerCase();
+    for (final bank in banks) {
+      if (bank.code.toLowerCase() == lower || bank.name.toLowerCase() == lower) {
+        return bank.label;
+      }
+    }
+    // Not on the company list: a bank typed before this existed, or one the
+    // list has since dropped. Better offered as it was recorded than lost.
+    return value;
+  }
+
   List<String> recentBankNames({int limit = 4}) {
     final counts = <String, int>{};
     final display = <String, String>{};
     for (final item in allItems) {
       for (final h in item.history) {
-        final name = h.bankName?.trim() ?? '';
+        final name = canonicalBankName(h.bankName ?? '');
         if (name.isEmpty) continue;
         final key = name.toLowerCase();
         counts[key] = (counts[key] ?? 0) + 1;

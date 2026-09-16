@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 
 /// Supervisor "Add to Bucket": create a collection invoice, saved to the server
 /// (DB first) and added to the shared bucket.
@@ -58,7 +59,8 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
         .where((e) => e.isNotEmpty)
         .toList();
 
-    final ok = await Get.find<CollectionActivityController>().addInvoiceToBucket(
+    final ok =
+        await Get.find<CollectionActivityController>().addInvoiceToBucket(
       clientId: clientId,
       clientName: name,
       clientCode: code,
@@ -96,7 +98,8 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
             _field(_clientAddress, 'Client Address'),
             _field(_clientContact, 'Contact Number',
                 keyboard: TextInputType.phone),
-            _field(_documentRefs, 'Invoice / Document References (comma-separated)'),
+            _field(_documentRefs,
+                'Invoice / Document References (comma-separated)'),
             _field(
               _amount,
               'Amount Due *',
@@ -111,7 +114,11 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
                 return null;
               },
             ),
-            _field(_bankName, 'Bank Name'),
+            Padding(
+              padding:
+                  const EdgeInsets.only(bottom: BSizes.spaceBtwInputFields),
+              child: BBankField(controller: _bankName),
+            ),
             _field(_dueDate, 'Due Date (e.g. 2026-09-30)'),
             _field(_remarks, 'Remarks', maxLines: 3),
           ],
