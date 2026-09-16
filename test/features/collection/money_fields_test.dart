@@ -273,9 +273,8 @@ void main() {
     });
   });
 
-  group('payment method', () {
-    testWidgets('cash is the default and hides the three check fields',
-        (tester) async {
+  group('check details', () {
+    testWidgets('the three check fields are off by default', (tester) async {
       await pump(tester);
 
       expect(find.text('Bank name'), findsNothing);
@@ -283,10 +282,14 @@ void main() {
       expect(find.text('Check date'), findsNothing);
     });
 
-    testWidgets('choosing Check reveals them', (tester) async {
+    testWidgets('switching "Paid by check" on reveals them', (tester) async {
       await pump(tester);
 
-      await _tapChip(tester, 'Check');
+      final toggle = find.byType(SwitchListTile);
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
 
       expect(find.text('Bank name'), findsOneWidget);
       expect(find.text('Check number'), findsOneWidget);

@@ -10,8 +10,9 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 /// This form is filled in the field, one-handed, many times a day, so the
-/// thing worth protecting is how little has to be typed: cash hides the check
-/// fields entirely, the balance is one tap, and the outcome follows the amount.
+/// thing worth protecting is how little has to be typed: the check fields are
+/// hidden unless asked for, the balance is one tap, and the outcome follows
+/// the amount.
 
 CollectionItemModel _item({
   double toBeCollected = 37759.82,
@@ -43,6 +44,14 @@ Finder _chip(String startsWith) => find.byWidgetPredicate(
 String _amountText(WidgetTester tester) =>
     tester.widget<TextField>(find.byType(TextField).first).controller!.text;
 
+Future<void> _tapCheckToggle(WidgetTester tester) async {
+  final toggle = find.byType(SwitchListTile);
+  await tester.ensureVisible(toggle);
+  await tester.pumpAndSettle();
+  await tester.tap(toggle);
+  await tester.pumpAndSettle();
+}
+
 /// Chips can sit below the fold on a phone-sized viewport, so scroll to the
 /// chip before tapping it; a tap on an off-screen widget lands on nothing.
 Future<void> _tapChip(WidgetTester tester, String startsWith) async {
@@ -55,29 +64,28 @@ Future<void> _tapChip(WidgetTester tester, String startsWith) async {
 
 void main() {
   group('typing reduction', () {
-    testWidgets('cash is the default and hides all three check fields',
-        (tester) async {
+    testWidgets('the three check fields are off by default', (tester) async {
       await tester.pumpWidget(_host(_item()));
       await tester.pumpAndSettle();
 
-      expect(find.text('Cash'), findsOneWidget);
+      expect(find.text('Paid by check'), findsOneWidget);
       expect(find.text('Bank name'), findsNothing);
       expect(find.text('Check number'), findsNothing);
       expect(find.text('Check date'), findsNothing);
     });
 
-    testWidgets('choosing Check reveals them', (tester) async {
+    testWidgets('switching "Paid by check" on reveals them', (tester) async {
       await tester.pumpWidget(_host(_item()));
       await tester.pumpAndSettle();
 
-      await _tapChip(tester, 'Check');
+      await _tapCheckToggle(tester);
 
       expect(find.text('Bank name'), findsOneWidget);
       expect(find.text('Check number'), findsOneWidget);
       expect(find.text('Check date'), findsOneWidget);
     });
 
-    testWidgets('an invoice last paid by check starts on Check',
+    testWidgets('an invoice last paid by check opens with the switch on',
         (tester) async {
       await tester.pumpWidget(_host(_item(history: const [
         CollectionHistoryModel(

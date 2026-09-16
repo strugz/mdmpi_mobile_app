@@ -11,9 +11,6 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 
-/// How the money came in. Drives whether the check fields exist at all.
-enum BatchPaymentMethod { cash, check }
-
 /// Record one payment against several invoices at once.
 ///
 /// This screen exists because a single check often settles a stack of
@@ -30,7 +27,8 @@ enum BatchPaymentMethod { cash, check }
 ///  - Each row settles in full with one tap, and says what it leaves behind.
 ///  - Outcomes follow each row's amount, and stop the moment one is set by
 ///    hand.
-///  - Cash hides the three check fields entirely.
+///  - The three check fields are not rendered unless the payment is marked
+///    as a check.
 ///  - What is left to allocate is always on screen, next to Save, rather
 ///    than in a banner that scrolls away.
 class BatchActivityDetailScreen extends StatefulWidget {
@@ -62,7 +60,14 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   /// so the fields are not there until asked for.
   final Set<String> _remarksShown = {};
 
-  late BatchPaymentMethod _method;
+  /// Whether this payment carries check details.
+  ///
+  /// Not a payment type: nothing in the record says "cash" or "check". The
+  /// only thing stored is the bank name, check number and check date, so this
+  /// is the switch that decides whether there are any — it reveals the three
+  /// fields, and off it sends them as null rather than carrying over whatever
+  /// was prefilled from a previous visit.
+  late bool _payingByCheck;
   late final List<String> _bankSuggestions;
 
   /// Currency rounding: anything under half a centavo is agreement.
@@ -139,11 +144,9 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     checkDateController =
         TextEditingController(text: latestBankInfo?.checkDate ?? '');
 
-    // Same rule as the single-invoice form: start where this account was last
-    // paid, and otherwise on the method with nothing to fill in.
-    _method = latestBankInfo != null
-        ? BatchPaymentMethod.check
-        : BatchPaymentMethod.cash;
+    // Same rule as the single-invoice form: on if this account was last paid
+    // by check, otherwise off, which is the state with nothing to fill in.
+    _payingByCheck = latestBankInfo != null;
 
     _bankSuggestions = Get.isRegistered<CollectionActivityController>()
         ? CollectionActivityController.instance.recentBankNames()
@@ -244,7 +247,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
       finalRemarks[item.id] = remark.isEmpty ? 'Batch Recording' : remark;
     }
 
-    final isCheck = _method == BatchPaymentMethod.check;
+    final isCheck = _payingByCheck;
     String? trimmedOrNull(TextEditingController c) =>
         c.text.trim().isEmpty ? null : c.text.trim();
 
@@ -513,36 +516,26 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     );
   }
 
+  /// Named for what it does, not for a payment type the record does not
+  /// hold: switching it on is what puts check details on this batch.
   Widget _methodSection(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('How it was paid', style: theme.textTheme.titleMedium),
-        const SizedBox(height: BSizes.spaceBtwItems),
-        Row(
-          children: [
-            for (final method in BatchPaymentMethod.values) ...[
-              BQuickFillChip(
-                label: method == BatchPaymentMethod.cash ? 'Cash' : 'Check',
-                icon: method == BatchPaymentMethod.cash
-                    ? Iconsax.money
-                    : Iconsax.card_edit,
-                selected: _method == method,
-                onTap: () => setState(() => _method = method),
-              ),
-              const SizedBox(width: BSizes.sm),
-            ],
-          ],
+        SwitchListTile.adaptive(
+          value: _payingByCheck,
+          onChanged: (v) => setState(() => _payingByCheck = v),
+          title: const Text('Paid by check'),
+          secondary: const Icon(Iconsax.card),
+          contentPadding: EdgeInsets.zero,
         ),
-        // Three fields that a cash batch never needs, so a cash batch never
-        // sees them.
+        // Three fields most batches never need, so most batches never see
+        // them.
         AnimatedSize(
           duration: const Duration(milliseconds: 180),
           curve: Curves.easeOut,
           alignment: Alignment.topCenter,
-          child: _method == BatchPaymentMethod.check
+          child: _payingByCheck
               ? _checkFields(context)
               : const SizedBox(width: double.infinity),
         ),

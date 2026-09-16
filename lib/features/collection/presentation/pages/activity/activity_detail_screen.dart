@@ -11,17 +11,14 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 
-/// How the money came in. Drives whether the check fields exist at all.
-enum PaymentMethod { cash, check }
-
 /// Record a collection against one invoice.
 ///
 /// Built around typing as little as possible, because this is filled in the
 /// field, one-handed, many times a day. Everything the app already knows is
 /// offered as a tap:
 ///
-///  - Cash is the default method, so the three check fields are not rendered
-///    at all unless Check is chosen. That is the single biggest reduction.
+///  - The three check fields are not rendered at all unless the collection
+///    is marked as paid by check. That is the single biggest reduction.
 ///  - The balance is a chip, so a full payment is one tap instead of typing
 ///    eight digits. It is also the common case.
 ///  - The outcome follows the amount (full pays Collected, part pays
@@ -38,7 +35,15 @@ class ActivityDetailScreen extends StatefulWidget {
 
 class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   late String selectedStatus;
-  late PaymentMethod _method;
+
+  /// Whether this payment carries check details.
+  ///
+  /// Not a payment type: nothing in the record says "cash" or "check". The
+  /// only thing stored is the bank name, check number and check date, so this
+  /// is the switch that decides whether there are any — it reveals the three
+  /// fields, and off it sends them as null rather than carrying over whatever
+  /// was prefilled from a previous visit.
+  late bool _payingByCheck;
 
   late final TextEditingController totalCollectedController;
   late final TextEditingController bankNameController;
@@ -89,9 +94,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         TextEditingController(text: lastBankInfo?.checkDate ?? '');
     othersRemarkController = TextEditingController();
 
-    // If this invoice was last paid by check, start there; otherwise cash,
-    // which is both the common case and the one with nothing to fill in.
-    _method = lastBankInfo != null ? PaymentMethod.check : PaymentMethod.cash;
+    // On if this invoice was last paid by check, otherwise off — which is
+    // both the common case and the one with nothing to fill in.
+    _payingByCheck = lastBankInfo != null;
 
     // Suggestions are a convenience, never a requirement: if the controller
     // is not around the form still works, it just offers no bank chips.
@@ -156,14 +161,14 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     }
 
     final finalStatus = isOthers ? customRemark : selectedStatus;
-    final usingCheck = _method == PaymentMethod.check;
+    final usingCheck = _payingByCheck;
 
     controller.saveActivity(
       id: widget.item.id,
       status: finalStatus.isEmpty ? 'Others' : finalStatus,
       remarks: finalStatus.isEmpty ? 'Others' : finalStatus,
       totalCollected: _enteredAmount,
-      // Cash records no check details, the same as leaving them blank before.
+      // Off records no check details, the same as leaving them blank before.
       bankName: usingCheck && bankNameController.text.trim().isNotEmpty
           ? bankNameController.text.trim()
           : null,
@@ -263,17 +268,15 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             ],
 
             const SizedBox(height: BSizes.spaceBtwSections),
-            _sectionLabel(context, 'Payment method'),
-            const SizedBox(height: BSizes.sm),
-            _methodChips(),
+            _checkToggle(),
 
-            // Only exists for checks. Cash collections never see these three
-            // fields, which is the whole point.
+            // Only exists for checks, which is the whole point: most
+            // collections never see these three fields.
             AnimatedSize(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
               alignment: Alignment.topCenter,
-              child: _method == PaymentMethod.check
+              child: _payingByCheck
                   ? _checkFields(context)
                   : const SizedBox(width: double.infinity),
             ),
@@ -457,23 +460,14 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         ],
       );
 
-  Widget _methodChips() => Wrap(
-        spacing: BSizes.sm,
-        runSpacing: BSizes.sm,
-        children: [
-          BQuickFillChip(
-            label: 'Cash',
-            icon: Iconsax.money,
-            selected: _method == PaymentMethod.cash,
-            onTap: () => setState(() => _method = PaymentMethod.cash),
-          ),
-          BQuickFillChip(
-            label: 'Check',
-            icon: Iconsax.card,
-            selected: _method == PaymentMethod.check,
-            onTap: () => setState(() => _method = PaymentMethod.check),
-          ),
-        ],
+  /// Named for what it does, not for a payment type the record does not
+  /// hold: switching it on is what puts check details on this collection.
+  Widget _checkToggle() => SwitchListTile.adaptive(
+        value: _payingByCheck,
+        onChanged: (v) => setState(() => _payingByCheck = v),
+        title: const Text('Paid by check'),
+        secondary: const Icon(Iconsax.card),
+        contentPadding: EdgeInsets.zero,
       );
 
   Widget _checkFields(BuildContext context) {
