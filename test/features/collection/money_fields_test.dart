@@ -151,6 +151,69 @@ void main() {
     });
   });
 
+  group('the leftover centavos', () {
+    testWidgets('a row can take the remainder without typing a decimal',
+        (tester) async {
+      await pump(tester, items: [_item('1', 32261.31), _item('2', 9716.00)]);
+
+      // The exact situation from the field: the split is short by centavos,
+      // and typing them means finding a decimal point on a numeric keypad.
+      await tester.enterText(_total(), '35000');
+      await tester.enterText(_amount('1'), '32261.31');
+      await tester.enterText(_amount('2'), '2738');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('0.69 left to allocate'), findsOneWidget);
+
+      await _tapChip(tester, 'Add the remaining');
+
+      expect(_textOf(tester, _amount('2')), '2,738.69');
+      expect(find.text('Fully allocated'), findsOneWidget);
+    });
+
+    testWidgets('the chip is not offered once the split balances',
+        (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_total(), '1000');
+      await tester.pumpAndSettle();
+      await _tapChip(tester, 'Distribute');
+
+      expect(_chip('Add the remaining'), findsNothing);
+    });
+
+    testWidgets('no row offers to take more than its invoice owes',
+        (tester) async {
+      await pump(tester, items: [_item('1', 600), _item('2', 400)]);
+
+      // 900 still unallocated, against invoices of 600 and 400: no single row
+      // can absorb it, so nothing offers to. Distribute is the way out.
+      await tester.enterText(_total(), '1000');
+      await tester.enterText(_amount('1'), '100');
+      await tester.pumpAndSettle();
+
+      expect(_chip('Add the remaining'), findsNothing);
+    });
+
+    testWidgets('a row offers to take a remainder that fits', (tester) async {
+      await pump(tester, items: [_item('1', 600), _item('2', 400)]);
+
+      // 100 unallocated. Row 1 has 100 of headroom left, row 2 is already at
+      // its full balance, so only row 1 offers.
+      await tester.enterText(_total(), '1000');
+      await tester.enterText(_amount('1'), '500');
+      await tester.enterText(_amount('2'), '400');
+      await tester.pumpAndSettle();
+
+      expect(_chip('Add the remaining'), findsOneWidget);
+
+      await _tapChip(tester, 'Add the remaining');
+
+      expect(_textOf(tester, _amount('1')), '600.00');
+      expect(find.text('Fully allocated'), findsOneWidget);
+    });
+  });
+
   group('what is left to allocate', () {
     testWidgets('save is blocked until the split balances, and says why',
         (tester) async {

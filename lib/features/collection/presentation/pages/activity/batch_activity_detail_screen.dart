@@ -103,6 +103,14 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   double _amountFor(String id) =>
       BFormatter.parseAmount(itemAmountControllers[id]!.text);
 
+  /// Whether what is still unallocated could be added to this row without
+  /// taking it past what the invoice owes.
+  bool _canTakeRest(CollectionItemModel item) {
+    if (_unallocated <= _tolerance) return false;
+    return _amountFor(item.id) + _unallocated <=
+        item.toBeCollected + _tolerance;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -468,6 +476,25 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
               ),
             ],
           ),
+          // The leftover is almost always centavos, and typing centavos means
+          // finding a decimal point on a numeric keypad — which not every
+          // Android keyboard offers. One tap moves it onto this row instead.
+          if (_canTakeRest(item)) ...[
+            const SizedBox(height: BSizes.sm),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: BQuickFillChip(
+                label:
+                    'Add the remaining ${BFormatter.formatPesoCurrency(_unallocated)}',
+                icon: Iconsax.add_circle,
+                onTap: () {
+                  _setAmount(itemAmountControllers[item.id]!,
+                      allocated + _unallocated);
+                  FocusManager.instance.primaryFocus?.unfocus();
+                },
+              ),
+            ),
+          ],
           if (allocated > 0) ...[
             const SizedBox(height: BSizes.xs),
             Text(
@@ -671,6 +698,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
@@ -679,18 +707,27 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                 Expanded(
                   child: Text(
                     message,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: color, fontWeight: FontWeight.w700),
                   ),
                 ),
-                if (!noTarget)
-                  Text(
-                    '${BFormatter.formatPesoCurrency(_allocatedTotal)} of ${BFormatter.formatPesoCurrency(_targetTotal)}',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: BColors.darkGrey),
-                  ),
               ],
             ),
+            // On its own line. Beside the message, two six-figure amounts and
+            // a sentence do not fit a phone: the row overflowed, and before
+            // that the message wrapped into a ragged block.
+            if (!noTarget) ...[
+              const SizedBox(height: BSizes.xs),
+              Text(
+                '${BFormatter.formatPesoCurrency(_allocatedTotal)} of ${BFormatter.formatPesoCurrency(_targetTotal)} allocated',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: BColors.darkGrey),
+              ),
+            ],
             const SizedBox(height: BSizes.sm),
             SizedBox(
               width: double.infinity,
