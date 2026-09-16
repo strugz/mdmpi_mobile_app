@@ -104,7 +104,10 @@ class BLoaders {
       snackBar(
         title: title,
         message: message,
-        background: BColors.success,
+        // Purple, not green: the app's own colour is what confirms an
+        // action here, and BColors.success stays for amounts and statuses
+        // where green carries a meaning of its own.
+        background: BColors.primary,
         icon: Iconsax.tick_circle,
         duration: duration,
       );
