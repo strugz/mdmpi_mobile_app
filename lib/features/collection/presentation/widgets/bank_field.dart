@@ -50,25 +50,31 @@ class _BBankFieldState extends State<BBankField> {
 
   @override
   Widget build(BuildContext context) {
-    final hasList = _banks.isNotEmpty;
-
-    return TextFormField(
-      controller: widget.controller,
-      // A picker where there is a list to pick from, a plain field where
-      // there is not.
-      readOnly: hasList,
-      onTap: hasList ? _pick : null,
-      textCapitalization: TextCapitalization.characters,
-      validator: widget.validator,
-      decoration: InputDecoration(
-        labelText: widget.label,
-        hintText: widget.hint,
-        prefixIcon: const Icon(Iconsax.bank),
-        suffixIcon: hasList
-            ? const Icon(Iconsax.arrow_down_1,
-                size: 18, color: BColors.darkGrey)
-            : null,
-      ),
-    );
+    // Reactive, because the list is fetched after the screen is built. Read
+    // once, the field would render as plain text before the download landed
+    // and stay that way for the life of the screen — which is a picker that
+    // never appears.
+    if (!Get.isRegistered<CollectionActivityController>()) return _field(false);
+    return Obx(
+        () => _field(CollectionActivityController.instance.banks.isNotEmpty));
   }
+
+  Widget _field(bool hasList) => TextFormField(
+        controller: widget.controller,
+        // A picker where there is a list to pick from, a plain field where
+        // there is not.
+        readOnly: hasList,
+        onTap: hasList ? _pick : null,
+        textCapitalization: TextCapitalization.characters,
+        validator: widget.validator,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          hintText: widget.hint,
+          prefixIcon: const Icon(Iconsax.bank),
+          suffixIcon: hasList
+              ? const Icon(Iconsax.arrow_down_1,
+                  size: 18, color: BColors.darkGrey)
+              : null,
+        ),
+      );
 }

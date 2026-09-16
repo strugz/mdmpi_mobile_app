@@ -89,6 +89,17 @@ class DatabaseHelper {
         // user-entered `contacts` table across version bumps.
         await _upgradeSchema(db, oldVersion, newVersion);
       },
+      // Every open, not just create and upgrade.
+      //
+      // Collection tables are added additively with CREATE TABLE IF NOT
+      // EXISTS and deliberately kept out of the destructive rebuild, so a new
+      // one shipped without a version bump would never exist on a device that
+      // is already at the current version — and the feature that needs it
+      // would fail silently for exactly the installs that have been around
+      // longest. Running here is idempotent and self-healing.
+      onOpen: (db) async {
+        await ensureCollectionTables(db);
+      },
     );
   }
 
