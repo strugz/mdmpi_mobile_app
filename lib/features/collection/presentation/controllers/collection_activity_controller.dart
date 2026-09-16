@@ -577,7 +577,20 @@ class CollectionActivityController extends GetxController {
           invoiceCount > activityMaxInvoices.value) return false;
 
       return true;
-    }).toList();
+    }).toList()
+      // A work queue, so it is ordered like one: whatever is most overdue
+      // first, then whatever is worth most. Inheriting the master account
+      // list's order put the day in no particular sequence at all.
+      ..sort((a, b) {
+        final overdue = getActivityAccountOverdueCount(b.id)
+            .compareTo(getActivityAccountOverdueCount(a.id));
+        if (overdue != 0) return overdue;
+        final due = getActivityAccountTotalDue(b.id)
+            .compareTo(getActivityAccountTotalDue(a.id));
+        if (due != 0) return due;
+        // Named tiebreak so the order never shuffles between rebuilds.
+        return a.name.compareTo(b.name);
+      });
   }
 
   double getActivityAccountTotalDue(String clientId) => activityItems

@@ -70,13 +70,15 @@ void main() {
   });
 
   group('the outstanding balance', () {
-    testWidgets('is the number the card leads with', (tester) async {
+    testWidgets('is the number the row leads with', (tester) async {
       await tester.pumpWidget(_host(_card(totalAmount: 112000)));
       await tester.pumpAndSettle();
 
       expect(find.text('₱112,000.00'), findsOneWidget);
-      expect(find.text('outstanding'), findsOneWidget);
       expect(_colourOf(tester, '₱112,000.00'), BColors.primary);
+      // Unlabelled: every row in this list is an outstanding balance, so the
+      // word would repeat down the whole screen.
+      expect(find.text('outstanding'), findsNothing);
     });
 
     testWidgets('nothing collected shows no green and no progress bar',
@@ -155,6 +157,53 @@ void main() {
           .pumpWidget(_host(_card(onClaimTap: () {}, isSelectionMode: true)));
       await tester.pumpAndSettle();
       expect(find.text('Acquire Account'), findsNothing);
+    });
+  });
+
+  group('the order of the queue', () {
+    ClientModel account(String name) => ClientModel(
+        id: name,
+        code: 'c',
+        name: name,
+        address: '',
+        contact: '',
+        emailAddress: '');
+
+    CollectionItemModel due(String id, String clientName, double amount,
+            {String dueDate = '2999-01-01'}) =>
+        CollectionItemModel(
+          id: id,
+          client: account(clientName),
+          toBeCollected: amount,
+          dueDate: dueDate,
+        );
+
+    test('puts the most overdue accounts first, then the largest', () {
+      final c = CollectionActivityController();
+      c.startAggregateTracking();
+      c.masterAccountList
+          .assignAll([account('Small'), account('Big'), account('Late')]);
+      c.activityItems.assignAll([
+        // Ordered in the master list as Small, Big, Late — the order the
+        // screen used to show, which is no order at all.
+        due('1', 'Small', 100),
+        due('2', 'Big', 900000),
+        due('3', 'Late', 500, dueDate: '2020-01-01'),
+      ]);
+
+      expect(c.activityAccounts.map((a) => a.name).toList(),
+          ['Late', 'Big', 'Small']);
+    });
+
+    test('is stable when nothing separates two accounts', () {
+      final c = CollectionActivityController();
+      c.startAggregateTracking();
+      c.masterAccountList.assignAll([account('Zeta'), account('Alpha')]);
+      c.activityItems
+          .assignAll([due('1', 'Zeta', 500), due('2', 'Alpha', 500)]);
+
+      expect(
+          c.activityAccounts.map((a) => a.name).toList(), ['Alpha', 'Zeta']);
     });
   });
 

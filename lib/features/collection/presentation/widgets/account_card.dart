@@ -17,6 +17,11 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 /// So the outstanding balance is the only number set large. Everything else
 /// is context for it: how many invoices it spans, how much of the account has
 /// already been settled, and whether any of it is late.
+///
+/// It is also a row in a work queue rather than a feature card. A collector
+/// carries a stack of accounts, not one, so the layout is built to put eight
+/// of them on a phone screen: name and amount share the top line, and the
+/// rest is one line of metadata under it.
 class AccountCard extends StatelessWidget {
   const AccountCard({
     super.key,
@@ -84,10 +89,11 @@ class AccountCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: _stateDuration,
         curve: Curves.easeOut,
-        padding: const EdgeInsets.all(BSizes.md),
+        padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
         decoration: BoxDecoration(
-          color:
-              isSelected ? BColors.primary.withValues(alpha: 0.05) : BColors.white,
+          color: isSelected
+              ? BColors.primary.withValues(alpha: 0.05)
+              : BColors.white,
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           // Constant width, colour only: a 1→2px border nudges the content on
           // every selection toggle.
@@ -100,15 +106,13 @@ class AccountCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            _header(theme, address),
-            const SizedBox(height: BSizes.spaceBtwItemsLight),
-            _outstanding(theme),
+            _topLine(theme, address),
+            const SizedBox(height: BSizes.xs),
+            _meta(theme),
             if (totalCollected > 0) ...[
               const SizedBox(height: BSizes.sm),
               _progressBar(theme),
             ],
-            const SizedBox(height: BSizes.sm),
-            _meta(theme),
             if (onClaimTap != null && !isSelectionMode) ...[
               const SizedBox(height: BSizes.spaceBtwItemsLight),
               SizedBox(
@@ -119,7 +123,8 @@ class AccountCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: BColors.primary),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                      borderRadius:
+                          BorderRadius.circular(BSizes.borderRadiusMd),
                     ),
                   ),
                   child: Text(
@@ -138,8 +143,9 @@ class AccountCard extends StatelessWidget {
     );
   }
 
-  /// Name, optional address, and the trailing glyph.
-  Widget _header(ThemeData theme, String? address) => Row(
+  /// Name on the left, what is owed on the right. One line each way, so a
+  /// row costs about 80pt instead of 150 and the queue is scannable.
+  Widget _topLine(ThemeData theme, String? address) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
@@ -150,102 +156,61 @@ class AccountCard extends StatelessWidget {
                   client.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium
+                  style: theme.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w700, height: 1.2),
                 ),
-                if (address != null) ...[
-                  const SizedBox(height: 2),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(top: 2),
-                        child: Icon(Iconsax.location,
-                            size: 14, color: BColors.darkGrey),
-                      ),
-                      const SizedBox(width: BSizes.xs),
-                      Expanded(
-                        child: Text(
-                          address,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: BColors.darkGrey),
-                        ),
-                      ),
-                    ],
+                if (address != null)
+                  Text(
+                    address,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: BColors.darkGrey),
                   ),
-                ],
               ],
             ),
           ),
-          const SizedBox(width: BSizes.xs),
-          SizedBox(
-            width: 28,
-            height: 28,
-            child: AnimatedSwitcher(
-              duration: _stateDuration,
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, anim) => ScaleTransition(
-                scale: Tween<double>(begin: 0.85, end: 1).animate(anim),
-                child: FadeTransition(opacity: anim, child: child),
-              ),
-              child: isSelectionMode
-                  ? Icon(
-                      isSelected ? Iconsax.tick_circle5 : Iconsax.add_circle,
-                      key: ValueKey('select-$isSelected'),
-                      size: 24,
-                      color: isSelected ? BColors.primary : BColors.darkGrey,
-                    )
-                  : IconButton(
-                      key: const ValueKey('info'),
-                      tooltip: 'Account details',
-                      onPressed: onInfoTap,
-                      icon: const Icon(Iconsax.info_circle,
-                          size: 20, color: BColors.darkGrey),
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints.tightFor(width: 28, height: 28),
-                      splashRadius: 20,
-                    ),
-            ),
-          ),
-        ],
-      );
-
-  /// The number the collector came for.
-  Widget _outstanding(ThemeData theme) => Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
+          const SizedBox(width: BSizes.sm),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
                 BFormatter.formatPesoCurrency(
                     _settled ? totalCollected : totalAmount),
                 maxLines: 1,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontSize: 24,
-                  height: 1.1,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 17,
+                  height: 1.2,
                   fontWeight: FontWeight.w800,
                   color: _settled ? BColors.success : BColors.primary,
                 ),
               ),
-            ),
+              // Only on the rows that are the exception. Every other row in
+              // this list is an outstanding balance, so labelling each one
+              // "outstanding" repeats the column heading seven times and
+              // costs a line per row.
+              if (_settled)
+                Text(
+                  'collected',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: BColors.success,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(width: BSizes.xs),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 3),
-            child: Text(
-              _settled ? 'collected' : 'outstanding',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: BColors.darkGrey,
-                fontWeight: FontWeight.w600,
-              ),
+          // Selection mode is the only state that needs a glyph of its own.
+          // The info button moved into the metadata line, where it no longer
+          // competes with the amount for the strongest corner of the row.
+          if (isSelectionMode) ...[
+            const SizedBox(width: BSizes.sm),
+            Icon(
+              isSelected ? Iconsax.tick_circle5 : Iconsax.add_circle,
+              size: 22,
+              color: isSelected ? BColors.primary : BColors.darkGrey,
             ),
-          ),
+          ],
         ],
       );
 
@@ -262,33 +227,34 @@ class AccountCard extends StatelessWidget {
               curve: Curves.easeOutCubic,
               builder: (context, value, _) => LinearProgressIndicator(
                 value: value,
-                minHeight: 4,
+                minHeight: 3,
                 backgroundColor: BColors.grey,
                 valueColor:
                     const AlwaysStoppedAnimation<Color>(BColors.success),
               ),
             ),
           ),
-          // Only where it adds something. On a settled account the headline
-          // already reads "₱45,000.00 collected", so repeating it under a
-          // full bar is the same sentence twice.
+          // Only where it adds something. On a settled account the amount
+          // already reads as collected, so repeating it under a full bar is
+          // the same sentence twice.
           if (!_settled) ...[
-            const SizedBox(height: BSizes.xs),
+            const SizedBox(height: 3),
             Text(
               '${BFormatter.formatPesoCurrency(totalCollected)} collected so far',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:
-                  theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: BColors.darkGrey, fontSize: 10),
             ),
           ],
         ],
       );
 
-  /// Invoice count, and how much of it is late.
+  /// Invoice count, how much of it is late, and the way into the account's
+  /// details.
   Widget _meta(ThemeData theme) => Row(
         children: [
-          Icon(Iconsax.document_text, size: 14, color: BColors.darkGrey),
+          const Icon(Iconsax.document_text, size: 13, color: BColors.darkGrey),
           const SizedBox(width: BSizes.xs),
           Text(
             '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}',
@@ -300,8 +266,7 @@ class AccountCard extends StatelessWidget {
           if (overdueCount > 0) ...[
             const SizedBox(width: BSizes.sm),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
                 // Tinted, not solid: in these lists almost everything is
                 // overdue, and a wall of filled red badges carries no signal.
@@ -318,6 +283,22 @@ class AccountCard extends StatelessWidget {
               ),
             ),
           ],
+          const Spacer(),
+          if (!isSelectionMode)
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: IconButton(
+                tooltip: 'Account details',
+                onPressed: onInfoTap,
+                icon: const Icon(Iconsax.info_circle,
+                    size: 18, color: BColors.darkGrey),
+                padding: EdgeInsets.zero,
+                constraints:
+                    const BoxConstraints.tightFor(width: 24, height: 24),
+                splashRadius: 18,
+              ),
+            ),
         ],
       );
 }

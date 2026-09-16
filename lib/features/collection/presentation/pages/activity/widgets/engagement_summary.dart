@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 
 /// What is on the collector's plate right now, above the accounts it covers.
 ///
-/// Field Engagement opened on a search bar, one or two account cards, and
-/// then most of a screen of nothing. The blank space was not the problem so
-/// much as the symptom: the screen never answered the question the collector
-/// actually arrives with, which is how much is still out and how far through
-/// it they are.
+/// This is a queue that will normally hold a dozen accounts, so the summary
+/// has to earn its height against the rows it pushes down. It is one line of
+/// figures and a hairline of progress — enough to answer how much is still
+/// out and how far through the day they are, without costing a card.
 class EngagementSummary extends StatelessWidget {
   const EngagementSummary({
     super.key,
@@ -39,7 +37,8 @@ class EngagementSummary extends StatelessWidget {
     final done = due <= 0 && collected > 0;
 
     return Container(
-      padding: const EdgeInsets.all(BSizes.md),
+      padding: const EdgeInsets.symmetric(
+          horizontal: BSizes.spaceBtwItemsLight, vertical: BSizes.sm),
       decoration: BoxDecoration(
         color: BColors.white,
         borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
@@ -49,26 +48,50 @@ class EngagementSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            done ? 'All engaged invoices settled' : 'Still to collect',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: BColors.darkGrey,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              BFormatter.formatPesoCurrency(done ? collected : due),
-              maxLines: 1,
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: 1.1,
-                color: done ? BColors.success : BColors.primary,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      done ? 'All settled' : 'Still to collect',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: BColors.darkGrey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        BFormatter.formatPesoCurrency(done ? collected : due),
+                        maxLines: 1,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15,
+                          color: done ? BColors.success : BColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: BSizes.sm),
+              // Counts on one line, right-aligned against the amount. They
+              // were three Flexible columns sharing a row before, which on a
+              // phone truncated every one of them to "1 acco…".
+              Text(
+                _counts(),
+                textAlign: TextAlign.right,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: BColors.darkGrey,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
           if (collected > 0) ...[
             const SizedBox(height: BSizes.sm),
@@ -76,13 +99,13 @@ class EngagementSummary extends StatelessWidget {
               borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
               child: TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: _progress),
-                // Long enough to read as filling up, short enough that it is
-                // finished before the collector has taken the screen in.
+                // Long enough to read as filling up, short enough to be over
+                // before the collector has taken the screen in.
                 duration: const Duration(milliseconds: 420),
                 curve: Curves.easeOutCubic,
                 builder: (context, value, _) => LinearProgressIndicator(
                   value: value,
-                  minHeight: 6,
+                  minHeight: 5,
                   backgroundColor: BColors.grey,
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(BColors.success),
@@ -94,59 +117,26 @@ class EngagementSummary extends StatelessWidget {
               '${BFormatter.formatPesoCurrency(collected)} collected of ${BFormatter.formatPesoCurrency(due + collected)}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:
-                  theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: BColors.darkGrey, fontSize: 10),
             ),
           ],
-          const Divider(height: BSizes.lg),
-          Row(
-            children: [
-              _stat(theme, Iconsax.profile_2user, accounts,
-                  accounts == 1 ? 'account' : 'accounts'),
-              const SizedBox(width: BSizes.lg),
-              _stat(theme, Iconsax.document_text, invoices,
-                  invoices == 1 ? 'invoice' : 'invoices'),
-              if (overdue > 0) ...[
-                const SizedBox(width: BSizes.lg),
-                _stat(theme, Iconsax.clock, overdue, 'overdue',
-                    color: BColors.error),
-              ],
-            ],
-          ),
         ],
       ),
     );
   }
 
-  Widget _stat(ThemeData theme, IconData icon, int value, String label,
-          {Color color = BColors.darkerGrey}) =>
-      Flexible(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: BSizes.xs),
-            Flexible(
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '$value ',
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w700, color: color),
-                    ),
-                    TextSpan(
-                      text: label,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: BColors.darkGrey),
-                    ),
-                  ],
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      );
+  /// The counts, stacked, with overdue added only when there is any.
+  ///
+  /// One Text rather than three Flexible columns sharing a row: that layout
+  /// gave each count a third of the width and truncated every one of them to
+  /// "1 acco…" on a phone.
+  String _counts() {
+    final parts = [
+      '$accounts account${accounts == 1 ? '' : 's'}',
+      '$invoices invoice${invoices == 1 ? '' : 's'}',
+      if (overdue > 0) '$overdue overdue',
+    ];
+    return parts.join('\n');
+  }
 }
