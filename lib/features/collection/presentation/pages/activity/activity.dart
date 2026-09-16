@@ -3,12 +3,11 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
-import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/collection_work_header.dart';
 import 'activity_account_invoices_screen.dart';
 import 'widgets/activity_filter_modal.dart';
 import 'widgets/engagement_summary.dart';
@@ -32,27 +31,20 @@ class CollectionActivityScreen extends StatelessWidget {
 
           return Column(
             children: [
-              // Header
-              const BPrimaryHeaderContainer(
-                child: Column(
-                  children: [
-                    BHomeAppBar(title: 'Field Engagement'),
-                    SizedBox(height: BSizes.spaceBtwSections),
-                  ],
-                ),
-              ),
+              const CollectionWorkHeader(title: 'Field Engagement'),
 
               /// Search and Filter Bar
               Obx(() {
-                final hasFilter = controller.activityMinAmount.value > 0 || 
-                                 controller.activityMaxAmount.value > 0 ||
-                                 controller.activityMinInvoices.value > 0 ||
-                                 controller.activityMaxInvoices.value > 0;
-                
-                 return CollectionSearchFilterBar(
+                final hasFilter = controller.activityMinAmount.value > 0 ||
+                    controller.activityMaxAmount.value > 0 ||
+                    controller.activityMinInvoices.value > 0 ||
+                    controller.activityMaxInvoices.value > 0;
+
+                return CollectionSearchFilterBar(
                   searchHint: 'Search by account name...',
                   initialValue: controller.activitySearchQuery.value,
-                  onSearchChanged: (value) => controller.activitySearchQuery.value = value,
+                  onSearchChanged: (value) =>
+                      controller.activitySearchQuery.value = value,
                   hasActiveFilter: hasFilter,
                   onFilterTap: () => showSideFilter(ActivityFilterModal()),
                 );
@@ -82,9 +74,9 @@ class CollectionActivityScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
-                              (controller.activitySearchQuery.value.isEmpty && 
-                               controller.activityMinAmount.value == 0 && 
-                               controller.activityMinInvoices.value == 0)
+                              (controller.activitySearchQuery.value.isEmpty &&
+                                      controller.activityMinAmount.value == 0 &&
+                                      controller.activityMinInvoices.value == 0)
                                   ? Iconsax.activity
                                   : Iconsax.search_status,
                               size: 64,
@@ -92,18 +84,22 @@ class CollectionActivityScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: BSizes.spaceBtwItems),
                             Text(
-                              controller.activitySearchQuery.value.isEmpty && 
-                               controller.activityMinAmount.value == 0 && 
-                               controller.activityMinInvoices.value == 0
+                              controller.activitySearchQuery.value.isEmpty &&
+                                      controller.activityMinAmount.value == 0 &&
+                                      controller.activityMinInvoices.value == 0
                                   ? 'No field engagements yet'
                                   : 'No accounts match your criteria',
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.copyWith(
                                     color: BColors.darkGrey,
                                   ),
                             ),
                             const SizedBox(height: BSizes.xs),
-                            if (controller.activitySearchQuery.value.isNotEmpty || 
-                                controller.activityMinAmount.value > 0 || 
+                            if (controller
+                                    .activitySearchQuery.value.isNotEmpty ||
+                                controller.activityMinAmount.value > 0 ||
                                 controller.activityMinInvoices.value > 0)
                               TextButton(
                                 onPressed: () {
@@ -117,11 +113,15 @@ class CollectionActivityScreen extends StatelessWidget {
                               )
                             else
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: BSizes.lg),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: BSizes.lg),
                                 child: Text(
                                   'Select items from the Collection Bucket\nto start your field engagement.',
                                   textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(color: BColors.darkGrey),
                                 ),
                               ),
                           ],
@@ -139,8 +139,10 @@ class CollectionActivityScreen extends StatelessWidget {
                         final client = accounts[index];
                         return AccountCard(
                           client: client,
-                          invoiceCount: controller.getActivityAccountInvoiceCount(client.id),
-                          totalAmount: controller.getActivityAccountTotalDue(client.id),
+                          invoiceCount: controller
+                              .getActivityAccountInvoiceCount(client.id),
+                          totalAmount:
+                              controller.getActivityAccountTotalDue(client.id),
                           // The engagement's own collected figure. This read
                           // the app-wide one, so a card could report money
                           // taken against invoices that are not in this
@@ -149,8 +151,12 @@ class CollectionActivityScreen extends StatelessWidget {
                               .getActivityAccountTotalCollected(client.id),
                           overdueCount: controller
                               .getActivityAccountOverdueCount(client.id),
-                          onTap: () => Get.to(() => CollectionActivityAccountInvoicesScreen(client: client)),
-                          onInfoTap: () => Get.to(() => CollectionAccountInformationScreen(client: client)),
+                          onTap: () => Get.to(() =>
+                              CollectionActivityAccountInvoicesScreen(
+                                  client: client)),
+                          onInfoTap: () => Get.to(() =>
+                              CollectionAccountInformationScreen(
+                                  client: client)),
                         );
                       },
                     ),
