@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -7,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:path/path.dart' show join;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// Reported from the field: the Bank field opened the keyboard instead of the
@@ -63,6 +66,30 @@ void main() {
       await ensureCollectionTables(db);
 
       expect((await dao.getAll()).length, 2);
+      await db.close();
+    });
+
+    test('what was downloaded is still there after a restart', () async {
+      // The question this has to answer: a collector downloads the list on
+      // wifi in the morning and opens the app again in the field with no
+      // signal. In-memory would pass everything above and still fail here.
+      final dir = await Directory.systemTemp.createTemp('banklist');
+      final path = join(dir.path, 'restart.db');
+      addTearDown(() => dir.delete(recursive: true));
+
+      var db = await openDatabase(path,
+          version: 1, onCreate: (db, _) => ensureCollectionTables(db));
+      await CollectionBankDao(db).replaceAll(_banks);
+      await db.close();
+
+      // A cold start: nothing in memory, only what is on disk.
+      db = await openDatabase(path,
+          version: 1, onCreate: (db, _) => ensureCollectionTables(db));
+      final restored = await CollectionBankDao(db).getAll();
+
+      expect(restored.map((b) => b.code), containsAll(['BPI', 'MET']));
+      expect(restored.firstWhere((b) => b.code == 'BPI').name,
+          'Bank of the Philippine Islands');
       await db.close();
     });
 

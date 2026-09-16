@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:get/get.dart';
@@ -79,17 +78,5 @@ class BankRepository extends GetxService {
       logDebug('BankRepository.refresh error: $e');
       return Result.failure('Could not reach the bank list');
     }
-  }
-
-  /// The cache, refreshed in the background.
-  ///
-  /// Returns immediately with whatever is on the device so the picker opens
-  /// at once; the refresh lands on the next read.
-  Future<List<BankModel>> loadAndRefresh() async {
-    final local = await cached();
-    // Deliberately not awaited: a collector opening the bank picker should
-    // not wait on a network round trip to see a list they already have.
-    unawaited(refresh());
-    return local;
   }
 }
