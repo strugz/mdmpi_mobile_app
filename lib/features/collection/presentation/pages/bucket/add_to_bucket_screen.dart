@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 
@@ -64,7 +65,7 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
       clientAddress: _clientAddress.text.trim(),
       clientContact: _clientContact.text.trim(),
       documentReferences: refs,
-      toBeCollected: double.tryParse(_amount.text.trim()) ?? 0,
+      toBeCollected: BFormatter.parseAmount(_amount.text),
       bankName: _bankName.text.trim().isEmpty ? null : _bankName.text.trim(),
       remarks: _remarks.text.trim().isEmpty ? null : _remarks.text.trim(),
       dueDate: _dueDate.text.trim().isEmpty ? null : _dueDate.text.trim(),
@@ -101,13 +102,12 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
               'Amount Due *',
               required: true,
               keyboard: const TextInputType.numberWithOptions(decimal: true),
-              formatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-              ],
+              formatters: [ThousandsSeparatorInputFormatter()],
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return 'Required';
-                final n = double.tryParse(v.trim());
-                if (n == null || n <= 0) return 'Enter a valid amount';
+                if (BFormatter.parseAmount(v) <= 0) {
+                  return 'Enter an amount greater than zero';
+                }
                 return null;
               },
             ),

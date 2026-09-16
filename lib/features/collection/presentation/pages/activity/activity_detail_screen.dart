@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
@@ -54,15 +53,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
   double get _balance => widget.item.toBeCollected;
 
-  double get _enteredAmount => _parseAmount(totalCollectedController.text);
-
-  /// Tolerant of thousands separators, spaces and a stray peso sign. The
-  /// previous parse handled none of these and silently recorded 0.
-  static double _parseAmount(String raw) {
-    final cleaned = raw.replaceAll(RegExp(r'[^0-9.]'), '');
-    if (cleaned.isEmpty) return 0;
-    return double.tryParse(cleaned) ?? 0;
-  }
+  double get _enteredAmount =>
+      BFormatter.parseAmount(totalCollectedController.text);
 
   @override
   void initState() {
@@ -134,7 +126,11 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   }
 
   void _fillFullAmount() {
-    final text = _balance.toStringAsFixed(2);
+    // Grouped, because a value set in code bypasses the input formatters and
+    // an ungrouped 37759.82 would not match what typing the same figure
+    // produces.
+    final text =
+        BFormatter.formatPesoCurrency(_balance, includeSymbol: false).trim();
     totalCollectedController.value = TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
@@ -377,15 +373,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   Widget _amountField() => TextField(
         controller: totalCollectedController,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        // Digits and a single decimal point only: no way to type a character
-        // the parser would have to throw away.
-        inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-          TextInputFormatter.withFunction((oldValue, newValue) {
-            final dots = '.'.allMatches(newValue.text).length;
-            return dots > 1 ? oldValue : newValue;
-          }),
-        ],
+        // The same typing rules as every other money field in Collection:
+        // digits, one decimal point, grouped as you go so a five-figure
+        // balance stays readable.
+        inputFormatters: [ThousandsSeparatorInputFormatter()],
         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         decoration: const InputDecoration(
           hintText: '0.00',

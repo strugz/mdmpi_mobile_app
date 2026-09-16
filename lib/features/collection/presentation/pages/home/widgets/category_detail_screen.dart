@@ -254,7 +254,13 @@ class CategoryDetailScreen extends StatelessWidget {
                     decoration: const InputDecoration(labelText: 'Amount Due'),
                     keyboardType: TextInputType.number,
                     inputFormatters: [ThousandsSeparatorInputFormatter()],
-                    validator: (v) => v?.isEmpty ?? true ? 'Required' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      if (BFormatter.parseAmount(v) <= 0) {
+                        return 'Enter an amount greater than zero';
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: BSizes.spaceBtwInputFields),
                   TextFormField(
@@ -292,7 +298,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       controller.assignInvoiceToPayment(
                         paymentId: payment['id'],
                         invoiceNumber: invoiceNumberController.text,
-                        amountDue: double.tryParse(amountDueController.text.replaceAll(',', '')) ?? 0,
+                        amountDue: BFormatter.parseAmount(amountDueController.text),
                         dueDate: dueDateController.text,
                       );
                       Get.back();

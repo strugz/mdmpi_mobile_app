@@ -148,13 +148,14 @@ class MonthlySummaryScreen extends StatelessWidget {
       content: TextField(
         controller: tc,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        inputFormatters: [ThousandsSeparatorInputFormatter()],
         decoration: const InputDecoration(prefixText: '₱ '),
       ),
       actions: [
         TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
         ElevatedButton(
           onPressed: () {
-            final v = double.tryParse(tc.text.replaceAll(',', '')) ?? 0.0;
+            final v = BFormatter.parseAmount(tc.text);
             controller.setTargetAmount(v);
             Get.back();
           },

@@ -102,7 +102,8 @@ void main() {
       expect(_amountText(tester), '');
       await _tapChip(tester, 'Full');
 
-      expect(_amountText(tester), '37759.82');
+      // Grouped, matching what typing the same figure into the field produces.
+      expect(_amountText(tester), '37,759.82');
       expect(find.text('Settles this invoice in full'), findsOneWidget);
     });
 

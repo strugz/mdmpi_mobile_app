@@ -104,12 +104,12 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   double get _allocatedTotal {
     double total = 0;
     for (var controller in itemAmountControllers.values) {
-      total += double.tryParse(controller.text) ?? 0;
+      total += BFormatter.parseAmount(controller.text);
     }
     return total;
   }
 
-  double get _targetTotal => double.tryParse(totalAmountController.text) ?? 0;
+  double get _targetTotal => BFormatter.parseAmount(totalAmountController.text);
 
   bool get _isBalanced {
     final target = _targetTotal;
@@ -136,7 +136,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     final Map<String, String> finalRemarks = {};
 
     for (var item in widget.items) {
-      finalAmounts[item.id] = double.tryParse(itemAmountControllers[item.id]!.text) ?? 0;
+      finalAmounts[item.id] =
+          BFormatter.parseAmount(itemAmountControllers[item.id]!.text);
       
       // Combine status remarks with manual remarks
       String remark = itemRemarkControllers[item.id]!.text.trim();
@@ -306,6 +307,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             TextField(
               controller: totalAmountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [ThousandsSeparatorInputFormatter()],
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(color: BColors.primary, fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
                 hintText: 'Enter total check amount...',
@@ -360,7 +362,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
               itemBuilder: (context, index) {
                 final item = widget.items[index];
                 final currentStatus = itemStatuses[item.id] ?? '';
-                final amountAllocated = double.tryParse(itemAmountControllers[item.id]!.text) ?? 0;
+                final amountAllocated =
+                    BFormatter.parseAmount(itemAmountControllers[item.id]!.text);
 
                 return Container(
                   padding: const EdgeInsets.all(BSizes.md),
@@ -397,6 +400,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                             child: TextField(
                               controller: itemAmountControllers[item.id],
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: [ThousandsSeparatorInputFormatter()],
                               decoration: const InputDecoration(
                                 labelText: 'Amount',
                                 prefixText: '₱ ',

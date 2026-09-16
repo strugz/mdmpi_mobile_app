@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -37,7 +38,7 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
     final controller = CollectionActivityController.instance;
     controller.saveAdvancedPayment(
       clientId: selectedAccount!.id,
-      amount: double.tryParse(amountController.text) ?? 0.0,
+      amount: BFormatter.parseAmount(amountController.text),
       remarks: remarksController.text,
     );
 
@@ -79,12 +80,24 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                 TextFormField(
                   controller: amountController,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Amount Paid',
                     prefixIcon: Icon(Iconsax.money_send),
                     prefixText: '₱ ',
                   ),
-                  validator: (value) => value == null || value.isEmpty ? 'Amount is required' : null,
+                  // "Not empty" was the whole check, so a zero or an
+                  // unparseable amount sailed through and was recorded as
+                  // ₱0.00 against the account.
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Amount is required';
+                    }
+                    if (BFormatter.parseAmount(value) <= 0) {
+                      return 'Enter an amount greater than zero';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 

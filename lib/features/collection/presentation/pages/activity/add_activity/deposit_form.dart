@@ -48,7 +48,7 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
       documentIds: selectedInvoiceIds,
       accountName: selectedClient!.name,
       remarks: 'Deposit for Invoice(s) #${selectedInvoiceIds.join(', ')}. ${remarksController.text}',
-      totalCollected: double.tryParse(amountController.text.replaceAll(',', '')) ?? 0,
+      totalCollected: BFormatter.parseAmount(amountController.text),
       bankName: bankNameController.text,
       checkNumber: checkNumberController.text,
     );
@@ -145,9 +145,12 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                     prefixIcon: Icon(Iconsax.money),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Amount is required';
-                    final normalized = value.replaceAll(',', '');
-                    if (double.tryParse(normalized) == null) return 'Enter a valid amount';
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Amount is required';
+                    }
+                    if (BFormatter.parseAmount(value) <= 0) {
+                      return 'Enter an amount greater than zero';
+                    }
                     return null;
                   },
                 ),

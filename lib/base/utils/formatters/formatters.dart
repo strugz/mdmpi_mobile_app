@@ -98,6 +98,27 @@ class BFormatter {
     ).format(amount);
   }
 
+  /// Read a money amount back out of a text field.
+  ///
+  /// The inverse of [formatPesoCurrency], and the only way money fields should
+  /// be parsed. A bare `double.tryParse` returns null for anything carrying a
+  /// thousands separator, a peso sign or a stray space — and every call site
+  /// wrote `?? 0` after it, so a perfectly readable "1,000" was silently
+  /// recorded as zero. Whatever the collector can see in the field, this
+  /// reads.
+  ///
+  /// Only the first decimal point counts, so a fat-fingered "12.34.5" is 12.34
+  /// rather than 12.345: an extra keystroke must never change the magnitude.
+  static double parseAmount(String? raw) {
+    if (raw == null) return 0;
+    final sanitized = raw.replaceAll(RegExp(r'[^0-9.]'), '');
+    if (sanitized.isEmpty) return 0;
+    final parts = sanitized.split('.');
+    final cleaned =
+        parts.length > 1 ? '${parts[0]}.${parts[1]}' : parts[0];
+    return double.tryParse(cleaned) ?? 0;
+  }
+
   /// Formats a numeric value as an integer string (no decimals, no currency symbol).
   /// Uses locale-aware grouping (commas) and rounds the value to nearest integer.
   static String formatIntegerNoDecimal(double value) {
@@ -271,12 +292,18 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
     final selectionIndexFromTheRight = newValue.text.length - newValue.selection.end;
 
     // Remove all characters except digits and dot
-    final sanitized = newValue.text.replaceAll(RegExp('[^0-9\.]'), '');
+    final sanitized = newValue.text.replaceAll(RegExp(r'[^0-9.]'), '');
 
-    // If more than one dot, keep only first
+    // Keep the first decimal point and drop the rest. Joining the extra
+    // groups (the old behaviour) turned "12.34.5" into 12.345, so one stray
+    // keystroke moved the decimal place on a money field.
     final parts = sanitized.split('.');
     final intPartRaw = parts[0];
-    final decPartRaw = parts.length > 1 ? parts.sublist(1).join('') : '';
+    final decPartRaw = parts.length > 1
+        // Centavos, so two digits. Past that the extra digits are noise that
+        // would only surface as a sub-centavo mismatch somewhere later.
+        ? parts[1].substring(0, parts[1].length > 2 ? 2 : parts[1].length)
+        : '';
 
     // Format integer part with commas
     String formattedInt;
@@ -287,7 +314,11 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
       formattedInt = intPartRaw;
     }
 
-    final newText = decPartRaw.isNotEmpty ? '$formattedInt.$decPartRaw' : formattedInt;
+    // Keyed off "was there a dot", not "are there decimals yet": testing the
+    // decimals swallowed the point the moment it was typed, so centavos could
+    // not be entered at all.
+    final newText =
+        parts.length > 1 ? '$formattedInt.$decPartRaw' : formattedInt;
 
     // Recalculate selection
     final selectionIndex = newText.length - selectionIndexFromTheRight;
