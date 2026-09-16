@@ -592,6 +592,37 @@ class CollectionActivityController extends GetxController {
       .where((item) => item.client.id == clientId && item.toBeCollected > 0)
       .length;
 
+  /// How many of this account's engaged invoices are past their due date.
+  int getActivityAccountOverdueCount(String clientId) => activityItems
+      .where((item) =>
+          item.client.id == clientId && item.toBeCollected > 0 && item.isOverdue)
+      .length;
+
+  /// The day at a glance: what is on the collector's plate right now.
+  ///
+  /// Read off [activityAccounts] rather than the raw list so it always agrees
+  /// with the cards underneath it, including while a filter is applied.
+  ({int accounts, int invoices, int overdue, double due, double collected})
+      get activitySummary {
+    var invoices = 0;
+    var overdue = 0;
+    var due = 0.0;
+    var collected = 0.0;
+    for (final client in activityAccounts) {
+      invoices += getActivityAccountInvoiceCount(client.id);
+      overdue += getActivityAccountOverdueCount(client.id);
+      due += getActivityAccountTotalDue(client.id);
+      collected += getActivityAccountTotalCollected(client.id);
+    }
+    return (
+      accounts: activityAccounts.length,
+      invoices: invoices,
+      overdue: overdue,
+      due: due,
+      collected: collected,
+    );
+  }
+
   List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) {
     final invoices = activityItems
         .where((item) => item.client.id == clientId && item.toBeCollected > 0)

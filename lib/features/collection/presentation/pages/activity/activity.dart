@@ -6,11 +6,12 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 import 'activity_account_invoices_screen.dart';
 import 'widgets/activity_filter_modal.dart';
+import 'widgets/engagement_summary.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 
 /// Collection Activity Screen
@@ -56,6 +57,22 @@ class CollectionActivityScreen extends StatelessWidget {
                   onFilterTap: () => showSideFilter(ActivityFilterModal()),
                 );
               }),
+
+              if (accounts.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(BSizes.defaultSpace,
+                      BSizes.defaultSpace, BSizes.defaultSpace, 0),
+                  child: Builder(builder: (context) {
+                    final summary = controller.activitySummary;
+                    return EngagementSummary(
+                      accounts: summary.accounts,
+                      invoices: summary.invoices,
+                      overdue: summary.overdue,
+                      due: summary.due,
+                      collected: summary.collected,
+                    );
+                  }),
+                ),
 
               accounts.isEmpty
                   ? Padding(
@@ -120,11 +137,18 @@ class CollectionActivityScreen extends StatelessWidget {
                           const SizedBox(height: BSizes.spaceBtwItems),
                       itemBuilder: (context, index) {
                         final client = accounts[index];
-                        return AccountItemCard(
+                        return AccountCard(
                           client: client,
                           invoiceCount: controller.getActivityAccountInvoiceCount(client.id),
                           totalAmount: controller.getActivityAccountTotalDue(client.id),
-                          totalCollected: controller.getAccountTotalCollected(client.id),
+                          // The engagement's own collected figure. This read
+                          // the app-wide one, so a card could report money
+                          // taken against invoices that are not in this
+                          // engagement at all.
+                          totalCollected: controller
+                              .getActivityAccountTotalCollected(client.id),
+                          overdueCount: controller
+                              .getActivityAccountOverdueCount(client.id),
                           onTap: () => Get.to(() => CollectionActivityAccountInvoicesScreen(client: client)),
                           onInfoTap: () => Get.to(() => CollectionAccountInformationScreen(client: client)),
                         );

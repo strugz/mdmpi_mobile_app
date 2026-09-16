@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -194,7 +194,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       break;
                   }
 
-                  return AccountItemCard(
+                  return AccountCard(
                     client: client,
                     invoiceCount: invoices.length,
                     totalAmount: invoices.fold(0.0, (sum, i) => sum + i.toBeCollected),

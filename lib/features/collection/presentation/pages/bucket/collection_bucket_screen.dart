@@ -5,7 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/account_item_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_filter_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'collection_account_information_screen.dart';
@@ -155,7 +155,7 @@ class CollectionBucketScreen extends StatelessWidget {
                           final client = accounts[index];
                           final isSelected = controller.selectedAccountIds.contains(client.id);
 
-                          return AccountItemCard(
+                          return AccountCard(
                             client: client,
                             invoiceCount: controller.getAccountInvoiceCount(client.id),
                             totalAmount: controller.getAccountTotalDue(client.id),
