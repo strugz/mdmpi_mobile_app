@@ -29,7 +29,8 @@ class AccountCard extends StatelessWidget {
     required this.invoiceCount,
     required this.totalAmount,
     required this.onTap,
-    required this.onInfoTap,
+    this.onInfoTap,
+    this.onSelectTap,
     this.totalCollected = 0.0,
     this.overdueCount = 0,
     this.onClaimTap,
@@ -51,7 +52,17 @@ class AccountCard extends StatelessWidget {
   final int overdueCount;
 
   final VoidCallback onTap;
-  final VoidCallback onInfoTap;
+
+  /// Opens the account's details. Null where tapping the row already does
+  /// that, so the row is not offered the same destination twice.
+  final VoidCallback? onInfoTap;
+
+  /// Given, the row carries a selection circle on its left that toggles on
+  /// tap while the rest of the row keeps doing whatever [onTap] does. This is
+  /// how a screen makes picking several rows an ordinary thing to do rather
+  /// than a mode found by holding a finger down.
+  final VoidCallback? onSelectTap;
+
   final VoidCallback? onClaimTap;
   final VoidCallback? onLongPress;
   final bool isSelected;
@@ -121,6 +132,11 @@ class AccountCard extends StatelessWidget {
                 child: OutlinedButton(
                   onPressed: onClaimTap,
                   style: OutlinedButton.styleFrom(
+                    // The app's OutlinedButton theme pads 16pt top and bottom.
+                    // Inside a 40pt button that leaves an 8pt window, and the
+                    // label rendered as four dots — the middle of the letters.
+                    // Padding is set here so the theme's cannot apply.
+                    padding: const EdgeInsets.symmetric(horizontal: BSizes.md),
                     side: const BorderSide(color: BColors.primary),
                     shape: RoundedRectangleBorder(
                       borderRadius:
@@ -148,6 +164,10 @@ class AccountCard extends StatelessWidget {
   Widget _topLine(ThemeData theme, String? address) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (onSelectTap != null) ...[
+            _selectionCircle(),
+            const SizedBox(width: BSizes.sm),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,10 +220,11 @@ class AccountCard extends StatelessWidget {
                 ),
             ],
           ),
-          // Selection mode is the only state that needs a glyph of its own.
+          // The long-press selection mode is the only state that still needs
+          // a trailing glyph; a selectable row carries its circle on the left.
           // The info button moved into the metadata line, where it no longer
           // competes with the amount for the strongest corner of the row.
-          if (isSelectionMode) ...[
+          if (isSelectionMode && onSelectTap == null) ...[
             const SizedBox(width: BSizes.sm),
             Icon(
               isSelected ? Iconsax.tick_circle5 : Iconsax.add_circle,
@@ -212,6 +233,51 @@ class AccountCard extends StatelessWidget {
             ),
           ],
         ],
+      );
+
+  /// Tick on the left. A 40pt target around a 22pt mark, because it is hit
+  /// with a thumb while walking, and one tap per account is the whole point.
+  Widget _selectionCircle() => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onSelectTap,
+        child: Semantics(
+          checked: isSelected,
+          label: 'Select ${client.name}',
+          child: SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(
+              child: AnimatedContainer(
+                duration: _stateDuration,
+                curve: Curves.easeOut,
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? BColors.primary : BColors.white,
+                  border: Border.all(
+                    color: isSelected ? BColors.primary : BColors.darkGrey,
+                    width: 1.5,
+                  ),
+                ),
+                child: AnimatedSwitcher(
+                  duration: _stateDuration,
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    // From 0.6, not 0: nothing appears from nowhere.
+                    scale: Tween<double>(begin: 0.6, end: 1).animate(anim),
+                    child: FadeTransition(opacity: anim, child: child),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check,
+                          key: ValueKey('on'), size: 14, color: BColors.white)
+                      : const SizedBox(key: ValueKey('off')),
+                ),
+              ),
+            ),
+          ),
+        ),
       );
 
   /// Only drawn once something has actually been collected, so an untouched
@@ -254,6 +320,9 @@ class AccountCard extends StatelessWidget {
   /// details.
   Widget _meta(ThemeData theme) => Row(
         children: [
+          // Under the name, not under the circle: secondary text lines up
+          // with the primary text it belongs to, the way a mail list does.
+          if (onSelectTap != null) const SizedBox(width: 40 + BSizes.sm),
           const Icon(Iconsax.document_text, size: 13, color: BColors.darkGrey),
           const SizedBox(width: BSizes.xs),
           Text(
@@ -284,7 +353,7 @@ class AccountCard extends StatelessWidget {
             ),
           ],
           const Spacer(),
-          if (!isSelectionMode)
+          if (!isSelectionMode && onInfoTap != null)
             SizedBox(
               width: 24,
               height: 24,

@@ -532,7 +532,49 @@ class CollectionActivityController extends GetxController {
         return false;
 
       return true;
-    }).toList();
+    }).toList()
+      // A catalogue, so alphabetical: collectors find accounts here by
+      // name. The master list is a map's values in whatever order invoices
+      // arrived from the server, which is no order at all.
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  }
+
+  /// How many of this account's bucket invoices are past due — the strongest
+  /// signal for which accounts to pick up today.
+  int getBucketAccountOverdueCount(String clientId) => bucketItems
+      .where((item) =>
+          item.client.id == clientId && item.toBeCollected > 0 && item.isOverdue)
+      .length;
+
+  /// Everything currently in view, and everything currently ticked.
+  ///
+  /// Both read off [bucketAccounts] so a filter that empties the list also
+  /// zeroes the count, and the acquire bar's total is the sum of exactly the
+  /// rows the collector can see are ticked.
+  ({int accounts, double due}) get bucketSummary {
+    var due = 0.0;
+    final accounts = bucketAccounts;
+    for (final client in accounts) {
+      due += getAccountTotalDue(client.id);
+    }
+    return (accounts: accounts.length, due: due);
+  }
+
+  ({int accounts, double due}) get selectionSummary {
+    var due = 0.0;
+    for (final id in selectedAccountIds) {
+      due += getAccountTotalDue(id);
+    }
+    return (accounts: selectedAccountIds.length, due: due);
+  }
+
+  /// Tick every account the current filters leave visible — "take the whole
+  /// area" in one tap.
+  void selectAllVisibleAccounts() {
+    final ids = bucketAccounts.map((c) => c.id);
+    if (ids.isEmpty) return;
+    selectedAccountIds.addAll(ids);
+    isSelectionMode.value = true;
   }
 
   List<CollectionItemModel> getInvoicesByAccount(String clientId) {
