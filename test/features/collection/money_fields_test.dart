@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/batch_activity_detail_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
-/// The screens that take a money amount, checked at the field rather than at
-/// the parser: what the collector types has to arrive as the figure they saw.
+/// The batch screen splits one payment across several invoices. Its job is
+/// the split, so that is what these cover: the money must arrive as the
+/// figure the collector saw, and the arithmetic must never be left to them.
 
 CollectionItemModel _item(String id, double due) => CollectionItemModel(
       id: id,
@@ -23,89 +26,271 @@ CollectionItemModel _item(String id, double due) => CollectionItemModel(
       postingDate: '2026-08-13',
     );
 
-String _textOf(WidgetTester tester, int index) => tester
-    .widget<TextField>(find.byType(TextField).at(index))
-    .controller!
-    .text;
+Finder _total() => find.byKey(const ValueKey('batch-total'));
+Finder _amount(String id) => find.byKey(ValueKey('batch-amount-$id'));
+
+String _textOf(WidgetTester tester, Finder field) =>
+    tester.widget<TextField>(field).controller!.text;
+
+Finder _chip(String startsWith) => find.byWidgetPredicate(
+      (w) => w is BQuickFillChip && w.label.startsWith(startsWith),
+    );
+
+/// Chips sit below the fold on a phone-sized viewport, so scroll to one
+/// before tapping: a tap on an off-screen widget lands on nothing.
+///
+/// Every row carries the same "Full" chip, so take the first match rather
+/// than requiring the label to be unique on screen.
+Future<void> _tapChip(WidgetTester tester, String startsWith) async {
+  final finder = _chip(startsWith).first;
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pumpAndSettle();
+}
+
+ElevatedButton _saveButton(WidgetTester tester) => tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, 'Record 2 invoices'),
+    );
 
 void main() {
-  group('batch allocation', () {
-    // Field order on the screen: bank, check #, check date, total, then one
-    // amount/remark pair per invoice.
-    const totalField = 3;
-    const firstAmountField = 4;
-    const secondAmountField = 6;
+  Future<void> pump(WidgetTester tester,
+      {List<CollectionItemModel>? items}) async {
+    // The invoice rows live in a lazy list, so a row below the fold is not
+    // in the tree at all and cannot be typed into. A tall surface puts the
+    // whole screen in view; this is about reaching the fields, not about
+    // how the screen looks on a phone.
+    tester.view.physicalSize = const Size(1080, 4200);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
 
-    Future<void> pump(WidgetTester tester) async {
-      await tester.pumpWidget(GetMaterialApp(
-        home: BatchActivityDetailScreen(
-          items: [_item('1', 600), _item('2', 400)],
-        ),
-      ));
+    await tester.pumpWidget(GetMaterialApp(
+      home: BatchActivityDetailScreen(
+        items: items ?? [_item('1', 600), _item('2', 400)],
+      ),
+    ));
+    await tester.pumpAndSettle();
+  }
+
+  group('splitting the payment', () {
+    testWidgets('one tap pours the amount over the invoices in order',
+        (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_total(), '1000');
       await tester.pumpAndSettle();
-    }
+      await _tapChip(tester, 'Distribute');
+
+      expect(_textOf(tester, _amount('1')), '600.00');
+      expect(_textOf(tester, _amount('2')), '400.00');
+      expect(find.text('Fully allocated'), findsOneWidget);
+    });
+
+    testWidgets('a short payment settles what it can and stops',
+        (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_total(), '750');
+      await tester.pumpAndSettle();
+      await _tapChip(tester, 'Distribute');
+
+      // The first invoice is settled in full and the remainder lands on the
+      // second, which is how a payment is actually applied.
+      expect(_textOf(tester, _amount('1')), '600.00');
+      expect(_textOf(tester, _amount('2')), '150.00');
+      expect(find.text('Fully allocated'), findsOneWidget);
+    });
+
+    testWidgets('an overpayment leaves nothing stranded on the last invoice',
+        (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_total(), '1200');
+      await tester.pumpAndSettle();
+      await _tapChip(tester, 'Distribute');
+
+      // Each invoice takes its balance and no more, so the excess shows up
+      // as unallocated rather than silently inflating a row.
+      expect(_textOf(tester, _amount('1')), '600.00');
+      expect(_textOf(tester, _amount('2')), '400.00');
+      expect(find.textContaining('left to allocate'), findsOneWidget);
+    });
+
+    testWidgets('settling everything is a single chip', (tester) async {
+      await pump(tester);
+
+      await _tapChip(tester, 'Settles all');
+
+      expect(_textOf(tester, _total()), '1,000.00');
+      expect(_textOf(tester, _amount('1')), '600.00');
+      expect(find.text('Fully allocated'), findsOneWidget);
+    });
+
+    testWidgets('centavos survive the split', (tester) async {
+      await pump(tester, items: [_item('1', 600.25), _item('2', 400.25)]);
+
+      await tester.enterText(_total(), '1000.50');
+      await tester.pumpAndSettle();
+      await _tapChip(tester, 'Distribute');
+
+      expect(_textOf(tester, _amount('1')), '600.25');
+      expect(_textOf(tester, _amount('2')), '400.25');
+      expect(find.text('Fully allocated'), findsOneWidget);
+    });
+
+    testWidgets('clearing empties every row', (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_total(), '1000');
+      await tester.pumpAndSettle();
+      await _tapChip(tester, 'Distribute');
+      await _tapChip(tester, 'Clear');
+
+      expect(_textOf(tester, _amount('1')), '');
+      expect(_textOf(tester, _amount('2')), '');
+    });
+  });
+
+  group('what is left to allocate', () {
+    testWidgets('save is blocked until the split balances, and says why',
+        (tester) async {
+      await pump(tester);
+
+      expect(find.text('Enter the amount received'), findsOneWidget);
+      expect(_saveButton(tester).onPressed, isNull);
+
+      await tester.enterText(_total(), '1000');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('left to allocate'), findsOneWidget);
+      expect(_saveButton(tester).onPressed, isNull);
+
+      await _tapChip(tester, 'Distribute');
+      expect(_saveButton(tester).onPressed, isNotNull);
+    });
+
+    testWidgets('allocating more than was received is called out',
+        (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_total(), '500');
+      await tester.enterText(_amount('1'), '600');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('over'), findsWidgets);
+      expect(_saveButton(tester).onPressed, isNull);
+    });
 
     testWidgets('a grouped total balances against grouped allocations',
         (tester) async {
       await pump(tester);
 
-      // Typed with the separator, the way the field now renders it. Before,
-      // every one of these read as zero: the total was zero so Save stayed
-      // disabled, with nothing on screen explaining why.
-      await tester.enterText(find.byType(TextField).at(totalField), '1000');
-      await tester.enterText(
-          find.byType(TextField).at(firstAmountField), '600');
-      await tester.enterText(
-          find.byType(TextField).at(secondAmountField), '400');
+      // Before, every one of these read as zero: the total was zero, so Save
+      // stayed disabled with nothing on screen explaining why.
+      await tester.enterText(_total(), '1000');
+      await tester.enterText(_amount('1'), '600');
+      await tester.enterText(_amount('2'), '400');
       await tester.pumpAndSettle();
 
-      expect(_textOf(tester, totalField), '1,000');
-      expect(find.text('Balanced! Ready to save.'), findsOneWidget);
+      expect(_textOf(tester, _total()), '1,000');
+      expect(find.text('Fully allocated'), findsOneWidget);
     });
+  });
 
-    testWidgets('centavos are kept, so the balance check can actually meet',
+  group('per-invoice outcome', () {
+    testWidgets('a row starts with no outcome rather than pre-collected',
         (tester) async {
       await pump(tester);
 
-      await tester.enterText(find.byType(TextField).at(totalField), '1000.50');
-      await tester.enterText(
-          find.byType(TextField).at(firstAmountField), '600.25');
-      await tester.enterText(
-          find.byType(TextField).at(secondAmountField), '400.25');
-      await tester.pumpAndSettle();
-
-      expect(_textOf(tester, totalField), '1,000.50');
-      expect(find.text('Balanced! Ready to save.'), findsOneWidget);
+      // Every row used to open marked Collected, so a row left at zero was
+      // recorded as paid in full against a real invoice.
+      expect(find.text('Set outcome'), findsNWidgets(2));
+      expect(find.text(CollectionStatusColors.statusCollected), findsNothing);
     });
 
-    testWidgets('a short allocation still reports what is left', (tester) async {
-      await pump(tester);
-
-      await tester.enterText(find.byType(TextField).at(totalField), '1000');
-      await tester.enterText(
-          find.byType(TextField).at(firstAmountField), '600');
-      await tester.pumpAndSettle();
-
-      expect(find.textContaining('400.00'), findsWidgets);
-      expect(find.text('Balanced! Ready to save.'), findsNothing);
-    });
-
-    testWidgets('the save button is disabled until the split balances',
+    testWidgets('a balanced split with an untouched row cannot be saved',
         (tester) async {
       await pump(tester);
 
-      ElevatedButton saveButton() => tester.widget<ElevatedButton>(
-            find.widgetWithText(ElevatedButton, 'Save Batch Engagement'),
-          );
-
-      await tester.enterText(find.byType(TextField).at(totalField), '1000');
+      // The whole payment lands on the first invoice: the numbers agree, but
+      // nobody has said what happened to the second.
+      await tester.enterText(_total(), '600');
+      await tester.enterText(_amount('1'), '600');
       await tester.pumpAndSettle();
-      expect(saveButton().onPressed, isNull);
 
-      await tester.enterText(
-          find.byType(TextField).at(firstAmountField), '1000');
+      expect(find.text('Set the outcome on 1 invoice'), findsOneWidget);
+      expect(_saveButton(tester).onPressed, isNull);
+    });
+
+    testWidgets('clearing an amount takes its outcome with it', (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_amount('1'), '600');
       await tester.pumpAndSettle();
-      expect(saveButton().onPressed, isNotNull);
+      expect(find.text(CollectionStatusColors.statusCollected), findsOneWidget);
+
+      await tester.enterText(_amount('1'), '');
+      await tester.pumpAndSettle();
+      expect(find.text(CollectionStatusColors.statusCollected), findsNothing);
+    });
+
+    testWidgets('a row settled in full is marked Collected', (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_amount('1'), '600');
+      await tester.pumpAndSettle();
+
+      expect(find.text(CollectionStatusColors.statusCollected), findsWidgets);
+    });
+
+    testWidgets('a part payment marks that row Partially Collected',
+        (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_amount('1'), '100');
+      await tester.pumpAndSettle();
+
+      expect(find.text(CollectionStatusColors.statusPartial), findsOneWidget);
+    });
+
+    testWidgets('a row reports what it will leave behind', (tester) async {
+      await pump(tester);
+
+      await tester.enterText(_amount('1'), '100');
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('will remain'), findsOneWidget);
+    });
+
+    testWidgets('one row settling in full does not move the others',
+        (tester) async {
+      await pump(tester);
+
+      await _tapChip(tester, 'Full');
+      await tester.pumpAndSettle();
+
+      expect(_textOf(tester, _amount('1')), '600.00');
+      expect(_textOf(tester, _amount('2')), '');
+    });
+  });
+
+  group('payment method', () {
+    testWidgets('cash is the default and hides the three check fields',
+        (tester) async {
+      await pump(tester);
+
+      expect(find.text('Bank name'), findsNothing);
+      expect(find.text('Check number'), findsNothing);
+      expect(find.text('Check date'), findsNothing);
+    });
+
+    testWidgets('choosing Check reveals them', (tester) async {
+      await pump(tester);
+
+      await _tapChip(tester, 'Check');
+
+      expect(find.text('Bank name'), findsOneWidget);
+      expect(find.text('Check number'), findsOneWidget);
+      expect(find.text('Check date'), findsOneWidget);
     });
   });
 }

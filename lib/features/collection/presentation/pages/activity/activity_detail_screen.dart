@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
@@ -110,16 +111,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     super.dispose();
   }
 
-  /// The outcome implied by an amount. Null means "no opinion": a zero amount
-  /// says nothing about whether this was a follow-up, a refusal or a visit.
-  String? _statusForAmount(double amount) {
-    if (amount <= 0) return null;
-    if (amount >= _balance) return CollectionStatusColors.statusCollected;
-    return CollectionStatusColors.statusPartial;
-  }
-
   void _onAmountChanged() {
-    final implied = _statusForAmount(_enteredAmount);
+    final implied = CollectionOutcome.forAmount(_enteredAmount, _balance);
     setState(() {
       if (!_statusSetByHand && implied != null) selectedStatus = implied;
     });

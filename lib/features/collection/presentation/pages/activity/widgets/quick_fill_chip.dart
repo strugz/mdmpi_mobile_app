@@ -63,13 +63,18 @@ class BQuickFillChip extends StatelessWidget {
                     size: 16, color: selected ? accent : BColors.darkerGrey),
                 const SizedBox(width: BSizes.xs),
               ],
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: selected ? accent : BColors.darkerGrey,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              // Flexible, so a long label ellipsizes inside the chip rather
+              // than overflowing the row it sits in. `maxLines` alone cannot
+              // do that: the Text still asks for its full width.
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: selected ? accent : BColors.darkerGrey,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
               ),
             ],
