@@ -166,6 +166,15 @@ class CollectionActivityController extends GetxController {
   final RxSet<String> selectedBucketIds = <String>{}.obs;
   final RxBool isLoading = false.obs;
 
+  /// True once the first [loadBucket] has finished, success or failure.
+  /// Until then the home screen shows a skeleton instead of empty figures,
+  /// because "₱0.00" and "No items in bucket" during a server fetch read as
+  /// an empty account rather than a loading one.
+  final RxBool hasLoadedOnce = false.obs;
+
+  /// The initial load is still running and nothing has been shown yet.
+  bool get isFirstLoad => isLoading.value && !hasLoadedOnce.value;
+
   /// Phase of the explicit "Download Bucket" action; drives the full-screen
   /// download transition on the Collection home screen. Separate from
   /// [isLoading] so the silent initial load never shows the overlay.
@@ -260,11 +269,12 @@ class CollectionActivityController extends GetxController {
 
       logDebug(
           '[CollectionActivityController] Loaded ${items.length} bucket items');
-      isLoading.value = false;
     } catch (e) {
       logDebug('[CollectionActivityController] loadBucket error: $e');
       errorMessage.value = 'Failed to load collection items: $e';
+    } finally {
       isLoading.value = false;
+      hasLoadedOnce.value = true;
     }
   }
 
