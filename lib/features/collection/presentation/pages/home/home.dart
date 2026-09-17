@@ -5,7 +5,6 @@ import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
-import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
@@ -16,6 +15,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/c
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/bucket_download_overlay.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_summary_carousel.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_sync_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_totals_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
@@ -96,73 +96,50 @@ class CollectionHomeScreen extends StatelessWidget {
                         const CollectionSyncBar(),
                         const SizedBox(height: _sectionGap),
 
-                        // Summary tiles. IntrinsicHeight bounds the row so the
-                        // two tiles can match heights: cross-axis stretch alone
-                        // is unbounded inside a scroll view and fails layout.
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: Obx(() => CollectionSummaryCard(
-                                      title: 'Settled',
-                                      value: controller.completedItems.length
-                                          .toString(),
-                                      icon: Iconsax.tick_circle,
-                                      color: BColors.success,
-                                      onTap: () => _openCategory(
-                                          'Settled', BColors.success),
-                                    )),
-                              ),
-                              const SizedBox(width: _gap),
-                              Expanded(
-                                child: Obx(() => CollectionSummaryCard(
-                                      title: 'Due Date',
-                                      value: controller.overdueItems.length
-                                          .toString(),
-                                      icon: Iconsax.timer,
-                                      color: BColors.error,
-                                      expand: false,
-                                      onTap: () => _openCategory(
-                                          'Due Date', BColors.error),
-                                    )),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: _gap),
-                        IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                child: Obx(() => CollectionSummaryCard(
-                                      title: 'Reconciliation',
-                                      value: controller
-                                          .reconciliationItems.length
-                                          .toString(),
-                                      icon: Iconsax.status_up,
-                                      color: Colors.purple,
-                                      onTap: () => _openCategory(
-                                          'Reconciliation', Colors.purple),
-                                    )),
-                              ),
-                              const SizedBox(width: _gap),
-                              Expanded(
-                                child: Obx(() => CollectionSummaryCard(
-                                      title: 'Advanced Payment',
-                                      value: controller.advancedPaymentsCount
-                                          .toString(),
-                                      icon: Iconsax.card_send,
-                                      color: Colors.orange,
-                                      expand: false,
-                                      onTap: () => _openCategory(
-                                          'Advanced Payment', Colors.orange),
-                                    )),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Summary tiles: one card at a time, swipe between
+                        // them. The mirror flip is driven by scroll offset,
+                        // so it follows the finger. Obx wraps the whole
+                        // carousel so every figure stays live.
+                        Obx(() => CollectionSummaryCarousel(
+                              pages: [
+                                CollectionSummaryPage(
+                                  title: 'Settled',
+                                  value: controller.completedItems.length
+                                      .toString(),
+                                  icon: Iconsax.tick_circle,
+                                  color: BColors.success,
+                                  onTap: () =>
+                                      _openCategory('Settled', BColors.success),
+                                ),
+                                CollectionSummaryPage(
+                                  title: 'Due Date',
+                                  value:
+                                      controller.overdueItems.length.toString(),
+                                  icon: Iconsax.timer,
+                                  color: BColors.error,
+                                  onTap: () =>
+                                      _openCategory('Due Date', BColors.error),
+                                ),
+                                CollectionSummaryPage(
+                                  title: 'Reconciliation',
+                                  value: controller.reconciliationItems.length
+                                      .toString(),
+                                  icon: Iconsax.status_up,
+                                  color: Colors.purple,
+                                  onTap: () => _openCategory(
+                                      'Reconciliation', Colors.purple),
+                                ),
+                                CollectionSummaryPage(
+                                  title: 'Advanced Payment',
+                                  value: controller.advancedPaymentsCount
+                                      .toString(),
+                                  icon: Iconsax.card_send,
+                                  color: Colors.orange,
+                                  onTap: () => _openCategory(
+                                      'Advanced Payment', Colors.orange),
+                                ),
+                              ],
+                            )),
                         const SizedBox(height: _sectionGap),
                       ],
                     ),
