@@ -83,6 +83,7 @@ class _CollectionAccountInvoicesScreenState
                       context,
                       initial: controller.bucketFilterSpec.value,
                       count: controller.countBucketAccounts,
+                      showOutcomes: false,
                     );
                     if (chosen != null) {
                       controller.bucketFilterSpec.value = chosen;
@@ -91,6 +92,7 @@ class _CollectionAccountInvoicesScreenState
                 )),
             Obx(() => QuickFilterBar(
                   filter: controller.bucketFilterSpec.value,
+                  showOutcomes: false,
                   onChanged: (f) => controller.bucketFilterSpec.value = f,
                 )),
 

@@ -24,6 +24,7 @@ class QuickFilterBar extends StatelessWidget {
     required this.filter,
     required this.onChanged,
     this.areas = const [],
+    this.showOutcomes = true,
   });
 
   final ActivityFilter filter;
@@ -31,6 +32,10 @@ class QuickFilterBar extends StatelessWidget {
 
   /// Territory codes present in the data, offered after the presets.
   final List<String> areas;
+
+  /// Whether to offer the last-visit outcomes. False in the bucket, where
+  /// nothing has been engaged yet, so every account would answer "no visit".
+  final bool showOutcomes;
 
   /// The presets, in the order a day is planned: how late first, then how the
   /// last visit went.
@@ -78,16 +83,17 @@ class QuickFilterBar extends StatelessWidget {
                 filter.copyWith(due: on ? DueBand.late30 : DueBand.any),
           ),
           _gap,
-          for (final outcome in _outcomePresets) ...[
-            _toggle(
-              label: outcome,
-              icon: CollectionStatusColors.iconFor(outcome),
-              color: CollectionStatusColors.colorFor(outcome),
-              on: filter.outcomes.contains(outcome),
-              set: (_) => filter.toggleOutcome(outcome),
-            ),
-            _gap,
-          ],
+          if (showOutcomes)
+            for (final outcome in _outcomePresets) ...[
+              _toggle(
+                label: outcome,
+                icon: CollectionStatusColors.iconFor(outcome),
+                color: CollectionStatusColors.colorFor(outcome),
+                on: filter.outcomes.contains(outcome),
+                set: (_) => filter.toggleOutcome(outcome),
+              ),
+              _gap,
+            ],
           for (final area in areas) ...[
             _toggle(
               label: BCollectionArea.labelFor(area),

@@ -23,6 +23,7 @@ class ActivityFilterSheet extends StatefulWidget {
     required this.initial,
     required this.count,
     this.areas = const [],
+    this.showOutcomes = true,
   });
 
   final ActivityFilter initial;
@@ -34,12 +35,17 @@ class ActivityFilterSheet extends StatefulWidget {
   /// with nothing in it. Empty hides the group.
   final List<String> areas;
 
+  /// Whether to offer the last-visit outcomes. False in the bucket, where
+  /// nothing has been engaged yet, so every account would answer "no visit".
+  final bool showOutcomes;
+
   /// Opens the sheet and resolves to the chosen filter, or null if dismissed.
   static Future<ActivityFilter?> show(
     BuildContext context, {
     required ActivityFilter initial,
     required int Function(ActivityFilter) count,
     List<String> areas = const [],
+    bool showOutcomes = true,
   }) =>
       showModalBottomSheet<ActivityFilter>(
         context: context,
@@ -49,8 +55,12 @@ class ActivityFilterSheet extends StatefulWidget {
           borderRadius: BorderRadius.vertical(
               top: Radius.circular(BSizes.borderRadiusLg)),
         ),
-        builder: (_) =>
-            ActivityFilterSheet(initial: initial, count: count, areas: areas),
+        builder: (_) => ActivityFilterSheet(
+          initial: initial,
+          count: count,
+          areas: areas,
+          showOutcomes: showOutcomes,
+        ),
       );
 
   @override
@@ -113,23 +123,24 @@ class _ActivityFilterSheetState extends State<ActivityFilterSheet> {
                   : BCollectionColors.danger,
             ),
           ),
-          _Group(
-            title: 'Last visit',
-            child: _chips<String>(
-              options: ActivityFilter.outcomeOptions,
-              label: (o) => o,
-              selected: (o) => _draft.outcomes.contains(o),
-              onTap: (o) => _set(_draft.toggleOutcome(o)),
-              // The same colour and icon the card badge will show, so the
-              // choice reads the same here as on the list.
-              color: (o) => o == ActivityFilter.noVisitYet
-                  ? BCollectionColors.neutral
-                  : CollectionStatusColors.colorFor(o),
-              icon: (o) => o == ActivityFilter.noVisitYet
-                  ? Iconsax.location_cross
-                  : CollectionStatusColors.iconFor(o),
+          if (widget.showOutcomes)
+            _Group(
+              title: 'Last visit',
+              child: _chips<String>(
+                options: ActivityFilter.outcomeOptions,
+                label: (o) => o,
+                selected: (o) => _draft.outcomes.contains(o),
+                onTap: (o) => _set(_draft.toggleOutcome(o)),
+                // The same colour and icon the card badge will show, so the
+                // choice reads the same here as on the list.
+                color: (o) => o == ActivityFilter.noVisitYet
+                    ? BCollectionColors.neutral
+                    : CollectionStatusColors.colorFor(o),
+                icon: (o) => o == ActivityFilter.noVisitYet
+                    ? Iconsax.location_cross
+                    : CollectionStatusColors.iconFor(o),
+              ),
             ),
-          ),
           _Group(
             title: 'Amount due',
             child: _chips<AmountBand>(

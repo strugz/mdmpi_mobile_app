@@ -295,7 +295,9 @@ The bucket uses the same `ActivityFilter` as the engagement list, held as
 `bucketFilterSpec`, with the same sheet and `QuickFilterBar`. Two differences:
 it defaults to `ActivitySort.name` because the bucket is a catalogue people
 scan alphabetically, and the area lives on `selectedArea` because the toolbar's
-own "All areas" chip owns it, so the quick bar there offers no area chips.
+own "All areas" chip owns it, so the quick bar there offers no area chips. The
+last-visit group is hidden too (`showOutcomes: false`): nothing in the bucket
+has been engaged, so every account would answer it the same way.
 - `presentation/pages/bucket/collection_bucket_screen.dart`
 
 Represents the main assignment and review queue.

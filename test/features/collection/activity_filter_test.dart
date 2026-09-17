@@ -289,6 +289,28 @@ void main() {
       expect(last?.amount, AmountBand.any);
     });
 
+    // Nothing in the bucket has been engaged, so every account would answer
+    // the last-visit question the same way; the bucket hides it.
+    testWidgets('outcomes can be left out', (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: QuickFilterBar(
+            filter: ActivityFilter.none,
+            showOutcomes: false,
+            onChanged: (_) {},
+          ),
+        ),
+      ));
+
+      expect(find.text('Overdue'), findsOneWidget);
+      expect(find.text(CollectionStatusColors.statusFollowUp), findsNothing);
+      expect(find.text(CollectionStatusColors.statusUnavailable), findsNothing);
+    });
+
     testWidgets('areas present in the data are offered', (tester) async {
       tester.view.physicalSize = const Size(3000, 600);
       tester.view.devicePixelRatio = 1;

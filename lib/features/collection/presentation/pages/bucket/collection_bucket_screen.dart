@@ -116,10 +116,12 @@ class CollectionBucketScreen extends StatelessWidget {
                   hasActiveFilter: controller.bucketFilterSpec.value.isActive,
                   onFilterTap: () => _openFilter(context, controller),
                 )),
-            // The same one-tap filters as the engagement list. Area is not
-            // among them here: the toolbar below already owns that chip.
+            // The same one-tap filters as the engagement list, minus two.
+            // Area: the toolbar below already owns that chip. Last visit:
+            // nothing in the bucket has been engaged yet.
             Obx(() => QuickFilterBar(
                   filter: controller.bucketFilterSpec.value,
+                  showOutcomes: false,
                   onChanged: (f) => controller.bucketFilterSpec.value = f,
                 )),
             const BucketToolbar(),
@@ -200,6 +202,7 @@ class CollectionBucketScreen extends StatelessWidget {
       context,
       initial: controller.bucketFilterSpec.value,
       count: controller.countBucketAccounts,
+      showOutcomes: false,
     );
     if (chosen != null) controller.bucketFilterSpec.value = chosen;
   }
