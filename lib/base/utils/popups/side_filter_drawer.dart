@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
 /// Small helper to show a slide-in side panel from the right for filter UIs.
-/// Usage: showSideFilter(const BucketFilterModal());
+/// Usage: showSideFilter(const SomeFilterPanel());
 void showSideFilter(Widget child) {
   final ctx = Get.context;
   if (ctx == null) return;

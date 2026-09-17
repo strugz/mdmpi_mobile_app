@@ -5,10 +5,10 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_filter_modal.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_sheet.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_toolbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'collection_account_information_screen.dart';
@@ -108,21 +108,20 @@ class CollectionBucketScreen extends StatelessWidget {
         ),
         body: Column(
           children: [
-            Obx(() {
-              final hasFilter = controller.bucketMinAmount.value > 0 ||
-                  controller.bucketMaxAmount.value > 0 ||
-                  controller.bucketMinInvoices.value > 0 ||
-                  controller.bucketMaxInvoices.value > 0;
-
-              return CollectionSearchFilterBar(
-                searchHint: 'Search by account name…',
-                initialValue: controller.bucketSearchQuery.value,
-                onSearchChanged: (value) =>
-                    controller.bucketSearchQuery.value = value,
-                hasActiveFilter: hasFilter,
-                onFilterTap: () => showSideFilter(BucketFilterModal()),
-              );
-            }),
+            Obx(() => CollectionSearchFilterBar(
+                  searchHint: 'Search by account name…',
+                  initialValue: controller.bucketSearchQuery.value,
+                  onSearchChanged: (value) =>
+                      controller.bucketSearchQuery.value = value,
+                  hasActiveFilter: controller.bucketFilterSpec.value.isActive,
+                  onFilterTap: () => _openFilter(context, controller),
+                )),
+            // The same one-tap filters as the engagement list. Area is not
+            // among them here: the toolbar below already owns that chip.
+            Obx(() => QuickFilterBar(
+                  filter: controller.bucketFilterSpec.value,
+                  onChanged: (f) => controller.bucketFilterSpec.value = f,
+                )),
             const BucketToolbar(),
             Expanded(
               child: Obx(() {
@@ -193,6 +192,16 @@ class CollectionBucketScreen extends StatelessWidget {
         ),
       );
     });
+  }
+
+  static Future<void> _openFilter(
+      BuildContext context, CollectionActivityController controller) async {
+    final chosen = await ActivityFilterSheet.show(
+      context,
+      initial: controller.bucketFilterSpec.value,
+      count: controller.countBucketAccounts,
+    );
+    if (chosen != null) controller.bucketFilterSpec.value = chosen;
   }
 }
 

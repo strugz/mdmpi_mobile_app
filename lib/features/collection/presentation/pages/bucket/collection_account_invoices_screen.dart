@@ -6,10 +6,10 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'widgets/collection_search_filter_bar.dart';
-import 'widgets/bucket_filter_modal.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_sheet.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_filter_bar.dart';
 
 class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -72,22 +72,27 @@ class _CollectionAccountInvoicesScreenState
         return Column(
           children: [
             /// Search and Filter Bar
-            Obx(() {
-              final hasFilter = controller.bucketMinAmount.value > 0 ||
-                  controller.bucketMaxAmount.value > 0 ||
-                  controller.bucketMinInvoices.value > 0 ||
-                  controller.bucketMaxInvoices.value > 0;
-
-              return CollectionSearchFilterBar(
-                searchHint: 'Search invoice ID or bank...',
-                initialValue: controller.invoiceSearchQuery.value,
-                onSearchChanged: (value) =>
-                    controller.invoiceSearchQuery.value = value,
-                hasActiveFilter: hasFilter,
-                onFilterTap: () => showSideFilter(
-                    BucketFilterModal(clientId: widget.client.id)),
-              );
-            }),
+            Obx(() => CollectionSearchFilterBar(
+                  searchHint: 'Search invoice ID or bank...',
+                  initialValue: controller.invoiceSearchQuery.value,
+                  onSearchChanged: (value) =>
+                      controller.invoiceSearchQuery.value = value,
+                  hasActiveFilter: controller.bucketFilterSpec.value.isActive,
+                  onFilterTap: () async {
+                    final chosen = await ActivityFilterSheet.show(
+                      context,
+                      initial: controller.bucketFilterSpec.value,
+                      count: controller.countBucketAccounts,
+                    );
+                    if (chosen != null) {
+                      controller.bucketFilterSpec.value = chosen;
+                    }
+                  },
+                )),
+            Obx(() => QuickFilterBar(
+                  filter: controller.bucketFilterSpec.value,
+                  onChanged: (f) => controller.bucketFilterSpec.value = f,
+                )),
 
             Expanded(
               child: invoices.isEmpty

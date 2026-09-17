@@ -290,6 +290,12 @@ Displays:
 - recent activity section: the seven most recent engagement entries in the same mirror carousel (`lib/common/widgets/animations/mirror_carousel.dart`); Show All has the rest
 
 ### Bucket screen
+
+The bucket uses the same `ActivityFilter` as the engagement list, held as
+`bucketFilterSpec`, with the same sheet and `QuickFilterBar`. Two differences:
+it defaults to `ActivitySort.name` because the bucket is a catalogue people
+scan alphabetically, and the area lives on `selectedArea` because the toolbar's
+own "All areas" chip owns it, so the quick bar there offers no area chips.
 - `presentation/pages/bucket/collection_bucket_screen.dart`
 
 Represents the main assignment and review queue.

@@ -307,6 +307,19 @@ void main() {
     });
   });
 
+  // The bucket is a catalogue, so it keeps alphabetical order until the
+  // collector asks for another; the engagement list leads with most overdue.
+  test('the bucket default sorts by name and filters nothing', () {
+    const spec = ActivityFilter(sort: ActivitySort.name);
+    expect(spec.isActive, isFalse);
+    expect(spec.sort, ActivitySort.name);
+
+    final a = _item(id: '1', name: 'Zeta', overdueDays: 900);
+    final b = _item(id: '2', name: 'Alpha', overdueDays: 1);
+    final sorted = [a, b]..sort(spec.compare);
+    expect(sorted.first.client.name, 'Alpha');
+  });
+
   testWidgets('active chips remove one filter at a time', (tester) async {
     var filter =
         const ActivityFilter(due: DueBand.late30, amount: AmountBand.over200k);

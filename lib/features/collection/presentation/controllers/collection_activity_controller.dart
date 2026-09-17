@@ -193,10 +193,20 @@ class CollectionActivityController extends GetxController {
 
   /// Search and Filter state
   final RxString bucketSearchQuery = ''.obs;
-  final RxDouble bucketMinAmount = 0.0.obs;
-  final RxDouble bucketMaxAmount = 0.0.obs;
-  final RxInt bucketMinInvoices = 0.obs;
-  final RxInt bucketMaxInvoices = 0.obs;
+
+  /// Filter and sort for the bucket, the same value the engagement list
+  /// uses. The bucket is a catalogue, so it defaults to alphabetical, and
+  /// its area lives on [selectedArea] because the toolbar's own chip owns it.
+  final Rx<ActivityFilter> bucketFilterSpec =
+      const ActivityFilter(sort: ActivitySort.name).obs;
+
+  static const ActivityFilter _bucketFilterDefault =
+      ActivityFilter(sort: ActivitySort.name);
+
+  /// How many accounts [spec] would leave in the bucket, with the current
+  /// search and area. Drives the live count on the filter sheet's button.
+  int countBucketAccounts(ActivityFilter spec) =>
+      _bucketAccountsFor(spec).length;
 
   final RxString activitySearchQuery = ''.obs;
 
@@ -525,53 +535,51 @@ class CollectionActivityController extends GetxController {
   /// is active. Drives the empty-state copy and the "Clear all filters" action.
   bool get hasActiveBucketFilter =>
       bucketSearchQuery.value.trim().isNotEmpty ||
-      bucketMinAmount.value > 0 ||
-      bucketMaxAmount.value > 0 ||
-      bucketMinInvoices.value > 0 ||
-      bucketMaxInvoices.value > 0 ||
+      bucketFilterSpec.value.isActive ||
       selectedArea.value.isNotEmpty;
 
   /// Reset every bucket filter, including the area selection.
   void clearBucketFilters() {
     bucketSearchQuery.value = '';
-    bucketMinAmount.value = 0;
-    bucketMaxAmount.value = 0;
-    bucketMinInvoices.value = 0;
-    bucketMaxInvoices.value = 0;
+    bucketFilterSpec.value = _bucketFilterDefault;
     selectedArea.value = '';
   }
 
-  List<ClientModel> get bucketAccounts {
-    return masterAccountList.where((client) {
-      // Territory Filter
+  List<ClientModel> get bucketAccounts =>
+      _bucketAccountsFor(bucketFilterSpec.value);
+
+  /// Accounts with at least one bucket invoice that passes [spec], the area
+  /// and the search. An account is judged by its best invoice, so filtering
+  /// for "late 30+" keeps every account holding such an invoice.
+  List<ClientModel> _bucketAccountsFor(ActivityFilter spec) {
+    final query = bucketSearchQuery.value.toLowerCase();
+    final matching = <String, List<CollectionItemModel>>{};
+    for (final item in bucketItems) {
+      if (item.toBeCollected <= 0 || !spec.matches(item)) continue;
+      matching.putIfAbsent(item.client.id, () => []).add(item);
+    }
+    final accounts = masterAccountList.where((client) {
       if (!_matchesArea(client.code)) return false;
+      if (!matching.containsKey(client.id)) return false;
+      return query.isEmpty || client.name.toLowerCase().contains(query);
+    }).toList();
 
-      final invoiceCount = getAccountInvoiceCount(client.id);
-      if (invoiceCount == 0) return false;
-
-      if (bucketSearchQuery.value.isNotEmpty &&
-          !client.name
-              .toLowerCase()
-              .contains(bucketSearchQuery.value.toLowerCase())) {
-        return false;
-      }
-      final totalAmount = getAccountTotalDue(client.id);
-
-      if (bucketMinAmount.value > 0 && totalAmount < bucketMinAmount.value)
-        return false;
-      if (bucketMaxAmount.value > 0 && totalAmount > bucketMaxAmount.value)
-        return false;
-      if (bucketMinInvoices.value > 0 && invoiceCount < bucketMinInvoices.value)
-        return false;
-      if (bucketMaxInvoices.value > 0 && invoiceCount > bucketMaxInvoices.value)
-        return false;
-
-      return true;
-    }).toList()
-      // A catalogue, so alphabetical: collectors find accounts here by
-      // name. The master list is a map's values in whatever order invoices
-      // arrived from the server, which is no order at all.
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    // A catalogue, so alphabetical by default: collectors find accounts here
+    // by name. The master list is a map's values in whatever order invoices
+    // arrived from the server, which is no order at all. Any other sort comes
+    // from the spec, placing each account by its leading invoice.
+    CollectionItemModel leading(ClientModel c) =>
+        (matching[c.id]!..sort(spec.compare)).first;
+    if (spec.sort == ActivitySort.name) {
+      accounts
+          .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else {
+      accounts.sort((a, b) {
+        final byLead = spec.compare(leading(a), leading(b));
+        return byLead != 0 ? byLead : a.name.compareTo(b.name);
+      });
+    }
+    return accounts;
   }
 
   /// How many of this account's bucket invoices are past due — the strongest
@@ -629,25 +637,15 @@ class CollectionActivityController extends GetxController {
       }).toList();
     }
 
-    // Apply amount range filter when set (bucket-level filter used for account invoices)
-    if (bucketMinAmount.value > 0 || bucketMaxAmount.value > 0) {
-      results = results.where((item) {
-        final minOk = bucketMinAmount.value > 0
-            ? item.toBeCollected >= bucketMinAmount.value
-            : true;
-        final maxOk = bucketMaxAmount.value > 0
-            ? item.toBeCollected <= bucketMaxAmount.value
-            : true;
-        return minOk && maxOk;
-      }).toList();
-    }
-
-    // Sort by due date (ascending: oldest first)
-    results.sort((a, b) {
-      if (a.dueDate == 'N/A') return 1;
-      if (b.dueDate == 'N/A') return -1;
-      return a.dueDate.compareTo(b.dueDate);
-    });
+    // The same filter the bucket list uses, so opening an account shows the
+    // invoices that put it on the list and nothing else.
+    final spec = bucketFilterSpec.value;
+    results = results.where(spec.matches).toList()
+      ..sort(spec.sort == ActivitySort.name
+          // Inside one account every invoice shares the name, so the
+          // catalogue's default has nothing to order by: oldest due first.
+          ? (a, b) => a.daysPastDue.compareTo(b.daysPastDue) * -1
+          : spec.compare);
 
     return results;
   }
