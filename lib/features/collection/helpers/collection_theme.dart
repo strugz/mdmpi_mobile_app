@@ -155,13 +155,20 @@ class BCollectionTheme {
 
   /// Switch the session theme to match the department. Idempotent; call it
   /// whenever the department becomes known (cold start, login, refresh).
+  ///
+  /// Safe to call from a build method: the swap is deferred to after the
+  /// current frame, because changing the theme marks GetMaterialApp dirty
+  /// and Flutter forbids that while it is already building (AppRouter
+  /// calls this from build, and the red screen at login was exactly that).
   static void applyFor(String department) {
     final isCollection = department.trim().toLowerCase() == 'collection';
     final wanted = isCollection ? light : BAppTheme.lightTheme;
-    if (Get.context == null) return;
-    if (Get.theme.scaffoldBackgroundColor == wanted.scaffoldBackgroundColor) {
-      return;
-    }
-    Get.changeTheme(wanted);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Get.context == null) return;
+      if (Get.theme.scaffoldBackgroundColor == wanted.scaffoldBackgroundColor) {
+        return;
+      }
+      Get.changeTheme(wanted);
+    });
   }
 }
