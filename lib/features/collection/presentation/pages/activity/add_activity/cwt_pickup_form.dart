@@ -36,13 +36,15 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
     );
 
     Get.back(); // Close form first
-    BLoaders.successSnackBar(title: 'Success', message: 'CWT Pick-up activity recorded.');
+    BLoaders.successSnackBar(
+        title: 'Success', message: 'CWT Pick-up activity recorded.');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const BAppBar(title: Text('Record CWT Pick-up'), showBackArrow: true),
+      appBar:
+          const BAppBar(title: Text('Record CWT Pick-up'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(BSizes.defaultSpace),
@@ -56,10 +58,11 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
                     labelText: 'Account Name',
                     prefixIcon: Icon(Iconsax.user),
                   ),
-                  validator: (value) => value == null || value.isEmpty ? 'Account name is required' : null,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Account name is required'
+                      : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-                
                 TextFormField(
                   controller: remarksController,
                   maxLines: 4,
@@ -69,7 +72,6 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
-                
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

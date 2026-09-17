@@ -7,6 +7,7 @@ import '../cwt_pickup_form.dart';
 import '../reconciliation_form.dart';
 
 import '../advanced_payment_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class ActivityTypeModal extends StatelessWidget {
   const ActivityTypeModal({super.key});
@@ -33,52 +34,48 @@ class ActivityTypeModal extends StatelessWidget {
             ],
           ),
           const SizedBox(height: BSizes.spaceBtwSections),
-          
           _buildOption(
             context,
             title: 'Deposit',
             subtitle: 'Record a bank deposit for collections',
             icon: Iconsax.bank,
-            color: Colors.blue,
+            color: BCollectionColors.info,
             onTap: () {
               Get.back();
               Get.to(() => const DepositFormScreen());
             },
           ),
           const SizedBox(height: BSizes.spaceBtwItems),
-          
           _buildOption(
             context,
             title: 'CWT Pick-up',
             subtitle: 'Record Creditable Withholding Tax pick-up',
             icon: Iconsax.document_text,
-            color: Colors.orange,
+            color: BCollectionColors.warning,
             onTap: () {
               Get.back();
               Get.to(() => const CWTPickupFormScreen());
             },
           ),
           const SizedBox(height: BSizes.spaceBtwItems),
-          
           _buildOption(
             context,
             title: 'Reconciliation',
             subtitle: 'Account reconciliation activities',
             icon: Iconsax.status_up,
-            color: Colors.purple,
+            color: BCollectionColors.reconcile,
             onTap: () {
               Get.back();
               Get.to(() => const ReconciliationFormScreen());
             },
           ),
           const SizedBox(height: BSizes.spaceBtwItems),
-
           _buildOption(
             context,
             title: 'Advanced Payment',
             subtitle: 'Record payment without an invoice',
             icon: Iconsax.card_send,
-            color: Colors.orange,
+            color: BCollectionColors.warning,
             onTap: () {
               Get.back();
               Get.to(() => const AdvancedPaymentFormScreen());

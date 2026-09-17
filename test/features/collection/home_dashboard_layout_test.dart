@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/cards/collection_summary_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_totals_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The Collection home dashboard lays these widgets out inside a
 /// SingleChildScrollView, where the vertical constraint is UNBOUNDED. A Row
@@ -31,7 +31,7 @@ Widget _summaryTileRow() {
             title: 'Settled',
             value: '0',
             icon: Iconsax.tick_circle,
-            color: BColors.success,
+            color: BCollectionColors.success,
             onTap: () {},
           ),
         ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/mirror_carousel.dart';
@@ -21,6 +20,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/wid
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_totals_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
   const CollectionHomeScreen({super.key});
@@ -58,6 +58,7 @@ class CollectionHomeScreen extends StatelessWidget {
                 children: [
                   // Header
                   const BPrimaryHeaderContainer(
+                    color: BCollectionColors.headerBackground,
                     child: Column(
                       children: [
                         BHomeAppBar(),
@@ -113,36 +114,36 @@ class CollectionHomeScreen extends StatelessWidget {
                                   value: controller.completedItems.length
                                       .toString(),
                                   icon: Iconsax.tick_circle,
-                                  color: BColors.success,
-                                  onTap: () =>
-                                      _openCategory('Settled', BColors.success),
+                                  color: BCollectionColors.success,
+                                  onTap: () => _openCategory(
+                                      'Settled', BCollectionColors.success),
                                 ),
                                 CollectionSummaryPage(
                                   title: 'Due Date',
                                   value:
                                       controller.overdueItems.length.toString(),
                                   icon: Iconsax.timer,
-                                  color: BColors.error,
-                                  onTap: () =>
-                                      _openCategory('Due Date', BColors.error),
+                                  color: BCollectionColors.danger,
+                                  onTap: () => _openCategory(
+                                      'Due Date', BCollectionColors.danger),
                                 ),
                                 CollectionSummaryPage(
                                   title: 'Reconciliation',
                                   value: controller.reconciliationItems.length
                                       .toString(),
                                   icon: Iconsax.status_up,
-                                  color: Colors.purple,
-                                  onTap: () => _openCategory(
-                                      'Reconciliation', Colors.purple),
+                                  color: BCollectionColors.reconcile,
+                                  onTap: () => _openCategory('Reconciliation',
+                                      BCollectionColors.reconcile),
                                 ),
                                 CollectionSummaryPage(
                                   title: 'Advanced Payment',
                                   value: controller.advancedPaymentsCount
                                       .toString(),
                                   icon: Iconsax.card_send,
-                                  color: Colors.orange,
-                                  onTap: () => _openCategory(
-                                      'Advanced Payment', Colors.orange),
+                                  color: BCollectionColors.warning,
+                                  onTap: () => _openCategory('Advanced Payment',
+                                      BCollectionColors.warning),
                                 ),
                               ],
                             )),
@@ -154,12 +155,12 @@ class CollectionHomeScreen extends StatelessWidget {
                   // Bottom: Recent Activities
                   Container(
                     decoration: BoxDecoration(
-                      color: BColors.white,
+                      color: BCollectionColors.surface,
                       borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(BSizes.borderRadiusLg)),
                       boxShadow: [
                         BoxShadow(
-                          color: BColors.black.withValues(alpha: 0.05),
+                          color: BCollectionColors.ink.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, -5),
                         ),
@@ -203,14 +204,17 @@ class CollectionHomeScreen extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     const Icon(Iconsax.clock,
-                                        size: 48, color: BColors.darkGrey),
+                                        size: 48,
+                                        color: BCollectionColors.inkMuted),
                                     const SizedBox(height: BSizes.sm),
                                     Text(
                                       'No engagement history yet',
                                       style: Theme.of(context)
                                           .textTheme
                                           .bodyMedium
-                                          ?.copyWith(color: BColors.darkGrey),
+                                          ?.copyWith(
+                                              color:
+                                                  BCollectionColors.inkMuted),
                                     ),
                                   ],
                                 ),

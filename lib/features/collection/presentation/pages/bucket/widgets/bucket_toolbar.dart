@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_selection_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The line between the search bar and the list: which area is in view, and
 /// how much is in it.
@@ -58,7 +58,7 @@ class BucketToolbar extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: BColors.darkGrey,
+                  color: BCollectionColors.inkMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -102,7 +102,8 @@ class _AreaChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = active ? BColors.primary : BColors.darkerGrey;
+    final accent =
+        active ? BCollectionColors.primary : BCollectionColors.inkSecondary;
 
     return BPressableScale(
       onTap: onTap,
@@ -121,11 +122,14 @@ class _AreaChip extends StatelessWidget {
           ),
           decoration: BoxDecoration(
             color: active
-                ? BColors.primary.withValues(alpha: 0.10)
-                : BColors.white,
+                ? BCollectionColors.primary.withValues(alpha: 0.10)
+                : BCollectionColors.surface,
             borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
             border: Border.all(
-                color: active ? BColors.primary : BColors.grey, width: 1.5),
+                color: active
+                    ? BCollectionColors.primary
+                    : BCollectionColors.outline,
+                width: 1.5),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -154,7 +158,7 @@ class _AreaChip extends StatelessWidget {
                   child: const Padding(
                     padding: EdgeInsets.all(BSizes.xs),
                     child: Icon(Iconsax.close_circle5,
-                        size: 16, color: BColors.primary),
+                        size: 16, color: BCollectionColors.primary),
                   ),
                 )
               else ...[

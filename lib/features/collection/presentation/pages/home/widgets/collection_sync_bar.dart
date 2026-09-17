@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/upload/collection_upload_outbox_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Home sync row: download a fresh bucket and upload the day's collections.
 ///
@@ -24,13 +24,14 @@ class CollectionSyncBar extends StatelessWidget {
     final compactShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
     );
-    const compactPadding = EdgeInsets.symmetric(horizontal: BSizes.spaceBtwItemsLight);
+    const compactPadding =
+        EdgeInsets.symmetric(horizontal: BSizes.spaceBtwItemsLight);
 
     return Obx(() {
       final pending = controller.pendingUploadCount;
       final busy = controller.isLoading.value;
-      final downloading =
-          controller.bucketDownloadPhase.value == BucketDownloadPhase.downloading;
+      final downloading = controller.bucketDownloadPhase.value ==
+          BucketDownloadPhase.downloading;
 
       return SizedBox(
         height: _height,
@@ -74,10 +75,11 @@ class CollectionSyncBar extends StatelessWidget {
                         padding: compactPadding,
                         minimumSize: const Size(0, _height),
                         visualDensity: VisualDensity.compact,
-                        disabledForegroundColor: BColors.darkGrey,
+                        disabledForegroundColor: BCollectionColors.inkMuted,
                       ),
                       icon: const Icon(Iconsax.tick_circle, size: 16),
-                      label: const Text('Uploaded', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      label: const Text('Uploaded',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
                     )
                   : ElevatedButton.icon(
                       onPressed: () => Get.to(
@@ -91,11 +93,12 @@ class CollectionSyncBar extends StatelessWidget {
                         minimumSize: const Size(0, _height),
                         visualDensity: VisualDensity.compact,
                         elevation: 0,
-                        backgroundColor: BColors.primary,
-                        foregroundColor: BColors.white,
+                        backgroundColor: BCollectionColors.primary,
+                        foregroundColor: BCollectionColors.surface,
                       ),
                       icon: const Icon(Iconsax.cloud_plus, size: 16),
-                      label: Text('Upload ($pending)', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      label: Text('Upload ($pending)',
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
             ),
           ],

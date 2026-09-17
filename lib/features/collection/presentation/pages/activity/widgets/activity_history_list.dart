@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class ActivityHistoryList extends StatelessWidget {
   const ActivityHistoryList({
@@ -98,7 +98,7 @@ class ActivityHistoryCard extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: const BoxDecoration(
-          color: BColors.white,
+          color: BCollectionColors.surface,
           borderRadius: BorderRadius.vertical(
               top: Radius.circular(BSizes.borderRadiusLg)),
         ),
@@ -118,7 +118,7 @@ class ActivityHistoryCard extends StatelessWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: BSizes.md),
                 decoration: BoxDecoration(
-                  color: BColors.grey.withValues(alpha: 0.5),
+                  color: BCollectionColors.outline.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -143,7 +143,7 @@ class ActivityHistoryCard extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
-                    ?.copyWith(color: BColors.primary),
+                    ?.copyWith(color: BCollectionColors.primary),
               ),
               if (invoiceId != null || item != null)
                 Text('Invoice #${invoiceId ?? item?.id}',
@@ -167,10 +167,11 @@ class ActivityHistoryCard extends StatelessWidget {
                       'Current Balance',
                       BFormatter.formatPesoCurrency(item!.toBeCollected),
                       Iconsax.wallet_money,
-                      valueColor: BColors.primary),
+                      valueColor: BCollectionColors.primary),
                   _buildInfoTile(
                       context, 'Due Date', item!.dueDate, Iconsax.calendar,
-                      valueColor: item!.isOverdue ? BColors.error : null),
+                      valueColor:
+                          item!.isOverdue ? BCollectionColors.danger : null),
                   if (item!.documentReferences.isNotEmpty)
                     _buildInfoTile(
                         context,
@@ -202,7 +203,7 @@ class ActivityHistoryCard extends StatelessWidget {
                       'Amount Collected',
                       BFormatter.formatPesoCurrency(history.totalCollected),
                       Iconsax.wallet_money,
-                      valueColor: BColors.success),
+                      valueColor: BCollectionColors.success),
                 if (history.bankName != null && history.bankName!.isNotEmpty)
                   _buildInfoTile(
                       context, 'Bank', history.bankName!, Iconsax.bank),
@@ -223,7 +224,7 @@ class ActivityHistoryCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(BSizes.md),
               decoration: BoxDecoration(
-                color: BColors.lightGrey,
+                color: BCollectionColors.background,
                 borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
               ),
               child: Text(
@@ -251,13 +252,14 @@ class ActivityHistoryCard extends StatelessWidget {
       width: width,
       padding: const EdgeInsets.all(BSizes.sm),
       decoration: BoxDecoration(
-        color: BColors.grey.withValues(alpha: 0.1),
+        color: BCollectionColors.outline.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
+        border:
+            Border.all(color: BCollectionColors.outline.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: BColors.primary),
+          Icon(icon, size: 20, color: BCollectionColors.primary),
           const SizedBox(width: BSizes.sm),
           Expanded(
             child: Column(
@@ -331,7 +333,7 @@ class ActivityHistoryCard extends StatelessWidget {
                                 .textTheme
                                 .labelSmall
                                 ?.copyWith(
-                                  color: BColors.primary,
+                                  color: BCollectionColors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                             maxLines: 1,
@@ -353,7 +355,7 @@ class ActivityHistoryCard extends StatelessWidget {
                     child: Row(
                       children: [
                         const Icon(Iconsax.calendar,
-                            size: 14, color: BColors.darkGrey),
+                            size: 14, color: BCollectionColors.inkMuted),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -362,7 +364,7 @@ class ActivityHistoryCard extends StatelessWidget {
                                 .textTheme
                                 .labelSmall
                                 ?.copyWith(
-                                  color: BColors.darkGrey,
+                                  color: BCollectionColors.inkMuted,
                                 ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -375,7 +377,7 @@ class ActivityHistoryCard extends StatelessWidget {
                     Text(
                       BFormatter.formatPesoCurrency(history.totalCollected),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: BColors.success,
+                            color: BCollectionColors.success,
                             fontWeight: FontWeight.bold,
                           ),
                     ),
@@ -392,8 +394,9 @@ class ActivityHistoryCard extends StatelessWidget {
                       children: [
                         Icon(Iconsax.timer,
                             size: 14,
-                            color:
-                                isOverdue ? BColors.error : BColors.darkGrey),
+                            color: isOverdue
+                                ? BCollectionColors.danger
+                                : BCollectionColors.inkMuted),
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
@@ -403,8 +406,8 @@ class ActivityHistoryCard extends StatelessWidget {
                                 .labelSmall
                                 ?.copyWith(
                                   color: isOverdue
-                                      ? BColors.error
-                                      : BColors.darkGrey,
+                                      ? BCollectionColors.danger
+                                      : BCollectionColors.inkMuted,
                                   fontWeight: FontWeight.bold,
                                 ),
                             maxLines: 1,
@@ -417,7 +420,7 @@ class ActivityHistoryCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: BColors.error,
+                              color: BCollectionColors.danger,
                               borderRadius:
                                   BorderRadius.circular(BSizes.borderRadiusSm),
                             ),
@@ -427,7 +430,7 @@ class ActivityHistoryCard extends StatelessWidget {
                                   .textTheme
                                   .labelSmall
                                   ?.copyWith(
-                                    color: BColors.white,
+                                    color: BCollectionColors.surface,
                                     fontSize: 8,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -439,10 +442,8 @@ class ActivityHistoryCard extends StatelessWidget {
                   ),
                   Text(
                     displayCollectorName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: BColors.darkGrey, fontSize: 10),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: BCollectionColors.inkMuted, fontSize: 10),
                   ),
                 ],
               ),
@@ -467,7 +468,7 @@ class ActivityHistoryCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               fontStyle: FontStyle.italic,
                               fontSize: 10,
-                              color: BColors.darkerGrey,
+                              color: BCollectionColors.inkSecondary,
                             ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

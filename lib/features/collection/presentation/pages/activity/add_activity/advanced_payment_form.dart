@@ -12,7 +12,8 @@ class AdvancedPaymentFormScreen extends StatefulWidget {
   const AdvancedPaymentFormScreen({super.key});
 
   @override
-  State<AdvancedPaymentFormScreen> createState() => _AdvancedPaymentFormScreenState();
+  State<AdvancedPaymentFormScreen> createState() =>
+      _AdvancedPaymentFormScreenState();
 }
 
 class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
@@ -31,7 +32,8 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
   void _save() {
     if (!formKey.currentState!.validate()) return;
     if (selectedAccount == null) {
-      BLoaders.errorSnackBar(title: 'Error', message: 'Please select an account');
+      BLoaders.errorSnackBar(
+          title: 'Error', message: 'Please select an account');
       return;
     }
 
@@ -43,7 +45,8 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
     );
 
     Get.back(); // Close form
-    BLoaders.successSnackBar(title: 'Success', message: 'Advanced Payment recorded.');
+    BLoaders.successSnackBar(
+        title: 'Success', message: 'Advanced Payment recorded.');
   }
 
   @override
@@ -52,7 +55,8 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
     final accounts = controller.masterAccountList;
 
     return Scaffold(
-      appBar: const BAppBar(title: Text('Record Advanced Payment'), showBackArrow: true),
+      appBar: const BAppBar(
+          title: Text('Record Advanced Payment'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(BSizes.defaultSpace),
@@ -73,13 +77,14 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                     );
                   }).toList(),
                   onChanged: (v) => setState(() => selectedAccount = v),
-                  validator: (value) => value == null ? 'Account is required' : null,
+                  validator: (value) =>
+                      value == null ? 'Account is required' : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-
                 TextFormField(
                   controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Amount Paid',
@@ -100,7 +105,6 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                   },
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-                
                 TextFormField(
                   controller: remarksController,
                   maxLines: 4,
@@ -110,7 +114,6 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
-                
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

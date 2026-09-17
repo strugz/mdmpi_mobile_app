@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Pick a bank from the company list.
 ///
@@ -29,7 +29,7 @@ class BankPickerSheet extends StatefulWidget {
       showModalBottomSheet<BankModel>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: BColors.white,
+        backgroundColor: BCollectionColors.surface,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
               top: Radius.circular(BSizes.borderRadiusLg)),
@@ -96,7 +96,7 @@ class _BankPickerSheetState extends State<BankPickerSheet> {
                     tooltip: 'Close',
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Iconsax.close_circle,
-                        color: BColors.darkGrey),
+                        color: BCollectionColors.inkMuted),
                   ),
                 ],
               ),
@@ -148,15 +148,15 @@ class _BankPickerSheetState extends State<BankPickerSheet> {
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.labelMedium?.copyWith(
                                 color: selected
-                                    ? BColors.primary
-                                    : BColors.darkGrey,
+                                    ? BCollectionColors.primary
+                                    : BCollectionColors.inkMuted,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                           trailing: selected
                               ? const Icon(Iconsax.tick_circle5,
-                                  color: BColors.primary, size: 20)
+                                  color: BCollectionColors.primary, size: 20)
                               : null,
                           onTap: () => Navigator.pop(context, bank),
                         );
@@ -179,8 +179,8 @@ class _BankPickerSheetState extends State<BankPickerSheet> {
                 ? 'The bank list has not downloaded yet. Type the bank name instead.'
                 : 'No bank matches "$_query"',
             textAlign: TextAlign.center,
-            style:
-                theme.textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(color: BCollectionColors.inkMuted),
           ),
         ),
       );

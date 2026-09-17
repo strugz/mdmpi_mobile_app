@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Horizontal, looping carousel with a mirror transition between items.
 ///
@@ -223,7 +223,7 @@ class _BMirrorCarouselState extends State<BMirrorCarousel> {
         _Dots(
           count: widget.itemCount,
           current: real,
-          color: widget.dotColor?.call(real) ?? BColors.primary,
+          color: widget.dotColor?.call(real) ?? BCollectionColors.primary,
           onTap: (i) => _controller.animateToPage(
             _nearestVirtual(i),
             duration: const Duration(milliseconds: 260),
@@ -291,7 +291,7 @@ class _Dots extends StatelessWidget {
               width: active ? 16 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: active ? color : BColors.grey,
+                color: active ? color : BCollectionColors.outline,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),

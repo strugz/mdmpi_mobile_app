@@ -324,6 +324,22 @@ Used for monthly analytics by type:
 - `Collection`
 - `Deposit`
 
+## 8.1 Theme
+
+Collection has its own theme, `BCollectionTheme.light`, applied for the whole
+session by `BCollectionTheme.applyFor(department)` (called from `AppRouter` and
+again whenever `UserController.user` changes). Tokens live in
+`BCollectionColors` (`helpers/collection_theme.dart`). Rules:
+
+- Off-white body (`background`), white cards with no border at rest.
+- One accent (`primary`) per screen: the primary button, selection, active dot.
+- Status colours (`success`, `warning`, `danger`, `info`, `reconcile`,
+  `neutral`) appear on badges and the invoice stripe only, never on body text.
+- Text is `ink` / `inkSecondary` / `inkMuted`. Amounts are ink, green only
+  when settled.
+- Collection code references `BCollectionColors`, not `BColors`, so the
+  department can be re-themed in one file.
+
 ## 9. Backend handoff expectations
 
 For backend implementation, the most important data to support is:

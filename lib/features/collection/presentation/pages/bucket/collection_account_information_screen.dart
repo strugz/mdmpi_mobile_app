@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
@@ -8,6 +7,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionAccountInformationScreen extends StatelessWidget {
   final ClientModel client;
@@ -34,7 +34,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(BSizes.defaultSpace),
               decoration: const BoxDecoration(
-                color: BColors.primary,
+                color: BCollectionColors.primary,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(BSizes.borderRadiusLg * 2),
                   bottomRight: Radius.circular(BSizes.borderRadiusLg * 2),
@@ -46,19 +46,23 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   Text(
                     client.name,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: BColors.white,
+                          color: BCollectionColors.surface,
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   const SizedBox(height: BSizes.xs),
                   Row(
                     children: [
-                      const Icon(Iconsax.location, size: 16, color: BColors.white),
+                      const Icon(Iconsax.location,
+                          size: 16, color: BCollectionColors.surface),
                       const SizedBox(width: BSizes.xs),
                       Expanded(
                         child: Text(
                           client.address,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.white),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: BCollectionColors.surface),
                         ),
                       ),
                     ],
@@ -67,14 +71,15 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   Text(
                     'TOTAL AMOUNT DUE',
                     style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: BColors.white.withValues(alpha: 0.8),
+                          color:
+                              BCollectionColors.surface.withValues(alpha: 0.8),
                           letterSpacing: 1.2,
                         ),
                   ),
                   Text(
                     BFormatter.formatPesoCurrency(totalDue),
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: BColors.white,
+                          color: BCollectionColors.surface,
                           fontWeight: FontWeight.w900,
                         ),
                   ),
@@ -93,7 +98,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                     label: 'Total Past Amount Due',
                     value: BFormatter.formatPesoCurrency(stats['totalPastDue']),
                     icon: Iconsax.timer,
-                    iconColor: BColors.error,
+                    iconColor: BCollectionColors.danger,
                   ),
                   const SizedBox(height: BSizes.xs),
                   _buildStatRow(
@@ -101,11 +106,12 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                     label: 'Total # of Past Invoices Due',
                     value: stats['pastDueCount'].toString(),
                     icon: Iconsax.document_text,
-                    iconColor: BColors.error,
+                    iconColor: BCollectionColors.danger,
                   ),
 
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: BSizes.spaceBtwItems),
+                    padding:
+                        EdgeInsets.symmetric(vertical: BSizes.spaceBtwItems),
                     child: Divider(),
                   ),
 
@@ -113,9 +119,10 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   _buildStatRow(
                     context,
                     label: 'Current Amount Due',
-                    value: BFormatter.formatPesoCurrency(stats['totalCurrentDue']),
+                    value:
+                        BFormatter.formatPesoCurrency(stats['totalCurrentDue']),
                     icon: Iconsax.calendar_tick,
-                    iconColor: BColors.success,
+                    iconColor: BCollectionColors.success,
                   ),
                   const SizedBox(height: BSizes.xs),
                   _buildStatRow(
@@ -123,11 +130,12 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                     label: 'Total # of Current Invoices Due',
                     value: stats['currentDueCount'].toString(),
                     icon: Iconsax.document_text,
-                    iconColor: BColors.success,
+                    iconColor: BCollectionColors.success,
                   ),
 
                   const Padding(
-                    padding: EdgeInsets.symmetric(vertical: BSizes.spaceBtwItems),
+                    padding:
+                        EdgeInsets.symmetric(vertical: BSizes.spaceBtwItems),
                     child: Divider(),
                   ),
 
@@ -136,11 +144,11 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                     'ACCOUNT ACTIVITY HISTORY',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: BColors.darkerGrey,
+                          color: BCollectionColors.inkSecondary,
                         ),
                   ),
                   const SizedBox(height: BSizes.spaceBtwItems),
-                  
+
                   if (history.isEmpty)
                     const Center(
                       child: Padding(
@@ -150,8 +158,13 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                     )
                   else
                     ActivityHistoryList(
-                      history: history.map((e) => e['history'] as CollectionHistoryModel).toList(),
-                      items: { for (var i = 0; i < history.length; i++) i : history[i]['item'] as CollectionItemModel? },
+                      history: history
+                          .map((e) => e['history'] as CollectionHistoryModel)
+                          .toList(),
+                      items: {
+                        for (var i = 0; i < history.length; i++)
+                          i: history[i]['item'] as CollectionItemModel?
+                      },
                     ),
                 ],
               ),
@@ -162,7 +175,8 @@ class CollectionAccountInformationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatRow(BuildContext context, {
+  Widget _buildStatRow(
+    BuildContext context, {
     required String label,
     required String value,
     required IconData icon,
@@ -175,14 +189,17 @@ class CollectionAccountInformationScreen extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: BCollectionColors.inkMuted),
           ),
         ),
         Text(
           value,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: BColors.black,
+                color: BCollectionColors.ink,
               ),
         ),
       ],

@@ -4,7 +4,6 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'activity_detail_screen.dart';
 import 'batch_activity_detail_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
@@ -14,6 +13,7 @@ import 'widgets/invoice_details_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionActivityAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -88,8 +88,8 @@ class _CollectionActivityAccountInvoicesScreenState
             label: Text(
                 'Batch Record ${controller.selectedActivityInvoiceIds.length} Invoices'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: BColors.primary,
-              foregroundColor: BColors.white,
+              backgroundColor: BCollectionColors.primary,
+              foregroundColor: BCollectionColors.surface,
               minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
@@ -113,8 +113,8 @@ class _CollectionActivityAccountInvoicesScreenState
           BSizes.spaceBtwItemsLight,
         ),
         decoration: const BoxDecoration(
-          color: BColors.white,
-          border: Border(top: BorderSide(color: BColors.grey)),
+          color: BCollectionColors.surface,
+          border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),
         child: Row(
           children: [
@@ -124,8 +124,8 @@ class _CollectionActivityAccountInvoicesScreenState
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(0, 48),
                   shape: shape,
-                  foregroundColor: BColors.darkerGrey,
-                  side: const BorderSide(color: BColors.borderSecondary),
+                  foregroundColor: BCollectionColors.inkSecondary,
+                  side: const BorderSide(color: BCollectionColors.outline),
                 ),
                 child: const Text('Defer', maxLines: 1),
               ),
@@ -141,8 +141,8 @@ class _CollectionActivityAccountInvoicesScreenState
                   minimumSize: const Size(0, 48),
                   shape: shape,
                   elevation: 0,
-                  backgroundColor: BColors.primary,
-                  foregroundColor: BColors.white,
+                  backgroundColor: BCollectionColors.primary,
+                  foregroundColor: BCollectionColors.surface,
                 ),
               ),
             ),
@@ -189,7 +189,7 @@ class _CollectionActivityAccountInvoicesScreenState
                                 .length
                         ? 'Deselect All'
                         : 'Select All',
-                    style: const TextStyle(color: BColors.primary),
+                    style: const TextStyle(color: BCollectionColors.primary),
                   ),
                 ),
             ],

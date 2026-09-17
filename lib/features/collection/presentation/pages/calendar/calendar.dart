@@ -5,18 +5,19 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/widgets/activity_type_modal.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionCalendarScreen extends StatefulWidget {
   const CollectionCalendarScreen({super.key});
 
   @override
-  State<CollectionCalendarScreen> createState() => _CollectionCalendarScreenState();
+  State<CollectionCalendarScreen> createState() =>
+      _CollectionCalendarScreenState();
 }
 
 class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
@@ -50,12 +51,13 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
         child: Obx(() {
           // This Obx ensures the calendar reacts to data changes in the controller
           // ignore: unused_local_variable
-          final dummy = controller.allRecentHistory.length; 
-          
+          final dummy = controller.allRecentHistory.length;
+
           return Column(
             children: [
               // Header
               const BPrimaryHeaderContainer(
+                color: BCollectionColors.headerBackground,
                 child: Column(
                   children: [
                     BHomeAppBar(title: 'Calendar'),
@@ -76,7 +78,8 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                     setState(() {
                       _selectedDay = selectedDay;
                       _focusedDay = focusedDay;
-                      _selectedAccountFilter = null; // Reset filter when day changes
+                      _selectedAccountFilter =
+                          null; // Reset filter when day changes
                     });
                   }
                 },
@@ -92,11 +95,11 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                 },
                 calendarStyle: const CalendarStyle(
                   todayDecoration: BoxDecoration(
-                    color: BColors.accent,
+                    color: BCollectionColors.primary,
                     shape: BoxShape.circle,
                   ),
                   selectedDecoration: BoxDecoration(
-                    color: BColors.primary,
+                    color: BCollectionColors.primary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -105,26 +108,28 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                   titleCentered: true,
                 ),
                 calendarBuilders: CalendarBuilders(
-                  markerBuilder: (context, date, events) => const SizedBox.shrink(),
+                  markerBuilder: (context, date, events) =>
+                      const SizedBox.shrink(),
                   defaultBuilder: (context, day, focusedDay) {
                     final events = _getEventsForDay(day);
                     if (events.isNotEmpty) {
-                      return _buildCalendarDay(day, BColors.success);
+                      return _buildCalendarDay(day, BCollectionColors.success);
                     }
                     return null;
                   },
                   todayBuilder: (context, day, focusedDay) {
                     final events = _getEventsForDay(day);
                     if (events.isNotEmpty) {
-                      return _buildCalendarDay(day, BColors.success, isToday: true);
+                      return _buildCalendarDay(day, BCollectionColors.success,
+                          isToday: true);
                     }
                     return null;
                   },
                   selectedBuilder: (context, day, focusedDay) {
                     final events = _getEventsForDay(day);
                     return _buildCalendarDay(
-                      day, 
-                      BColors.primary, 
+                      day,
+                      BCollectionColors.primary,
                       hasActivity: events.isNotEmpty,
                       isSelected: true,
                     );
@@ -135,7 +140,8 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
 
               // Add Activity Button
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -144,7 +150,8 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                         context: context,
                         isScrollControlled: true,
                         shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
+                          borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(BSizes.borderRadiusLg)),
                         ),
                         builder: (sheetContext) => Padding(
                           padding: EdgeInsets.only(
@@ -158,9 +165,10 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                     label: const Text('Add Field Engagement'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: BSizes.md),
-                      backgroundColor: BColors.primary.withValues(alpha: 0.1),
-                      foregroundColor: BColors.primary,
-                      side: const BorderSide(color: BColors.primary),
+                      backgroundColor:
+                          BCollectionColors.primary.withValues(alpha: 0.1),
+                      foregroundColor: BCollectionColors.primary,
+                      side: const BorderSide(color: BCollectionColors.primary),
                       elevation: 0,
                     ),
                   ),
@@ -169,7 +177,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
 
               const SizedBox(height: BSizes.spaceBtwItems),
               const Divider(),
-              
+
               _buildEventList(),
             ],
           );
@@ -179,7 +187,10 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
   }
 
   /// Helper to build a decorated calendar day
-  Widget _buildCalendarDay(DateTime day, Color color, {bool isToday = false, bool hasActivity = false, bool isSelected = false}) {
+  Widget _buildCalendarDay(DateTime day, Color color,
+      {bool isToday = false,
+      bool hasActivity = false,
+      bool isSelected = false}) {
     return Container(
       margin: const EdgeInsets.all(4.0),
       alignment: Alignment.center,
@@ -187,19 +198,22 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
         color: color,
         shape: BoxShape.circle,
         border: (isSelected && hasActivity)
-          ? Border.all(color: BColors.success, width: 2)
-          : (isToday ? Border.all(color: BColors.accent, width: 2) : null),
+            ? Border.all(color: BCollectionColors.success, width: 2)
+            : (isToday
+                ? Border.all(color: BCollectionColors.primary, width: 2)
+                : null),
       ),
       child: Text(
         '${day.day}',
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        style:
+            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
     );
   }
 
   Widget _buildEventList() {
     if (_selectedDay == null) return const SizedBox.shrink();
-    
+
     final dayActivities = _getEventsForDay(_selectedDay!);
 
     if (dayActivities.isEmpty) {
@@ -209,11 +223,12 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.calendar_today_outlined, size: 48, color: BColors.darkGrey),
+              Icon(Icons.calendar_today_outlined,
+                  size: 48, color: BCollectionColors.inkMuted),
               SizedBox(height: BSizes.sm),
               Text(
                 'No engagements recorded for this day.',
-                style: TextStyle(color: BColors.darkGrey),
+                style: TextStyle(color: BCollectionColors.inkMuted),
               ),
             ],
           ),
@@ -238,7 +253,10 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
             padding: const EdgeInsets.symmetric(vertical: BSizes.md),
             child: Text(
               'Engagements on ${DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day).toString().split(' ')[0]}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
 
@@ -262,7 +280,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
               });
             },
           ),
-          
+
           const SizedBox(height: BSizes.spaceBtwItems),
 
           if (_selectedAccountFilter == null)
@@ -271,19 +289,20 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                 padding: EdgeInsets.symmetric(vertical: BSizes.lg),
                 child: Column(
                   children: [
-                    Icon(Iconsax.info_circle, color: BColors.darkGrey),
+                    Icon(Iconsax.info_circle,
+                        color: BCollectionColors.inkMuted),
                     SizedBox(height: BSizes.sm),
                     Text(
                       'Please select an account to view engagements.',
-                      style: TextStyle(color: BColors.darkGrey),
+                      style: TextStyle(color: BCollectionColors.inkMuted),
                     ),
                   ],
                 ),
               ),
             )
-          else 
+          else
             _buildFilteredHistory(dayActivities),
-          
+
           const SizedBox(height: BSizes.spaceBtwSections),
         ],
       ),
@@ -293,12 +312,25 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
   Widget _buildFilteredHistory(List<Map<String, dynamic>> dayActivities) {
     final filteredActivities = _selectedAccountFilter == 'All'
         ? dayActivities
-        : dayActivities.where((e) => e['accountName'].toString() == _selectedAccountFilter).toList();
+        : dayActivities
+            .where((e) => e['accountName'].toString() == _selectedAccountFilter)
+            .toList();
 
-    final historyList = filteredActivities.map((e) => e['history'] as CollectionHistoryModel).toList();
-    final accountNames = { for (var i = 0; i < filteredActivities.length; i++) i : filteredActivities[i]['accountName'].toString() };
-    final invoiceIds = { for (var i = 0; i < filteredActivities.length; i++) i : filteredActivities[i]['invoiceId']?.toString() };
-    final items = { for (var i = 0; i < filteredActivities.length; i++) i : filteredActivities[i]['item'] as CollectionItemModel? };
+    final historyList = filteredActivities
+        .map((e) => e['history'] as CollectionHistoryModel)
+        .toList();
+    final accountNames = {
+      for (var i = 0; i < filteredActivities.length; i++)
+        i: filteredActivities[i]['accountName'].toString()
+    };
+    final invoiceIds = {
+      for (var i = 0; i < filteredActivities.length; i++)
+        i: filteredActivities[i]['invoiceId']?.toString()
+    };
+    final items = {
+      for (var i = 0; i < filteredActivities.length; i++)
+        i: filteredActivities[i]['item'] as CollectionItemModel?
+    };
 
     return ActivityHistoryList(
       history: historyList,

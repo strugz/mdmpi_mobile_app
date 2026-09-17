@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
@@ -12,6 +11,7 @@ import 'activity_account_invoices_screen.dart';
 import 'widgets/activity_filter_modal.dart';
 import 'widgets/engagement_summary.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Collection Activity Screen
 ///
@@ -80,7 +80,7 @@ class CollectionActivityScreen extends StatelessWidget {
                                   ? Iconsax.activity
                                   : Iconsax.search_status,
                               size: 64,
-                              color: BColors.darkGrey,
+                              color: BCollectionColors.inkMuted,
                             ),
                             const SizedBox(height: BSizes.spaceBtwItems),
                             Text(
@@ -93,7 +93,7 @@ class CollectionActivityScreen extends StatelessWidget {
                                   .textTheme
                                   .bodyLarge
                                   ?.copyWith(
-                                    color: BColors.darkGrey,
+                                    color: BCollectionColors.inkMuted,
                                   ),
                             ),
                             const SizedBox(height: BSizes.xs),
@@ -121,7 +121,8 @@ class CollectionActivityScreen extends StatelessWidget {
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall
-                                      ?.copyWith(color: BColors.darkGrey),
+                                      ?.copyWith(
+                                          color: BCollectionColors.inkMuted),
                                 ),
                               ),
                           ],

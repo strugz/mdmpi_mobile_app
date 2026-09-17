@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// What the collector chose in [DeferReasonSheet].
 class DeferReason {
@@ -52,7 +52,7 @@ class DeferReasonSheet extends StatefulWidget {
       showModalBottomSheet<DeferReason>(
         context: context,
         isScrollControlled: true,
-        backgroundColor: BColors.white,
+        backgroundColor: BCollectionColors.surface,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
               top: Radius.circular(BSizes.borderRadiusLg)),
@@ -124,7 +124,7 @@ class _DeferReasonSheetState extends State<DeferReasonSheet> {
                         '${widget.accountName} goes back to the bucket '
                         'with the reason you pick.',
                         style: theme.textTheme.bodySmall
-                            ?.copyWith(color: BColors.darkGrey),
+                            ?.copyWith(color: BCollectionColors.inkMuted),
                       ),
                     ],
                   ),
@@ -132,8 +132,8 @@ class _DeferReasonSheetState extends State<DeferReasonSheet> {
                 IconButton(
                   tooltip: 'Close',
                   onPressed: () => Navigator.pop(context),
-                  icon:
-                      const Icon(Iconsax.close_circle, color: BColors.darkGrey),
+                  icon: const Icon(Iconsax.close_circle,
+                      color: BCollectionColors.inkMuted),
                 ),
               ],
             ),
@@ -176,11 +176,11 @@ class _DeferReasonSheetState extends State<DeferReasonSheet> {
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
                 elevation: 0,
-                backgroundColor: BColors.primary,
-                foregroundColor: BColors.white,
+                backgroundColor: BCollectionColors.primary,
+                foregroundColor: BCollectionColors.surface,
                 disabledBackgroundColor:
-                    BColors.primary.withValues(alpha: 0.35),
-                disabledForegroundColor: BColors.white,
+                    BCollectionColors.primary.withValues(alpha: 0.35),
+                disabledForegroundColor: BCollectionColors.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
                 ),
@@ -225,10 +225,12 @@ class _ReasonRow extends StatelessWidget {
           height: 52,
           padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
           decoration: BoxDecoration(
-            color: selected ? color.withValues(alpha: 0.08) : BColors.white,
+            color: selected
+                ? color.withValues(alpha: 0.08)
+                : BCollectionColors.surface,
             borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
             border: Border.all(
-              color: selected ? color : BColors.grey,
+              color: selected ? color : BCollectionColors.outline,
               width: selected ? 1.5 : 1,
             ),
           ),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// How urgent an invoice is. Drives the accent stripe and the due-date colour.
 enum InvoiceUrgency { settled, upcoming, due, late }
@@ -74,9 +74,9 @@ class InvoiceCard extends StatelessWidget {
   }
 
   Color? get _accentColor => switch (urgency) {
-        InvoiceUrgency.settled => BColors.success,
-        InvoiceUrgency.late => BColors.error,
-        InvoiceUrgency.due => BColors.warning,
+        InvoiceUrgency.settled => BCollectionColors.success,
+        InvoiceUrgency.late => BCollectionColors.danger,
+        InvoiceUrgency.due => BCollectionColors.warning,
         InvoiceUrgency.upcoming => null,
       };
 
@@ -97,16 +97,16 @@ class InvoiceCard extends StatelessWidget {
         curve: Curves.easeOut,
         decoration: BoxDecoration(
           color: isSelected
-              ? BColors.primary.withValues(alpha: 0.05)
-              : BColors.white,
+              ? BCollectionColors.primarySoft
+              : BCollectionColors.surface,
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           // Constant width: animating 1 -> 2px would nudge the content on
           // every selection toggle.
-          // A hairline in a lighter grey: the old 1.5px E0E0E0 boxed every
-          // card and fought the stripe for the eye.
+          // No border at rest: the card is white on the off-white body and
+          // floats on its own. The outline appears only for selection.
           border: Border.all(
-            color: isSelected ? BColors.primary : BColors.softGrey,
-            width: isSelected ? 1.5 : 1,
+            color: isSelected ? BCollectionColors.primary : Colors.transparent,
+            width: 1.5,
           ),
         ),
         // Clip so the accent stripe follows the rounded corners.
@@ -188,7 +188,7 @@ class InvoiceCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: BColors.darkerGrey,
+                    color: BCollectionColors.inkSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -221,14 +221,16 @@ class InvoiceCard extends StatelessWidget {
                       isSelected ? Iconsax.tick_circle5 : Iconsax.add_circle,
                       key: ValueKey('select-$isSelected'),
                       size: 22,
-                      color: isSelected ? BColors.primary : BColors.darkGrey,
+                      color: isSelected
+                          ? BCollectionColors.primary
+                          : BCollectionColors.inkMuted,
                     )
                   : IconButton(
                       key: const ValueKey('info'),
                       tooltip: 'Invoice details',
                       onPressed: onInfoTap,
                       icon: const Icon(Iconsax.info_circle,
-                          size: 20, color: BColors.darkGrey),
+                          size: 20, color: BCollectionColors.inkMuted),
                       padding: EdgeInsets.zero,
                       constraints:
                           const BoxConstraints.tightFor(width: 28, height: 28),
@@ -258,14 +260,16 @@ class InvoiceCard extends StatelessWidget {
                 fontSize: 20,
                 height: 1.1,
                 fontWeight: FontWeight.w800,
-                color: settled ? BColors.success : BColors.black,
+                color:
+                    settled ? BCollectionColors.success : BCollectionColors.ink,
               ),
             ),
           ),
         ),
         if (settled) ...[
           const SizedBox(width: BSizes.xs),
-          const Icon(Iconsax.tick_circle5, color: BColors.success, size: 18),
+          const Icon(Iconsax.tick_circle5,
+              color: BCollectionColors.success, size: 18),
         ],
       ],
     );
@@ -283,12 +287,13 @@ class InvoiceCard extends StatelessWidget {
     // The date stays grey even when overdue. The stripe and the badge already
     // say how late it is; a third red element per row was the loudest thing
     // on a list where every row is overdue.
-    const dateColor = BColors.darkerGrey;
-    final badgeColor = _accentColor ?? BColors.darkGrey;
+    const dateColor = BCollectionColors.inkSecondary;
+    final badgeColor = _accentColor ?? BCollectionColors.inkMuted;
 
     return Row(
       children: [
-        const Icon(Iconsax.calendar_1, size: 14, color: BColors.darkGrey),
+        const Icon(Iconsax.calendar_1,
+            size: 14, color: BCollectionColors.inkMuted),
         const SizedBox(width: BSizes.xs),
         Flexible(
           child: Text(
@@ -342,7 +347,7 @@ class InvoiceCard extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.labelSmall?.copyWith(
-          color: fg == BColors.white ? bg : fg,
+          color: fg == BCollectionColors.surface ? bg : fg,
           fontWeight: FontWeight.w600,
           fontSize: 10,
         ),

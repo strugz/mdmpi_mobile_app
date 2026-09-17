@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Search field plus a filter toggle.
 ///
@@ -28,11 +28,13 @@ class CollectionSearchFilterBar extends StatefulWidget {
   final String initialValue;
 
   @override
-  State<CollectionSearchFilterBar> createState() => _CollectionSearchFilterBarState();
+  State<CollectionSearchFilterBar> createState() =>
+      _CollectionSearchFilterBarState();
 }
 
 class _CollectionSearchFilterBarState extends State<CollectionSearchFilterBar> {
-  late final TextEditingController _controller = TextEditingController(text: widget.initialValue);
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialValue);
 
   static const Duration _stateDuration = Duration(milliseconds: 160);
   static const double _fieldHeight = 48;
@@ -40,7 +42,8 @@ class _CollectionSearchFilterBarState extends State<CollectionSearchFilterBar> {
   @override
   void didUpdateWidget(covariant CollectionSearchFilterBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.initialValue != oldWidget.initialValue && widget.initialValue != _controller.text) {
+    if (widget.initialValue != oldWidget.initialValue &&
+        widget.initialValue != _controller.text) {
       _controller.value = TextEditingValue(
         text: widget.initialValue,
         selection: TextSelection.collapsed(offset: widget.initialValue.length),
@@ -95,7 +98,7 @@ class _CollectionSearchFilterBarState extends State<CollectionSearchFilterBar> {
                             tooltip: 'Clear search',
                             onPressed: _clear,
                             icon: const Icon(Iconsax.close_circle5, size: 18),
-                            color: BColors.darkGrey,
+                            color: BCollectionColors.inkMuted,
                           ),
                         ),
                       );
@@ -124,11 +127,13 @@ class _CollectionSearchFilterBarState extends State<CollectionSearchFilterBar> {
               height: _fieldHeight,
               decoration: BoxDecoration(
                 color: widget.hasActiveFilter
-                    ? BColors.primary.withValues(alpha: 0.10)
+                    ? BCollectionColors.primary.withValues(alpha: 0.10)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
                 border: Border.all(
-                  color: widget.hasActiveFilter ? BColors.primary : BColors.grey,
+                  color: widget.hasActiveFilter
+                      ? BCollectionColors.primary
+                      : BCollectionColors.outline,
                   width: widget.hasActiveFilter ? 1.5 : 1,
                 ),
               ),
@@ -138,7 +143,9 @@ class _CollectionSearchFilterBarState extends State<CollectionSearchFilterBar> {
                 icon: Icon(
                   Iconsax.filter_edit,
                   size: 20,
-                  color: widget.hasActiveFilter ? BColors.primary : BColors.darkerGrey,
+                  color: widget.hasActiveFilter
+                      ? BCollectionColors.primary
+                      : BCollectionColors.inkSecondary,
                 ),
               ),
             ),

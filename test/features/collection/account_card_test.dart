@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The account card answers one question — how much is still out on this
 /// account — so these pin the things that used to get in the way of it: a
 /// literal "N/A" where an address should be, and a zero painted green as
 /// though nothing collected were an achievement.
 
-ClientModel _client({String name = 'Abbott Laboratories', String address = ''}) =>
+ClientModel _client(
+        {String name = 'Abbott Laboratories', String address = ''}) =>
     ClientModel(
       id: 'A',
       code: 'NLN-1',
@@ -75,7 +76,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('₱112,000.00'), findsOneWidget);
-      expect(_colourOf(tester, '₱112,000.00'), BColors.primary);
+      expect(_colourOf(tester, '₱112,000.00'), BCollectionColors.primary);
       // Unlabelled: every row in this list is an outstanding balance, so the
       // word would repeat down the whole screen.
       expect(find.text('outstanding'), findsNothing);
@@ -112,7 +113,7 @@ void main() {
 
       expect(find.text('₱45,000.00'), findsOneWidget);
       expect(find.text('collected'), findsOneWidget);
-      expect(_colourOf(tester, '₱45,000.00'), BColors.success);
+      expect(_colourOf(tester, '₱45,000.00'), BCollectionColors.success);
       // The headline already says it; the caption underneath would be the
       // same sentence twice.
       expect(find.textContaining('collected so far'), findsNothing);
@@ -202,8 +203,7 @@ void main() {
       c.activityItems
           .assignAll([due('1', 'Zeta', 500), due('2', 'Alpha', 500)]);
 
-      expect(
-          c.activityAccounts.map((a) => a.name).toList(), ['Alpha', 'Zeta']);
+      expect(c.activityAccounts.map((a) => a.name).toList(), ['Alpha', 'Zeta']);
     });
   });
 

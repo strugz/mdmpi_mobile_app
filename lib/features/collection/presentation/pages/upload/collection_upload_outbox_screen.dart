@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_upload_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Review and upload the offline collection queue (end-of-day "Upload All").
 class CollectionUploadOutboxScreen extends StatelessWidget {
@@ -92,8 +92,8 @@ class CollectionUploadOutboxScreen extends StatelessWidget {
           'This permanently removes all queued collections without uploading them.',
       textConfirm: 'Discard',
       textCancel: 'Cancel',
-      confirmTextColor: BColors.white,
-      buttonColor: BColors.error,
+      confirmTextColor: BCollectionColors.surface,
+      buttonColor: BCollectionColors.danger,
       onConfirm: () {
         Get.back();
         controller.discardAll();
@@ -131,7 +131,9 @@ class _PendingList extends StatelessWidget {
                 child: ListTile(
                   leading: Icon(
                     rejected ? Iconsax.warning_2 : Iconsax.document_upload,
-                    color: rejected ? BColors.error : BColors.primary,
+                    color: rejected
+                        ? BCollectionColors.danger
+                        : BCollectionColors.primary,
                   ),
                   title: Text(_operationLabel(change.operation)),
                   subtitle: Text(
@@ -141,7 +143,8 @@ class _PendingList extends StatelessWidget {
                   isThreeLine: rejected,
                   trailing: IconButton(
                     tooltip: 'Discard',
-                    icon: const Icon(Iconsax.close_circle, color: BColors.error),
+                    icon: const Icon(Iconsax.close_circle,
+                        color: BCollectionColors.danger),
                     onPressed: change.id == null
                         ? null
                         : () => controller.discard(change.id!),
@@ -185,7 +188,7 @@ class _UploadAllButton extends StatelessWidget {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.2,
-                  color: BColors.white,
+                  color: BCollectionColors.surface,
                 ),
               ),
               const SizedBox(width: BSizes.sm),
@@ -233,7 +236,8 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Iconsax.tick_circle, size: 56, color: BColors.success),
+          const Icon(Iconsax.tick_circle,
+              size: 56, color: BCollectionColors.success),
           const SizedBox(height: BSizes.sm),
           Text(
             'All collections uploaded',
@@ -245,7 +249,7 @@ class _EmptyState extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
-                ?.copyWith(color: BColors.darkGrey),
+                ?.copyWith(color: BCollectionColors.inkMuted),
           ),
         ],
       ),

@@ -10,9 +10,11 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 class CollectionWorkspace {
   final List<CollectionItemModel> items;
   final List<CollectionAdvanceRecord> advances;
+
   /// Deposits (as type 'Deposit') plus CWT Pick-up / Reconciliation activities.
   final List<CollectionActivityRecord> activities;
   final List<CollectionAccountHistoryRecord> accountHistory;
+
   /// yyyy-MM -> target amount
   final Map<String, double> targets;
 
@@ -39,12 +41,17 @@ class CollectionWorkspaceParser {
 
     return CollectionWorkspace(
       items: CollectionMapper.toDomainModels(items),
-      advances: _list(json, 'Advances').map(_map).map(_advance).whereType<CollectionAdvanceRecord>().toList(),
+      advances: _list(json, 'Advances')
+          .map(_map)
+          .map(_advance)
+          .whereType<CollectionAdvanceRecord>()
+          .toList(),
       activities: [
         ..._list(json, 'Deposits').map(_map).map(_deposit),
         ..._list(json, 'Activities').map(_map).map(_activity),
       ],
-      accountHistory: _list(json, 'AccountHistory').map(_map).map(_history).toList(),
+      accountHistory:
+          _list(json, 'AccountHistory').map(_map).map(_history).toList(),
       targets: {
         for (final t in _list(json, 'Targets').map(_map))
           _str(t, 'YearMonth'): _num(t, 'TargetAmount'),

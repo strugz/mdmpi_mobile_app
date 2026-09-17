@@ -31,7 +31,8 @@ void main() {
       await tester.tap(find.byIcon(Iconsax.close_circle5));
       await tester.pumpAndSettle();
       expect(last, '');
-      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, '');
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          '');
     });
 
     testWidgets('external reset of the query empties the visible field',
@@ -54,7 +55,8 @@ void main() {
   });
 
   group('BPressableScale', () {
-    testWidgets('scales down while pressed and back on release', (tester) async {
+    testWidgets('scales down while pressed and back on release',
+        (tester) async {
       var taps = 0;
       await tester.pumpWidget(_host(Center(
         child: BPressableScale(
@@ -63,10 +65,12 @@ void main() {
         ),
       )));
 
-      AnimatedScale scale() => tester.widget<AnimatedScale>(find.byType(AnimatedScale));
+      AnimatedScale scale() =>
+          tester.widget<AnimatedScale>(find.byType(AnimatedScale));
       expect(scale().scale, 1);
 
-      final gesture = await tester.startGesture(tester.getCenter(find.byType(BPressableScale)));
+      final gesture = await tester
+          .startGesture(tester.getCenter(find.byType(BPressableScale)));
       await tester.pump();
       expect(scale().scale, 0.97);
 

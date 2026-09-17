@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_selection_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class BFilterByAreaButton extends StatelessWidget {
   const BFilterByAreaButton({super.key});
@@ -33,21 +33,29 @@ class BFilterByAreaButton extends StatelessWidget {
             icon: Icon(
               Iconsax.map,
               size: 18,
-              color: hasFilter ? BColors.primary : BColors.darkGrey,
+              color: hasFilter
+                  ? BCollectionColors.primary
+                  : BCollectionColors.inkMuted,
             ),
             label: Text(
-              hasFilter ? 'Filter by Area: ${BCollectionArea.labelFor(area)}' : 'Filter by Area',
+              hasFilter
+                  ? 'Filter by Area: ${BCollectionArea.labelFor(area)}'
+                  : 'Filter by Area',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: hasFilter ? BColors.primary : BColors.darkGrey,
+                color: hasFilter
+                    ? BCollectionColors.primary
+                    : BCollectionColors.inkMuted,
                 fontWeight: hasFilter ? FontWeight.bold : FontWeight.normal,
               ),
             ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: BSizes.md),
               side: BorderSide(
-                color: hasFilter ? BColors.primary : BColors.grey,
+                color: hasFilter
+                    ? BCollectionColors.primary
+                    : BCollectionColors.outline,
                 width: hasFilter ? 1.5 : 1,
               ),
               shape: RoundedRectangleBorder(

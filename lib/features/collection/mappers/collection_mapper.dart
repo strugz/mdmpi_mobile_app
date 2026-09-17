@@ -21,7 +21,8 @@ class CollectionMapper {
   }
 
   /// Convert list of DTOs to domain models.
-  static List<CollectionItemModel> toDomainModels(List<CollectionItemDto> dtos) {
+  static List<CollectionItemModel> toDomainModels(
+      List<CollectionItemDto> dtos) {
     return dtos.map(toDomainModel).toList();
   }
 

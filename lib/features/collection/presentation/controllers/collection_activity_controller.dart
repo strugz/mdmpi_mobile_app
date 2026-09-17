@@ -453,7 +453,8 @@ class CollectionActivityController extends GetxController {
     if (value.isEmpty) return '';
     final lower = value.toLowerCase();
     for (final bank in banks) {
-      if (bank.code.toLowerCase() == lower || bank.name.toLowerCase() == lower) {
+      if (bank.code.toLowerCase() == lower ||
+          bank.name.toLowerCase() == lower) {
         return bank.label;
       }
     }
@@ -543,7 +544,9 @@ class CollectionActivityController extends GetxController {
   /// signal for which accounts to pick up today.
   int getBucketAccountOverdueCount(String clientId) => bucketItems
       .where((item) =>
-          item.client.id == clientId && item.toBeCollected > 0 && item.isOverdue)
+          item.client.id == clientId &&
+          item.toBeCollected > 0 &&
+          item.isOverdue)
       .length;
 
   /// Everything currently in view, and everything currently ticked.
@@ -691,7 +694,9 @@ class CollectionActivityController extends GetxController {
   /// How many of this account's engaged invoices are past their due date.
   int getActivityAccountOverdueCount(String clientId) => activityItems
       .where((item) =>
-          item.client.id == clientId && item.toBeCollected > 0 && item.isOverdue)
+          item.client.id == clientId &&
+          item.toBeCollected > 0 &&
+          item.isOverdue)
       .length;
 
   /// The day at a glance: what is on the collector's plate right now.

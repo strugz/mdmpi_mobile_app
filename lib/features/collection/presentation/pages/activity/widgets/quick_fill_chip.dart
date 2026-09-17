@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// A one-tap value. Used wherever the collector would otherwise type something
 /// the app already knows: the invoice balance, today's date, a bank they have
@@ -32,7 +32,7 @@ class BQuickFillChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = color ?? BColors.primary;
+    final accent = color ?? BCollectionColors.primary;
 
     return BPressableScale(
       onTap: onTap,
@@ -47,11 +47,13 @@ class BQuickFillChip extends StatelessWidget {
           padding:
               const EdgeInsets.symmetric(horizontal: BSizes.spaceBtwItemsLight),
           decoration: BoxDecoration(
-            color: selected ? accent.withValues(alpha: 0.10) : BColors.white,
+            color: selected
+                ? accent.withValues(alpha: 0.10)
+                : BCollectionColors.surface,
             borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
             // Constant width so selecting never nudges neighbouring chips.
             border: Border.all(
-              color: selected ? accent : BColors.grey,
+              color: selected ? accent : BCollectionColors.outline,
               width: 1.5,
             ),
           ),
@@ -60,7 +62,8 @@ class BQuickFillChip extends StatelessWidget {
             children: [
               if (icon != null) ...[
                 Icon(icon,
-                    size: 16, color: selected ? accent : BColors.darkerGrey),
+                    size: 16,
+                    color: selected ? accent : BCollectionColors.inkSecondary),
                 const SizedBox(width: BSizes.xs),
               ],
               // Flexible, so a long label ellipsizes inside the chip rather
@@ -72,7 +75,7 @@ class BQuickFillChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelLarge?.copyWith(
-                    color: selected ? accent : BColors.darkerGrey,
+                    color: selected ? accent : BCollectionColors.inkSecondary,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),

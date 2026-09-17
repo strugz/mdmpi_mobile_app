@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
@@ -13,6 +12,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/reveal_scroll.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Record one payment against several invoices at once.
 ///
@@ -321,7 +321,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         Text('Amount received', style: theme.textTheme.titleMedium),
         Text(
           '${widget.items.length} invoices · ${BFormatter.formatPesoCurrency(_totalDue)} due',
-          style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: BCollectionColors.inkMuted),
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
         TextField(
@@ -341,7 +342,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
-                  color: BColors.darkGrey,
+                  color: BCollectionColors.inkMuted,
                 ),
               ),
             ),
@@ -372,7 +373,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         Text('Split across invoices', style: theme.textTheme.titleMedium),
         Text(
           'Oldest first, each settled in turn',
-          style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: BCollectionColors.inkMuted),
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
         // Nothing to pour out until an amount is entered, and a chip that
@@ -409,9 +411,11 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(BSizes.md),
       decoration: BoxDecoration(
-        color: BColors.white,
+        color: BCollectionColors.surface,
         border: Border.all(
-          color: allocated > 0 ? BColors.primary : BColors.grey,
+          color: allocated > 0
+              ? BCollectionColors.primary
+              : BCollectionColors.outline,
           width: 1.5,
         ),
         borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
@@ -430,7 +434,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelMedium?.copyWith(
-                        color: BColors.darkGrey,
+                        color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -506,8 +510,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                       : '${BFormatter.formatPesoCurrency(remaining.abs())} more than this invoice',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: remaining < -_tolerance
-                    ? BColors.warning
-                    : BColors.darkGrey,
+                    ? BCollectionColors.warning
+                    : BCollectionColors.inkMuted,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -667,25 +671,33 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     final undecided = _undecided.length;
 
     final (Color color, IconData icon, String message) = noTarget
-        ? (BColors.darkGrey, Iconsax.info_circle, 'Enter the amount received')
+        ? (
+            BCollectionColors.inkMuted,
+            Iconsax.info_circle,
+            'Enter the amount received'
+          )
         : balanced
             ? (undecided > 0
                 ? (
-                    BColors.warning,
+                    BCollectionColors.warning,
                     Iconsax.info_circle,
                     undecided == 1
                         ? 'Set the outcome on 1 invoice'
                         : 'Set the outcome on $undecided invoices'
                   )
-                : (BColors.success, Iconsax.tick_circle, 'Fully allocated'))
+                : (
+                    BCollectionColors.success,
+                    Iconsax.tick_circle,
+                    'Fully allocated'
+                  ))
             : over
                 ? (
-                    BColors.error,
+                    BCollectionColors.danger,
                     Iconsax.warning_2,
                     '${BFormatter.formatPesoCurrency(_unallocated.abs())} over'
                   )
                 : (
-                    BColors.warning,
+                    BCollectionColors.warning,
                     Iconsax.warning_2,
                     '${BFormatter.formatPesoCurrency(_unallocated)} left to allocate'
                   );
@@ -700,8 +712,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
           BSizes.md,
         ),
         decoration: const BoxDecoration(
-          color: BColors.white,
-          border: Border(top: BorderSide(color: BColors.grey)),
+          color: BCollectionColors.surface,
+          border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -732,7 +744,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall
-                    ?.copyWith(color: BColors.darkGrey),
+                    ?.copyWith(color: BCollectionColors.inkMuted),
               ),
             ],
             const SizedBox(height: BSizes.sm),
@@ -776,7 +788,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                   leading: Icon(CollectionStatusColors.iconFor(status),
                       color: CollectionStatusColors.colorFor(status)),
                   trailing: itemStatuses[itemId] == status
-                      ? const Icon(Iconsax.tick_circle, color: BColors.primary)
+                      ? const Icon(Iconsax.tick_circle,
+                          color: BCollectionColors.primary)
                       : null,
                   onTap: () {
                     setModalState(() => itemStatuses[itemId] = status);
@@ -822,7 +835,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   Widget _statusBadge(BuildContext context, String status) {
     final unset = status.isEmpty;
     final (bg, _) = unset
-        ? (BColors.darkGrey, BColors.white)
+        ? (BCollectionColors.inkMuted, BCollectionColors.surface)
         : CollectionStatusColors.colorsForAuto(context, status);
 
     return Container(

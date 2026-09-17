@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Navigation card for the collection bucket.
 ///
@@ -164,7 +164,7 @@ class _CollectionBucketButtonState extends State<CollectionBucketButton> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: BColors.darkerGrey),
+                        ?.copyWith(color: BCollectionColors.inkSecondary),
                   ),
                 ],
               ),

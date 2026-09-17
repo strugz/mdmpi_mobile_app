@@ -18,10 +18,12 @@ class DueDateHelper {
 
   static DueBucket? fromLabel(String label) {
     if (label == 'All') return DueBucket.all;
-    return labels.entries.firstWhere(
-      (e) => e.value == label,
-      orElse: () => MapEntry(DueBucket.all, 'All'),
-    ).key;
+    return labels.entries
+        .firstWhere(
+          (e) => e.value == label,
+          orElse: () => MapEntry(DueBucket.all, 'All'),
+        )
+        .key;
   }
 
   static String labelFor(DueBucket bucket) => labels[bucket] ?? 'All';
@@ -47,5 +49,3 @@ class DueDateHelper {
   /// Convenience: list of labels including 'All' as first item
   static List<String> get labelsWithAll => ['All', ...labels.values];
 }
-
-

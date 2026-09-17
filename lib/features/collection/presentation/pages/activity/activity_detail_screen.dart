@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
@@ -13,6 +12,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/reveal_scroll.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Record a collection against one invoice.
 ///
@@ -224,8 +224,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             BSizes.spaceBtwItemsLight,
           ),
           decoration: const BoxDecoration(
-            color: BColors.white,
-            border: Border(top: BorderSide(color: BColors.grey)),
+            color: BCollectionColors.surface,
+            border: Border(top: BorderSide(color: BCollectionColors.outline)),
           ),
           child: ElevatedButton.icon(
             onPressed: _saveActivity,
@@ -234,8 +234,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             style: ElevatedButton.styleFrom(
               minimumSize: const Size(double.infinity, 50),
               elevation: 0,
-              backgroundColor: BColors.primary,
-              foregroundColor: BColors.white,
+              backgroundColor: BCollectionColors.primary,
+              foregroundColor: BCollectionColors.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
               ),
@@ -320,9 +320,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
       decoration: BoxDecoration(
-        color: BColors.primary.withValues(alpha: 0.05),
+        color: BCollectionColors.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
-        border: Border.all(color: BColors.primary.withValues(alpha: 0.18)),
+        border: Border.all(
+            color: BCollectionColors.primary.withValues(alpha: 0.18)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,7 +338,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                 '#${widget.item.id}',
                 maxLines: 1,
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: BColors.darkerGrey,
+                  color: BCollectionColors.inkSecondary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -349,7 +350,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.end,
                   style: theme.textTheme.labelMedium
-                      ?.copyWith(color: BColors.darkGrey),
+                      ?.copyWith(color: BCollectionColors.inkMuted),
                 ),
               ),
             ],
@@ -358,7 +359,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
           Text(
             BFormatter.formatPesoCurrency(_balance),
             style: theme.textTheme.headlineSmall?.copyWith(
-              color: BColors.primary,
+              color: BCollectionColors.primary,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -366,7 +367,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
           Text(
             'Balance due · ${_dueLabel()}',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: overdue ? BColors.error : BColors.darkGrey,
+              color: overdue
+                  ? BCollectionColors.danger
+                  : BCollectionColors.inkMuted,
               fontWeight: overdue ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
@@ -403,7 +406,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: BColors.darkGrey,
+                color: BCollectionColors.inkMuted,
               ),
             ),
           ),
@@ -450,7 +453,9 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
                     ? 'Settles this invoice in full'
                     : '${BFormatter.formatPesoCurrency(remaining)} will remain',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: overpaid ? BColors.warning : BColors.darkGrey,
+              color: overpaid
+                  ? BCollectionColors.warning
+                  : BCollectionColors.inkMuted,
               fontWeight: overpaid ? FontWeight.w700 : FontWeight.w500,
             ),
           ),

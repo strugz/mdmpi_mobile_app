@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart'
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// One tile on the area picker. [codes] is what the tile represents: a single
 /// territory code, several (a parent like Luzon), or empty for "All areas".
@@ -45,7 +46,8 @@ const List<_AreaOption> _mainAreas = [
   _AreaOption(name: 'Mindanao', icon: Iconsax.routing_2, code: 'MIN'),
   _AreaOption(name: 'Medical Imaging', icon: Iconsax.scan, code: 'RAD'),
   // Every code whose prefix is not one of the named territories (VET, CSAT, …).
-  _AreaOption(name: 'Others', icon: Iconsax.category, code: BCollectionArea.others),
+  _AreaOption(
+      name: 'Others', icon: Iconsax.category, code: BCollectionArea.others),
 ];
 
 class AreaSelectionScreen extends StatefulWidget {
@@ -70,7 +72,8 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
 
   static const Duration _stateDuration = Duration(milliseconds: 220);
 
-  CollectionActivityController get _controller => CollectionActivityController.instance;
+  CollectionActivityController get _controller =>
+      CollectionActivityController.instance;
 
   void _select(String code) {
     _controller.selectedArea.value = code;
@@ -84,11 +87,12 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
   void _drillInto(_AreaOption parent) => setState(() => _parent = parent);
   void _drillOut() => setState(() => _parent = null);
 
-  int _countFor(_AreaOption option) =>
-      option.codes.fold(0, (sum, code) => sum + _controller.accountCountForArea(code));
+  int _countFor(_AreaOption option) => option.codes
+      .fold(0, (sum, code) => sum + _controller.accountCountForArea(code));
 
   bool _isSelected(_AreaOption option, String selected) {
-    if (option.hasChildren) return option.children.any((c) => c.code == selected);
+    if (option.hasChildren)
+      return option.children.any((c) => c.code == selected);
     return (option.code ?? '') == selected;
   }
 
@@ -111,7 +115,9 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
           title: Text(
             drilled
                 ? _parent!.name
-                : (widget.isFilterMode ? 'Filter by Area' : 'Select Area - ${widget.title}'),
+                : (widget.isFilterMode
+                    ? 'Filter by Area'
+                    : 'Select Area - ${widget.title}'),
           ),
         ),
         body: Obx(() {
@@ -140,7 +146,8 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
                       drilled
                           ? 'Accounts in ${_parent!.name} are grouped by region code.'
                           : 'Counts show accounts currently in your bucket.',
-                      style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: BCollectionColors.inkMuted),
                     ),
                   ],
                 ),
@@ -171,7 +178,8 @@ class _AreaSelectionScreenState extends State<AreaSelectionScreen> {
                     totalCount: _controller.accountCountForArea(''),
                     countFor: _countFor,
                     isSelected: (o) => _isSelected(o, selected),
-                    onTap: (o) => o.hasChildren ? _drillInto(o) : _select(o.code ?? ''),
+                    onTap: (o) =>
+                        o.hasChildren ? _drillInto(o) : _select(o.code ?? ''),
                     onTapAll: () => _select(''),
                   ),
                 ),
@@ -263,10 +271,12 @@ class _AreaGrid extends StatelessWidget {
 /// primary when selected, soft tint, and a check badge. Colours animate so a
 /// selection reads as the same tile changing state.
 BoxDecoration _tileDecoration(bool selected) => BoxDecoration(
-      color: selected ? BColors.primary.withValues(alpha: 0.06) : BColors.white,
+      color: selected
+          ? BCollectionColors.primary.withValues(alpha: 0.06)
+          : BCollectionColors.surface,
       borderRadius: BorderRadius.circular(BSizes.cardRadiusLg),
       border: Border.all(
-        color: selected ? BColors.primary : BColors.grey,
+        color: selected ? BCollectionColors.primary : BCollectionColors.outline,
         width: 1.5,
       ),
     );
@@ -308,7 +318,8 @@ class _AreaTile extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _IconBadge(icon: option.icon, selected: selected, muted: empty),
+                  _IconBadge(
+                      icon: option.icon, selected: selected, muted: empty),
                   const Spacer(),
                   Text(
                     option.name,
@@ -316,7 +327,7 @@ class _AreaTile extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: empty ? BColors.darkGrey : BColors.dark,
+                      color: empty ? BCollectionColors.inkMuted : BColors.dark,
                     ),
                   ),
                   const SizedBox(height: BSizes.xxs),
@@ -324,17 +335,20 @@ class _AreaTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          empty ? 'No accounts' : '$count account${count == 1 ? '' : 's'}',
+                          empty
+                              ? 'No accounts'
+                              : '$count account${count == 1 ? '' : 's'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: BCollectionColors.inkMuted),
                         ),
                       ),
                       if (option.hasChildren)
                         Text(
                           '${option.children.length} regions',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: BColors.primary,
+                            color: BCollectionColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -357,14 +371,14 @@ class _AreaTile extends StatelessWidget {
                           Iconsax.tick_circle5,
                           key: ValueKey('check'),
                           size: 22,
-                          color: BColors.primary,
+                          color: BCollectionColors.primary,
                         )
                       : option.hasChildren
                           ? const Icon(
                               Iconsax.arrow_right_3,
                               key: ValueKey('chevron'),
                               size: 18,
-                              color: BColors.darkGrey,
+                              color: BCollectionColors.inkMuted,
                             )
                           : const SizedBox.shrink(key: ValueKey('none')),
                 ),
@@ -381,7 +395,8 @@ class _AreaTile extends StatelessWidget {
 /// no area filter is set, so clearing the filter is a visible choice rather
 /// than a separate action.
 class _AllAreasTile extends StatelessWidget {
-  const _AllAreasTile({required this.count, required this.selected, required this.onTap});
+  const _AllAreasTile(
+      {required this.count, required this.selected, required this.onTap});
 
   final int count;
   final bool selected;
@@ -401,11 +416,16 @@ class _AllAreasTile extends StatelessWidget {
         child: AnimatedContainer(
           duration: _tileDuration,
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: BSizes.md, vertical: BSizes.md),
+          padding: const EdgeInsets.symmetric(
+              horizontal: BSizes.md, vertical: BSizes.md),
           decoration: _tileDecoration(selected),
           child: Row(
             children: [
-              _IconBadge(icon: Iconsax.global_search, selected: selected, muted: false, size: 40),
+              _IconBadge(
+                  icon: Iconsax.global_search,
+                  selected: selected,
+                  muted: false,
+                  size: 40),
               const SizedBox(width: BSizes.spaceBtwItemsLight),
               Expanded(
                 child: Column(
@@ -413,11 +433,13 @@ class _AllAreasTile extends StatelessWidget {
                   children: [
                     Text(
                       'All areas',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     Text(
                       '$count account${count == 1 ? '' : 's'} in your bucket',
-                      style: theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: BCollectionColors.inkMuted),
                     ),
                   ],
                 ),
@@ -425,7 +447,8 @@ class _AllAreasTile extends StatelessWidget {
               AnimatedOpacity(
                 duration: _tileDuration,
                 opacity: selected ? 1 : 0,
-                child: const Icon(Iconsax.tick_circle5, size: 22, color: BColors.primary),
+                child: const Icon(Iconsax.tick_circle5,
+                    size: 22, color: BCollectionColors.primary),
               ),
             ],
           ),
@@ -450,7 +473,8 @@ class _IconBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = muted ? BColors.darkGrey : BColors.primary;
+    final color =
+        muted ? BCollectionColors.inkMuted : BCollectionColors.primary;
 
     return AnimatedContainer(
       duration: _tileDuration,
@@ -458,11 +482,15 @@ class _IconBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: selected ? BColors.primary : color.withValues(alpha: 0.10),
+        color: selected
+            ? BCollectionColors.primary
+            : color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
       ),
       alignment: Alignment.center,
-      child: Icon(icon, size: size * 0.5, color: selected ? BColors.white : color),
+      child: Icon(icon,
+          size: size * 0.5,
+          color: selected ? BCollectionColors.surface : color),
     );
   }
 }

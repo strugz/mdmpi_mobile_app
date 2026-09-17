@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The module header for a screen that is a list of work.
 ///
@@ -25,6 +25,7 @@ class CollectionWorkHeader extends StatelessWidget {
     final theme = Theme.of(context);
 
     return BPrimaryHeaderContainer(
+      color: BCollectionColors.headerBackground,
       // The dashboard header gets its status bar inset from AppBar; without
       // one of those, the header has to ask for it itself.
       child: SafeArea(
@@ -46,7 +47,8 @@ class CollectionWorkHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.headlineSmall?.copyWith(
-                      color: BColors.white, fontWeight: FontWeight.w700),
+                      color: BCollectionColors.surface,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
               if (trailing != null) trailing!,

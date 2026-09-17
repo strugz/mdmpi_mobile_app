@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_summary_carousel.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The carousel lives inside the dashboard's SingleChildScrollView, where the
 /// vertical constraint is unbounded. Every case pumps it under that condition.
@@ -26,14 +26,14 @@ List<CollectionSummaryPage> _pages({VoidCallback? onSettledTap}) => [
         title: 'Settled',
         value: '1',
         icon: Iconsax.tick_circle,
-        color: BColors.success,
+        color: BCollectionColors.success,
         onTap: onSettledTap,
       ),
       const CollectionSummaryPage(
         title: 'Due Date',
         value: '3767',
         icon: Iconsax.timer,
-        color: BColors.error,
+        color: BCollectionColors.danger,
       ),
       const CollectionSummaryPage(
         title: 'Reconciliation',
@@ -152,7 +152,7 @@ void main() {
       title: 'Due Date',
       value: '3767',
       icon: Iconsax.timer,
-      color: BColors.error,
+      color: BCollectionColors.danger,
       onTap: () => taps++,
     );
     await tester.pumpWidget(

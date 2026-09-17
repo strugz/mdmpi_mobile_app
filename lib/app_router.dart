@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 import 'package:mdmpi_mobile_app/navigation_menu.dart';
 
+import 'features/collection/helpers/collection_theme.dart';
 import 'features/collection/presentation/pages/onboarding/onboarding.dart';
 
 /// App Entry Point Router
@@ -51,24 +52,30 @@ class AppRouter extends StatelessWidget {
       }
     }
 
+    // The theme follows the department for the whole session.
+    BCollectionTheme.applyFor(userDepartment);
+
     // Check department-specific onboarding completion
     switch (userDepartment.trim().toLowerCase()) {
       case 'logistics':
-        final logisticsComplete = storage.read('LogisticsOnboardingComplete') ?? false;
+        final logisticsComplete =
+            storage.read('LogisticsOnboardingComplete') ?? false;
         if (!logisticsComplete) {
           return const OnBoardingScreen(); // Logistics onboarding
         }
         break;
 
       case 'collection':
-        final collectionComplete = storage.read('CollectionOnboardingComplete') ?? false;
+        final collectionComplete =
+            storage.read('CollectionOnboardingComplete') ?? false;
         if (!collectionComplete) {
           return const CollectionOnBoardingScreen();
         }
         break;
 
       case 'service':
-        final serviceComplete = storage.read('ServiceOnboardingComplete') ?? false;
+        final serviceComplete =
+            storage.read('ServiceOnboardingComplete') ?? false;
         if (!serviceComplete) {
           // TODO: Create ServiceOnboardingScreen
           return const NavigationMenu(); // Temporary: skip to menu
@@ -76,7 +83,8 @@ class AppRouter extends StatelessWidget {
         break;
 
       case 'inhouse':
-        final inhouseComplete = storage.read('InHouseOnboardingComplete') ?? false;
+        final inhouseComplete =
+            storage.read('InHouseOnboardingComplete') ?? false;
         if (!inhouseComplete) {
           // TODO: Create InHouseOnboardingScreen
           return const NavigationMenu(); // Temporary: skip to menu

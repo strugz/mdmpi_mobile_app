@@ -27,4 +27,3 @@ class BSubmitButton extends StatelessWidget {
     );
   }
 }
-

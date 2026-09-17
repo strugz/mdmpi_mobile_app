@@ -4,9 +4,9 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Full-screen transition shown while "Download Bucket" pulls a fresh bucket
 /// from the server: a blurred scrim with a card that animates data packets
@@ -71,7 +71,7 @@ class _Scrim extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
         child: Container(
-          color: BColors.black.withValues(alpha: 0.45),
+          color: BCollectionColors.ink.withValues(alpha: 0.45),
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
           child: child,
@@ -99,9 +99,9 @@ class _DownloadCard extends StatelessWidget {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 360),
       child: Material(
-        color: BColors.white,
+        color: BCollectionColors.surface,
         elevation: 12,
-        shadowColor: BColors.black.withValues(alpha: 0.35),
+        shadowColor: BCollectionColors.ink.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
@@ -122,12 +122,12 @@ class _DownloadCard extends StatelessWidget {
                     BucketDownloadPhase.success => const _ResultBadge(
                         key: ValueKey('success'),
                         icon: Iconsax.tick_circle5,
-                        color: BColors.success,
+                        color: BCollectionColors.success,
                       ),
                     BucketDownloadPhase.error => const _ResultBadge(
                         key: ValueKey('error'),
                         icon: Iconsax.close_circle5,
-                        color: BColors.error,
+                        color: BCollectionColors.danger,
                       ),
                     _ => _DataTransferAnimation(
                         key: const ValueKey('transfer'),
@@ -173,8 +173,8 @@ class _DownloadCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           minHeight: 4,
                           backgroundColor:
-                              BColors.primary.withValues(alpha: 0.12),
-                          color: BColors.primary,
+                              BCollectionColors.primary.withValues(alpha: 0.12),
+                          color: BCollectionColors.primary,
                         ),
                       )
                     : null,
@@ -201,7 +201,7 @@ class _Caption extends StatelessWidget {
       style: Theme.of(context)
           .textTheme
           .bodySmall
-          ?.copyWith(color: BColors.darkGrey),
+          ?.copyWith(color: BCollectionColors.inkMuted),
     );
   }
 }
@@ -323,13 +323,13 @@ class _DataTransferAnimationState extends State<_DataTransferAnimation>
                 size: nodeSize,
                 ringOpacity: 0.35 - 0.2 * math.sin(t * 2 * math.pi).abs(),
                 child: const Icon(Iconsax.cloud_connection,
-                    size: 32, color: BColors.primary),
+                    size: 32, color: BCollectionColors.primary),
               ),
             ),
             Expanded(
               child: CustomPaint(
-                painter:
-                    _PacketTrackPainter(progress: t, color: BColors.primary),
+                painter: _PacketTrackPainter(
+                    progress: t, color: BCollectionColors.primary),
                 child: const SizedBox(height: nodeSize),
               ),
             ),
@@ -363,9 +363,10 @@ class _Node extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: BColors.primary.withValues(alpha: 0.08),
+        color: BCollectionColors.primary.withValues(alpha: 0.08),
         border: Border.all(
-            color: BColors.primary.withValues(alpha: ringOpacity), width: 3),
+            color: BCollectionColors.primary.withValues(alpha: ringOpacity),
+            width: 3),
       ),
       alignment: Alignment.center,
       child: child,

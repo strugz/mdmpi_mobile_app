@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -10,6 +9,7 @@ import 'widgets/collection_search_filter_bar.dart';
 import 'widgets/bucket_filter_modal.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -17,10 +17,12 @@ class CollectionAccountInvoicesScreen extends StatefulWidget {
   const CollectionAccountInvoicesScreen({super.key, required this.client});
 
   @override
-  State<CollectionAccountInvoicesScreen> createState() => _CollectionAccountInvoicesScreenState();
+  State<CollectionAccountInvoicesScreen> createState() =>
+      _CollectionAccountInvoicesScreenState();
 }
 
-class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoicesScreen> {
+class _CollectionAccountInvoicesScreenState
+    extends State<CollectionAccountInvoicesScreen> {
   final controller = Get.find<CollectionActivityController>();
 
   @override
@@ -54,8 +56,8 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
               icon: const Icon(Iconsax.tick_circle),
               label: const Text('Claim Account'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: BColors.primary,
-                foregroundColor: BColors.white,
+                backgroundColor: BCollectionColors.primary,
+                foregroundColor: BCollectionColors.surface,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
                 ),
@@ -71,33 +73,36 @@ class _CollectionAccountInvoicesScreenState extends State<CollectionAccountInvoi
           children: [
             /// Search and Filter Bar
             Obx(() {
-              final hasFilter = controller.bucketMinAmount.value > 0 || 
-                               controller.bucketMaxAmount.value > 0 ||
-                               controller.bucketMinInvoices.value > 0 ||
-                               controller.bucketMaxInvoices.value > 0;
-              
-               return CollectionSearchFilterBar(
+              final hasFilter = controller.bucketMinAmount.value > 0 ||
+                  controller.bucketMaxAmount.value > 0 ||
+                  controller.bucketMinInvoices.value > 0 ||
+                  controller.bucketMaxInvoices.value > 0;
+
+              return CollectionSearchFilterBar(
                 searchHint: 'Search invoice ID or bank...',
                 initialValue: controller.invoiceSearchQuery.value,
-                onSearchChanged: (value) => controller.invoiceSearchQuery.value = value,
+                onSearchChanged: (value) =>
+                    controller.invoiceSearchQuery.value = value,
                 hasActiveFilter: hasFilter,
-                onFilterTap: () => showSideFilter(BucketFilterModal(clientId: widget.client.id)),
+                onFilterTap: () => showSideFilter(
+                    BucketFilterModal(clientId: widget.client.id)),
               );
             }),
 
             Expanded(
               child: invoices.isEmpty
                   ? Center(
-                            child: Text(
-                                    controller.invoiceSearchQuery.value.isEmpty
-                                        ? 'No invoices for this account.'
-                                        : 'No invoices match your search.',
-                                  ),
+                      child: Text(
+                        controller.invoiceSearchQuery.value.isEmpty
+                            ? 'No invoices for this account.'
+                            : 'No invoices match your search.',
+                      ),
                     )
                   : ListView.separated(
                       padding: const EdgeInsets.all(BSizes.defaultSpace),
                       itemCount: invoices.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: BSizes.spaceBtwItems),
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(height: BSizes.spaceBtwItems),
                       itemBuilder: (context, index) {
                         final item = invoices[index];
                         return InvoiceCard(item: item);

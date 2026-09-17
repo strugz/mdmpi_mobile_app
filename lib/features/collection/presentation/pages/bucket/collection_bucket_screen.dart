@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
@@ -14,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/w
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'collection_account_information_screen.dart';
 import 'widgets/collection_search_filter_bar.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The Collection Bucket: every account a collector could take on.
 ///
@@ -218,8 +218,8 @@ class _AcquireBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(
             BSizes.defaultSpace, BSizes.md, BSizes.defaultSpace, BSizes.md),
         decoration: const BoxDecoration(
-          color: BColors.white,
-          border: Border(top: BorderSide(color: BColors.grey)),
+          color: BCollectionColors.surface,
+          border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -231,7 +231,7 @@ class _AcquireBar extends StatelessWidget {
                   child: Text(
                     '$count account${count == 1 ? '' : 's'} selected',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: BColors.darkGrey,
+                      color: BCollectionColors.inkMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -241,7 +241,7 @@ class _AcquireBar extends StatelessWidget {
                 Text(
                   BFormatter.formatPesoCurrency(total),
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: BColors.primary,
+                    color: BCollectionColors.primary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -303,7 +303,7 @@ class _BucketEmptyState extends StatelessWidget {
                 height: 88,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: BColors.primary.withValues(alpha: 0.06),
+                  color: BCollectionColors.primary.withValues(alpha: 0.06),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
@@ -311,7 +311,7 @@ class _BucketEmptyState extends StatelessWidget {
                       ? Iconsax.search_status
                       : Icons.shopping_basket_rounded,
                   size: 40,
-                  color: BColors.primary.withValues(alpha: 0.7),
+                  color: BCollectionColors.primary.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
@@ -322,7 +322,7 @@ class _BucketEmptyState extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: BColors.darkerGrey,
+                  color: BCollectionColors.inkSecondary,
                 ),
               ),
               const SizedBox(height: BSizes.xs),
@@ -332,7 +332,7 @@ class _BucketEmptyState extends StatelessWidget {
                     : 'Download a bucket from Home, or add an account to get started.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: BColors.darkGrey),
+                    ?.copyWith(color: BCollectionColors.inkMuted),
               ),
               const SizedBox(height: BSizes.spaceBtwItems),
               if (filtered)

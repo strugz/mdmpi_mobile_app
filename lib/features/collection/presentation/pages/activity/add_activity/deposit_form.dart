@@ -38,7 +38,9 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
   void _save() {
     if (!formKey.currentState!.validate()) return;
     if (selectedClient == null || selectedInvoiceIds.isEmpty) {
-      BLoaders.errorSnackBar(title: 'Required', message: 'Please select an Account and at least one Invoice.');
+      BLoaders.errorSnackBar(
+          title: 'Required',
+          message: 'Please select an Account and at least one Invoice.');
       return;
     }
 
@@ -48,14 +50,16 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
       clientId: selectedClient!.id,
       documentIds: selectedInvoiceIds,
       accountName: selectedClient!.name,
-      remarks: 'Deposit for Invoice(s) #${selectedInvoiceIds.join(', ')}. ${remarksController.text}',
+      remarks:
+          'Deposit for Invoice(s) #${selectedInvoiceIds.join(', ')}. ${remarksController.text}',
       totalCollected: BFormatter.parseAmount(amountController.text),
       bankName: bankNameController.text,
       checkNumber: checkNumberController.text,
     );
 
     Get.back();
-    BLoaders.successSnackBar(title: 'Success', message: 'Deposit activity recorded.');
+    BLoaders.successSnackBar(
+        title: 'Success', message: 'Deposit activity recorded.');
   }
 
   @override
@@ -90,26 +94,32 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                       selectedInvoiceIds.clear();
                     });
                   },
-                  validator: (value) => value == null ? 'Account is required' : null,
+                  validator: (value) =>
+                      value == null ? 'Account is required' : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
 
                 // Invoice Selection (Filtered by Client) - multi-select checklist (matches Reconciliation)
                 if (selectedClient != null) ...[
-                  Text('Select Invoices', style: Theme.of(context).textTheme.titleSmall),
+                  Text('Select Invoices',
+                      style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: BSizes.sm),
                   Container(
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                      borderRadius:
+                          BorderRadius.circular(BSizes.borderRadiusMd),
                     ),
                     constraints: const BoxConstraints(maxHeight: 250),
                     child: ListView(
                       shrinkWrap: true,
-                      children: controller.getInvoicesByAccount(selectedClient!.id).map((inv) {
+                      children: controller
+                          .getInvoicesByAccount(selectedClient!.id)
+                          .map((inv) {
                         return CheckboxListTile(
                           title: Text(inv.id),
-                          subtitle: Text('Posted: ${inv.postingDate} | Due: ${inv.dueDate}\nAmount: ${BFormatter.formatPesoCurrency(inv.toBeCollected, includeSymbol: true)}'),
+                          subtitle: Text(
+                              'Posted: ${inv.postingDate} | Due: ${inv.dueDate}\nAmount: ${BFormatter.formatPesoCurrency(inv.toBeCollected, includeSymbol: true)}'),
                           value: selectedInvoiceIds.contains(inv.id),
                           onChanged: (selected) {
                             setState(() {
@@ -134,7 +144,7 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                       : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-                
+
                 TextFormField(
                   controller: amountController,
                   keyboardType: TextInputType.number,
@@ -154,17 +164,19 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                   },
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-                
+
                 TextFormField(
                   controller: checkNumberController,
                   decoration: const InputDecoration(
                     labelText: 'Check Number',
                     prefixIcon: Icon(Iconsax.card_edit),
                   ),
-                  validator: (value) => value == null || value.isEmpty ? 'Check number is required' : null,
+                  validator: (value) => value == null || value.isEmpty
+                      ? 'Check number is required'
+                      : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-                
+
                 TextFormField(
                   controller: remarksController,
                   maxLines: 3,
@@ -174,7 +186,7 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
-                
+
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

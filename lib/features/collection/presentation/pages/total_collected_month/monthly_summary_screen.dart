@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The month's ledger: what was collected (or deposited), when, from whom.
 ///
@@ -110,7 +110,7 @@ class _MonthHeader extends StatelessWidget {
   Future<void> _pickMonth(BuildContext context) async {
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
-      backgroundColor: BColors.white,
+      backgroundColor: BCollectionColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
@@ -131,8 +131,8 @@ class _MonthHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(
           BSizes.sm, 0, BSizes.sm, BSizes.spaceBtwItems),
       decoration: const BoxDecoration(
-        color: BColors.white,
-        border: Border(bottom: BorderSide(color: BColors.grey)),
+        color: BCollectionColors.surface,
+        border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
       ),
       child: Obx(() {
         final month = controller.selectedMonth.value;
@@ -174,7 +174,7 @@ class _MonthHeader extends StatelessWidget {
                           ),
                           const SizedBox(width: BSizes.xs),
                           const Icon(Iconsax.arrow_down_1,
-                              size: 14, color: BColors.darkGrey),
+                              size: 14, color: BCollectionColors.inkMuted),
                         ],
                       ),
                     ),
@@ -207,7 +207,7 @@ class _MonthHeader extends StatelessWidget {
                     Text(
                       isDeposit ? 'Deposited' : 'Collected',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: BColors.darkGrey,
+                        color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -222,7 +222,9 @@ class _MonthHeader extends StatelessWidget {
                           height: 1.1,
                           // Green is for money that came in. A month with
                           // none yet is a fact, not an achievement.
-                          color: total > 0 ? BColors.success : BColors.darkGrey,
+                          color: total > 0
+                              ? BCollectionColors.success
+                              : BCollectionColors.inkMuted,
                         ),
                       ),
                     ),
@@ -237,7 +239,7 @@ class _MonthHeader extends StatelessWidget {
                       Text(
                         _countLine(entries),
                         style: theme.textTheme.bodySmall
-                            ?.copyWith(color: BColors.darkGrey),
+                            ?.copyWith(color: BCollectionColors.inkMuted),
                       ),
                   ],
                 ),
@@ -309,7 +311,8 @@ class _TargetLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final small = theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey);
+    final small =
+        theme.textTheme.bodySmall?.copyWith(color: BCollectionColors.inkMuted);
     final buttonStyle = TextButton.styleFrom(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
       minimumSize: const Size(0, 32),
@@ -344,8 +347,9 @@ class _TargetLine extends StatelessWidget {
             builder: (context, value, _) => LinearProgressIndicator(
               value: value,
               minHeight: 6,
-              backgroundColor: BColors.grey,
-              valueColor: const AlwaysStoppedAnimation<Color>(BColors.success),
+              backgroundColor: BCollectionColors.outline,
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                  BCollectionColors.success),
             ),
           ),
         ),
@@ -360,7 +364,9 @@ class _TargetLine extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: small?.copyWith(
-                  color: met ? BColors.success : BColors.darkGrey,
+                  color: met
+                      ? BCollectionColors.success
+                      : BCollectionColors.inkMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -462,7 +468,7 @@ class _Ledger extends StatelessWidget {
               child: Text(
                 '${entries.length} of ${all.length} match "$query"',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: BColors.darkGrey,
+                  color: BCollectionColors.inkMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -500,7 +506,7 @@ class _DayHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final subtotal = items.fold(0.0, (p, e) => p + e.amount);
     final style = theme.textTheme.bodySmall?.copyWith(
-      color: BColors.darkGrey,
+      color: BCollectionColors.inkMuted,
       fontWeight: FontWeight.w700,
     );
 
@@ -548,7 +554,9 @@ class _EntryRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: last
             ? null
-            : const Border(bottom: BorderSide(color: BColors.grey, width: 0.5)),
+            : const Border(
+                bottom:
+                    BorderSide(color: BCollectionColors.outline, width: 0.5)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -571,7 +579,7 @@ class _EntryRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall
-                        ?.copyWith(color: BColors.darkGrey),
+                        ?.copyWith(color: BCollectionColors.inkMuted),
                   ),
                 ],
               ],
@@ -581,7 +589,7 @@ class _EntryRow extends StatelessWidget {
           Text(
             BFormatter.formatPesoCurrency(entry.amount),
             style: theme.textTheme.titleSmall?.copyWith(
-              color: BColors.success,
+              color: BCollectionColors.success,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -614,11 +622,12 @@ class _EmptyMonth extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: BColors.primary.withValues(alpha: 0.06),
+                color: BCollectionColors.primary.withValues(alpha: 0.06),
               ),
               alignment: Alignment.center,
               child: Icon(Iconsax.receipt_2,
-                  size: 32, color: BColors.primary.withValues(alpha: 0.7)),
+                  size: 32,
+                  color: BCollectionColors.primary.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text(
@@ -626,15 +635,15 @@ class _EmptyMonth extends StatelessWidget {
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: BColors.darkerGrey,
+                color: BCollectionColors.inkSecondary,
               ),
             ),
             const SizedBox(height: BSizes.xs),
             Text(
               'Use the arrows above to look at another month.',
               textAlign: TextAlign.center,
-              style:
-                  theme.textTheme.bodyMedium?.copyWith(color: BColors.darkGrey),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: BCollectionColors.inkMuted),
             ),
           ],
         ),
@@ -658,7 +667,7 @@ class _NoMatch extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .bodyMedium
-                ?.copyWith(color: BColors.darkGrey),
+                ?.copyWith(color: BCollectionColors.inkMuted),
           ),
         ),
       );
@@ -688,12 +697,12 @@ class _MonthSheet extends StatelessWidget {
                 DateFormat('MMMM yyyy').format(m),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: m == selected ? FontWeight.w700 : FontWeight.w500,
-                  color: m == selected ? BColors.primary : null,
+                  color: m == selected ? BCollectionColors.primary : null,
                 ),
               ),
               trailing: m == selected
                   ? const Icon(Iconsax.tick_circle5,
-                      color: BColors.primary, size: 20)
+                      color: BCollectionColors.primary, size: 20)
                   : null,
               onTap: () => Navigator.pop(context, m),
             ),

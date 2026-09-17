@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/profile/widget
 import '../../../data/local/database_helper.dart';
 import '../models/user_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class UserController extends GetxController {
   static UserController get instance => Get.find();
@@ -55,6 +56,9 @@ class UserController extends GetxController {
     } catch (e) {
       // Ignore; repository will remain null and methods should handle it.
     }
+    // Re-theme when the department arrives or changes (login after a
+    // cold start, or a refreshed record).
+    ever(user, (u) => BCollectionTheme.applyFor(u.department));
     await fetchUserRecord();
     super.onInit();
   }

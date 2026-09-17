@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Month-to-date money at a glance: Actual Collection (with its target) and
 /// Total Collected, side by side in one card. Each half is its own tap
@@ -23,8 +23,8 @@ class CollectionTotalsCard extends StatelessWidget {
   final VoidCallback? onActualTap;
   final VoidCallback? onCollectedTap;
 
-  static const Color _actualColor = Colors.indigo;
-  static const Color _collectedColor = Colors.green;
+  static const Color _actualColor = BCollectionColors.primary;
+  static const Color _collectedColor = BCollectionColors.success;
 
   @override
   Widget build(BuildContext context) {
@@ -76,9 +76,9 @@ class CollectionTotalsCardView extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: BColors.white,
+        color: BCollectionColors.surface,
         borderRadius: BorderRadius.circular(BSizes.cardRadiusLg),
-        border: Border.all(color: BColors.grey, width: 1),
+        border: Border.all(color: BCollectionColors.outline, width: 1),
       ),
       // IntrinsicHeight bounds the row so both halves match heights and the
       // divider spans them. Cross-axis stretch alone would be unbounded
@@ -97,7 +97,8 @@ class CollectionTotalsCardView extends StatelessWidget {
                 onTap: onActualTap,
               ),
             ),
-            const VerticalDivider(width: 1, thickness: 1, color: BColors.grey),
+            const VerticalDivider(
+                width: 1, thickness: 1, color: BCollectionColors.outline),
             Expanded(
               child: _TotalsHalf(
                 icon: Iconsax.money,
@@ -158,7 +159,7 @@ class _TotalsHalf extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelMedium
-                        ?.copyWith(color: BColors.darkerGrey),
+                        ?.copyWith(color: BCollectionColors.inkSecondary),
                   ),
                 ),
               ],
@@ -185,8 +186,8 @@ class _TotalsHalf extends StatelessWidget {
               footnote,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style:
-                  theme.textTheme.bodySmall?.copyWith(color: BColors.darkGrey),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: BCollectionColors.inkMuted),
             ),
           ],
         ),

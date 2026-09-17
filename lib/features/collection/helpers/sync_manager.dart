@@ -7,7 +7,7 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_da
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 
 /// Manages syncing of pending collection changes to the server.
-/// 
+///
 /// Responsibilities:
 /// - Queue pending changes (CREATE, UPDATE, CLAIM, SAVE_ACTIVITY)
 /// - Retry with exponential backoff on failure
@@ -176,7 +176,8 @@ class SyncManager extends GetxController {
       logDebug('Pending Changes: $count');
       if (changes.isNotEmpty) {
         for (final change in changes.take(5)) {
-          logDebug('  - ${change.operation} for ${change.itemId} (retry: ${change.retryCount})');
+          logDebug(
+              '  - ${change.operation} for ${change.itemId} (retry: ${change.retryCount})');
         }
       }
       logDebug('==========================');
@@ -185,4 +186,3 @@ class SyncManager extends GetxController {
     }
   }
 }
-

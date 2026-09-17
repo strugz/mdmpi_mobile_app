@@ -49,7 +49,8 @@ Future<void> _tapChip(WidgetTester tester, String startsWith) async {
   await tester.pumpAndSettle();
 }
 
-ElevatedButton _saveButton(WidgetTester tester) => tester.widget<ElevatedButton>(
+ElevatedButton _saveButton(WidgetTester tester) =>
+    tester.widget<ElevatedButton>(
       find.widgetWithText(ElevatedButton, 'Record 2 invoices'),
     );
 

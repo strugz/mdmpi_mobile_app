@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// A small KPI tile used on the collection home grid.
 ///
@@ -12,6 +12,7 @@ class CollectionSummaryCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+
   /// When true the card will expand to occupy available width. Set to false
   /// when placing cards horizontally inside a Row.
   final bool expand;
@@ -57,7 +58,7 @@ class CollectionSummaryCard extends StatelessWidget {
                     title,
                     maxLines: 2,
                     style: theme.textTheme.labelMedium?.copyWith(
-                      color: BColors.darkerGrey,
+                      color: BCollectionColors.inkSecondary,
                       height: 1.2,
                     ),
                   ),

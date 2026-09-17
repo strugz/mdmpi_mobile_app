@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// InvoiceCard replaced two near-identical tiles. The design point it has to
 /// hold onto is that urgency is graded: previously every overdue invoice
@@ -97,13 +97,13 @@ void main() {
           reason: 'the amount is what the collector is here for');
       // Ink, not the primary blue: blue is the action colour on these
       // screens, and a blue amount on every row reads as a list of links.
-      expect(amount.style!.color, BColors.black);
+      expect(amount.style!.color, BCollectionColors.ink);
 
       // The number is how the document is referred to and what a deposit is
       // matched back to. It was once a grey label — the quietest thing on the
       // card — and stopped being findable.
       expect(number.style!.fontWeight, FontWeight.w700);
-      expect(number.style!.color, isNot(BColors.darkGrey),
+      expect(number.style!.color, isNot(BCollectionColors.inkMuted),
           reason: 'an identifier people look up is not set in secondary grey');
     });
 
@@ -138,7 +138,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final amount = tester.widget<Text>(find.textContaining('2,500'));
-      expect(amount.style!.color, BColors.success);
+      expect(amount.style!.color, BCollectionColors.success);
       expect(find.textContaining('overdue'), findsNothing);
     });
 

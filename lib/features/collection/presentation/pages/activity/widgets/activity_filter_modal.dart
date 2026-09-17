@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/inputs/range_selector.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class ActivityFilterModal extends StatelessWidget {
   const ActivityFilterModal({super.key, this.clientId});
@@ -22,8 +22,12 @@ class ActivityFilterModal extends StatelessWidget {
     final divisions = (sliderMax / step).round();
 
     RangeValues initialRange = RangeValues(
-      controller.activityMinAmount.value > 0 ? controller.activityMinAmount.value : 0.0,
-      controller.activityMaxAmount.value > 0 ? controller.activityMaxAmount.value : sliderMax,
+      controller.activityMinAmount.value > 0
+          ? controller.activityMinAmount.value
+          : 0.0,
+      controller.activityMaxAmount.value > 0
+          ? controller.activityMaxAmount.value
+          : sliderMax,
     );
 
     return Padding(
@@ -41,19 +45,24 @@ class ActivityFilterModal extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Filter Field Engagement', style: Theme.of(context).textTheme.headlineSmall),
-                IconButton(onPressed: () => Get.back(), icon: const Icon(Icons.close)),
+                Text('Filter Field Engagement',
+                    style: Theme.of(context).textTheme.headlineSmall),
+                IconButton(
+                    onPressed: () => Get.back(), icon: const Icon(Icons.close)),
               ],
             ),
             const SizedBox(height: BSizes.spaceBtwSections),
-            Text('Total Amount Due Range', style: Theme.of(context).textTheme.titleSmall),
+            Text('Total Amount Due Range',
+                style: Theme.of(context).textTheme.titleSmall),
             const SizedBox(height: BSizes.xs),
             StatefulBuilder(builder: (context, setState) {
               RangeValues localRange = initialRange;
 
               void openPreciseDialog() {
-                final minCtrl = TextEditingController(text: localRange.start.round().toString());
-                final maxCtrl = TextEditingController(text: localRange.end.round().toString());
+                final minCtrl = TextEditingController(
+                    text: localRange.start.round().toString());
+                final maxCtrl = TextEditingController(
+                    text: localRange.end.round().toString());
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
@@ -61,45 +70,89 @@ class ActivityFilterModal extends StatelessWidget {
                     content: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        TextField(controller: minCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₱ ', labelText: 'Min')),
+                        TextField(
+                            controller: minCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                                prefixText: '₱ ', labelText: 'Min')),
                         const SizedBox(height: BSizes.sm),
-                        TextField(controller: maxCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₱ ', labelText: 'Max')),
+                        TextField(
+                            controller: maxCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                                prefixText: '₱ ', labelText: 'Max')),
                       ],
                     ),
                     actions: [
-                      TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancel')),
-                      ElevatedButton(onPressed: () {
-                        final newMin = double.tryParse(minCtrl.text) ?? localRange.start;
-                        final newMax = double.tryParse(maxCtrl.text) ?? localRange.end;
-                        final clampedMin = newMin.clamp(0.0, sliderMax);
-                        final clampedMax = newMax.clamp(0.0, sliderMax);
-                        setState(() => localRange = RangeValues(clampedMin, clampedMax));
-                        controller.activityMinAmount.value = clampedMin;
-                        controller.activityMaxAmount.value = clampedMax;
-                        Navigator.of(ctx).pop();
-                      }, child: const Text('Apply')),
+                      TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Cancel')),
+                      ElevatedButton(
+                          onPressed: () {
+                            final newMin = double.tryParse(minCtrl.text) ??
+                                localRange.start;
+                            final newMax =
+                                double.tryParse(maxCtrl.text) ?? localRange.end;
+                            final clampedMin = newMin.clamp(0.0, sliderMax);
+                            final clampedMax = newMax.clamp(0.0, sliderMax);
+                            setState(() => localRange =
+                                RangeValues(clampedMin, clampedMax));
+                            controller.activityMinAmount.value = clampedMin;
+                            controller.activityMaxAmount.value = clampedMax;
+                            Navigator.of(ctx).pop();
+                          },
+                          child: const Text('Apply')),
                     ],
                   ),
                 );
               }
 
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                RangeSelector(min: 0.0, max: sliderMax, values: localRange, divisions: divisions > 0 ? divisions : null, onChanged: (v) {
-                  setState(() => localRange = v);
-                }, onChangeEnd: (v) {
-                  controller.activityMinAmount.value = v.start;
-                  controller.activityMaxAmount.value = v.end;
-                }),
-                const SizedBox(height: BSizes.xs),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [IconButton(onPressed: openPreciseDialog, icon: const Icon(Icons.edit), tooltip: 'Enter exact amounts')]),
-                const SizedBox(height: BSizes.spaceBtwItems),
-              ]);
+              return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    RangeSelector(
+                        min: 0.0,
+                        max: sliderMax,
+                        values: localRange,
+                        divisions: divisions > 0 ? divisions : null,
+                        onChanged: (v) {
+                          setState(() => localRange = v);
+                        },
+                        onChangeEnd: (v) {
+                          controller.activityMinAmount.value = v.start;
+                          controller.activityMaxAmount.value = v.end;
+                        }),
+                    const SizedBox(height: BSizes.xs),
+                    Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                      IconButton(
+                          onPressed: openPreciseDialog,
+                          icon: const Icon(Icons.edit),
+                          tooltip: 'Enter exact amounts')
+                    ]),
+                    const SizedBox(height: BSizes.spaceBtwItems),
+                  ]);
             }),
             const SizedBox(height: BSizes.spaceBtwSections),
             Row(children: [
-              Expanded(child: OutlinedButton(onPressed: () { controller.activityMinAmount.value = 0.0; controller.activityMaxAmount.value = 0.0; controller.activityMinInvoices.value = 0; controller.activityMaxInvoices.value = 0; Get.back(); }, child: const Text('Reset'))),
+              Expanded(
+                  child: OutlinedButton(
+                      onPressed: () {
+                        controller.activityMinAmount.value = 0.0;
+                        controller.activityMaxAmount.value = 0.0;
+                        controller.activityMinInvoices.value = 0;
+                        controller.activityMaxInvoices.value = 0;
+                        Get.back();
+                      },
+                      child: const Text('Reset'))),
               const SizedBox(width: BSizes.spaceBtwItems),
-              Expanded(child: ElevatedButton(onPressed: () { Get.back(); }, style: ElevatedButton.styleFrom(backgroundColor: BColors.primary), child: const Text('Apply Filter'))),
+              Expanded(
+                  child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                      },
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: BCollectionColors.primary),
+                      child: const Text('Apply Filter'))),
             ]),
             const SizedBox(height: BSizes.defaultSpace),
           ],

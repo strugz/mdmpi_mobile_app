@@ -120,19 +120,22 @@ void main() {
       s.totals.searchQuery.value = 'bicol';
       expect(s.totals.actualEntries.length, 1);
       expect(s.totals.actualCollectionTotal, 32000,
-          reason: 'the deposit total never followed the search, and still must not');
+          reason:
+              'the deposit total never followed the search, and still must not');
     });
   });
 
   group('stepping through months', () {
     test('cannot go past the current month', () {
       final s = _seed();
-      expect(s.totals.selectedMonth.value, TotalCollectedController.thisMonth());
+      expect(
+          s.totals.selectedMonth.value, TotalCollectedController.thisMonth());
       expect(s.totals.canGoForward, isFalse);
 
       s.totals.nextMonth();
       expect(s.totals.selectedMonth.value, TotalCollectedController.thisMonth(),
-          reason: 'nothing has been collected in a month that has not happened');
+          reason:
+              'nothing has been collected in a month that has not happened');
     });
 
     test('goes back one month at a time, and forward again', () {
@@ -140,7 +143,8 @@ void main() {
       final head = TotalCollectedController.thisMonth();
 
       s.totals.previousMonth();
-      expect(s.totals.selectedMonth.value, DateTime(head.year, head.month - 1, 1));
+      expect(
+          s.totals.selectedMonth.value, DateTime(head.year, head.month - 1, 1));
       expect(s.totals.canGoForward, isTrue);
 
       s.totals.nextMonth();
@@ -167,9 +171,24 @@ void main() {
     test('counts distinct names regardless of case or spacing', () {
       final s = _seed();
       final entries = [
-        MonthlyEntry(date: _now, amount: 1, accountName: 'a', invoiceNumber: '1', collectorName: 'Jay'),
-        MonthlyEntry(date: _now, amount: 1, accountName: 'a', invoiceNumber: '2', collectorName: ' jay '),
-        MonthlyEntry(date: _now, amount: 1, accountName: 'a', invoiceNumber: '3', collectorName: 'Maria'),
+        MonthlyEntry(
+            date: _now,
+            amount: 1,
+            accountName: 'a',
+            invoiceNumber: '1',
+            collectorName: 'Jay'),
+        MonthlyEntry(
+            date: _now,
+            amount: 1,
+            accountName: 'a',
+            invoiceNumber: '2',
+            collectorName: ' jay '),
+        MonthlyEntry(
+            date: _now,
+            amount: 1,
+            accountName: 'a',
+            invoiceNumber: '3',
+            collectorName: 'Maria'),
       ];
       expect(s.totals.distinctCollectors(entries), 2);
     });
@@ -204,19 +223,23 @@ void main() {
       await tester.enterText(find.byType(TextField), 'bicol');
       await tester.pumpAndSettle();
 
-      expect(find.text('₱46,977.31'), findsOneWidget, reason: 'the month total');
+      expect(find.text('₱46,977.31'), findsOneWidget,
+          reason: 'the month total');
       expect(find.text('1 of 3 match "bicol"'), findsOneWidget);
       expect(find.text('Alexis Yu Best Care Pharmacy'), findsNothing);
       expect(find.text('Bicol Medical Center'), findsOneWidget);
     });
 
-    testWidgets('groups entries under their day, with a subtotal where it helps',
+    testWidgets(
+        'groups entries under their day, with a subtotal where it helps',
         (tester) async {
       _seed();
       await pump(tester);
 
-      final d17 = DateFormat('EEE, MMM d').format(DateTime(_now.year, _now.month, 17));
-      final d12 = DateFormat('EEE, MMM d').format(DateTime(_now.year, _now.month, 12));
+      final d17 =
+          DateFormat('EEE, MMM d').format(DateTime(_now.year, _now.month, 17));
+      final d12 =
+          DateFormat('EEE, MMM d').format(DateTime(_now.year, _now.month, 12));
       expect(find.text(d17), findsOneWidget);
       expect(find.text(d12), findsOneWidget);
       // Two entries on the 17th earn a subtotal; the lone entry on the 12th
@@ -224,7 +247,8 @@ void main() {
       expect(find.text('₱37,261.31'), findsOneWidget);
     });
 
-    testWidgets('does not print one collector\'s name on every line of their own ledger',
+    testWidgets(
+        'does not print one collector\'s name on every line of their own ledger',
         (tester) async {
       _seed();
       await pump(tester);
@@ -232,7 +256,8 @@ void main() {
       expect(find.textContaining('Jay'), findsNothing);
     });
 
-    testWidgets('prints collectors once there is more than one', (tester) async {
+    testWidgets('prints collectors once there is more than one',
+        (tester) async {
       _seed(twoCollectors: true);
       await pump(tester);
 
@@ -240,13 +265,15 @@ void main() {
       expect(find.textContaining('Jay'), findsNWidgets(2));
     });
 
-    testWidgets('the forward arrow is disabled at the current month', (tester) async {
+    testWidgets('the forward arrow is disabled at the current month',
+        (tester) async {
       _seed();
       await pump(tester);
 
       // The tooltip is built inside the IconButton, so walk up to the button.
-      IconButton button(String tooltip) => tester.widget<IconButton>(
-          find.ancestor(of: find.byTooltip(tooltip), matching: find.byType(IconButton)));
+      IconButton button(String tooltip) =>
+          tester.widget<IconButton>(find.ancestor(
+              of: find.byTooltip(tooltip), matching: find.byType(IconButton)));
       final next = button('Next month');
       final back = button('Previous month');
       expect(next.onPressed, isNull);
@@ -261,7 +288,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final prev = DateTime(_now.year, _now.month - 1, 1);
-      expect(find.text('Nothing collected in ${DateFormat('MMMM').format(prev)}'),
+      expect(
+          find.text('Nothing collected in ${DateFormat('MMMM').format(prev)}'),
           findsOneWidget);
       expect(find.byType(TextField), findsNothing,
           reason: 'nothing to search in an empty month');

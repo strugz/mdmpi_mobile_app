@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// What is on the collector's plate right now, above the accounts it covers.
 ///
@@ -40,9 +40,9 @@ class EngagementSummary extends StatelessWidget {
       padding: const EdgeInsets.symmetric(
           horizontal: BSizes.spaceBtwItemsLight, vertical: BSizes.sm),
       decoration: BoxDecoration(
-        color: BColors.white,
+        color: BCollectionColors.surface,
         borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
-        border: Border.all(color: BColors.grey, width: 1.5),
+        border: Border.all(color: BCollectionColors.outline, width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,7 +58,7 @@ class EngagementSummary extends StatelessWidget {
                     Text(
                       done ? 'All settled' : 'Still to collect',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: BColors.darkGrey,
+                        color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -72,7 +72,9 @@ class EngagementSummary extends StatelessWidget {
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           height: 1.15,
-                          color: done ? BColors.success : BColors.primary,
+                          color: done
+                              ? BCollectionColors.success
+                              : BCollectionColors.primary,
                         ),
                       ),
                     ),
@@ -87,7 +89,7 @@ class EngagementSummary extends StatelessWidget {
                 _counts(),
                 textAlign: TextAlign.right,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: BColors.darkGrey,
+                  color: BCollectionColors.inkMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -106,9 +108,9 @@ class EngagementSummary extends StatelessWidget {
                 builder: (context, value, _) => LinearProgressIndicator(
                   value: value,
                   minHeight: 5,
-                  backgroundColor: BColors.grey,
-                  valueColor:
-                      const AlwaysStoppedAnimation<Color>(BColors.success),
+                  backgroundColor: BCollectionColors.outline,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                      BCollectionColors.success),
                 ),
               ),
             ),
@@ -118,7 +120,7 @@ class EngagementSummary extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall
-                  ?.copyWith(color: BColors.darkGrey, fontSize: 10),
+                  ?.copyWith(color: BCollectionColors.inkMuted, fontSize: 10),
             ),
           ],
         ],

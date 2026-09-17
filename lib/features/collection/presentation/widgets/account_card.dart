@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// One account in a list, in the Bucket and in Field Engagement.
 ///
@@ -105,13 +105,15 @@ class AccountCard extends StatelessWidget {
         padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
         decoration: BoxDecoration(
           color: isSelected
-              ? BColors.primary.withValues(alpha: 0.05)
-              : BColors.white,
+              ? BCollectionColors.primary.withValues(alpha: 0.05)
+              : BCollectionColors.surface,
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           // Constant width, colour only: a 1→2px border nudges the content on
           // every selection toggle.
           border: Border.all(
-            color: isSelected ? BColors.primary : BColors.grey,
+            color: isSelected
+                ? BCollectionColors.primary
+                : BCollectionColors.outline,
             width: 1.5,
           ),
         ),
@@ -139,7 +141,7 @@ class AccountCard extends StatelessWidget {
                     // label rendered as four dots — the middle of the letters.
                     // Padding is set here so the theme's cannot apply.
                     padding: const EdgeInsets.symmetric(horizontal: BSizes.md),
-                    side: const BorderSide(color: BColors.primary),
+                    side: const BorderSide(color: BCollectionColors.primary),
                     shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(BSizes.borderRadiusMd),
@@ -148,7 +150,7 @@ class AccountCard extends StatelessWidget {
                   child: Text(
                     'Acquire Account',
                     style: theme.textTheme.labelLarge?.copyWith(
-                      color: BColors.primary,
+                      color: BCollectionColors.primary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -187,7 +189,7 @@ class AccountCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall
-                        ?.copyWith(color: BColors.darkGrey),
+                        ?.copyWith(color: BCollectionColors.inkMuted),
                   ),
               ],
             ),
@@ -204,7 +206,9 @@ class AccountCard extends StatelessWidget {
                   fontSize: 17,
                   height: 1.2,
                   fontWeight: FontWeight.w800,
-                  color: _settled ? BColors.success : BColors.primary,
+                  color: _settled
+                      ? BCollectionColors.success
+                      : BCollectionColors.primary,
                 ),
               ),
               // Only on the rows that are the exception. Every other row in
@@ -215,7 +219,7 @@ class AccountCard extends StatelessWidget {
                 Text(
                   'collected',
                   style: theme.textTheme.labelSmall?.copyWith(
-                    color: BColors.success,
+                    color: BCollectionColors.success,
                     fontWeight: FontWeight.w600,
                     fontSize: 10,
                   ),
@@ -231,7 +235,9 @@ class AccountCard extends StatelessWidget {
             Icon(
               isSelected ? Iconsax.tick_circle5 : Iconsax.add_circle,
               size: 22,
-              color: isSelected ? BColors.primary : BColors.darkGrey,
+              color: isSelected
+                  ? BCollectionColors.primary
+                  : BCollectionColors.inkMuted,
             ),
           ],
         ],
@@ -256,9 +262,13 @@ class AccountCard extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? BColors.primary : BColors.white,
+                  color: isSelected
+                      ? BCollectionColors.primary
+                      : BCollectionColors.surface,
                   border: Border.all(
-                    color: isSelected ? BColors.primary : BColors.darkGrey,
+                    color: isSelected
+                        ? BCollectionColors.primary
+                        : BCollectionColors.inkMuted,
                     width: 1.5,
                   ),
                 ),
@@ -273,7 +283,9 @@ class AccountCard extends StatelessWidget {
                   ),
                   child: isSelected
                       ? const Icon(Icons.check,
-                          key: ValueKey('on'), size: 14, color: BColors.white)
+                          key: ValueKey('on'),
+                          size: 14,
+                          color: BCollectionColors.surface)
                       : const SizedBox(key: ValueKey('off')),
                 ),
               ),
@@ -296,9 +308,9 @@ class AccountCard extends StatelessWidget {
               builder: (context, value, _) => LinearProgressIndicator(
                 value: value,
                 minHeight: 3,
-                backgroundColor: BColors.grey,
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(BColors.success),
+                backgroundColor: BCollectionColors.outline,
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                    BCollectionColors.success),
               ),
             ),
           ),
@@ -312,7 +324,7 @@ class AccountCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall
-                  ?.copyWith(color: BColors.darkGrey, fontSize: 10),
+                  ?.copyWith(color: BCollectionColors.inkMuted, fontSize: 10),
             ),
           ],
         ],
@@ -333,7 +345,7 @@ class AccountCard extends StatelessWidget {
             child: Row(
               children: [
                 const Icon(Iconsax.document_text,
-                    size: 13, color: BColors.darkGrey),
+                    size: 13, color: BCollectionColors.inkMuted),
                 const SizedBox(width: BSizes.xs),
                 Flexible(
                   child: Text(
@@ -341,7 +353,7 @@ class AccountCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: BColors.darkGrey,
+                      color: BCollectionColors.inkMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -355,14 +367,14 @@ class AccountCard extends StatelessWidget {
                       // Tinted, not solid: in these lists almost everything
                       // is overdue, and a wall of filled red badges carries
                       // no signal.
-                      color: BColors.error.withValues(alpha: 0.12),
+                      color: BCollectionColors.danger.withValues(alpha: 0.12),
                       borderRadius:
                           BorderRadius.circular(BSizes.borderRadiusSm),
                     ),
                     child: Text(
                       '$overdueCount overdue',
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: BColors.error,
+                        color: BCollectionColors.danger,
                         fontWeight: FontWeight.w700,
                         fontSize: 10,
                       ),
@@ -401,14 +413,14 @@ class AccountCard extends StatelessWidget {
                       Text(
                         'Details',
                         style: theme.textTheme.labelLarge?.copyWith(
-                          color: BColors.primary,
+                          color: BCollectionColors.primary,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
                       ),
                       const SizedBox(width: 2),
                       const Icon(Iconsax.arrow_right_3,
-                          size: 14, color: BColors.primary),
+                          size: 14, color: BCollectionColors.primary),
                     ],
                   ),
                 ),

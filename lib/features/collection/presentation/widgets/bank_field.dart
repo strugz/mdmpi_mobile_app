@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/bank_picker_sheet.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Every place the app asks which bank.
 ///
@@ -73,7 +73,7 @@ class _BBankFieldState extends State<BBankField> {
           prefixIcon: const Icon(Iconsax.bank),
           suffixIcon: hasList
               ? const Icon(Iconsax.arrow_down_1,
-                  size: 18, color: BColors.darkGrey)
+                  size: 18, color: BCollectionColors.inkMuted)
               : null,
         ),
       );
