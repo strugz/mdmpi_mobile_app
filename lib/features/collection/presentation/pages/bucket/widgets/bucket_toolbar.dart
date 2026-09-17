@@ -6,7 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_selection_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The line between the search bar and the list: which area is in view, and
@@ -22,10 +22,17 @@ class BucketToolbar extends StatelessWidget {
 
   static const Duration _stateDuration = Duration(milliseconds: 160);
 
-  void _pickArea() => Get.to(
-        () => AreaSelectionScreen(title: 'Filter', isFilterMode: true),
-        transition: Transition.cupertino,
-      );
+  /// The sheet rises from the chip that opens it, rather than pushing a
+  /// screen for one choice out of nine.
+  Future<void> _pickArea(BuildContext context) async {
+    final controller = CollectionActivityController.instance;
+    final chosen = await AreaPickerSheet.show(
+      context,
+      selected: controller.selectedArea.value,
+      countFor: controller.accountCountForArea,
+    );
+    if (chosen != null) controller.selectedArea.value = chosen;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +52,7 @@ class BucketToolbar extends StatelessWidget {
             _AreaChip(
               label: hasArea ? BCollectionArea.labelFor(area) : 'All areas',
               active: hasArea,
-              onTap: _pickArea,
+              onTap: () => _pickArea(context),
               onClear:
                   hasArea ? () => controller.selectedArea.value = '' : null,
               duration: _stateDuration,

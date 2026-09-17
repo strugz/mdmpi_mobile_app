@@ -4,7 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_selection_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/area_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class BFilterByAreaButton extends StatelessWidget {
@@ -23,13 +23,14 @@ class BFilterByAreaButton extends StatelessWidget {
         return SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => Get.to(
-              () => AreaSelectionScreen(
-                title: 'Filter',
-                isFilterMode: true,
-              ),
-              transition: Transition.cupertino,
-            ),
+            onPressed: () async {
+              final chosen = await AreaPickerSheet.show(
+                context,
+                selected: controller.selectedArea.value,
+                countFor: controller.accountCountForArea,
+              );
+              if (chosen != null) controller.selectedArea.value = chosen;
+            },
             icon: Icon(
               Iconsax.map,
               size: 18,
