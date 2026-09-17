@@ -36,7 +36,11 @@ class CollectionSummaryCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: expand ? double.infinity : null,
-        padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
+        // Tight, because four of these sit two-by-two and the block competes
+        // with the work below it for the fold. The figures are counts, rarely
+        // more than four digits, so they do not need a card's worth of room.
+        padding: const EdgeInsets.symmetric(
+            horizontal: BSizes.spaceBtwItemsLight, vertical: BSizes.sm),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
@@ -50,22 +54,26 @@ class CollectionSummaryCard extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 1),
-                  child: Icon(icon, color: color, size: 18),
+                  child: Icon(icon, color: color, size: 15),
                 ),
-                const SizedBox(width: BSizes.sm),
+                const SizedBox(width: BSizes.xs),
                 Expanded(
                   child: Text(
                     title,
+                    // Every label fits one line at half the card width; two
+                    // are allowed so a large system text size wraps rather
+                    // than truncating a category name.
                     maxLines: 2,
-                    style: theme.textTheme.labelMedium?.copyWith(
+                    style: theme.textTheme.labelSmall?.copyWith(
                       color: BCollectionColors.inkSecondary,
+                      fontSize: 11,
                       height: 1.2,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: BSizes.sm),
+            const SizedBox(height: BSizes.xs),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
@@ -74,7 +82,7 @@ class CollectionSummaryCard extends StatelessWidget {
                 maxLines: 1,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
-                  fontSize: 24,
+                  fontSize: 20,
                   height: 1.1,
                 ),
               ),

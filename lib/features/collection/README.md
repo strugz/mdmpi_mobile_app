@@ -285,7 +285,11 @@ Displays:
 
 - actual collection total card
 - total collected card
-- summary carousel (Settled, Due Date, Reconciliation, Advanced Payment): one card at a time, swipe or tap a dot to change, loops past the last card back to the first; cards turn on their vertical axis like a mirror panel (`home/widgets/collection_summary_carousel.dart`)
+- summary grid (Settled, Due Date, Reconciliation, Advanced Payment): four
+  counts two by two, all visible at once, each opening its category
+  (`home/widgets/collection_summary_grid.dart`). These were carousel pages —
+  118pt of screen for one integer, the other three behind swipes — until it
+  was clear a scoreboard is read at a glance, not browsed.
 - summary cards (Settled, Due Date, Reconciliation, Advanced Payment)
 - recent activity section: the seven most recent engagement entries in the same mirror carousel (`lib/common/widgets/animations/mirror_carousel.dart`); Show All has the rest
 

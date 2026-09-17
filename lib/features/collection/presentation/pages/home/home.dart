@@ -15,7 +15,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/c
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/bucket_download_overlay.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_summary_carousel.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_summary_grid.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_sync_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_totals_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/home_skeleton.dart';
@@ -144,14 +144,14 @@ class CollectionHomeScreen extends StatelessWidget {
                                                 const SizedBox(
                                                     height: _sectionGap),
 
-                                                // Summary tiles: one card at a time, swipe between
-                                                // them. The mirror flip is driven by scroll offset,
-                                                // so it follows the finger. Obx wraps the whole
-                                                // carousel so every figure stays live.
-                                                Obx(() =>
-                                                    CollectionSummaryCarousel(
-                                                      pages: [
-                                                        CollectionSummaryPage(
+                                                // The scoreboard: four counts,
+                                                // two by two, all visible at
+                                                // once. Obx wraps the whole
+                                                // grid so every figure stays
+                                                // live.
+                                                Obx(() => CollectionSummaryGrid(
+                                                      stats: [
+                                                        CollectionSummaryStat(
                                                           title: 'Settled',
                                                           value: controller
                                                               .completedItems
@@ -168,7 +168,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   BCollectionColors
                                                                       .success),
                                                         ),
-                                                        CollectionSummaryPage(
+                                                        CollectionSummaryStat(
                                                           title: 'Due Date',
                                                           value: controller
                                                               .overdueItems
@@ -184,7 +184,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   BCollectionColors
                                                                       .danger),
                                                         ),
-                                                        CollectionSummaryPage(
+                                                        CollectionSummaryStat(
                                                           title:
                                                               'Reconciliation',
                                                           value: controller
@@ -201,7 +201,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                               BCollectionColors
                                                                   .reconcile),
                                                         ),
-                                                        CollectionSummaryPage(
+                                                        CollectionSummaryStat(
                                                           title:
                                                               'Advanced Payment',
                                                           value: controller
