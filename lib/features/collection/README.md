@@ -287,7 +287,7 @@ Displays:
 - total collected card
 - summary carousel (Settled, Due Date, Reconciliation, Advanced Payment): one card at a time, swipe or tap a dot to change, loops past the last card back to the first; cards turn on their vertical axis like a mirror panel (`home/widgets/collection_summary_carousel.dart`)
 - summary cards (Settled, Due Date, Reconciliation, Advanced Payment)
-- recent activity section
+- recent activity section: the seven most recent engagement entries in the same mirror carousel (`lib/common/widgets/animations/mirror_carousel.dart`); Show All has the rest
 
 ### Bucket screen
 - `presentation/pages/bucket/collection_bucket_screen.dart`

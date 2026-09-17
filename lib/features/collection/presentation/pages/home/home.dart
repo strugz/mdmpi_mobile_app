@@ -4,6 +4,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/common/widgets/animations/mirror_carousel.dart';
 import 'package:mdmpi_mobile_app/common/widgets/buttons/collection_bucket_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary_header_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
@@ -34,6 +35,11 @@ class CollectionHomeScreen extends StatelessWidget {
   /// Respect the system text size, but stop a large setting from wrapping
   /// buttons and truncating tile labels in this fixed dashboard layout.
   static const double _maxTextScale = 1.15;
+
+  /// Fixed page height for the history carousel. The card lays out to about
+  /// 150px at the default text size and 165px at the 1.15 clamp; the extra
+  /// keeps the bottom divider row clear of the page edge.
+  static const double _historyCardHeight = 172;
 
   static const _pageTransition = Transition.cupertino;
   static const _pageDuration = Duration(milliseconds: 300);
@@ -211,32 +217,31 @@ class CollectionHomeScreen extends StatelessWidget {
                               );
                             }
 
-                            // Limit to the most recent 3 entries
-                            final recentThree = recentItems.take(3).toList();
+                            // The seven most recent entries, one per page;
+                            // Show All has the rest. Cards are keyed by entry
+                            // so a refresh does not rebuild every page.
+                            final recent = recentItems.take(7).toList();
+                            final cards = [
+                              for (final e in recent)
+                                ActivityHistoryCard(
+                                  key: ValueKey(e['history']),
+                                  history:
+                                      e['history'] as CollectionHistoryModel,
+                                  accountName: e['accountName'].toString(),
+                                  invoiceId: e['invoiceId']?.toString(),
+                                  item: e['item'] as CollectionItemModel?,
+                                  margin: EdgeInsets.zero,
+                                ),
+                            ];
 
-                            final historyList = recentThree
-                                .map((e) =>
-                                    e['history'] as CollectionHistoryModel)
-                                .toList();
-                            final accountNames = {
-                              for (var i = 0; i < recentThree.length; i++)
-                                i: recentThree[i]['accountName'].toString()
-                            };
-                            final invoiceIds = {
-                              for (var i = 0; i < recentThree.length; i++)
-                                i: recentThree[i]['invoiceId']?.toString()
-                            };
-                            final items = {
-                              for (var i = 0; i < recentThree.length; i++)
-                                i: recentThree[i]['item']
-                                    as CollectionItemModel?
-                            };
-
-                            return ActivityHistoryList(
-                              history: historyList,
-                              accountNames: accountNames,
-                              invoiceIds: invoiceIds,
-                              items: items,
+                            return BMirrorCarousel(
+                              itemCount: cards.length,
+                              height: _historyCardHeight,
+                              onSettleTap: (i) => cards[i].showDetail(context),
+                              itemBuilder: (context, i) => Align(
+                                alignment: Alignment.topCenter,
+                                child: cards[i],
+                              ),
                             );
                           }),
 
