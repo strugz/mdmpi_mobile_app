@@ -187,7 +187,11 @@ class ActivityHistoryCard extends StatelessWidget {
               spacing: BSizes.sm,
               runSpacing: BSizes.sm,
               children: [
-                _buildInfoTile(context, 'Date', history.date, Iconsax.calendar),
+                _buildInfoTile(
+                    context,
+                    'Date',
+                    BFormatter.formatDateWithAmPm(history.date),
+                    Iconsax.calendar),
                 _buildInfoTile(
                     context, 'Collector', collectorName, Iconsax.user),
                 _buildInfoTile(
@@ -454,7 +458,9 @@ class ActivityHistoryCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    history.date,
+                    // Stored as ISO (2026-09-17T11:45:12.579265); shown as a
+                    // date a person reads, not a stamp with a T in it.
+                    BFormatter.formatDateWithAmPm(history.date),
                     style: Theme.of(context)
                         .textTheme
                         .labelSmall

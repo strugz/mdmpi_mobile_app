@@ -87,6 +87,16 @@ void main() {
     expect(find.text('Invoice #700013396'), findsOneWidget);
   });
 
+  // The engagement stamp is stored as ISO and used to be shown raw, with the
+  // "T" between date and time. It is a date a person reads now.
+  testWidgets('the stamp reads as a date, not an ISO string', (tester) async {
+    await tester.pumpWidget(_homeHistory(_cards(1)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sep 10, 2026 10:19 AM'), findsOneWidget);
+    expect(find.textContaining('T10:19'), findsNothing);
+  });
+
   testWidgets('a single entry shows one page and no loop', (tester) async {
     await tester.pumpWidget(_homeHistory(_cards(1)));
     await tester.pumpAndSettle();
