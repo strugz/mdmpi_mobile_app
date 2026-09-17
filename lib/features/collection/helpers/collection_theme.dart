@@ -83,8 +83,10 @@ class BCollectionTheme {
       primaryColor: BCollectionColors.primary,
       scaffoldBackgroundColor: BCollectionColors.background,
       dividerColor: BCollectionColors.outline,
+      // Keep the app bar transparent, as the base theme has it. Flutter
+      // derives the status bar icon colour from the app bar background, and
+      // an off-white one turned the clock and icons dark on the navy header.
       appBarTheme: base.appBarTheme.copyWith(
-        backgroundColor: BCollectionColors.background,
         surfaceTintColor: Colors.transparent,
       ),
       cardTheme: base.cardTheme.copyWith(
