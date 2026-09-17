@@ -83,7 +83,6 @@ class _CollectionAccountInvoicesScreenState
                       context,
                       initial: controller.bucketFilterSpec.value,
                       count: controller.countBucketAccounts,
-                      showOutcomes: false,
                     );
                     if (chosen != null) {
                       controller.bucketFilterSpec.value = chosen;

@@ -76,35 +76,6 @@ void main() {
     }
   });
 
-  group('last visit outcome', () {
-    test('reads the recorded outcome, then the last history status', () {
-      expect(ActivityFilter.outcomeOf(_item(lastOutcome: 'Refused to Pay')),
-          'Refused to Pay');
-      expect(
-          ActivityFilter.outcomeOf(_item(history: const [
-            CollectionHistoryModel(
-                date: '2026-09-01', collectorName: 'J', status: 'Follow Up'),
-          ])),
-          'Follow Up');
-      expect(ActivityFilter.outcomeOf(_item()), ActivityFilter.noVisitYet);
-    });
-
-    test('an empty outcome set means everything', () {
-      const f = ActivityFilter();
-      expect(f.matches(_item(lastOutcome: 'Refused to Pay')), isTrue);
-      expect(f.matches(_item()), isTrue);
-      expect(f.isActive, isFalse);
-    });
-
-    test('toggling adds then removes', () {
-      var f = const ActivityFilter().toggleOutcome('Follow Up');
-      expect(f.outcomes, {'Follow Up'});
-      expect(f.isActive, isTrue);
-      f = f.toggleOutcome('Follow Up');
-      expect(f.outcomes, isEmpty);
-    });
-  });
-
   test('sort by longest since visit puts never-visited first', () {
     final never = _item(id: 'a');
     final old = _item(id: 'b', history: const [
@@ -167,12 +138,12 @@ void main() {
 
     testWidgets('a filter that matches nothing cannot be applied',
         (tester) async {
-      await tester
-          .pumpWidget(host((_) {}, count: (f) => f.outcomes.isEmpty ? 5 : 0));
+      await tester.pumpWidget(
+          host((_) {}, count: (f) => f.amount == AmountBand.any ? 5 : 0));
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text(CollectionStatusColors.statusRefused));
+      await tester.tap(find.text('Over ₱200k'));
       await tester.pumpAndSettle();
 
       await tester.ensureVisible(find.text('No accounts match'));
@@ -291,8 +262,7 @@ void main() {
 
     // Nothing in the bucket has been engaged, so every account would answer
     // the last-visit question the same way; the bucket hides it.
-    // The bar carries how-late and territory only. The outcomes live in the
-    // sheet, and show here as removable chips once set.
+    // The bar carries how-late and territory only.
     testWidgets('carries no outcome presets', (tester) async {
       tester.view.physicalSize = const Size(3000, 600);
       tester.view.devicePixelRatio = 1;
@@ -300,35 +270,13 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: QuickFilterBar(
-            filter: ActivityFilter.none,
-            onChanged: (_) {},
-          ),
+          body: QuickFilterBar(filter: ActivityFilter.none, onChanged: (_) {}),
         ),
       ));
 
       expect(find.text('Overdue'), findsOneWidget);
       expect(find.text(CollectionStatusColors.statusFollowUp), findsNothing);
       expect(find.text(CollectionStatusColors.statusUnavailable), findsNothing);
-    });
-
-    testWidgets('an outcome set in the sheet shows here and can be removed',
-        (tester) async {
-      tester.view.physicalSize = const Size(3000, 600);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.reset);
-
-      ActivityFilter? last;
-      await tester.pumpWidget(host(
-        const ActivityFilter(outcomes: {CollectionStatusColors.statusFollowUp}),
-        (f) => last = f,
-      ));
-
-      expect(find.text(CollectionStatusColors.statusFollowUp), findsOneWidget);
-      await tester.tap(find.text(CollectionStatusColors.statusFollowUp));
-      await tester.pumpAndSettle();
-
-      expect(last?.outcomes, isEmpty);
     });
 
     testWidgets('areas present in the data are offered', (tester) async {
@@ -346,6 +294,38 @@ void main() {
       await tester.tap(find.text('NCR'));
       await tester.pumpAndSettle();
       expect(last?.area, 'NCR');
+    });
+  });
+
+  group('amount sort', () {
+    test('high to low and low to high are mirror orders', () {
+      final small = _item(id: '1', due: 5000);
+      final big = _item(id: '2', due: 900000);
+
+      final high = [small, big]
+        ..sort(const ActivityFilter(sort: ActivitySort.amountHigh).compare);
+      expect(high.first.id, '2');
+
+      final low = [big, small]
+        ..sort(const ActivityFilter(sort: ActivitySort.amountLow).compare);
+      expect(low.first.id, '1');
+    });
+  });
+
+  group('invoice count sort', () {
+    test('is account-level, so it does not order invoices', () {
+      expect(ActivitySort.mostInvoices.isAccountLevel, isTrue);
+      expect(ActivitySort.fewestInvoices.isAccountLevel, isTrue);
+      expect(ActivitySort.amountHigh.isAccountLevel, isFalse);
+      expect(ActivitySort.mostOverdue.isAccountLevel, isFalse);
+    });
+
+    test('inside one account it falls back to the default order', () {
+      final fresh = _item(id: '1', overdueDays: 2);
+      final ancient = _item(id: '2', overdueDays: 900);
+      final sorted = [fresh, ancient]
+        ..sort(const ActivityFilter(sort: ActivitySort.mostInvoices).compare);
+      expect(sorted.first.id, '2', reason: 'most overdue first');
     });
   });
 

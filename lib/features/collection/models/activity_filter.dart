@@ -1,6 +1,5 @@
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 
 /// How late an invoice is, in the bands a collector plans a day by.
@@ -58,15 +57,27 @@ enum AmountBand {
   bool matches(double amount) => amount >= min && amount < max;
 }
 
-/// Order of the engagement list.
+/// Order of the list.
+///
+/// [mostInvoices] and [fewestInvoices] are account-level: every invoice in an
+/// account shares its count, so ordering by them only means something between
+/// accounts. The controllers handle those two; [compare] falls back to the
+/// default order for them.
 enum ActivitySort {
   mostOverdue('Most overdue'),
-  amountHigh('Highest amount'),
+  amountHigh('Amount high to low'),
+  amountLow('Amount low to high'),
+  mostInvoices('Most invoices'),
+  fewestInvoices('Fewest invoices'),
   lastVisitOldest('Longest since visit'),
   name('Account name');
 
   const ActivitySort(this.label);
   final String label;
+
+  /// True when the order is a property of the account, not of one invoice.
+  bool get isAccountLevel =>
+      this == ActivitySort.mostInvoices || this == ActivitySort.fewestInvoices;
 }
 
 /// The engagement list's filter and sort, as one value.
@@ -78,7 +89,6 @@ enum ActivitySort {
 class ActivityFilter {
   const ActivityFilter({
     this.due = DueBand.any,
-    this.outcomes = const {},
     this.amount = AmountBand.any,
     this.area = '',
     this.sort = ActivitySort.mostOverdue,
@@ -87,10 +97,6 @@ class ActivityFilter {
   static const none = ActivityFilter();
 
   final DueBand due;
-
-  /// Outcomes of the last visit to include. Empty means all. Contains
-  /// [noVisitYet] to include invoices nobody has visited.
-  final Set<String> outcomes;
   final AmountBand amount;
 
   /// Territory prefix, as [BCollectionArea] defines them. Empty is every area.
@@ -98,42 +104,16 @@ class ActivityFilter {
 
   final ActivitySort sort;
 
-  /// Sentinel outcome for an invoice with no history at all.
-  static const noVisitYet = 'No visit yet';
-
-  /// The outcomes offered as chips, in the order they appear.
-  static const outcomeOptions = [
-    CollectionStatusColors.statusFollowUp,
-    CollectionStatusColors.statusUnavailable,
-    CollectionStatusColors.statusRefused,
-    CollectionStatusColors.statusPreCollection,
-    CollectionStatusColors.statusPartial,
-    noVisitYet,
-  ];
-
-  /// Whether anything other than the default sort is set. Sort alone is not a
+  /// Whether anything other than the sort is set. Sort alone is not a
   /// filter: it hides nothing.
   bool get isActive =>
-      due != DueBand.any ||
-      outcomes.isNotEmpty ||
-      amount != AmountBand.any ||
-      area.isNotEmpty;
+      due != DueBand.any || amount != AmountBand.any || area.isNotEmpty;
 
   /// How many filter groups are set, for the badge on the filter button.
   int get activeCount =>
       (due != DueBand.any ? 1 : 0) +
-      (outcomes.isNotEmpty ? 1 : 0) +
       (amount != AmountBand.any ? 1 : 0) +
       (area.isNotEmpty ? 1 : 0);
-
-  /// The last outcome recorded on [item], or [noVisitYet].
-  static String outcomeOf(CollectionItemModel item) {
-    final last = item.lastOutcome?.trim() ?? '';
-    if (last.isNotEmpty) return last;
-    if (item.history.isEmpty) return noVisitYet;
-    final status = item.history.last.status.trim();
-    return status.isEmpty ? noVisitYet : status;
-  }
 
   /// When [item] was last visited, or null if never.
   static DateTime? lastVisitOf(CollectionItemModel item) {
@@ -150,9 +130,6 @@ class ActivityFilter {
     if (!due.matches(item)) return false;
     if (!amount.matches(item.toBeCollected)) return false;
     if (!BCollectionArea.matches(item.client.code, area)) return false;
-    if (outcomes.isNotEmpty && !outcomes.contains(outcomeOf(item))) {
-      return false;
-    }
     return true;
   }
 
@@ -164,6 +141,13 @@ class ActivityFilter {
         result = b.daysPastDue.compareTo(a.daysPastDue);
       case ActivitySort.amountHigh:
         result = b.toBeCollected.compareTo(a.toBeCollected);
+      case ActivitySort.amountLow:
+        result = a.toBeCollected.compareTo(b.toBeCollected);
+      // An account's invoice count says nothing about one of its invoices,
+      // so inside an account these fall back to the default order.
+      case ActivitySort.mostInvoices:
+      case ActivitySort.fewestInvoices:
+        result = b.daysPastDue.compareTo(a.daysPastDue);
       case ActivitySort.lastVisitOldest:
         // Never visited sorts first: it has waited the longest.
         final la = lastVisitOf(a);
@@ -185,25 +169,16 @@ class ActivityFilter {
 
   ActivityFilter copyWith({
     DueBand? due,
-    Set<String>? outcomes,
     AmountBand? amount,
     String? area,
     ActivitySort? sort,
   }) =>
       ActivityFilter(
         due: due ?? this.due,
-        outcomes: outcomes ?? this.outcomes,
         amount: amount ?? this.amount,
         area: area ?? this.area,
         sort: sort ?? this.sort,
       );
-
-  /// The same filter with [outcome] added or removed.
-  ActivityFilter toggleOutcome(String outcome) {
-    final next = Set<String>.from(outcomes);
-    if (!next.remove(outcome)) next.add(outcome);
-    return copyWith(outcomes: next);
-  }
 
   @override
   bool operator ==(Object other) =>
@@ -211,10 +186,8 @@ class ActivityFilter {
       other.due == due &&
       other.amount == amount &&
       other.area == area &&
-      other.sort == sort &&
-      other.outcomes.length == outcomes.length &&
-      other.outcomes.containsAll(outcomes);
+      other.sort == sort;
 
   @override
-  int get hashCode => Object.hash(due, amount, area, sort, outcomes.length);
+  int get hashCode => Object.hash(due, amount, area, sort);
 }

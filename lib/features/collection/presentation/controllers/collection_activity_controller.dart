@@ -545,6 +545,24 @@ class CollectionActivityController extends GetxController {
     selectedArea.value = '';
   }
 
+  /// Order two accounts by how many invoices they hold under [spec].
+  ///
+  /// The count is a property of the account, so it cannot come through the
+  /// invoice comparator. Only the invoices that passed the filter are
+  /// counted, so the order agrees with the number printed on the card.
+  int _byInvoiceCount(
+    ActivityFilter spec,
+    Map<String, List<CollectionItemModel>> matching,
+    ClientModel a,
+    ClientModel b,
+  ) {
+    final an = matching[a.id]?.length ?? 0;
+    final bn = matching[b.id]?.length ?? 0;
+    return spec.sort == ActivitySort.mostInvoices
+        ? bn.compareTo(an)
+        : an.compareTo(bn);
+  }
+
   List<ClientModel> get bucketAccounts =>
       _bucketAccountsFor(bucketFilterSpec.value);
 
@@ -573,6 +591,11 @@ class CollectionActivityController extends GetxController {
     if (spec.sort == ActivitySort.name) {
       accounts
           .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    } else if (spec.sort.isAccountLevel) {
+      accounts.sort((a, b) {
+        final byCount = _byInvoiceCount(spec, matching, a, b);
+        return byCount != 0 ? byCount : a.name.compareTo(b.name);
+      });
     } else {
       accounts.sort((a, b) {
         final byLead = spec.compare(leading(a), leading(b));
@@ -696,6 +719,10 @@ class CollectionActivityController extends GetxController {
         (matching[c.id]!..sort(spec.compare)).first;
     accounts.sort((a, b) {
       if (spec.sort == ActivitySort.name) return a.name.compareTo(b.name);
+      if (spec.sort.isAccountLevel) {
+        final byCount = _byInvoiceCount(spec, matching, a, b);
+        return byCount != 0 ? byCount : a.name.compareTo(b.name);
+      }
       if (spec.sort == ActivitySort.mostOverdue) {
         final overdue = getActivityAccountOverdueCount(b.id)
             .compareTo(getActivityAccountOverdueCount(a.id));
@@ -705,9 +732,13 @@ class CollectionActivityController extends GetxController {
         if (due != 0) return due;
         return a.name.compareTo(b.name);
       }
-      if (spec.sort == ActivitySort.amountHigh) {
-        final due = getActivityAccountTotalDue(b.id)
-            .compareTo(getActivityAccountTotalDue(a.id));
+      if (spec.sort == ActivitySort.amountHigh ||
+          spec.sort == ActivitySort.amountLow) {
+        final aDue = getActivityAccountTotalDue(a.id);
+        final bDue = getActivityAccountTotalDue(b.id);
+        final due = spec.sort == ActivitySort.amountHigh
+            ? bDue.compareTo(aDue)
+            : aDue.compareTo(bDue);
         if (due != 0) return due;
         return a.name.compareTo(b.name);
       }

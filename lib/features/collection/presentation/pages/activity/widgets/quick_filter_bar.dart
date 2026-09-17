@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
@@ -16,8 +15,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 /// the sheet and the list never disagree.
 ///
 /// It doubles as the "what is filtering this list" display: a dimension the
-/// row has no preset for (an amount band, a last-visit outcome) appears at the
-/// end as a removable chip, so there is one place to look and one to undo.
+/// row has no preset for, such as an amount band, appears at the end as a
+/// removable chip, so there is one place to look and one to undo.
 class QuickFilterBar extends StatelessWidget {
   const QuickFilterBar({
     super.key,
@@ -47,7 +46,6 @@ class QuickFilterBar extends StatelessWidget {
             selected: !filter.isActive,
             onTap: () => onChanged(filter.copyWith(
               due: DueBand.any,
-              outcomes: const {},
               amount: AmountBand.any,
               area: '',
             )),
@@ -87,16 +85,6 @@ class QuickFilterBar extends StatelessWidget {
             _removable(
               filter.amount.label,
               () => onChanged(filter.copyWith(amount: AmountBand.any)),
-            ),
-            _gap,
-          ],
-          for (final outcome in filter.outcomes) ...[
-            _removable(
-              outcome,
-              () => onChanged(filter.toggleOutcome(outcome)),
-              color: outcome == ActivityFilter.noVisitYet
-                  ? BCollectionColors.neutral
-                  : CollectionStatusColors.colorFor(outcome),
             ),
             _gap,
           ],

@@ -295,9 +295,7 @@ The bucket uses the same `ActivityFilter` as the engagement list, held as
 `bucketFilterSpec`, with the same sheet and `QuickFilterBar`. Two differences:
 it defaults to `ActivitySort.name` because the bucket is a catalogue people
 scan alphabetically, and the area lives on `selectedArea` because the toolbar's
-own "All areas" chip owns it, so the quick bar there offers no area chips. The
-last-visit group is hidden too (`showOutcomes: false`): nothing in the bucket
-has been engaged, so every account would answer it the same way.
+own "All areas" chip owns it, so the quick bar there offers no area chips.
 - `presentation/pages/bucket/collection_bucket_screen.dart`
 
 Represents the main assignment and review queue.
@@ -315,12 +313,14 @@ Filtering and sort are one value, `ActivityFilter` (`models/activity_filter.dart
 held by the controller as `activityFilterSpec`. It covers four groups:
 
 - **Due**: any, due in 7 days, overdue, late 30+, late 1 year+ (from `dueDate`).
-- **Last visit**: the outcome chips, plus "No visit yet" (from `lastOutcome`,
-  falling back to the newest history entry).
 - **Amount due**: preset bands rather than a slider (from `toBeCollected`).
 - **Area**: territory prefix of the client code, via `BCollectionArea`; only
   areas present in the engaged items are offered.
-- **Sort**: most overdue, highest amount, longest since visit, account name.
+- **Sort**: most overdue, amount high to low, amount low to high, most
+  invoices, fewest invoices, longest since visit, account name. The two
+  invoice-count orders are account-level (`ActivitySort.isAccountLevel`): the
+  count belongs to the account, so the controllers order by it directly and
+  `compare` falls back to the default order inside one account.
 
 The filter applies to both the account list and each account's invoice list, so
 opening an account shows the invoices that put it on the list. The sheet
