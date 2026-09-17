@@ -95,7 +95,9 @@ void main() {
       final number = tester.widget<Text>(find.text('#700013390'));
       expect(amount.style!.fontSize!, greaterThan(number.style!.fontSize!),
           reason: 'the amount is what the collector is here for');
-      expect(amount.style!.color, BColors.primary);
+      // Ink, not the primary blue: blue is the action colour on these
+      // screens, and a blue amount on every row reads as a list of links.
+      expect(amount.style!.color, BColors.black);
 
       // The number is how the document is referred to and what a deposit is
       // matched back to. It was once a grey label — the quietest thing on the

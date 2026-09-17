@@ -26,6 +26,13 @@ enum InvoiceUrgency { settled, upcoming, due, late }
 /// its whole card red, and since almost all of them are overdue the entire
 /// list went red and the signal carried no information. A thin accent stripe
 /// now separates late (30+ days) from merely due, and settled from both.
+///
+/// Colour budget: one hue per card beyond ink and grey. The amount is set in
+/// ink, not the primary blue, because blue is what buttons and the selection
+/// state use, and a blue amount on every row reads as a row of links. The
+/// urgency colour appears on the stripe and the days-overdue badge only; the
+/// due date itself is dark grey. Blue is left for the info glyph's pressed
+/// state, selection, and the screen's one primary button.
 class InvoiceCard extends StatelessWidget {
   const InvoiceCard({
     super.key,
@@ -95,9 +102,11 @@ class InvoiceCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           // Constant width: animating 1 -> 2px would nudge the content on
           // every selection toggle.
+          // A hairline in a lighter grey: the old 1.5px E0E0E0 boxed every
+          // card and fought the stripe for the eye.
           border: Border.all(
-            color: isSelected ? BColors.primary : BColors.grey,
-            width: 1.5,
+            color: isSelected ? BColors.primary : BColors.softGrey,
+            width: isSelected ? 1.5 : 1,
           ),
         ),
         // Clip so the accent stripe follows the rounded corners.
@@ -219,7 +228,7 @@ class InvoiceCard extends StatelessWidget {
                       tooltip: 'Invoice details',
                       onPressed: onInfoTap,
                       icon: const Icon(Iconsax.info_circle,
-                          size: 20, color: BColors.primary),
+                          size: 20, color: BColors.darkGrey),
                       padding: EdgeInsets.zero,
                       constraints:
                           const BoxConstraints.tightFor(width: 28, height: 28),
@@ -249,7 +258,7 @@ class InvoiceCard extends StatelessWidget {
                 fontSize: 20,
                 height: 1.1,
                 fontWeight: FontWeight.w800,
-                color: settled ? BColors.success : BColors.primary,
+                color: settled ? BColors.success : BColors.black,
               ),
             ),
           ),
@@ -271,12 +280,15 @@ class InvoiceCard extends StatelessWidget {
         item.dueDate.trim().isNotEmpty && item.dueDate.trim() != 'N/A';
     final overdue =
         urgency == InvoiceUrgency.due || urgency == InvoiceUrgency.late;
-    final color =
-        overdue ? (_accentColor ?? BColors.darkGrey) : BColors.darkGrey;
+    // The date stays grey even when overdue. The stripe and the badge already
+    // say how late it is; a third red element per row was the loudest thing
+    // on a list where every row is overdue.
+    const dateColor = BColors.darkerGrey;
+    final badgeColor = _accentColor ?? BColors.darkGrey;
 
     return Row(
       children: [
-        Icon(Iconsax.calendar_1, size: 14, color: color),
+        const Icon(Iconsax.calendar_1, size: 14, color: BColors.darkGrey),
         const SizedBox(width: BSizes.xs),
         Flexible(
           child: Text(
@@ -286,8 +298,8 @@ class InvoiceCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: overdue ? FontWeight.w700 : FontWeight.w500,
+              color: dateColor,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -298,13 +310,13 @@ class InvoiceCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
+              color: badgeColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
             ),
             child: Text(
               BFormatter.formatDaysOverdue(item.daysPastDue),
               style: theme.textTheme.labelSmall?.copyWith(
-                color: color,
+                color: badgeColor,
                 fontWeight: FontWeight.w700,
                 fontSize: 10,
               ),
