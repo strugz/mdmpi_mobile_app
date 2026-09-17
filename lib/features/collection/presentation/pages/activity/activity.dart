@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/w
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/collection_work_header.dart';
 import 'activity_account_invoices_screen.dart';
 import 'widgets/activity_filter_sheet.dart';
+import 'widgets/quick_filter_bar.dart';
 import 'widgets/engagement_summary.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
@@ -42,9 +43,11 @@ class CollectionActivityScreen extends StatelessWidget {
                     onFilterTap: () => _openFilter(context, controller),
                   )),
 
-              // What is filtering the list, removable one at a time.
-              Obx(() => ActiveFilterChips(
+              // The filters reached for every morning, one tap each. Also
+              // shows anything set in the sheet that has no preset here.
+              Obx(() => QuickFilterBar(
                     filter: controller.activityFilterSpec.value,
+                    areas: controller.activityAreas,
                     onChanged: (f) => controller.activityFilterSpec.value = f,
                   )),
 
@@ -166,6 +169,7 @@ class CollectionActivityScreen extends StatelessWidget {
       context,
       initial: controller.activityFilterSpec.value,
       count: controller.countActivityAccounts,
+      areas: controller.activityAreas,
     );
     if (chosen != null) controller.activityFilterSpec.value = chosen;
   }

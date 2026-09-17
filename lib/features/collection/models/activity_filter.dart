@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 
@@ -79,6 +80,7 @@ class ActivityFilter {
     this.due = DueBand.any,
     this.outcomes = const {},
     this.amount = AmountBand.any,
+    this.area = '',
     this.sort = ActivitySort.mostOverdue,
   });
 
@@ -90,6 +92,10 @@ class ActivityFilter {
   /// [noVisitYet] to include invoices nobody has visited.
   final Set<String> outcomes;
   final AmountBand amount;
+
+  /// Territory prefix, as [BCollectionArea] defines them. Empty is every area.
+  final String area;
+
   final ActivitySort sort;
 
   /// Sentinel outcome for an invoice with no history at all.
@@ -108,13 +114,17 @@ class ActivityFilter {
   /// Whether anything other than the default sort is set. Sort alone is not a
   /// filter: it hides nothing.
   bool get isActive =>
-      due != DueBand.any || outcomes.isNotEmpty || amount != AmountBand.any;
+      due != DueBand.any ||
+      outcomes.isNotEmpty ||
+      amount != AmountBand.any ||
+      area.isNotEmpty;
 
   /// How many filter groups are set, for the badge on the filter button.
   int get activeCount =>
       (due != DueBand.any ? 1 : 0) +
       (outcomes.isNotEmpty ? 1 : 0) +
-      (amount != AmountBand.any ? 1 : 0);
+      (amount != AmountBand.any ? 1 : 0) +
+      (area.isNotEmpty ? 1 : 0);
 
   /// The last outcome recorded on [item], or [noVisitYet].
   static String outcomeOf(CollectionItemModel item) {
@@ -139,6 +149,7 @@ class ActivityFilter {
   bool matches(CollectionItemModel item) {
     if (!due.matches(item)) return false;
     if (!amount.matches(item.toBeCollected)) return false;
+    if (!BCollectionArea.matches(item.client.code, area)) return false;
     if (outcomes.isNotEmpty && !outcomes.contains(outcomeOf(item))) {
       return false;
     }
@@ -176,12 +187,14 @@ class ActivityFilter {
     DueBand? due,
     Set<String>? outcomes,
     AmountBand? amount,
+    String? area,
     ActivitySort? sort,
   }) =>
       ActivityFilter(
         due: due ?? this.due,
         outcomes: outcomes ?? this.outcomes,
         amount: amount ?? this.amount,
+        area: area ?? this.area,
         sort: sort ?? this.sort,
       );
 
@@ -197,10 +210,11 @@ class ActivityFilter {
       other is ActivityFilter &&
       other.due == due &&
       other.amount == amount &&
+      other.area == area &&
       other.sort == sort &&
       other.outcomes.length == outcomes.length &&
       other.outcomes.containsAll(outcomes);
 
   @override
-  int get hashCode => Object.hash(due, amount, sort, outcomes.length);
+  int get hashCode => Object.hash(due, amount, area, sort, outcomes.length);
 }

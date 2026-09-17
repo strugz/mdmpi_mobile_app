@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
@@ -21,6 +22,7 @@ class ActivityFilterSheet extends StatefulWidget {
     super.key,
     required this.initial,
     required this.count,
+    this.areas = const [],
   });
 
   final ActivityFilter initial;
@@ -28,11 +30,16 @@ class ActivityFilterSheet extends StatefulWidget {
   /// How many accounts a candidate filter would show.
   final int Function(ActivityFilter) count;
 
+  /// Territory codes present in the data, so the sheet never offers an area
+  /// with nothing in it. Empty hides the group.
+  final List<String> areas;
+
   /// Opens the sheet and resolves to the chosen filter, or null if dismissed.
   static Future<ActivityFilter?> show(
     BuildContext context, {
     required ActivityFilter initial,
     required int Function(ActivityFilter) count,
+    List<String> areas = const [],
   }) =>
       showModalBottomSheet<ActivityFilter>(
         context: context,
@@ -42,7 +49,8 @@ class ActivityFilterSheet extends StatefulWidget {
           borderRadius: BorderRadius.vertical(
               top: Radius.circular(BSizes.borderRadiusLg)),
         ),
-        builder: (_) => ActivityFilterSheet(initial: initial, count: count),
+        builder: (_) =>
+            ActivityFilterSheet(initial: initial, count: count, areas: areas),
       );
 
   @override
@@ -131,6 +139,16 @@ class _ActivityFilterSheetState extends State<ActivityFilterSheet> {
               onTap: (b) => _set(_draft.copyWith(amount: b)),
             ),
           ),
+          if (widget.areas.isNotEmpty)
+            _Group(
+              title: 'Area',
+              child: _chips<String>(
+                options: ['', ...widget.areas],
+                label: (a) => a.isEmpty ? 'Any' : BCollectionArea.labelFor(a),
+                selected: (a) => _draft.area == a,
+                onTap: (a) => _set(_draft.copyWith(area: a)),
+              ),
+            ),
           _Group(
             title: 'Sort by',
             child: _chips<ActivitySort>(
@@ -247,6 +265,9 @@ class ActiveFilterChips extends StatelessWidget {
       if (filter.amount != AmountBand.any)
         _chip(filter.amount.label, BCollectionColors.primary,
             () => onChanged(filter.copyWith(amount: AmountBand.any))),
+      if (filter.area.isNotEmpty)
+        _chip(BCollectionArea.labelFor(filter.area), BCollectionColors.primary,
+            () => onChanged(filter.copyWith(area: ''))),
     ];
     if (chips.isEmpty) return const SizedBox.shrink();
 

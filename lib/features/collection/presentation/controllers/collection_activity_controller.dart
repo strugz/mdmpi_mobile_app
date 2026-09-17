@@ -206,6 +206,20 @@ class CollectionActivityController extends GetxController {
 
   bool get hasActiveActivityFilter => activityFilterSpec.value.isActive;
 
+  /// Territory codes with at least one engaged invoice, in the order
+  /// [BCollectionArea] lists them. The filter never offers an empty area.
+  List<String> get activityAreas {
+    final present = <String>{};
+    for (final item in activityItems) {
+      if (item.toBeCollected <= 0) continue;
+      final prefix = BCollectionArea.prefixOf(item.client.code);
+      present.add(BCollectionArea.knownPrefixes.contains(prefix)
+          ? prefix
+          : BCollectionArea.others);
+    }
+    return BCollectionArea.names.keys.where(present.contains).toList();
+  }
+
   void clearActivityFilters() => activityFilterSpec.value = ActivityFilter.none;
 
   /// How many accounts [spec] would leave on the engagement list, with the

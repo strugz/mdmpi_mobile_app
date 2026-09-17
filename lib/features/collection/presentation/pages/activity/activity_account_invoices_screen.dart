@@ -215,6 +215,7 @@ class _CollectionActivityAccountInvoicesScreenState
                             context,
                             initial: controller.activityFilterSpec.value,
                             count: controller.countActivityAccounts,
+                            areas: controller.activityAreas,
                           );
                           if (chosen != null) {
                             controller.activityFilterSpec.value = chosen;

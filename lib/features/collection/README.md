@@ -310,13 +310,18 @@ held by the controller as `activityFilterSpec`. It covers four groups:
 - **Last visit**: the outcome chips, plus "No visit yet" (from `lastOutcome`,
   falling back to the newest history entry).
 - **Amount due**: preset bands rather than a slider (from `toBeCollected`).
+- **Area**: territory prefix of the client code, via `BCollectionArea`; only
+  areas present in the engaged items are offered.
 - **Sort**: most overdue, highest amount, longest since visit, account name.
 
 The filter applies to both the account list and each account's invoice list, so
 opening an account shows the invoices that put it on the list. The sheet
 (`ActivityFilterSheet`) edits a draft and its apply button carries a live count;
-active filters appear under the search bar as removable chips
-(`ActiveFilterChips`). Nothing here needs an API change.
+a `QuickFilterBar` under the search bar carries the presets reached for every
+morning (overdue, late 30+, follow up, unavailable, each area) as one-tap
+chips, and shows anything set only in the sheet as a removable chip, so there
+is one place to see and undo what is filtering the list. Nothing here needs an
+API change.
 - `presentation/pages/activity/activity.dart`
 
 Represents the post-claim workflow and includes:

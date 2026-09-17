@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_sheet.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 /// The engagement filter runs on data already on the invoice: due date, last
@@ -21,6 +22,7 @@ String _daysAgo(int days) {
 CollectionItemModel _item({
   String id = '1',
   String name = 'Acme',
+  String code = 'NLN-1',
   double due = 10000,
   int overdueDays = 0,
   String? lastOutcome,
@@ -30,7 +32,7 @@ CollectionItemModel _item({
       id: id,
       client: ClientModel(
         id: 'c$id',
-        code: 'NLN-1',
+        code: code,
         name: name,
         address: '',
         contact: '',
@@ -193,6 +195,115 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Reset'), findsNothing);
+    });
+  });
+
+  group('area', () {
+    test('matches on the client code prefix, case-insensitively', () {
+      const f = ActivityFilter(area: 'NLN');
+      expect(f.matches(_item(code: 'NLN-115')), isTrue);
+      expect(f.matches(_item(code: 'nln-9')), isTrue);
+      expect(f.matches(_item(code: 'NCR-205')), isFalse);
+      expect(f.isActive, isTrue);
+    });
+
+    test('an unnamed prefix falls into Others', () {
+      const f = ActivityFilter(area: 'OTHERS');
+      expect(f.matches(_item(code: 'VET-1')), isTrue);
+      expect(f.matches(_item(code: 'NLN-1')), isFalse);
+    });
+
+    test('empty area matches every code', () {
+      expect(const ActivityFilter().matches(_item(code: 'VET-1')), isTrue);
+    });
+  });
+
+  group('quick filter bar', () {
+    // The bar scrolls horizontally; a phone-width test viewport builds only
+    // the first few chips, so the cases that reach a later chip widen the view.
+    Widget host(ActivityFilter initial, void Function(ActivityFilter) sink,
+        {List<String> areas = const []}) {
+      return MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => QuickFilterBar(
+              filter: initial,
+              areas: areas,
+              onChanged: (f) => setState(() {
+                initial = f;
+                sink(f);
+              }),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('one tap sets a filter and a second tap clears it',
+        (tester) async {
+      ActivityFilter? last;
+      await tester.pumpWidget(host(ActivityFilter.none, (f) => last = f));
+
+      await tester.tap(find.text('Overdue'));
+      await tester.pumpAndSettle();
+      expect(last?.due, DueBand.overdue);
+
+      await tester.tap(find.text('Overdue'));
+      await tester.pumpAndSettle();
+      expect(last?.due, DueBand.any);
+    });
+
+    testWidgets('All clears every dimension, including ones with no preset',
+        (tester) async {
+      ActivityFilter? last;
+      await tester.pumpWidget(host(
+        const ActivityFilter(
+            due: DueBand.late30, amount: AmountBand.over200k, area: 'NLN'),
+        (f) => last = f,
+      ));
+
+      await tester.tap(find.text('All'));
+      await tester.pumpAndSettle();
+
+      expect(last?.isActive, isFalse);
+      expect(last?.amount, AmountBand.any);
+      expect(last?.area, isEmpty);
+    });
+
+    testWidgets('a dimension with no preset shows as a removable chip',
+        (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      await tester.pumpWidget(host(
+        const ActivityFilter(amount: AmountBand.over200k),
+        (f) => last = f,
+      ));
+
+      expect(find.text('Over ₱200k'), findsOneWidget);
+      await tester.tap(find.text('Over ₱200k'));
+      await tester.pumpAndSettle();
+
+      expect(last?.amount, AmountBand.any);
+    });
+
+    testWidgets('areas present in the data are offered', (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      await tester.pumpWidget(host(ActivityFilter.none, (f) => last = f,
+          areas: const ['NLN', 'NCR']));
+
+      expect(find.text('North Luzon'), findsOneWidget);
+      expect(find.text('Visayas'), findsNothing);
+
+      await tester.tap(find.text('NCR'));
+      await tester.pumpAndSettle();
+      expect(last?.area, 'NCR');
     });
   });
 
