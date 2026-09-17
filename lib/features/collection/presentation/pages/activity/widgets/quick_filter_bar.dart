@@ -76,9 +76,9 @@ class QuickFilterBar extends StatelessWidget {
           _gap,
           // Orders, not filters: they hide nothing, so they never make the
           // list shorter and never count towards a filter being active.
-          _cyclingSort(_amountCycle),
+          _cyclingSort(_amountCycle, Iconsax.arrow_down, mirrorOnSecond: true),
           _gap,
-          _cyclingSort(_invoiceCycle),
+          _cyclingSort(_invoiceCycle, Iconsax.document_copy),
           _gap,
           for (final area in areas) ...[
             _toggle(
@@ -100,7 +100,7 @@ class QuickFilterBar extends StatelessWidget {
             _gap,
           ],
           if (filter.sort != defaultSort &&
-              !_cycledSorts.any((entry) => entry.$1 == filter.sort)) ...[
+              !_cycledSorts.contains(filter.sort)) ...[
             _removable(
               filter.sort.label,
               () => onChanged(filter.copyWith(sort: defaultSort)),
@@ -121,14 +121,19 @@ class QuickFilterBar extends StatelessWidget {
 
   /// The two directions of one order, in tap order. Descending first: asked
   /// for far more often than ascending, so it is the first tap.
+  ///
+  /// Both directions share one glyph, turned over for the second. The icon
+  /// set draws its own up and down arrows in different styles, so a pair of
+  /// them read as two unrelated icons rather than one control changing
+  /// direction; a half turn is an exact mirror.
   static const _amountCycle = [
-    (ActivitySort.amountHigh, Iconsax.arrow_down),
-    (ActivitySort.amountLow, Iconsax.arrow_up),
+    ActivitySort.amountHigh,
+    ActivitySort.amountLow,
   ];
 
   static const _invoiceCycle = [
-    (ActivitySort.mostInvoices, Iconsax.document_copy),
-    (ActivitySort.fewestInvoices, Iconsax.document),
+    ActivitySort.mostInvoices,
+    ActivitySort.fewestInvoices,
   ];
 
   /// Every sort a cycling chip can hold, so the removable tail below knows
@@ -141,17 +146,25 @@ class QuickFilterBar extends StatelessWidget {
   /// tapping again returns to [defaultSort], so the row never traps the list
   /// in an order with no way back. One chip rather than two keeps the row
   /// short enough to read without scrolling it.
-  Widget _cyclingSort(List<(ActivitySort, IconData)> cycle) {
-    final index = cycle.indexWhere((entry) => entry.$1 == filter.sort);
+  Widget _cyclingSort(
+    List<ActivitySort> cycle,
+    IconData icon, {
+    bool mirrorOnSecond = false,
+  }) {
+    final index = cycle.indexOf(filter.sort);
     final on = index >= 0;
-    final (shownSort, shownIcon) = on ? cycle[index] : cycle.first;
+    final shown = on ? cycle[index] : cycle.first;
     final next = !on
-        ? cycle.first.$1
-        : (index + 1 < cycle.length ? cycle[index + 1].$1 : defaultSort);
+        ? cycle.first
+        : (index + 1 < cycle.length ? cycle[index + 1] : defaultSort);
 
     return BQuickFillChip(
-      label: shownSort.label,
-      icon: shownIcon,
+      label: shown.label,
+      icon: icon,
+      // An arrow points down for the first direction and turns over for the
+      // second. Anything that is not an arrow keeps still: an upside-down
+      // document says nothing, and its label already carries the direction.
+      iconTurns: mirrorOnSecond && index > 0 ? 0.5 : 0,
       color: BCollectionColors.primary,
       selected: on,
       onTap: () => onChanged(filter.copyWith(sort: next)),

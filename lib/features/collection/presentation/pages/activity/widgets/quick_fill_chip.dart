@@ -16,6 +16,7 @@ class BQuickFillChip extends StatelessWidget {
     required this.onTap,
     this.selected = false,
     this.icon,
+    this.iconTurns = 0,
     this.color,
   });
 
@@ -23,6 +24,12 @@ class BQuickFillChip extends StatelessWidget {
   final VoidCallback onTap;
   final bool selected;
   final IconData? icon;
+
+  /// Rotation applied to [icon], in turns. Half a turn mirrors a glyph, which
+  /// is the only way to get an exact up/down pair: the icon set draws its own
+  /// up and down arrows in different styles, so they do not read as one
+  /// control changing direction.
+  final double iconTurns;
 
   /// Accent for the selected state. Defaults to the app primary.
   final Color? color;
@@ -61,9 +68,17 @@ class BQuickFillChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon,
-                    size: 16,
-                    color: selected ? accent : BCollectionColors.inkSecondary),
+                // Animated, so a chip that flips its arrow turns it over
+                // rather than swapping one glyph for another.
+                AnimatedRotation(
+                  turns: iconTurns,
+                  duration: _stateDuration,
+                  curve: Curves.easeOut,
+                  child: Icon(icon,
+                      size: 16,
+                      color:
+                          selected ? accent : BCollectionColors.inkSecondary),
+                ),
                 const SizedBox(width: BSizes.xs),
               ],
               // Flexible, so a long label ellipsizes inside the chip rather

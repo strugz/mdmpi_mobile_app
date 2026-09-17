@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_sheet.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
@@ -305,6 +306,43 @@ void main() {
       await tester.tap(find.text(ActivitySort.amountLow.label));
       await tester.pumpAndSettle();
       expect(last?.sort, ActivitySort.mostOverdue);
+    });
+
+    // The icon set draws its own up and down arrows in different styles, so
+    // the ascending one read as a stray triangle. One glyph, turned over.
+    testWidgets('the amount arrow is one glyph, mirrored for ascending',
+        (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      double turnsOn(String label) => tester
+          .widget<BQuickFillChip>(find.ancestor(
+            of: find.text(label),
+            matching: find.byType(BQuickFillChip),
+          ))
+          .iconTurns;
+
+      IconData? iconOn(String label) => tester
+          .widget<BQuickFillChip>(find.ancestor(
+            of: find.text(label),
+            matching: find.byType(BQuickFillChip),
+          ))
+          .icon;
+
+      await tester.pumpWidget(host(
+        const ActivityFilter(sort: ActivitySort.amountHigh),
+        (_) {},
+      ));
+      final descending = iconOn(ActivitySort.amountHigh.label);
+      expect(turnsOn(ActivitySort.amountHigh.label), 0);
+
+      await tester.tap(find.text(ActivitySort.amountHigh.label));
+      await tester.pumpAndSettle();
+
+      expect(iconOn(ActivitySort.amountLow.label), descending,
+          reason: 'same glyph, not a second arrow from the icon set');
+      expect(turnsOn(ActivitySort.amountLow.label), 0.5);
     });
 
     testWidgets('the invoice chip cycles most, fewest, off', (tester) async {
