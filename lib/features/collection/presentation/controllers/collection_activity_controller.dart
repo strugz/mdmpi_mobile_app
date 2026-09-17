@@ -596,6 +596,15 @@ class CollectionActivityController extends GetxController {
         final byCount = _byInvoiceCount(spec, matching, a, b);
         return byCount != 0 ? byCount : a.name.compareTo(b.name);
       });
+    } else if (spec.sort.isByAmount) {
+      // The figure on the card, which is the account's whole balance. Ordering
+      // by the leading invoice instead put an account holding one small
+      // invoice among thirty-eight at the top of "amount low to high".
+      accounts.sort((a, b) {
+        final due = _byAccountTotal(
+            spec, getAccountTotalDue(a.id), getAccountTotalDue(b.id));
+        return due != 0 ? due : a.name.compareTo(b.name);
+      });
     } else {
       accounts.sort((a, b) {
         final byLead = spec.compare(leading(a), leading(b));
@@ -604,6 +613,10 @@ class CollectionActivityController extends GetxController {
     }
     return accounts;
   }
+
+  /// Order two account totals by [spec]'s direction.
+  int _byAccountTotal(ActivityFilter spec, double a, double b) =>
+      spec.sort.isDescending ? b.compareTo(a) : a.compareTo(b);
 
   /// How many of this account's bucket invoices are past due — the strongest
   /// signal for which accounts to pick up today.
@@ -732,13 +745,11 @@ class CollectionActivityController extends GetxController {
         if (due != 0) return due;
         return a.name.compareTo(b.name);
       }
-      if (spec.sort == ActivitySort.amountHigh ||
-          spec.sort == ActivitySort.amountLow) {
-        final aDue = getActivityAccountTotalDue(a.id);
-        final bDue = getActivityAccountTotalDue(b.id);
-        final due = spec.sort == ActivitySort.amountHigh
-            ? bDue.compareTo(aDue)
-            : aDue.compareTo(bDue);
+      if (spec.sort.isByAmount) {
+        // The figure on the card: the account's whole balance, not one of
+        // its invoices.
+        final due = _byAccountTotal(spec, getActivityAccountTotalDue(a.id),
+            getActivityAccountTotalDue(b.id));
         if (due != 0) return due;
         return a.name.compareTo(b.name);
       }

@@ -59,10 +59,15 @@ enum AmountBand {
 
 /// Order of the list.
 ///
-/// [mostInvoices] and [fewestInvoices] are account-level: every invoice in an
-/// account shares its count, so ordering by them only means something between
-/// accounts. The controllers handle those two; [compare] falls back to the
-/// default order for them.
+/// Some orders are account-level: they are properties of the account, not of
+/// one of its invoices, so the controllers place accounts by them and
+/// [compare] only orders invoices within an account.
+///
+/// - [mostInvoices] / [fewestInvoices]: every invoice shares its account's
+///   count, so [compare] falls back to the default order for them.
+/// - [amountHigh] / [amountLow]: between accounts these mean the account's
+///   total due, the figure on its card. Inside one account they still mean
+///   the invoice's own amount, which is what [compare] returns.
 enum ActivitySort {
   mostOverdue('Most overdue'),
   amountHigh('Amount high to low'),
@@ -75,9 +80,18 @@ enum ActivitySort {
   const ActivitySort(this.label);
   final String label;
 
-  /// True when the order is a property of the account, not of one invoice.
+  /// True when the order counts an account's invoices.
   bool get isAccountLevel =>
       this == ActivitySort.mostInvoices || this == ActivitySort.fewestInvoices;
+
+  /// True when the order weighs money. Between accounts that is the account's
+  /// total due, so a list of accounts must not order by a single invoice.
+  bool get isByAmount =>
+      this == ActivitySort.amountHigh || this == ActivitySort.amountLow;
+
+  /// Descending for the "high to low" half of each pair.
+  bool get isDescending =>
+      this == ActivitySort.amountHigh || this == ActivitySort.mostInvoices;
 }
 
 /// The engagement list's filter and sort, as one value.
