@@ -14,6 +14,15 @@ class NavigationMenu extends StatelessWidget {
     final controller = Get.put(NavigationController());
 
     final dark = BHelperFunctions.isDarkMode(context);
+    final theme = Theme.of(context);
+
+    // The bar has to differ from the body behind it, or the curved notch and
+    // the sliding button disappear. On a white body (default theme) the bar
+    // is light grey; on an off-white body (Collection) it is white.
+    final onWhiteBody = theme.scaffoldBackgroundColor == Colors.white;
+    final barColor = dark
+        ? BColors.black
+        : (onWhiteBody ? BColors.light : theme.colorScheme.surface);
 
     // Same shell layout as before item 15 (SafeArea around the Scaffold, so the
     // area under the tab bar is the Scaffold's own background), minus the
@@ -27,7 +36,11 @@ class NavigationMenu extends StatelessWidget {
             onTap: (index) => controller.changeScreen(index),
             index: controller.selectedIndex.value,
             height: 70,
-            color: dark ? BColors.black : BColors.light,
+            color: barColor,
+            buttonBackgroundColor: barColor,
+            // The package default is 600ms, which reads as a lag when the
+            // tab is tapped many times a day.
+            animationDuration: const Duration(milliseconds: 300),
             items: controller.items,
           ),
         ),
