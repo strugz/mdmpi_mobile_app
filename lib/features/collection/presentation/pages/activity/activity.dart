@@ -35,7 +35,7 @@ class CollectionActivityScreen extends StatelessWidget {
 
               /// Search and Filter Bar
               Obx(() => CollectionSearchFilterBar(
-                    searchHint: 'Search by account name...',
+                    searchHint: 'Search accounts',
                     initialValue: controller.activitySearchQuery.value,
                     onSearchChanged: (value) =>
                         controller.activitySearchQuery.value = value,

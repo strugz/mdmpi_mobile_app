@@ -47,29 +47,43 @@ class BucketToolbar extends StatelessWidget {
         final hasArea = area.isNotEmpty;
         final summary = controller.bucketSummary;
 
+        final summaryStyle = theme.textTheme.bodySmall?.copyWith(
+          color: BCollectionColors.inkMuted,
+          fontWeight: FontWeight.w600,
+        );
+
         return Row(
           children: [
-            _AreaChip(
-              label: hasArea ? BCollectionArea.labelFor(area) : 'All areas',
-              active: hasArea,
-              onTap: () => _pickArea(context),
-              onClear:
-                  hasArea ? () => controller.selectedArea.value = '' : null,
-              duration: _stateDuration,
+            // The chip gives way first. Its label is one the collector just
+            // chose and can see selected, so losing characters there costs
+            // nothing; the total has no other source on this screen.
+            Flexible(
+              child: _AreaChip(
+                label: hasArea ? BCollectionArea.labelFor(area) : 'All areas',
+                active: hasArea,
+                onTap: () => _pickArea(context),
+                onClear:
+                    hasArea ? () => controller.selectedArea.value = '' : null,
+                duration: _stateDuration,
+              ),
             ),
             const SizedBox(width: BSizes.sm),
-            Expanded(
+            // The count goes before the money does. It is recoverable by
+            // looking at the list; the money is not.
+            Flexible(
               child: Text(
-                '${summary.accounts} account${summary.accounts == 1 ? '' : 's'} · ${compactPeso(summary.due)}',
+                '${summary.accounts} account${summary.accounts == 1 ? '' : 's'} ·',
                 textAlign: TextAlign.right,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: BCollectionColors.inkMuted,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: summaryStyle,
               ),
             ),
+            const SizedBox(width: 4),
+            // Never shrinks and never ellipsizes. A cut figure is not a
+            // shorter number, it is a wrong one: "₱4…" reads as four pesos
+            // and could be four hundred million.
+            Text(compactPeso(summary.due), maxLines: 1, style: summaryStyle),
           ],
         );
       }),
@@ -143,16 +157,21 @@ class _AreaChip extends StatelessWidget {
             children: [
               Icon(Iconsax.map, size: 15, color: accent),
               const SizedBox(width: BSizes.xs),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 140),
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: accent,
-                    fontSize: 13,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+              // Capped so a long territory never crowds the total, and
+              // Flexible so it can give up more than the cap when the row is
+              // tight. This is the label that ellipsizes on this line.
+              Flexible(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 140),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: accent,
+                      fontSize: 13,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

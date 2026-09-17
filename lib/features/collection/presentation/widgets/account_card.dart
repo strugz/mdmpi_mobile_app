@@ -19,9 +19,16 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.da
 /// already been settled, and whether any of it is late.
 ///
 /// It is also a row in a work queue rather than a feature card. A collector
-/// carries a stack of accounts, not one, so the layout is built to put eight
-/// of them on a phone screen: name and amount share the top line, and the
-/// rest is one line of metadata under it.
+/// carries a stack of accounts, not one, so the layout is built to fit as many
+/// as possible on a phone: the name across the full width, the amount on its
+/// own line under it, then one line of metadata.
+///
+/// The name and the amount shared the top line once, which left the name a
+/// fraction of the width. Hospital names are long here, so they broke early
+/// and truncated anyway — "Ace Diagnostics C…" under a near-empty first line —
+/// on the very screen whose job is finding an account by name. Full width
+/// fits most names on one line, so moving the amount down costs no height on
+/// a typical row and none of them lose their name.
 class AccountCard extends StatelessWidget {
   const AccountCard({
     super.key,
@@ -123,6 +130,8 @@ class AccountCard extends StatelessWidget {
           children: [
             _topLine(theme, address),
             const SizedBox(height: BSizes.xs),
+            _amountLine(theme),
+            const SizedBox(height: BSizes.xs),
             _meta(theme),
             if (totalCollected > 0) ...[
               const SizedBox(height: BSizes.sm),
@@ -163,8 +172,14 @@ class AccountCard extends StatelessWidget {
     );
   }
 
-  /// Name on the left, what is owed on the right. One line each way, so a
-  /// row costs about 80pt instead of 150 and the queue is scannable.
+  /// The name, across the whole card.
+  ///
+  /// The amount used to sit beside it, so the name got whatever width was
+  /// left: "Ace Diagnostics C…" broke early and still truncated, with a
+  /// near-empty first line above it. This is the list you find an account by
+  /// name in, so the name takes the full width and the amount moves to its
+  /// own line below. Most names now fit on one line, which buys back the line
+  /// the amount costs.
   Widget _topLine(ThemeData theme, String? address) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -194,42 +209,9 @@ class AccountCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: BSizes.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                BFormatter.formatPesoCurrency(
-                    _settled ? totalCollected : totalAmount),
-                maxLines: 1,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: 17,
-                  height: 1.2,
-                  fontWeight: FontWeight.w800,
-                  color: _settled
-                      ? BCollectionColors.success
-                      : BCollectionColors.primary,
-                ),
-              ),
-              // Only on the rows that are the exception. Every other row in
-              // this list is an outstanding balance, so labelling each one
-              // "outstanding" repeats the column heading seven times and
-              // costs a line per row.
-              if (_settled)
-                Text(
-                  'collected',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: BCollectionColors.success,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 10,
-                  ),
-                ),
-            ],
-          ),
           // The long-press selection mode is the only state that still needs
           // a trailing glyph; a selectable row carries its circle on the left.
-          // The info button moved into the metadata line, where it no longer
-          // competes with the amount for the strongest corner of the row.
+          // The info button lives in the metadata line.
           if (isSelectionMode && onSelectTap == null) ...[
             const SizedBox(width: BSizes.sm),
             Icon(
@@ -241,6 +223,50 @@ class AccountCard extends StatelessWidget {
             ),
           ],
         ],
+      );
+
+  /// What is owed, on its own line under the name.
+  ///
+  /// Indented to the name's left edge rather than the card's, so the amounts
+  /// still form a column that can be read down the list. Nothing shares the
+  /// line, so the figure is never squeezed and never truncated: a cut number
+  /// is a different number, not merely a shorter one.
+  Widget _amountLine(ThemeData theme) => Padding(
+        padding:
+            EdgeInsets.only(left: onSelectTap != null ? 40 + BSizes.sm : 0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(
+              BFormatter.formatPesoCurrency(
+                  _settled ? totalCollected : totalAmount),
+              maxLines: 1,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontSize: 17,
+                height: 1.2,
+                fontWeight: FontWeight.w800,
+                color: _settled
+                    ? BCollectionColors.success
+                    : BCollectionColors.primary,
+              ),
+            ),
+            // Only on the rows that are the exception. Every other row in this
+            // list is an outstanding balance, so labelling each one
+            // "outstanding" repeats the column heading down the whole screen.
+            if (_settled) ...[
+              const SizedBox(width: BSizes.xs),
+              Text(
+                'collected',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: BCollectionColors.success,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 10,
+                ),
+              ),
+            ],
+          ],
+        ),
       );
 
   /// Tick on the left. A 40pt target around a 22pt mark, because it is hit

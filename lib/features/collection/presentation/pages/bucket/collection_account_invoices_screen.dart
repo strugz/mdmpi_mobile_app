@@ -74,7 +74,7 @@ class _CollectionAccountInvoicesScreenState
           children: [
             /// Search and Filter Bar
             Obx(() => CollectionSearchFilterBar(
-                  searchHint: 'Search invoice ID or bank...',
+                  searchHint: 'Search invoice or bank',
                   initialValue: controller.invoiceSearchQuery.value,
                   onSearchChanged: (value) =>
                       controller.invoiceSearchQuery.value = value,

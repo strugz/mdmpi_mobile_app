@@ -214,14 +214,14 @@ void main() {
     testWidgets('the filters stay put while rows are ticked', (tester) async {
       _seeded();
       await pump(tester);
-      expect(find.text('Search by account name…'), findsOneWidget);
+      expect(find.text('Search accounts'), findsOneWidget);
 
       await tester.tap(find.bySemanticsLabel('Select Abbott Laboratories'));
       await tester.pumpAndSettle();
 
       // They used to collapse on the first tick, the search bar vanishing
       // under the collector's finger on the way to the second account.
-      expect(find.text('Search by account name…'), findsOneWidget);
+      expect(find.text('Search accounts'), findsOneWidget);
       expect(find.text('All areas'), findsOneWidget);
     });
 
@@ -261,10 +261,42 @@ void main() {
       expect(find.textContaining('Acquire'), findsNothing);
     });
 
+    // The count and the total are separate widgets so the total can refuse to
+    // shrink: it used to share one ellipsized line and got cut to "₱P…".
     testWidgets('the toolbar says how much is in view', (tester) async {
       _seeded();
       await pump(tester);
-      expect(find.text('3 accounts · ₱133k'), findsOneWidget);
+      expect(find.text('3 accounts ·'), findsOneWidget);
+      expect(find.text('₱133k'), findsOneWidget);
+    });
+
+    testWidgets('the total survives a long area name on a narrow phone',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      final c = Get.put<CollectionActivityController>(_Stub()) as _Stub;
+      c.startAggregateTracking();
+      // "Medical Imaging" is the longest chip label, and the largest figure
+      // is the one most likely to be cut.
+      final imaging = ClientModel(
+          id: '9',
+          code: 'RAD-1',
+          name: 'Philippine Diagnostic Imaging Center',
+          address: '',
+          contact: '',
+          emailAddress: '');
+      c.masterAccountList.assignAll([imaging]);
+      c.bucketItems.assignAll([_invoice('x', imaging, 12432110)]);
+      c.selectedArea.value = 'RAD';
+      await pump(tester);
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('Medical Imaging'), findsOneWidget);
+      final total = tester.widget<Text>(find.text('₱12.4M'));
+      expect(total.overflow, isNot(TextOverflow.ellipsis),
+          reason: 'a cut figure is a wrong figure, not a shorter one');
     });
   });
 }

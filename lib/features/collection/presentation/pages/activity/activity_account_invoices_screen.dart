@@ -205,7 +205,7 @@ class _CollectionActivityAccountInvoicesScreenState
                 /// Search and Filter Bar
                 if (!controller.isActivitySelectionMode.value)
                   Obx(() => CollectionSearchFilterBar(
-                        searchHint: 'Search invoice ID or bank...',
+                        searchHint: 'Search invoice or bank',
                         initialValue: controller.invoiceSearchQuery.value,
                         onSearchChanged: (value) =>
                             controller.invoiceSearchQuery.value = value,

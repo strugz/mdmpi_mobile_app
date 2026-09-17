@@ -110,7 +110,7 @@ class CollectionBucketScreen extends StatelessWidget {
         body: Column(
           children: [
             Obx(() => CollectionSearchFilterBar(
-                  searchHint: 'Search by account name…',
+                  searchHint: 'Search accounts',
                   initialValue: controller.bucketSearchQuery.value,
                   onSearchChanged: (value) =>
                       controller.bucketSearchQuery.value = value,
