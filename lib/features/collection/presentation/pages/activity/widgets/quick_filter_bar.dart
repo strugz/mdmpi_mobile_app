@@ -10,21 +10,20 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 /// One-tap filters under the search bar.
 ///
 /// The sheet behind the filter button holds every dimension; this row holds
-/// the four or five a collector reaches for every morning, so the common case
-/// costs one tap instead of four (open, choose, apply, close). It writes to
-/// the same [ActivityFilter], so the row, the sheet and the list never
-/// disagree.
+/// the two a collector reaches for every morning, how late the invoice is and
+/// which territory, so the common case costs one tap instead of four (open,
+/// choose, apply, close). It writes to the same [ActivityFilter], so the row,
+/// the sheet and the list never disagree.
 ///
 /// It doubles as the "what is filtering this list" display: a dimension the
-/// row has no preset for (an amount band, a sort) appears at the end as a
-/// removable chip, so there is one place to look and one place to undo.
+/// row has no preset for (an amount band, a last-visit outcome) appears at the
+/// end as a removable chip, so there is one place to look and one to undo.
 class QuickFilterBar extends StatelessWidget {
   const QuickFilterBar({
     super.key,
     required this.filter,
     required this.onChanged,
     this.areas = const [],
-    this.showOutcomes = true,
   });
 
   final ActivityFilter filter;
@@ -32,17 +31,6 @@ class QuickFilterBar extends StatelessWidget {
 
   /// Territory codes present in the data, offered after the presets.
   final List<String> areas;
-
-  /// Whether to offer the last-visit outcomes. False in the bucket, where
-  /// nothing has been engaged yet, so every account would answer "no visit".
-  final bool showOutcomes;
-
-  /// The presets, in the order a day is planned: how late first, then how the
-  /// last visit went.
-  static const _outcomePresets = [
-    CollectionStatusColors.statusFollowUp,
-    CollectionStatusColors.statusUnavailable,
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -83,17 +71,6 @@ class QuickFilterBar extends StatelessWidget {
                 filter.copyWith(due: on ? DueBand.late30 : DueBand.any),
           ),
           _gap,
-          if (showOutcomes)
-            for (final outcome in _outcomePresets) ...[
-              _toggle(
-                label: outcome,
-                icon: CollectionStatusColors.iconFor(outcome),
-                color: CollectionStatusColors.colorFor(outcome),
-                on: filter.outcomes.contains(outcome),
-                set: (_) => filter.toggleOutcome(outcome),
-              ),
-              _gap,
-            ],
           for (final area in areas) ...[
             _toggle(
               label: BCollectionArea.labelFor(area),
@@ -113,8 +90,7 @@ class QuickFilterBar extends StatelessWidget {
             ),
             _gap,
           ],
-          for (final outcome in filter.outcomes
-              .where((o) => !_outcomePresets.contains(o))) ...[
+          for (final outcome in filter.outcomes) ...[
             _removable(
               outcome,
               () => onChanged(filter.toggleOutcome(outcome)),

@@ -326,9 +326,9 @@ The filter applies to both the account list and each account's invoice list, so
 opening an account shows the invoices that put it on the list. The sheet
 (`ActivityFilterSheet`) edits a draft and its apply button carries a live count;
 a `QuickFilterBar` under the search bar carries the presets reached for every
-morning (overdue, late 30+, follow up, unavailable, each area) as one-tap
-chips, and shows anything set only in the sheet as a removable chip, so there
-is one place to see and undo what is filtering the list. Nothing here needs an
+morning (overdue, late 30+, each area) as one-tap chips, and shows anything set
+only in the sheet as a removable chip, so there is one place to see and undo
+what is filtering the list. Nothing here needs an
 API change.
 - `presentation/pages/activity/activity.dart`
 

@@ -92,7 +92,6 @@ class _CollectionAccountInvoicesScreenState
                 )),
             Obx(() => QuickFilterBar(
                   filter: controller.bucketFilterSpec.value,
-                  showOutcomes: false,
                   onChanged: (f) => controller.bucketFilterSpec.value = f,
                 )),
 

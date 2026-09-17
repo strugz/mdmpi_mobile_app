@@ -291,7 +291,9 @@ void main() {
 
     // Nothing in the bucket has been engaged, so every account would answer
     // the last-visit question the same way; the bucket hides it.
-    testWidgets('outcomes can be left out', (tester) async {
+    // The bar carries how-late and territory only. The outcomes live in the
+    // sheet, and show here as removable chips once set.
+    testWidgets('carries no outcome presets', (tester) async {
       tester.view.physicalSize = const Size(3000, 600);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -300,7 +302,6 @@ void main() {
         home: Scaffold(
           body: QuickFilterBar(
             filter: ActivityFilter.none,
-            showOutcomes: false,
             onChanged: (_) {},
           ),
         ),
@@ -309,6 +310,25 @@ void main() {
       expect(find.text('Overdue'), findsOneWidget);
       expect(find.text(CollectionStatusColors.statusFollowUp), findsNothing);
       expect(find.text(CollectionStatusColors.statusUnavailable), findsNothing);
+    });
+
+    testWidgets('an outcome set in the sheet shows here and can be removed',
+        (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      await tester.pumpWidget(host(
+        const ActivityFilter(outcomes: {CollectionStatusColors.statusFollowUp}),
+        (f) => last = f,
+      ));
+
+      expect(find.text(CollectionStatusColors.statusFollowUp), findsOneWidget);
+      await tester.tap(find.text(CollectionStatusColors.statusFollowUp));
+      await tester.pumpAndSettle();
+
+      expect(last?.outcomes, isEmpty);
     });
 
     testWidgets('areas present in the data are offered', (tester) async {
