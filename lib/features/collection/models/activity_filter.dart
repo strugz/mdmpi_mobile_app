@@ -14,6 +14,10 @@ enum DueBand {
   final String label;
 
   bool matches(CollectionItemModel item) {
+    // Computed per branch, not up front: "Any" is the common case and asking
+    // for the day count there parses a date for every invoice in the bucket
+    // on every rebuild, for an answer nothing reads.
+    if (this == DueBand.any) return true;
     final days = item.daysPastDue;
     return switch (this) {
       DueBand.any => true,

@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_filter_bar.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/acquiring_overlay.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_toolbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'collection_account_information_screen.dart';
@@ -43,9 +44,11 @@ class CollectionBucketScreen extends StatelessWidget {
   /// arriving, the list ↔ empty swap.
   static const Duration _stateDuration = Duration(milliseconds: 200);
 
-  void _acquireSelected(CollectionActivityController controller) {
+  /// Captured before the move, because the selection is cleared on the way
+  /// into it and the snackbar still has to name what was taken.
+  Future<void> _acquireSelected(CollectionActivityController controller) async {
     final summary = controller.selectionSummary;
-    controller.claimSelectedAccounts();
+    await controller.claimSelectedAccounts();
     BLoaders.successSnackBar(
       title: 'Accounts Acquired',
       message:
@@ -107,89 +110,103 @@ class CollectionBucketScreen extends StatelessWidget {
                 )
               : const SizedBox(width: double.infinity),
         ),
-        body: Column(
+        body: Stack(
           children: [
-            Obx(() => CollectionSearchFilterBar(
-                  searchHint: 'Search accounts',
-                  initialValue: controller.bucketSearchQuery.value,
-                  onSearchChanged: (value) =>
-                      controller.bucketSearchQuery.value = value,
-                  hasActiveFilter: controller.bucketFilterSpec.value.isActive,
-                  onFilterTap: () => _openFilter(context, controller),
-                )),
-            // The same one-tap filters as the engagement list, minus area:
-            // the toolbar below already owns that chip.
-            Obx(() => QuickFilterBar(
-                  filter: controller.bucketFilterSpec.value,
-                  defaultSort: ActivitySort.name,
-                  onChanged: (f) => controller.bucketFilterSpec.value = f,
-                )),
-            const BucketToolbar(),
-            Expanded(
-              child: Obx(() {
-                final accounts = controller.bucketAccounts;
+            Column(
+              children: [
+                Obx(() => CollectionSearchFilterBar(
+                      searchHint: 'Search accounts',
+                      initialValue: controller.bucketSearchQuery.value,
+                      onSearchChanged: (value) =>
+                          controller.bucketSearchQuery.value = value,
+                      hasActiveFilter:
+                          controller.bucketFilterSpec.value.isActive,
+                      onFilterTap: () => _openFilter(context, controller),
+                    )),
+                // The same one-tap filters as the engagement list, minus area:
+                // the toolbar below already owns that chip.
+                Obx(() => QuickFilterBar(
+                      filter: controller.bucketFilterSpec.value,
+                      defaultSort: ActivitySort.name,
+                      onChanged: (f) => controller.bucketFilterSpec.value = f,
+                    )),
+                const BucketToolbar(),
+                Expanded(
+                  child: Obx(() {
+                    final accounts = controller.bucketAccounts;
 
-                // Cross-fade between the list and the empty state so a
-                // filter that empties the list does not hard-cut to a
-                // different layout.
-                return AnimatedSwitcher(
-                  duration: _stateDuration,
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  child: accounts.isEmpty
-                      ? _BucketEmptyState(
-                          key: const ValueKey('empty'),
-                          filtered: controller.hasActiveBucketFilter,
-                          onClearFilters: controller.clearBucketFilters,
-                          onAddAccount: () => Get.toNamed(BRoutes.addToBucket),
-                        )
-                      : ListView.separated(
-                          key: const ValueKey('list'),
-                          padding: EdgeInsets.fromLTRB(
-                            BSizes.defaultSpace,
-                            BSizes.sm,
-                            BSizes.defaultSpace,
-                            // The last row clears the gesture bar when the
-                            // acquire bar is not there to do it.
-                            BSizes.defaultSpace +
-                                BDevicesUtils.systemBottomInset(context),
-                          ),
-                          itemCount: accounts.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: BSizes.sm),
-                          itemBuilder: (context, index) {
-                            final client = accounts[index];
-                            return Obx(() => AccountCard(
-                                  client: client,
-                                  invoiceCount: controller
-                                      .getAccountInvoiceCount(client.id),
-                                  totalAmount:
-                                      controller.getAccountTotalDue(client.id),
-                                  totalCollected: controller
-                                      .getAccountTotalCollected(client.id),
-                                  overdueCount: controller
-                                      .getBucketAccountOverdueCount(client.id),
-                                  isSelected: controller.selectedAccountIds
-                                      .contains(client.id),
-                                  // The whole card is the target for the
-                                  // thing this screen is for. The circle is
-                                  // the state, not the only place to tap.
-                                  onTap: () => controller
-                                      .toggleAccountSelection(client.id),
-                                  onSelectTap: () => controller
-                                      .toggleAccountSelection(client.id),
-                                  // Kept as a shortcut for anyone used to it.
-                                  onLongPress: () => controller
-                                      .toggleAccountSelection(client.id),
-                                  // The one way into the account's page, and
-                                  // labelled as such.
-                                  onInfoTap: () => _openAccount(client),
-                                ));
-                          },
-                        ),
-                );
-              }),
+                    // Cross-fade between the list and the empty state so a
+                    // filter that empties the list does not hard-cut to a
+                    // different layout.
+                    return AnimatedSwitcher(
+                      duration: _stateDuration,
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      child: accounts.isEmpty
+                          ? _BucketEmptyState(
+                              key: const ValueKey('empty'),
+                              filtered: controller.hasActiveBucketFilter,
+                              onClearFilters: controller.clearBucketFilters,
+                              onAddAccount: () =>
+                                  Get.toNamed(BRoutes.addToBucket),
+                            )
+                          : ListView.separated(
+                              key: const ValueKey('list'),
+                              padding: EdgeInsets.fromLTRB(
+                                BSizes.defaultSpace,
+                                BSizes.sm,
+                                BSizes.defaultSpace,
+                                // The last row clears the gesture bar when the
+                                // acquire bar is not there to do it.
+                                BSizes.defaultSpace +
+                                    BDevicesUtils.systemBottomInset(context),
+                              ),
+                              itemCount: accounts.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: BSizes.sm),
+                              itemBuilder: (context, index) {
+                                final client = accounts[index];
+                                return Obx(() => AccountCard(
+                                      client: client,
+                                      invoiceCount: controller
+                                          .getAccountInvoiceCount(client.id),
+                                      totalAmount: controller
+                                          .getAccountTotalDue(client.id),
+                                      totalCollected: controller
+                                          .getAccountTotalCollected(client.id),
+                                      overdueCount: controller
+                                          .getBucketAccountOverdueCount(
+                                              client.id),
+                                      isSelected: controller.selectedAccountIds
+                                          .contains(client.id),
+                                      // The whole card is the target for the
+                                      // thing this screen is for. The circle is
+                                      // the state, not the only place to tap.
+                                      onTap: () => controller
+                                          .toggleAccountSelection(client.id),
+                                      onSelectTap: () => controller
+                                          .toggleAccountSelection(client.id),
+                                      // Kept as a shortcut for anyone used to it.
+                                      onLongPress: () => controller
+                                          .toggleAccountSelection(client.id),
+                                      // The one way into the account's page, and
+                                      // labelled as such.
+                                      onInfoTap: () => _openAccount(client),
+                                    ));
+                              },
+                            ),
+                    );
+                  }),
+                ),
+              ],
             ),
+            // Covers the list while the acquire writes, so a long write reads
+            // as work rather than as a list that stopped responding.
+            Obx(() => AcquiringOverlay(
+                  visible: controller.isAcquiring.value,
+                  invoiceCount: controller.acquiringInvoices.value,
+                  accountCount: controller.acquiringAccounts.value,
+                )),
           ],
         ),
       );

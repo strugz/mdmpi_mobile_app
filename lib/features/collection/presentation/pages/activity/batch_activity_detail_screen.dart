@@ -50,8 +50,25 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   late final TextEditingController checkNumberController;
   late final TextEditingController checkDateController;
 
+  /// What each row has been allocated, and any remark typed on it.
+  ///
+  /// These are the record; the text fields are a view onto them. An eager
+  /// screen kept the figures inside 2,190 `TextEditingController`s built in
+  /// `initState`, so opening a 1,095-invoice batch paid for every row before
+  /// drawing one. Now the maps carry the state, rows get a controller the
+  /// first time they are actually built, and Distribute still reaches every
+  /// invoice because it writes here rather than into fields.
+  final Map<String, double> itemAmounts = {};
+  final Map<String, String> itemRemarks = {};
+
+  /// Controllers for rows that have been on screen. Created on demand and
+  /// kept afterwards, so scrolling back does not lose a cursor position.
   final Map<String, TextEditingController> itemAmountControllers = {};
   final Map<String, TextEditingController> itemRemarkControllers = {};
+
+  /// Running total of [itemAmounts]. Kept as a sum rather than recomputed,
+  /// because the bottom bar reads it on every keystroke.
+  double _allocated = 0;
 
   final Map<String, String> itemStatuses = {};
   final Map<String, String> itemOthersRemarks = {};
@@ -76,16 +93,12 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   /// Currency rounding: anything under half a centavo is agreement.
   static const double _tolerance = 0.005;
 
-  double get _totalDue =>
+  /// Computed once: on a large batch this is a thousand additions, and the
+  /// bottom bar would otherwise redo them on every keystroke.
+  late final double _totalDue =
       widget.items.fold(0, (sum, item) => sum + item.toBeCollected);
 
-  double get _allocatedTotal {
-    double total = 0;
-    for (final controller in itemAmountControllers.values) {
-      total += BFormatter.parseAmount(controller.text);
-    }
-    return total;
-  }
+  double get _allocatedTotal => _allocated;
 
   double get _targetTotal => BFormatter.parseAmount(totalAmountController.text);
 
@@ -96,15 +109,86 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   /// Rows that took no money and have had no outcome chosen for them. The
   /// collector selected these invoices, so what happened to them is a
   /// question worth one tap rather than a guess worth recording.
-  List<CollectionItemModel> get _undecided => [
-        for (final item in widget.items)
-          if ((itemStatuses[item.id] ?? '').isEmpty) item,
-      ];
+  /// A count rather than a list: the bottom bar reads it on every keystroke,
+  /// and on a large batch the list was a thousand-entry allocation nothing
+  /// looked inside.
+  int get _undecided {
+    var count = 0;
+    for (final item in widget.items) {
+      if ((itemStatuses[item.id] ?? '').isEmpty) count++;
+    }
+    return count;
+  }
 
-  bool get _canSave => _isBalanced && _undecided.isEmpty;
+  bool get _canSave => _isBalanced && _undecided == 0;
 
-  double _amountFor(String id) =>
-      BFormatter.parseAmount(itemAmountControllers[id]!.text);
+  double _amountFor(String id) => itemAmounts[id] ?? 0;
+
+  /// The field for a row, built the first time that row is drawn.
+  TextEditingController _amountControllerFor(CollectionItemModel item) {
+    final existing = itemAmountControllers[item.id];
+    if (existing != null) return existing;
+
+    final controller = TextEditingController(text: _amountText(_amountFor(item.id)))
+      ..addListener(() {
+        final typed = BFormatter.parseAmount(itemAmountControllers[item.id]!.text);
+        if (typed == _amountFor(item.id)) return;
+        setState(() => _writeAmount(item, typed));
+      });
+    return itemAmountControllers[item.id] = controller;
+  }
+
+  TextEditingController _remarkControllerFor(CollectionItemModel item) {
+    final existing = itemRemarkControllers[item.id];
+    if (existing != null) return existing;
+
+    final controller = TextEditingController(text: itemRemarks[item.id] ?? '')
+      ..addListener(() {
+        itemRemarks[item.id] = itemRemarkControllers[item.id]!.text;
+      });
+    return itemRemarkControllers[item.id] = controller;
+  }
+
+  String _amountText(double amount) => amount <= 0
+      ? ''
+      : BFormatter.formatPesoCurrency(amount, includeSymbol: false).trim();
+
+  /// Record what a row was allocated, keeping the running total, the row's
+  /// outcome and its field — if it has one yet — in step.
+  ///
+  /// Call inside `setState`.
+  void _writeAmount(CollectionItemModel item, double amount) {
+    final previous = _amountFor(item.id);
+    if (previous != amount) {
+      _allocated += amount - previous;
+      if (amount <= 0) {
+        itemAmounts.remove(item.id);
+      } else {
+        itemAmounts[item.id] = amount;
+      }
+    }
+
+    // Written in code rather than typed: the field does not pass through its
+    // input formatter, so it is set the way the formatter would have.
+    // Only for rows that have a field. Formatting is not free, and on a
+    // Distribute across a thousand invoices most rows have none to update.
+    final field = itemAmountControllers[item.id];
+    if (field != null) {
+      final text = _amountText(amount);
+      if (field.text != text) {
+        field.value = TextEditingValue(
+          text: text,
+          selection: TextSelection.collapsed(offset: text.length),
+        );
+      }
+    }
+
+    if (_statusSetByHand.contains(item.id)) return;
+    // Clearing the amount takes the outcome back with it, so a row never
+    // keeps an outcome that its figures no longer support.
+    itemStatuses[item.id] =
+        CollectionOutcome.forAmount(amount, item.toBeCollected) ?? '';
+  }
 
   /// Whether what is still unallocated could be added to this row without
   /// taking it past what the invoice owes.
@@ -163,15 +247,10 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         ? CollectionActivityController.instance.recentBankNames()
         : const <String>[];
 
-    for (final item in widget.items) {
-      itemAmountControllers[item.id] = TextEditingController()
-        ..addListener(() => _onRowAmountChanged(item));
-      itemRemarkControllers[item.id] = TextEditingController();
-      // Deliberately unset. Every row used to open pre-marked "Collected",
-      // which meant a row left at zero was still recorded as collected in
-      // full. Nothing has happened to these invoices yet, so they say so.
-      itemStatuses[item.id] = '';
-    }
+    // Outcomes start deliberately unset — a missing entry reads as ''. Every
+    // row used to open pre-marked "Collected", which meant a row left at zero
+    // was still recorded as collected in full. Nothing has happened to these
+    // invoices yet, so they say so.
 
     totalAmountController.addListener(() => setState(() {}));
   }
@@ -191,21 +270,10 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     super.dispose();
   }
 
-  void _onRowAmountChanged(CollectionItemModel item) {
-    if (_statusSetByHand.contains(item.id)) return;
-    final implied =
-        CollectionOutcome.forAmount(_amountFor(item.id), item.toBeCollected);
-    // Clearing the amount takes the outcome back with it, so a row never
-    // keeps an outcome that its figures no longer support.
-    setState(() => itemStatuses[item.id] = implied ?? '');
-  }
-
   /// Write [amount] into a field the way the input formatter would, since a
   /// value set in code does not pass through it.
   void _setAmount(TextEditingController controller, double amount) {
-    final text = amount <= 0
-        ? ''
-        : BFormatter.formatPesoCurrency(amount, includeSymbol: false).trim();
+    final text = _amountText(amount);
     controller.value = TextEditingValue(
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
@@ -217,22 +285,24 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   /// applied, and it is the reason this screen exists.
   void _distribute() {
     var left = _targetTotal;
-    for (final item in widget.items) {
-      final share = left <= 0
-          ? 0.0
-          : (left < item.toBeCollected ? left : item.toBeCollected);
-      _setAmount(itemAmountControllers[item.id]!, share);
-      left -= share;
-    }
+    setState(() {
+      for (final item in widget.items) {
+        final share = left <= 0
+            ? 0.0
+            : (left < item.toBeCollected ? left : item.toBeCollected);
+        _writeAmount(item, share);
+        left -= share;
+      }
+    });
     FocusManager.instance.primaryFocus?.unfocus();
-    setState(() {});
   }
 
   void _clearAllocation() {
-    for (final controller in itemAmountControllers.values) {
-      _setAmount(controller, 0);
-    }
-    setState(() {});
+    setState(() {
+      for (final item in widget.items) {
+        _writeAmount(item, 0);
+      }
+    });
   }
 
   void _saveBatch() {
@@ -247,7 +317,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     for (final item in widget.items) {
       finalAmounts[item.id] = _amountFor(item.id);
 
-      var remark = itemRemarkControllers[item.id]!.text.trim();
+      var remark = (itemRemarks[item.id] ?? '').trim();
       if (itemStatuses[item.id] == CollectionStatusColors.statusOthers) {
         finalStatuses[item.id] = itemOthersRemarks[item.id]?.isNotEmpty == true
             ? itemOthersRemarks[item.id]!
@@ -286,29 +356,53 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text('Record ${widget.items.length} invoices')),
-      body: ListView(
+      // Header first, then one row per invoice. The order is what the
+      // collector decides in: how much was handed over, how it was paid, and
+      // only then how it lands across the invoices.
+      //
+      // "Paid by check" used to sit after the last invoice row. On a batch of
+      // 1,095 that put a switch some 140,000 pixels down the page, which is
+      // over a minute of continuous flicking — unreachable in practice. It is
+      // a property of the payment, not of any one invoice, so it belongs with
+      // the amount.
+      //
+      // And builder, not a children list: the eager form built all 1,095 rows
+      // before the first frame.
+      body: ListView.builder(
         padding: const EdgeInsets.fromLTRB(
           BSizes.defaultSpace,
           BSizes.defaultSpace,
           BSizes.defaultSpace,
           BSizes.spaceBtwSections,
         ),
-        children: [
-          _amountReceived(context),
-          const SizedBox(height: BSizes.spaceBtwSections),
-          _allocationHeader(context),
-          const SizedBox(height: BSizes.spaceBtwItems),
-          for (final item in widget.items) ...[
-            _invoiceRow(context, item),
-            const SizedBox(height: BSizes.spaceBtwItems),
-          ],
-          const SizedBox(height: BSizes.sm),
-          _methodSection(context),
-        ],
+        // One header, then the invoices.
+        itemCount: widget.items.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) return _header(context);
+          final item = widget.items[index - 1];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: BSizes.spaceBtwItems),
+            child: _invoiceRow(context, item),
+          );
+        },
       ),
       bottomNavigationBar: _bottomBar(context),
     );
   }
+
+  /// Everything above the invoice rows: what was handed over, how it was
+  /// paid, and the controls that spread it across the list below.
+  Widget _header(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _amountReceived(context),
+          const SizedBox(height: BSizes.spaceBtwItems),
+          _methodSection(context),
+          const SizedBox(height: BSizes.spaceBtwSections),
+          _allocationHeader(context),
+          const SizedBox(height: BSizes.spaceBtwItems),
+        ],
+      );
 
   /// What was handed over. First, because it is the one figure the collector
   /// already knows when they open this screen.
@@ -459,7 +553,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
               Expanded(
                 child: TextField(
                   key: ValueKey('batch-amount-${item.id}'),
-                  controller: itemAmountControllers[item.id],
+                  controller: _amountControllerFor(item),
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
@@ -474,8 +568,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
               BQuickFillChip(
                 label: 'Full',
                 onTap: () {
-                  _setAmount(
-                      itemAmountControllers[item.id]!, item.toBeCollected);
+                  setState(() => _writeAmount(item, item.toBeCollected));
                   FocusManager.instance.primaryFocus?.unfocus();
                 },
               ),
@@ -493,8 +586,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                     'Add the remaining ${BFormatter.formatPesoCurrency(_unallocated)}',
                 icon: Iconsax.add_circle,
                 onTap: () {
-                  _setAmount(itemAmountControllers[item.id]!,
-                      allocated + _unallocated);
+                  setState(() => _writeAmount(item, allocated + _unallocated));
                   FocusManager.instance.primaryFocus?.unfocus();
                 },
               ),
@@ -522,7 +614,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             const SizedBox(height: BSizes.spaceBtwItemsLight),
             TextField(
               key: ValueKey('batch-remark-${item.id}'),
-              controller: itemRemarkControllers[item.id],
+              controller: _remarkControllerFor(item),
               autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Remark',
@@ -668,7 +760,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     final balanced = _isBalanced;
     final over = _unallocated < -_tolerance;
     final noTarget = _targetTotal <= 0;
-    final undecided = _undecided.length;
+    final undecided = _undecided;
 
     final (Color color, IconData icon, String message) = noTarget
         ? (

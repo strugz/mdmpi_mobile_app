@@ -1355,24 +1355,37 @@ class CollectionActivityController extends GetxController {
 
   /// Claim items by IDs (move to activity).
   /// Updates both UI and calls repository for persistence.
+  ///
+  /// One pass, two notifications. It used to search the bucket for each id in
+  /// turn and add/remove one invoice at a time, so acquiring an account of
+  /// 1,095 invoices did a million comparisons and fired 2,190 list changes,
+  /// each waking every Obx on the screen. That was 400ms of frozen UI.
   Future<void> claimItemsByIds(List<String> ids) async {
     if (ids.isEmpty) return;
 
     try {
-      // Update UI optimistically
+      final wanted = ids.toSet();
       final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-      for (final id in ids) {
-        final index = bucketItems.indexWhere((e) => e.id == id);
-        if (index == -1) continue;
-        final item = bucketItems[index];
-        final moved = item.copyWith(
-          status: item.status == 'Reconciliation' ? 'Reconciliation' : '',
-          assignedAt: now,
-        );
-        activityItems.add(moved);
-        bucketItems.removeAt(index);
+
+      final keep = <CollectionItemModel>[];
+      final moved = <CollectionItemModel>[];
+      for (final item in bucketItems) {
+        if (wanted.contains(item.id)) {
+          moved.add(item.copyWith(
+            status: item.status == 'Reconciliation' ? 'Reconciliation' : '',
+            assignedAt: now,
+          ));
+        } else {
+          keep.add(item);
+        }
       }
-      selectedBucketIds.removeWhere((id) => ids.contains(id));
+      if (moved.isEmpty) return;
+
+      // Assign whole lists rather than mutating per item: two notifications
+      // instead of two per invoice.
+      activityItems.addAll(moved);
+      bucketItems.assignAll(keep);
+      selectedBucketIds.removeWhere(wanted.contains);
 
       // Persist to repository
       await repository.claimItemsByIds(ids, silent: true);
@@ -1409,15 +1422,59 @@ class CollectionActivityController extends GetxController {
     selectedAccountIds.clear();
   }
 
-  void claimSelectedAccounts() {
+  /// True while an acquire is writing. Drives the overlay that covers the
+  /// bucket, so a long write reads as work rather than as a frozen list.
+  final RxBool isAcquiring = false.obs;
+
+  /// What the running acquire is moving, for the overlay's copy. Set before
+  /// the selection is cleared, so the figures do not fall to zero mid-write.
+  final RxInt acquiringInvoices = 0.obs;
+  final RxInt acquiringAccounts = 0.obs;
+
+  /// Move every invoice of every ticked account into Field Engagement.
+  ///
+  /// Gathers the ids in one pass and claims them once, rather than calling
+  /// [claimAccount] per account: that rescanned the whole bucket for each of
+  /// them and made a separate repository round trip each time, so ticking 265
+  /// accounts meant 265 scans and 265 writes.
+  Future<void> claimSelectedAccounts() async {
     if (selectedAccountIds.isEmpty) return;
 
-    final idsToClaim = selectedAccountIds.toList();
-    for (final clientId in idsToClaim) {
-      claimAccount(clientId);
+    final wantedClients = selectedAccountIds.toSet();
+    // An account marked for reconciliation contributes only those invoices,
+    // matching what claimAccount does for a single account.
+    final reconByClient = <String, List<String>>{};
+    final allByClient = <String, List<String>>{};
+    for (final item in bucketItems) {
+      if (!wantedClients.contains(item.client.id)) continue;
+      allByClient.putIfAbsent(item.client.id, () => []).add(item.id);
+      if (item.status == 'Reconciliation') {
+        reconByClient.putIfAbsent(item.client.id, () => []).add(item.id);
+      }
     }
 
+    final ids = <String>[];
+    for (final clientId in wantedClients) {
+      final recon = reconByClient[clientId];
+      ids.addAll(recon ?? allByClient[clientId] ?? const []);
+    }
+    if (ids.isEmpty) {
+      exitSelectionMode();
+      return;
+    }
+
+    acquiringInvoices.value = ids.length;
+    acquiringAccounts.value = wantedClients.length;
     exitSelectionMode();
+    isAcquiring.value = true;
+    try {
+      await claimItemsByIds(ids);
+      logDebug('[CollectionActivityController] Claimed ${ids.length} invoices '
+          'across ${wantedClients.length} accounts');
+    } finally {
+      // In a finally so a failed write cannot leave the bucket covered.
+      isAcquiring.value = false;
+    }
   }
 
   /// Save activity for an invoice item.
