@@ -53,209 +53,235 @@ class CollectionHomeScreen extends StatelessWidget {
         maxScaleFactor: _maxTextScale,
         child: Stack(
           children: [
-            SingleChildScrollView(
-              child: Column(
-                children: [
-                  // Header
-                  const BPrimaryHeaderContainer(
-                    color: BCollectionColors.headerBackground,
+            // The dashboard is a fixed set of blocks, nothing incremental,
+            // so it is laid out to fit the viewport: the history panel takes
+            // whatever height is left. Scrolling stays only as a fallback
+            // for a screen shorter than the content (small phone, large
+            // text), where a clipped layout would be worse than a scroll.
+            LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: IntrinsicHeight(
                     child: Column(
                       children: [
-                        BHomeAppBar(),
-                        SizedBox(height: BSizes.spaceBtwSections),
-                      ],
-                    ),
-                  ),
-
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: _margin),
-                    child: Column(
-                      children: [
-                        // Money at a glance: one card, two figures.
-                        CollectionTotalsCard(
-                          onActualTap: () => Get.to(
-                            () => const MonthlySummaryScreen(type: 'Deposit'),
-                            transition: _pageTransition,
-                            duration: _pageDuration,
-                          ),
-                          onCollectedTap: () => Get.to(
-                            () =>
-                                const MonthlySummaryScreen(type: 'Collection'),
-                            transition: _pageTransition,
-                            duration: _pageDuration,
-                          ),
-                        ),
-                        const SizedBox(height: _gap),
-
-                        // Collection bucket
-                        Obx(() => CollectionBucketButton(
-                              itemCount: controller.bucketItems.length,
-                              onTap: () => Get.to(
-                                () => const CollectionBucketScreen(),
-                                transition: _pageTransition,
-                                duration: _pageDuration,
-                                curve: Curves.easeInOut,
-                              ),
-                            )),
-                        const SizedBox(height: _gap),
-
-                        // Download bucket / Upload (offline sync controls)
-                        const CollectionSyncBar(),
-                        const SizedBox(height: _sectionGap),
-
-                        // Summary tiles: one card at a time, swipe between
-                        // them. The mirror flip is driven by scroll offset,
-                        // so it follows the finger. Obx wraps the whole
-                        // carousel so every figure stays live.
-                        Obx(() => CollectionSummaryCarousel(
-                              pages: [
-                                CollectionSummaryPage(
-                                  title: 'Settled',
-                                  value: controller.completedItems.length
-                                      .toString(),
-                                  icon: Iconsax.tick_circle,
-                                  color: BCollectionColors.success,
-                                  onTap: () => _openCategory(
-                                      'Settled', BCollectionColors.success),
-                                ),
-                                CollectionSummaryPage(
-                                  title: 'Due Date',
-                                  value:
-                                      controller.overdueItems.length.toString(),
-                                  icon: Iconsax.timer,
-                                  color: BCollectionColors.danger,
-                                  onTap: () => _openCategory(
-                                      'Due Date', BCollectionColors.danger),
-                                ),
-                                CollectionSummaryPage(
-                                  title: 'Reconciliation',
-                                  value: controller.reconciliationItems.length
-                                      .toString(),
-                                  icon: Iconsax.status_up,
-                                  color: BCollectionColors.reconcile,
-                                  onTap: () => _openCategory('Reconciliation',
-                                      BCollectionColors.reconcile),
-                                ),
-                                CollectionSummaryPage(
-                                  title: 'Advanced Payment',
-                                  value: controller.advancedPaymentsCount
-                                      .toString(),
-                                  icon: Iconsax.card_send,
-                                  color: BCollectionColors.warning,
-                                  onTap: () => _openCategory('Advanced Payment',
-                                      BCollectionColors.warning),
-                                ),
-                              ],
-                            )),
-                        const SizedBox(height: _sectionGap),
-                      ],
-                    ),
-                  ),
-
-                  // Bottom: Recent Activities
-                  Container(
-                    decoration: BoxDecoration(
-                      color: BCollectionColors.surface,
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(BSizes.borderRadiusLg)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: BCollectionColors.ink.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, -5),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: _margin),
-                      child: Column(
-                        children: [
-                          // Recent Activities Header with Show All button
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        // Header
+                        const BPrimaryHeaderContainer(
+                          color: BCollectionColors.headerBackground,
+                          child: Column(
                             children: [
-                              // Expanded bounds the heading's width inside this Row
-                              // (its internal Row uses Expanded for ellipsizing).
-                              const Expanded(
-                                child: BSectionSubHeading(
-                                  title: BTexts.collectionHomeSubTitle1,
-                                  showActionButton: false,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () => Get.to(
-                                  () => const RecentActivitiesScreen(),
+                              BHomeAppBar(),
+                              SizedBox(height: BSizes.spaceBtwSections),
+                            ],
+                          ),
+                        ),
+
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: _margin),
+                          child: Column(
+                            children: [
+                              // Money at a glance: one card, two figures.
+                              CollectionTotalsCard(
+                                onActualTap: () => Get.to(
+                                  () => const MonthlySummaryScreen(
+                                      type: 'Deposit'),
                                   transition: _pageTransition,
                                   duration: _pageDuration,
                                 ),
-                                child: const Text('Show All'),
+                                onCollectedTap: () => Get.to(
+                                  () => const MonthlySummaryScreen(
+                                      type: 'Collection'),
+                                  transition: _pageTransition,
+                                  duration: _pageDuration,
+                                ),
                               ),
+                              const SizedBox(height: _gap),
+
+                              // Collection bucket
+                              Obx(() => CollectionBucketButton(
+                                    itemCount: controller.bucketItems.length,
+                                    onTap: () => Get.to(
+                                      () => const CollectionBucketScreen(),
+                                      transition: _pageTransition,
+                                      duration: _pageDuration,
+                                      curve: Curves.easeInOut,
+                                    ),
+                                  )),
+                              const SizedBox(height: _gap),
+
+                              // Download bucket / Upload (offline sync controls)
+                              const CollectionSyncBar(),
+                              const SizedBox(height: _sectionGap),
+
+                              // Summary tiles: one card at a time, swipe between
+                              // them. The mirror flip is driven by scroll offset,
+                              // so it follows the finger. Obx wraps the whole
+                              // carousel so every figure stays live.
+                              Obx(() => CollectionSummaryCarousel(
+                                    pages: [
+                                      CollectionSummaryPage(
+                                        title: 'Settled',
+                                        value: controller.completedItems.length
+                                            .toString(),
+                                        icon: Iconsax.tick_circle,
+                                        color: BCollectionColors.success,
+                                        onTap: () => _openCategory('Settled',
+                                            BCollectionColors.success),
+                                      ),
+                                      CollectionSummaryPage(
+                                        title: 'Due Date',
+                                        value: controller.overdueItems.length
+                                            .toString(),
+                                        icon: Iconsax.timer,
+                                        color: BCollectionColors.danger,
+                                        onTap: () => _openCategory('Due Date',
+                                            BCollectionColors.danger),
+                                      ),
+                                      CollectionSummaryPage(
+                                        title: 'Reconciliation',
+                                        value: controller
+                                            .reconciliationItems.length
+                                            .toString(),
+                                        icon: Iconsax.status_up,
+                                        color: BCollectionColors.reconcile,
+                                        onTap: () => _openCategory(
+                                            'Reconciliation',
+                                            BCollectionColors.reconcile),
+                                      ),
+                                      CollectionSummaryPage(
+                                        title: 'Advanced Payment',
+                                        value: controller.advancedPaymentsCount
+                                            .toString(),
+                                        icon: Iconsax.card_send,
+                                        color: BCollectionColors.warning,
+                                        onTap: () => _openCategory(
+                                            'Advanced Payment',
+                                            BCollectionColors.warning),
+                                      ),
+                                    ],
+                                  )),
+                              const SizedBox(height: _sectionGap),
                             ],
                           ),
+                        ),
 
-                          Obx(() {
-                            final recentItems = controller.allRecentHistory;
-
-                            if (recentItems.isEmpty) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: BSizes.lg),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Iconsax.clock,
-                                        size: 48,
-                                        color: BCollectionColors.inkMuted),
-                                    const SizedBox(height: BSizes.sm),
-                                    Text(
-                                      'No engagement history yet',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                              color:
-                                                  BCollectionColors.inkMuted),
-                                    ),
-                                  ],
+                        // Bottom: Recent Activities. Fills the rest of the screen.
+                        Expanded(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: BCollectionColors.surface,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(BSizes.borderRadiusLg)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: BCollectionColors.ink
+                                      .withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, -5),
                                 ),
-                              );
-                            }
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: _margin),
+                              child: Column(
+                                children: [
+                                  // Recent Activities Header with Show All button
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Expanded bounds the heading's width inside this Row
+                                      // (its internal Row uses Expanded for ellipsizing).
+                                      const Expanded(
+                                        child: BSectionSubHeading(
+                                          title: BTexts.collectionHomeSubTitle1,
+                                          showActionButton: false,
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Get.to(
+                                          () => const RecentActivitiesScreen(),
+                                          transition: _pageTransition,
+                                          duration: _pageDuration,
+                                        ),
+                                        child: const Text('Show All'),
+                                      ),
+                                    ],
+                                  ),
 
-                            // The seven most recent entries, one per page;
-                            // Show All has the rest. Cards are keyed by entry
-                            // so a refresh does not rebuild every page.
-                            final recent = recentItems.take(7).toList();
-                            final cards = [
-                              for (final e in recent)
-                                ActivityHistoryCard(
-                                  key: ValueKey(e['history']),
-                                  history:
-                                      e['history'] as CollectionHistoryModel,
-                                  accountName: e['accountName'].toString(),
-                                  invoiceId: e['invoiceId']?.toString(),
-                                  item: e['item'] as CollectionItemModel?,
-                                  margin: EdgeInsets.zero,
-                                ),
-                            ];
+                                  Obx(() {
+                                    final recentItems =
+                                        controller.allRecentHistory;
 
-                            return BMirrorCarousel(
-                              itemCount: cards.length,
-                              height: _historyCardHeight,
-                              onSettleTap: (i) => cards[i].showDetail(context),
-                              itemBuilder: (context, i) => Align(
-                                alignment: Alignment.topCenter,
-                                child: cards[i],
+                                    if (recentItems.isEmpty) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: BSizes.lg),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(Iconsax.clock,
+                                                size: 48,
+                                                color:
+                                                    BCollectionColors.inkMuted),
+                                            const SizedBox(height: BSizes.sm),
+                                            Text(
+                                              'No engagement history yet',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium
+                                                  ?.copyWith(
+                                                      color: BCollectionColors
+                                                          .inkMuted),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+
+                                    // The seven most recent entries, one per page;
+                                    // Show All has the rest. Cards are keyed by entry
+                                    // so a refresh does not rebuild every page.
+                                    final recent = recentItems.take(7).toList();
+                                    final cards = [
+                                      for (final e in recent)
+                                        ActivityHistoryCard(
+                                          key: ValueKey(e['history']),
+                                          history: e['history']
+                                              as CollectionHistoryModel,
+                                          accountName:
+                                              e['accountName'].toString(),
+                                          invoiceId: e['invoiceId']?.toString(),
+                                          item:
+                                              e['item'] as CollectionItemModel?,
+                                          margin: EdgeInsets.zero,
+                                        ),
+                                    ];
+
+                                    return BMirrorCarousel(
+                                      itemCount: cards.length,
+                                      height: _historyCardHeight,
+                                      onSettleTap: (i) =>
+                                          cards[i].showDetail(context),
+                                      itemBuilder: (context, i) => Align(
+                                        alignment: Alignment.topCenter,
+                                        child: cards[i],
+                                      ),
+                                    );
+                                  }),
+                                ],
                               ),
-                            );
-                          }),
-
-                          // Add extra space at the bottom for scrolling comfort
-                          const SizedBox(height: BSizes.spaceBtwSections * 2),
-                        ],
-                      ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
 
