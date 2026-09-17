@@ -302,6 +302,21 @@ Used for:
 - multi-select claim workflow
 
 ### Activity screen
+
+Filtering and sort are one value, `ActivityFilter` (`models/activity_filter.dart`),
+held by the controller as `activityFilterSpec`. It covers four groups:
+
+- **Due**: any, due in 7 days, overdue, late 30+, late 1 year+ (from `dueDate`).
+- **Last visit**: the outcome chips, plus "No visit yet" (from `lastOutcome`,
+  falling back to the newest history entry).
+- **Amount due**: preset bands rather than a slider (from `toBeCollected`).
+- **Sort**: most overdue, highest amount, longest since visit, account name.
+
+The filter applies to both the account list and each account's invoice list, so
+opening an account shows the invoices that put it on the list. The sheet
+(`ActivityFilterSheet`) edits a draft and its apply button carries a live count;
+active filters appear under the search bar as removable chips
+(`ActiveFilterChips`). Nothing here needs an API change.
 - `presentation/pages/activity/activity.dart`
 
 Represents the post-claim workflow and includes:

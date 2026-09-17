@@ -7,10 +7,9 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'activity_detail_screen.dart';
 import 'batch_activity_detail_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
-import 'widgets/activity_filter_modal.dart';
+import 'widgets/activity_filter_sheet.dart';
 import 'widgets/defer_reason_sheet.dart';
 import 'widgets/invoice_details_modal.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
@@ -205,22 +204,23 @@ class _CollectionActivityAccountInvoicesScreenState
               children: [
                 /// Search and Filter Bar
                 if (!controller.isActivitySelectionMode.value)
-                  Obx(() {
-                    final hasFilter = controller.activityMinAmount.value > 0 ||
-                        controller.activityMaxAmount.value > 0 ||
-                        controller.activityMinInvoices.value > 0 ||
-                        controller.activityMaxInvoices.value > 0;
-
-                    return CollectionSearchFilterBar(
-                      searchHint: 'Search invoice ID or bank...',
-                      initialValue: controller.invoiceSearchQuery.value,
-                      onSearchChanged: (value) =>
-                          controller.invoiceSearchQuery.value = value,
-                      hasActiveFilter: hasFilter,
-                      onFilterTap: () => showSideFilter(
-                          ActivityFilterModal(clientId: widget.client.id)),
-                    );
-                  }),
+                  Obx(() => CollectionSearchFilterBar(
+                        searchHint: 'Search invoice ID or bank...',
+                        initialValue: controller.invoiceSearchQuery.value,
+                        onSearchChanged: (value) =>
+                            controller.invoiceSearchQuery.value = value,
+                        hasActiveFilter: controller.hasActiveActivityFilter,
+                        onFilterTap: () async {
+                          final chosen = await ActivityFilterSheet.show(
+                            context,
+                            initial: controller.activityFilterSpec.value,
+                            count: controller.countActivityAccounts,
+                          );
+                          if (chosen != null) {
+                            controller.activityFilterSpec.value = chosen;
+                          }
+                        },
+                      )),
 
                 Expanded(
                   child: invoices.isEmpty

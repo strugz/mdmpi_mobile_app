@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_da
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
 
 /// Lifecycle of the explicit "Download Bucket" action.
 enum BucketDownloadPhase { idle, downloading, success, error }
@@ -198,10 +199,19 @@ class CollectionActivityController extends GetxController {
   final RxInt bucketMaxInvoices = 0.obs;
 
   final RxString activitySearchQuery = ''.obs;
-  final RxDouble activityMinAmount = 0.0.obs;
-  final RxDouble activityMaxAmount = 0.0.obs;
-  final RxInt activityMinInvoices = 0.obs;
-  final RxInt activityMaxInvoices = 0.obs;
+
+  /// Filter and sort for the Field Engagement list and each account's
+  /// invoice list. One value, replaced whole; see [ActivityFilter].
+  final Rx<ActivityFilter> activityFilterSpec = ActivityFilter.none.obs;
+
+  bool get hasActiveActivityFilter => activityFilterSpec.value.isActive;
+
+  void clearActivityFilters() => activityFilterSpec.value = ActivityFilter.none;
+
+  /// How many accounts [spec] would leave on the engagement list, with the
+  /// current search. Drives the live count on the filter sheet's button.
+  int countActivityAccounts(ActivityFilter spec) =>
+      _activityAccountsFor(spec).length;
 
   final RxString activityFilter = 'All'.obs;
 
@@ -647,46 +657,52 @@ class CollectionActivityController extends GetxController {
   // Activity helpers
   // ========================================================================
 
-  List<ClientModel> get activityAccounts {
-    final activeClientIds = activityItems
-        .where((e) => e.toBeCollected > 0)
-        .map((e) => e.client.id)
-        .toSet();
-    return masterAccountList.where((client) {
-      if (!activeClientIds.contains(client.id)) return false;
-      if (activitySearchQuery.value.isNotEmpty &&
-          !client.name
-              .toLowerCase()
-              .contains(activitySearchQuery.value.toLowerCase())) {
-        return false;
-      }
-      final totalAmount = getActivityAccountTotalDue(client.id);
-      final invoiceCount = getActivityAccountInvoiceCount(client.id);
+  List<ClientModel> get activityAccounts =>
+      _activityAccountsFor(activityFilterSpec.value);
 
-      if (activityMinAmount.value > 0 && totalAmount < activityMinAmount.value)
-        return false;
-      if (activityMaxAmount.value > 0 && totalAmount > activityMaxAmount.value)
-        return false;
-      if (activityMinInvoices.value > 0 &&
-          invoiceCount < activityMinInvoices.value) return false;
-      if (activityMaxInvoices.value > 0 &&
-          invoiceCount > activityMaxInvoices.value) return false;
+  /// Accounts with at least one engaged invoice that passes [spec] and the
+  /// search, ordered by the spec's sort. An account is judged by its best
+  /// invoice: if any invoice matches, the account stays, so a filter for
+  /// "Refused to Pay" shows every account with such an invoice.
+  List<ClientModel> _activityAccountsFor(ActivityFilter spec) {
+    final query = activitySearchQuery.value.toLowerCase();
+    final matching = <String, List<CollectionItemModel>>{};
+    for (final item in activityItems) {
+      if (item.toBeCollected <= 0 || !spec.matches(item)) continue;
+      matching.putIfAbsent(item.client.id, () => []).add(item);
+    }
+    final accounts = masterAccountList.where((client) {
+      if (!matching.containsKey(client.id)) return false;
+      return query.isEmpty || client.name.toLowerCase().contains(query);
+    }).toList();
 
-      return true;
-    }).toList()
-      // A work queue, so it is ordered like one: whatever is most overdue
-      // first, then whatever is worth most. Inheriting the master account
-      // list's order put the day in no particular sequence at all.
-      ..sort((a, b) {
+    // A work queue, so it is ordered like one. The default is most overdue
+    // first, then worth most; the other sorts follow the spec. Each account
+    // is placed by its leading invoice under that same sort, and the name
+    // breaks ties so the order never shuffles between rebuilds.
+    CollectionItemModel leading(ClientModel c) =>
+        (matching[c.id]!..sort(spec.compare)).first;
+    accounts.sort((a, b) {
+      if (spec.sort == ActivitySort.name) return a.name.compareTo(b.name);
+      if (spec.sort == ActivitySort.mostOverdue) {
         final overdue = getActivityAccountOverdueCount(b.id)
             .compareTo(getActivityAccountOverdueCount(a.id));
         if (overdue != 0) return overdue;
         final due = getActivityAccountTotalDue(b.id)
             .compareTo(getActivityAccountTotalDue(a.id));
         if (due != 0) return due;
-        // Named tiebreak so the order never shuffles between rebuilds.
         return a.name.compareTo(b.name);
-      });
+      }
+      if (spec.sort == ActivitySort.amountHigh) {
+        final due = getActivityAccountTotalDue(b.id)
+            .compareTo(getActivityAccountTotalDue(a.id));
+        if (due != 0) return due;
+        return a.name.compareTo(b.name);
+      }
+      final byLead = spec.compare(leading(a), leading(b));
+      return byLead != 0 ? byLead : a.name.compareTo(b.name);
+    });
+    return accounts;
   }
 
   double getActivityAccountTotalDue(String clientId) => activityItems
@@ -748,25 +764,10 @@ class CollectionActivityController extends GetxController {
       }).toList();
     }
 
-    // Apply activity amount range filter when set
-    if (activityMinAmount.value > 0 || activityMaxAmount.value > 0) {
-      results = results.where((item) {
-        final minOk = activityMinAmount.value > 0
-            ? item.toBeCollected >= activityMinAmount.value
-            : true;
-        final maxOk = activityMaxAmount.value > 0
-            ? item.toBeCollected <= activityMaxAmount.value
-            : true;
-        return minOk && maxOk;
-      }).toList();
-    }
-
-    // Sort by due date (ascending: oldest first)
-    results.sort((a, b) {
-      if (a.dueDate == 'N/A') return 1;
-      if (b.dueDate == 'N/A') return -1;
-      return a.dueDate.compareTo(b.dueDate);
-    });
+    // The same filter the account list uses, so opening an account shows
+    // the invoices that put it on the list and nothing else.
+    final spec = activityFilterSpec.value;
+    results = results.where(spec.matches).toList()..sort(spec.compare);
 
     return results;
   }

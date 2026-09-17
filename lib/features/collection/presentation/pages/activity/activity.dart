@@ -8,9 +8,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/accoun
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/collection_work_header.dart';
 import 'activity_account_invoices_screen.dart';
-import 'widgets/activity_filter_modal.dart';
+import 'widgets/activity_filter_sheet.dart';
 import 'widgets/engagement_summary.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Collection Activity Screen
@@ -34,21 +33,20 @@ class CollectionActivityScreen extends StatelessWidget {
               const CollectionWorkHeader(title: 'Field Engagement'),
 
               /// Search and Filter Bar
-              Obx(() {
-                final hasFilter = controller.activityMinAmount.value > 0 ||
-                    controller.activityMaxAmount.value > 0 ||
-                    controller.activityMinInvoices.value > 0 ||
-                    controller.activityMaxInvoices.value > 0;
+              Obx(() => CollectionSearchFilterBar(
+                    searchHint: 'Search by account name...',
+                    initialValue: controller.activitySearchQuery.value,
+                    onSearchChanged: (value) =>
+                        controller.activitySearchQuery.value = value,
+                    hasActiveFilter: controller.hasActiveActivityFilter,
+                    onFilterTap: () => _openFilter(context, controller),
+                  )),
 
-                return CollectionSearchFilterBar(
-                  searchHint: 'Search by account name...',
-                  initialValue: controller.activitySearchQuery.value,
-                  onSearchChanged: (value) =>
-                      controller.activitySearchQuery.value = value,
-                  hasActiveFilter: hasFilter,
-                  onFilterTap: () => showSideFilter(ActivityFilterModal()),
-                );
-              }),
+              // What is filtering the list, removable one at a time.
+              Obx(() => ActiveFilterChips(
+                    filter: controller.activityFilterSpec.value,
+                    onChanged: (f) => controller.activityFilterSpec.value = f,
+                  )),
 
               if (accounts.isNotEmpty)
                 Padding(
@@ -75,8 +73,7 @@ class CollectionActivityScreen extends StatelessWidget {
                           children: [
                             Icon(
                               (controller.activitySearchQuery.value.isEmpty &&
-                                      controller.activityMinAmount.value == 0 &&
-                                      controller.activityMinInvoices.value == 0)
+                                      !controller.hasActiveActivityFilter)
                                   ? Iconsax.activity
                                   : Iconsax.search_status,
                               size: 64,
@@ -85,8 +82,7 @@ class CollectionActivityScreen extends StatelessWidget {
                             const SizedBox(height: BSizes.spaceBtwItems),
                             Text(
                               controller.activitySearchQuery.value.isEmpty &&
-                                      controller.activityMinAmount.value == 0 &&
-                                      controller.activityMinInvoices.value == 0
+                                      !controller.hasActiveActivityFilter
                                   ? 'No field engagements yet'
                                   : 'No accounts match your criteria',
                               style: Theme.of(context)
@@ -99,14 +95,10 @@ class CollectionActivityScreen extends StatelessWidget {
                             const SizedBox(height: BSizes.xs),
                             if (controller
                                     .activitySearchQuery.value.isNotEmpty ||
-                                controller.activityMinAmount.value > 0 ||
-                                controller.activityMinInvoices.value > 0)
+                                controller.hasActiveActivityFilter)
                               TextButton(
                                 onPressed: () {
-                                  controller.activityMinAmount.value = 0;
-                                  controller.activityMaxAmount.value = 0;
-                                  controller.activityMinInvoices.value = 0;
-                                  controller.activityMaxInvoices.value = 0;
+                                  controller.clearActivityFilters();
                                   controller.activitySearchQuery.value = '';
                                 },
                                 child: const Text('Clear all filters'),
@@ -166,5 +158,15 @@ class CollectionActivityScreen extends StatelessWidget {
         }),
       ),
     );
+  }
+
+  static Future<void> _openFilter(
+      BuildContext context, CollectionActivityController controller) async {
+    final chosen = await ActivityFilterSheet.show(
+      context,
+      initial: controller.activityFilterSpec.value,
+      count: controller.countActivityAccounts,
+    );
+    if (chosen != null) controller.activityFilterSpec.value = chosen;
   }
 }
