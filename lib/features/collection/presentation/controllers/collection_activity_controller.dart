@@ -15,6 +15,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dar
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/invoice_filter.dart';
 
 /// Lifecycle of the explicit "Download Bucket" action.
 enum BucketDownloadPhase { idle, downloading, success, error }
@@ -240,6 +241,22 @@ class CollectionActivityController extends GetxController {
   final RxString activityFilter = 'All'.obs;
 
   final RxString invoiceSearchQuery = ''.obs;
+
+  /// Filter and sort for one account's invoice list. Its own value, not the
+  /// engagement list's: once an account is open, the questions worth asking
+  /// are about its invoices. See [InvoiceFilter]. Reset on leaving the
+  /// screen, like [invoiceSearchQuery], so it never follows you into the
+  /// next account.
+  final Rx<InvoiceFilter> invoiceFilterSpec = InvoiceFilter.none.obs;
+
+  bool get hasActiveInvoiceFilter => invoiceFilterSpec.value.isActive;
+
+  void clearInvoiceFilters() => invoiceFilterSpec.value = InvoiceFilter.none;
+
+  /// How many of [clientId]'s engaged invoices [spec] would show, with the
+  /// current search. Drives the live count on the filter sheet's button.
+  int countActivityInvoices(String clientId, InvoiceFilter spec) =>
+      _activityInvoicesFor(clientId, spec).length;
 
   final RxList<ClientModel> masterAccountList = <ClientModel>[].obs;
 
@@ -812,11 +829,22 @@ class CollectionActivityController extends GetxController {
     );
   }
 
-  List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) {
-    final invoices = activityItems
+  List<CollectionItemModel> getActivityInvoicesByAccount(String clientId) =>
+      _activityInvoicesFor(clientId, invoiceFilterSpec.value);
+
+  /// This account's engaged invoices under [spec] and the current search.
+  ///
+  /// The engagement filter is deliberately not applied here. It picks which
+  /// accounts are worth a visit; once one is open the collector is recording
+  /// against whatever that account owes, and an invoice hidden by a filter
+  /// set two screens ago — with no way to clear it from here — is an invoice
+  /// that cannot be paid.
+  List<CollectionItemModel> _activityInvoicesFor(
+      String clientId, InvoiceFilter spec) {
+    var results = activityItems
         .where((item) => item.client.id == clientId && item.toBeCollected > 0)
         .toList();
-    var results = invoices;
+
     if (invoiceSearchQuery.value.isNotEmpty) {
       final query = invoiceSearchQuery.value.toLowerCase();
       results = results.where((item) {
@@ -826,12 +854,7 @@ class CollectionActivityController extends GetxController {
       }).toList();
     }
 
-    // The same filter the account list uses, so opening an account shows
-    // the invoices that put it on the list and nothing else.
-    final spec = activityFilterSpec.value;
-    results = results.where(spec.matches).toList()..sort(spec.compare);
-
-    return results;
+    return results.where(spec.matches).toList()..sort(spec.compare);
   }
 
   // ========================================================================

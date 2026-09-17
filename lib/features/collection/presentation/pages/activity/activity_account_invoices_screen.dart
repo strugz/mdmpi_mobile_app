@@ -7,8 +7,8 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'activity_detail_screen.dart';
 import 'batch_activity_detail_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
-import 'widgets/activity_filter_sheet.dart';
 import 'widgets/defer_reason_sheet.dart';
+import 'widgets/invoice_filter_sheet.dart';
 import 'widgets/invoice_details_modal.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -32,6 +32,7 @@ class _CollectionActivityAccountInvoicesScreenState
   @override
   void dispose() {
     controller.invoiceSearchQuery.value = ''; // Reset search on leave
+    controller.clearInvoiceFilters(); // ...and the filter with it
     controller.exitActivitySelectionMode(); // Exit selection on leave
     super.dispose();
   }
@@ -151,6 +152,37 @@ class _CollectionActivityAccountInvoicesScreenState
     );
   }
 
+  /// Why the list is empty, and — when it is a filter doing it — the way out.
+  /// A filter that empties the list and leaves nothing but the sentence
+  /// "No invoices match" makes the account look settled when it is not.
+  Widget _emptyState() {
+    final filtered = controller.hasActiveInvoiceFilter;
+    final searched = controller.invoiceSearchQuery.value.isNotEmpty;
+
+    if (!filtered && !searched) {
+      return const Text('No claimed invoices for this account.');
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          searched
+              ? 'No invoices match your search.'
+              : 'No invoices match the filter.',
+          textAlign: TextAlign.center,
+        ),
+        if (filtered) ...[
+          const SizedBox(height: BSizes.spaceBtwItemsLight),
+          TextButton(
+            onPressed: controller.clearInvoiceFilters,
+            child: const Text('Clear filter'),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Obx(() => Scaffold(
@@ -203,35 +235,40 @@ class _CollectionActivityAccountInvoicesScreenState
             return Column(
               children: [
                 /// Search and Filter Bar
-                if (!controller.isActivitySelectionMode.value)
+                // Invoices, not engagements: this filter asks how late, how
+                // much and what has been recorded, and counts invoices. The
+                // engagement sheet used to open here, offering an area every
+                // invoice in the account already shares and a button that
+                // promised to show accounts.
+                if (!controller.isActivitySelectionMode.value) ...[
                   Obx(() => CollectionSearchFilterBar(
                         searchHint: 'Search invoice or bank',
                         initialValue: controller.invoiceSearchQuery.value,
                         onSearchChanged: (value) =>
                             controller.invoiceSearchQuery.value = value,
-                        hasActiveFilter: controller.hasActiveActivityFilter,
+                        hasActiveFilter: controller.hasActiveInvoiceFilter,
                         onFilterTap: () async {
-                          final chosen = await ActivityFilterSheet.show(
+                          final chosen = await InvoiceFilterSheet.show(
                             context,
-                            initial: controller.activityFilterSpec.value,
-                            count: controller.countActivityAccounts,
-                            areas: controller.activityAreas,
+                            initial: controller.invoiceFilterSpec.value,
+                            count: (spec) => controller.countActivityInvoices(
+                                widget.client.id, spec),
                           );
                           if (chosen != null) {
-                            controller.activityFilterSpec.value = chosen;
+                            controller.invoiceFilterSpec.value = chosen;
                           }
                         },
                       )),
+                  Obx(() => ActiveInvoiceFilterChips(
+                        filter: controller.invoiceFilterSpec.value,
+                        onChanged: (f) =>
+                            controller.invoiceFilterSpec.value = f,
+                      )),
+                ],
 
                 Expanded(
                   child: invoices.isEmpty
-                      ? Center(
-                          child: Text(
-                            controller.invoiceSearchQuery.value.isEmpty
-                                ? 'No claimed invoices for this account.'
-                                : 'No invoices match your search.',
-                          ),
-                        )
+                      ? Center(child: _emptyState())
                       : ListView.separated(
                           padding: const EdgeInsets.all(BSizes.defaultSpace),
                           itemCount: invoices.length,
