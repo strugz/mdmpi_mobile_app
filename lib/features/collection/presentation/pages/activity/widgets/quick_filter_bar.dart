@@ -17,6 +17,9 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 /// It doubles as the "what is filtering this list" display: a dimension the
 /// row has no preset for, such as an amount band, appears at the end as a
 /// removable chip, so there is one place to look and one to undo.
+///
+/// Its order chips carry both directions each. A first tap sorts descending,
+/// a second flips to ascending, a third returns to the screen's own order.
 class QuickFilterBar extends StatelessWidget {
   const QuickFilterBar({
     super.key,
@@ -73,11 +76,9 @@ class QuickFilterBar extends StatelessWidget {
           _gap,
           // Orders, not filters: they hide nothing, so they never make the
           // list shorter and never count towards a filter being active.
-          _sort(ActivitySort.amountHigh, Iconsax.arrow_down),
+          _cyclingSort(_amountCycle),
           _gap,
-          _sort(ActivitySort.mostInvoices, Iconsax.document_copy),
-          _gap,
-          _sort(ActivitySort.fewestInvoices, Iconsax.document),
+          _cyclingSort(_invoiceCycle),
           _gap,
           for (final area in areas) ...[
             _toggle(
@@ -99,9 +100,7 @@ class QuickFilterBar extends StatelessWidget {
             _gap,
           ],
           if (filter.sort != defaultSort &&
-              filter.sort != ActivitySort.amountHigh &&
-              filter.sort != ActivitySort.mostInvoices &&
-              filter.sort != ActivitySort.fewestInvoices) ...[
+              !_cycledSorts.any((entry) => entry.$1 == filter.sort)) ...[
             _removable(
               filter.sort.label,
               () => onChanged(filter.copyWith(sort: defaultSort)),
@@ -120,15 +119,44 @@ class QuickFilterBar extends StatelessWidget {
 
   static const _gap = SizedBox(width: BSizes.sm);
 
-  /// A sort chip. Tapping the one already on returns to [defaultSort], so the
-  /// row never traps the list in an order with no way back.
-  Widget _sort(ActivitySort sort, IconData icon) => _toggle(
-        label: sort.label,
-        icon: icon,
-        color: BCollectionColors.primary,
-        on: filter.sort == sort,
-        set: (on) => filter.copyWith(sort: on ? sort : defaultSort),
-      );
+  /// The two directions of one order, in tap order. Descending first: asked
+  /// for far more often than ascending, so it is the first tap.
+  static const _amountCycle = [
+    (ActivitySort.amountHigh, Iconsax.arrow_down),
+    (ActivitySort.amountLow, Iconsax.arrow_up),
+  ];
+
+  static const _invoiceCycle = [
+    (ActivitySort.mostInvoices, Iconsax.document_copy),
+    (ActivitySort.fewestInvoices, Iconsax.document),
+  ];
+
+  /// Every sort a cycling chip can hold, so the removable tail below knows
+  /// which orders this row already speaks for.
+  static const _cycledSorts = [..._amountCycle, ..._invoiceCycle];
+
+  /// One chip carrying both directions of an order.
+  ///
+  /// Off, it offers the first direction. On, tapping flips to the other, and
+  /// tapping again returns to [defaultSort], so the row never traps the list
+  /// in an order with no way back. One chip rather than two keeps the row
+  /// short enough to read without scrolling it.
+  Widget _cyclingSort(List<(ActivitySort, IconData)> cycle) {
+    final index = cycle.indexWhere((entry) => entry.$1 == filter.sort);
+    final on = index >= 0;
+    final (shownSort, shownIcon) = on ? cycle[index] : cycle.first;
+    final next = !on
+        ? cycle.first.$1
+        : (index + 1 < cycle.length ? cycle[index + 1].$1 : defaultSort);
+
+    return BQuickFillChip(
+      label: shownSort.label,
+      icon: shownIcon,
+      color: BCollectionColors.primary,
+      selected: on,
+      onTap: () => onChanged(filter.copyWith(sort: next)),
+    );
+  }
 
   Widget _toggle({
     required String label,

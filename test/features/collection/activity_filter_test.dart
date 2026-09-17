@@ -279,16 +279,18 @@ void main() {
       expect(find.text(CollectionStatusColors.statusUnavailable), findsNothing);
     });
 
-    // The orders sit in the same row as the filters, but they hide nothing,
-    // so All stays lit and a second tap returns to the screen's own order.
-    testWidgets('a sort chip turns on, then back to the screen default',
-        (tester) async {
+    // One chip per order, carrying both directions: descending, then
+    // ascending, then off. Orders hide nothing, so All stays lit throughout.
+    testWidgets('the amount chip cycles high, low, off', (tester) async {
       tester.view.physicalSize = const Size(3000, 600);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
 
       ActivityFilter? last;
       await tester.pumpWidget(host(ActivityFilter.none, (f) => last = f));
+
+      expect(find.text(ActivitySort.amountLow.label), findsNothing,
+          reason: 'off, the chip offers the first direction only');
 
       await tester.tap(find.text(ActivitySort.amountHigh.label));
       await tester.pumpAndSettle();
@@ -297,10 +299,15 @@ void main() {
 
       await tester.tap(find.text(ActivitySort.amountHigh.label));
       await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.amountLow);
+      expect(find.text(ActivitySort.amountHigh.label), findsNothing);
+
+      await tester.tap(find.text(ActivitySort.amountLow.label));
+      await tester.pumpAndSettle();
       expect(last?.sort, ActivitySort.mostOverdue);
     });
 
-    testWidgets('the invoice-count orders are one tap each', (tester) async {
+    testWidgets('the invoice chip cycles most, fewest, off', (tester) async {
       tester.view.physicalSize = const Size(3000, 600);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
@@ -312,9 +319,32 @@ void main() {
       await tester.pumpAndSettle();
       expect(last?.sort, ActivitySort.mostInvoices);
 
-      await tester.tap(find.text(ActivitySort.fewestInvoices.label));
+      await tester.tap(find.text(ActivitySort.mostInvoices.label));
       await tester.pumpAndSettle();
       expect(last?.sort, ActivitySort.fewestInvoices);
+
+      await tester.tap(find.text(ActivitySort.fewestInvoices.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.mostOverdue);
+    });
+
+    // Each chip owns one order, so starting the other resets the first.
+    testWidgets('starting one order replaces the other', (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      await tester.pumpWidget(host(
+        const ActivityFilter(sort: ActivitySort.amountLow),
+        (f) => last = f,
+      ));
+
+      await tester.tap(find.text(ActivitySort.mostInvoices.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.mostInvoices);
+      expect(find.text(ActivitySort.amountHigh.label), findsOneWidget,
+          reason: 'the amount chip falls back to its first direction');
     });
 
     testWidgets('the bucket returns to its own catalogue order',
@@ -324,7 +354,7 @@ void main() {
       addTearDown(tester.view.reset);
 
       ActivityFilter? last;
-      var filter = const ActivityFilter(sort: ActivitySort.amountHigh);
+      var filter = const ActivityFilter(sort: ActivitySort.amountLow);
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: StatefulBuilder(
@@ -340,7 +370,9 @@ void main() {
         ),
       ));
 
-      await tester.tap(find.text(ActivitySort.amountHigh.label));
+      // Off the end of the cycle the bucket lands on its own order, not the
+      // engagement list's.
+      await tester.tap(find.text(ActivitySort.amountLow.label));
       await tester.pumpAndSettle();
       expect(last?.sort, ActivitySort.name);
     });
