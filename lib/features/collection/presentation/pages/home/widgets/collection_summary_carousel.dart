@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
@@ -68,6 +69,53 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
   );
   late int _current = widget.initialPage;
 
+  /// A tap that begins while the page is still settling. Scrollable wraps
+  /// its children in IgnorePointer for the whole ballistic settle, so the
+  /// card underneath never sees the tap. This Listener sits outside the
+  /// PageView, so it does; on a clean release it opens the current card.
+  int? _settlingPointer;
+  Offset? _settlingDown;
+
+  /// The card mostly on screen when the tap began. [_current] lags until the
+  /// scroll passes the halfway mark, so it cannot be used here.
+  int? _settlingTarget;
+
+  /// True when pointer-down interrupted a settle. The scrollable's own drag
+  /// recogniser has already put the position on hold by the time this runs,
+  /// and a hold does not count as scrolling, so the scroll flag is useless
+  /// here. A finished settle always lands on a whole page; an interrupted one
+  /// is frozen at a fraction.
+  bool get _isSettling {
+    if (!_controller.hasClients) return false;
+    final page = _controller.page;
+    return page != null && page != page.roundToDouble();
+  }
+
+  void _onPointerDown(PointerDownEvent event) {
+    if (_settlingPointer != null || !_isSettling) return;
+    _settlingPointer = event.pointer;
+    _settlingDown = event.position;
+    _settlingTarget =
+        _controller.page!.round().clamp(0, widget.pages.length - 1);
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    if (event.pointer != _settlingPointer) return;
+    final moved = (event.position - _settlingDown!).distance;
+    final target = _settlingTarget!;
+    _settlingPointer = null;
+    _settlingDown = null;
+    _settlingTarget = null;
+    if (moved <= kTouchSlop) widget.pages[target].onTap?.call();
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    if (event.pointer != _settlingPointer) return;
+    _settlingPointer = null;
+    _settlingDown = null;
+    _settlingTarget = null;
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -123,31 +171,39 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox(
-          height: widget.height,
-          child: PageView.builder(
-            controller: _controller,
-            physics: const PageScrollPhysics(),
-            clipBehavior: Clip.none,
-            itemCount: widget.pages.length,
-            onPageChanged: (i) => setState(() => _current = i),
-            itemBuilder: (context, index) {
-              final page = widget.pages[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: _mirror(
-                  context,
-                  CollectionSummaryCard(
-                    title: page.title,
-                    value: page.value,
-                    icon: page.icon,
-                    color: page.color,
-                    onTap: page.onTap,
+        Listener(
+          // The children ignore pointers while settling, so this must be hit
+          // on its own rather than only through a hit child.
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: _onPointerDown,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerCancel,
+          child: SizedBox(
+            height: widget.height,
+            child: PageView.builder(
+              controller: _controller,
+              physics: const _SnappyPagePhysics(),
+              clipBehavior: Clip.none,
+              itemCount: widget.pages.length,
+              onPageChanged: (i) => setState(() => _current = i),
+              itemBuilder: (context, index) {
+                final page = widget.pages[index];
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _mirror(
+                    context,
+                    CollectionSummaryCard(
+                      title: page.title,
+                      value: page.value,
+                      icon: page.icon,
+                      color: page.color,
+                      onTap: page.onTap,
+                    ),
+                    index,
                   ),
-                  index,
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         const SizedBox(height: BSizes.sm),
@@ -164,6 +220,32 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
       ],
     );
   }
+}
+
+/// Page physics that settle in well under 300ms. The stock PageScrollPhysics
+/// spring trails off for close to a second, and for that whole time the
+/// cards ignore taps.
+class _SnappyPagePhysics extends PageScrollPhysics {
+  const _SnappyPagePhysics({super.parent});
+
+  @override
+  _SnappyPagePhysics applyTo(ScrollPhysics? ancestor) =>
+      _SnappyPagePhysics(parent: buildParent(ancestor));
+
+  @override
+  SpringDescription get spring => SpringDescription.withDampingRatio(
+        mass: 0.5,
+        stiffness: 1200,
+        ratio: 1.0,
+      );
+
+  /// The default tolerance waits for a thousandth of a pixel; the tail of
+  /// the settle is invisible long before that, so stop at half a pixel.
+  @override
+  Tolerance toleranceFor(ScrollMetrics metrics) => Tolerance(
+        velocity: 10 / (0.050 * metrics.devicePixelRatio),
+        distance: 0.5 / metrics.devicePixelRatio,
+      );
 }
 
 class _Dots extends StatelessWidget {

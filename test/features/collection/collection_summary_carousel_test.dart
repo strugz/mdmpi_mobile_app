@@ -142,6 +142,52 @@ void main() {
     expect(taps, 1);
   });
 
+  // Scrollable ignores pointer events on its children for the whole settle
+  // after a swipe, which once swallowed a quick tap on the new card.
+  testWidgets('a tap right after a swipe still opens the new card',
+      (tester) async {
+    var taps = 0;
+    final pages = _pages();
+    pages[1] = CollectionSummaryPage(
+      title: 'Due Date',
+      value: '3767',
+      icon: Iconsax.timer,
+      color: BColors.error,
+      onTap: () => taps++,
+    );
+    await tester.pumpWidget(
+        _inUnboundedColumn(CollectionSummaryCarousel(pages: pages)));
+    await tester.pumpAndSettle();
+
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1200);
+    // A few frames in: the new card is mostly on screen but still settling.
+    // (The first pump only starts the ticker; the second advances it.)
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final page = tester.widget<PageView>(find.byType(PageView)).controller!;
+    expect(page.page, greaterThan(0.5));
+    expect(page.page, lessThan(1.0));
+    await tester.tap(find.byType(PageView));
+    await tester.pumpAndSettle();
+
+    expect(taps, 1);
+  });
+
+  testWidgets('settles in under 300ms after a swipe', (tester) async {
+    await tester.pumpWidget(
+        _inUnboundedColumn(CollectionSummaryCarousel(pages: _pages())));
+    await tester.pumpAndSettle();
+
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1200);
+    await tester.pump(); // starts the ticker
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final controller =
+        tester.widget<PageView>(find.byType(PageView)).controller!;
+    expect(controller.position.isScrollingNotifier.value, isFalse);
+    expect(controller.page, 1);
+  });
+
   testWidgets('survives a large system text scale', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: MediaQuery(
