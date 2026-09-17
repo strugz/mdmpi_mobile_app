@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/reveal_scroll.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 
 /// Record one payment against several invoices at once.
@@ -543,6 +544,18 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     );
   }
 
+  /// Anchors the check fields so switching them on can scroll them into view.
+  final _checkFieldsKey = GlobalKey();
+
+  static const _unfoldDuration = Duration(milliseconds: 180);
+
+  void _setPayingByCheck(bool value) {
+    setState(() => _payingByCheck = value);
+    if (value) {
+      BRevealScroll.into(_checkFieldsKey, afterUnfold: _unfoldDuration);
+    }
+  }
+
   /// Named for what it does, not for a payment type the record does not
   /// hold: switching it on is what puts check details on this batch.
   Widget _methodSection(BuildContext context) {
@@ -551,7 +564,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
       children: [
         SwitchListTile.adaptive(
           value: _payingByCheck,
-          onChanged: (v) => setState(() => _payingByCheck = v),
+          onChanged: _setPayingByCheck,
           title: const Text('Paid by check'),
           secondary: const Icon(Iconsax.card),
           contentPadding: EdgeInsets.zero,
@@ -559,11 +572,11 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         // Three fields most batches never need, so most batches never see
         // them.
         AnimatedSize(
-          duration: const Duration(milliseconds: 180),
+          duration: _unfoldDuration,
           curve: Curves.easeOut,
           alignment: Alignment.topCenter,
           child: _payingByCheck
-              ? _checkFields(context)
+              ? KeyedSubtree(key: _checkFieldsKey, child: _checkFields(context))
               : const SizedBox(width: double.infinity),
         ),
       ],

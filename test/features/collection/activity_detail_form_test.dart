@@ -85,6 +85,30 @@ void main() {
       expect(find.text('Check date'), findsOneWidget);
     });
 
+    // On a phone the check fields unfold below the fold. The form scrolls
+    // them into view on its own; the collector never hunts for what they
+    // just switched on.
+    testWidgets('switching on scrolls the check fields into view',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 1800);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(_host(_item()));
+      await tester.pumpAndSettle();
+
+      await _tapCheckToggle(tester);
+
+      final dateField = find.text('Check date');
+      expect(dateField, findsOneWidget);
+      final bottom = tester.getBottomLeft(dateField).dy;
+      final viewport = tester.getSize(find.byType(SingleChildScrollView));
+      final viewportTop =
+          tester.getTopLeft(find.byType(SingleChildScrollView)).dy;
+      expect(bottom, lessThanOrEqualTo(viewportTop + viewport.height),
+          reason: 'the last check field is inside the viewport');
+    });
+
     testWidgets('an invoice last paid by check opens with the switch on',
         (tester) async {
       await tester.pumpWidget(_host(_item(history: const [

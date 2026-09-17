@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/reveal_scroll.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 
 /// Record a collection against one invoice.
@@ -47,6 +48,20 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   /// fields, and off it sends them as null rather than carrying over whatever
   /// was prefilled from a previous visit.
   late bool _payingByCheck;
+
+  /// Anchors the check fields so switching them on can scroll them into view.
+  final _checkFieldsKey = GlobalKey();
+
+  static const _unfoldDuration = Duration(milliseconds: 200);
+
+  void _setPayingByCheck(bool value) {
+    setState(() => _payingByCheck = value);
+    // The fields sit at the bottom of the form, so on a phone they unfold
+    // below the fold. Bring them up once the unfold has finished.
+    if (value) {
+      BRevealScroll.into(_checkFieldsKey, afterUnfold: _unfoldDuration);
+    }
+  }
 
   late final TextEditingController totalCollectedController;
   late final TextEditingController bankNameController;
@@ -270,11 +285,12 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             // Only exists for checks, which is the whole point: most
             // collections never see these three fields.
             AnimatedSize(
-              duration: const Duration(milliseconds: 200),
+              duration: _unfoldDuration,
               curve: Curves.easeOutCubic,
               alignment: Alignment.topCenter,
               child: _payingByCheck
-                  ? _checkFields(context)
+                  ? KeyedSubtree(
+                      key: _checkFieldsKey, child: _checkFields(context))
                   : const SizedBox(width: double.infinity),
             ),
           ],
@@ -314,23 +330,27 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  '#${widget.item.id}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: BColors.darkerGrey,
-                    fontWeight: FontWeight.w600,
-                  ),
+              // The id is short and must stay whole; the name takes what is
+              // left and ellipsises, so a long pharmacy name on a 360dp
+              // phone cannot push past the card edge.
+              Text(
+                '#${widget.item.id}',
+                maxLines: 1,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: BColors.darkerGrey,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              Text(
-                widget.item.client.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium
-                    ?.copyWith(color: BColors.darkGrey),
+              const SizedBox(width: BSizes.sm),
+              Expanded(
+                child: Text(
+                  widget.item.client.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.labelMedium
+                      ?.copyWith(color: BColors.darkGrey),
+                ),
               ),
             ],
           ),
@@ -461,7 +481,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   /// hold: switching it on is what puts check details on this collection.
   Widget _checkToggle() => SwitchListTile.adaptive(
         value: _payingByCheck,
-        onChanged: (v) => setState(() => _payingByCheck = v),
+        onChanged: _setPayingByCheck,
         title: const Text('Paid by check'),
         secondary: const Icon(Iconsax.card),
         contentPadding: EdgeInsets.zero,
