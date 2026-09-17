@@ -264,6 +264,22 @@ class CollectionActivityController extends GetxController {
   final RxBool isSelectionMode = false.obs;
   final RxSet<String> selectedAccountIds = <String>{}.obs;
 
+  /// [selectedAccountIds] in tick order. What is ticked rides at the head of
+  /// the bucket list, so a pick spread over a 261-account catalogue is always
+  /// together and always countable.
+  ///
+  /// Tick order, not list order: the account just ticked goes to the top, so
+  /// the row that moves is the row the collector is looking at. A card only
+  /// ever leaves a slot *above* the thumb — rows below the ticked one hold
+  /// still, which is where the next target is.
+  final RxList<String> selectionOrder = <String>[].obs;
+
+  /// The account that moved on the last tick, and a counter that changes with
+  /// it, so the list can play that one row's arrival instead of hard-cutting
+  /// it into place. Only the moved row animates; the rest just close the gap.
+  final RxString lastMovedAccountId = ''.obs;
+  final RxInt selectionGeneration = 0.obs;
+
   // Multi-select Activity Invoice state
   final RxBool isActivitySelectionMode = false.obs;
   final RxSet<String> selectedActivityInvoiceIds = <String>{}.obs;
@@ -585,7 +601,38 @@ class CollectionActivityController extends GetxController {
   }
 
   List<ClientModel> get bucketAccounts =>
-      _bucketAccountsFor(bucketFilterSpec.value);
+      _selectedFirst(_bucketAccountsFor(bucketFilterSpec.value));
+
+  /// The ticked accounts, in tick order, ahead of everything else.
+  ///
+  /// A ticked account the filters or the search have since dropped simply is
+  /// not there — this promotes a row, it does not resurrect one.
+  List<ClientModel> _selectedFirst(List<ClientModel> accounts) {
+    if (selectionOrder.isEmpty) return accounts;
+    final slot = <String, int>{
+      for (var i = 0; i < selectionOrder.length; i++) selectionOrder[i]: i
+    };
+    final picked = List<ClientModel?>.filled(selectionOrder.length, null);
+    final rest = <ClientModel>[];
+    for (final client in accounts) {
+      final i = slot[client.id];
+      if (i == null) {
+        rest.add(client);
+      } else {
+        picked[i] = client;
+      }
+    }
+    return [...picked.whereType<ClientModel>(), ...rest];
+  }
+
+  /// How many rows at the head of [bucketAccounts] are ticked ones, so the
+  /// list can rule a line under the group.
+  int get selectedVisibleCount {
+    if (selectionOrder.isEmpty) return 0;
+    final visible =
+        _bucketAccountsFor(bucketFilterSpec.value).map((c) => c.id).toSet();
+    return selectionOrder.where(visible.contains).length;
+  }
 
   /// Accounts with at least one bucket invoice that passes [spec], the area
   /// and the search. An account is judged by its best invoice, so filtering
@@ -677,9 +724,18 @@ class CollectionActivityController extends GetxController {
   /// Tick every account the current filters leave visible — "take the whole
   /// area" in one tap.
   void selectAllVisibleAccounts() {
-    final ids = bucketAccounts.map((c) => c.id);
+    // Read in the order shown, so taking the lot leaves every row exactly
+    // where it already was. Ticking all of them must not shuffle the screen.
+    final ids = bucketAccounts.map((c) => c.id).toList();
     if (ids.isEmpty) return;
     selectedAccountIds.addAll(ids);
+    selectionOrder.assignAll([
+      ...ids,
+      // Anything ticked but filtered out of view keeps its place in the order.
+      ...selectionOrder.where((id) => !ids.contains(id)),
+    ]);
+    lastMovedAccountId.value = '';
+    selectionGeneration.value++;
     isSelectionMode.value = true;
   }
 
@@ -1426,23 +1482,32 @@ class CollectionActivityController extends GetxController {
   void toggleAccountSelection(String clientId) {
     if (selectedAccountIds.contains(clientId)) {
       selectedAccountIds.remove(clientId);
-      if (selectedAccountIds.isEmpty) {
-        isSelectionMode.value = false;
-      }
+      // Untick returns the row to where the sort says it belongs, which is
+      // the same rule in reverse. The head of the list is exactly the pick.
+      selectionOrder.remove(clientId);
+      lastMovedAccountId.value = '';
+      selectionGeneration.value++;
+      if (selectedAccountIds.isEmpty) isSelectionMode.value = false;
     } else {
       isSelectionMode.value = true;
       selectedAccountIds.add(clientId);
+      // Newest tick leads, so the row that moves is the row being looked at.
+      selectionOrder.insert(0, clientId);
+      lastMovedAccountId.value = clientId;
+      selectionGeneration.value++;
     }
   }
 
   void enterSelectionMode(String clientId) {
-    isSelectionMode.value = true;
-    selectedAccountIds.add(clientId);
+    if (selectedAccountIds.contains(clientId)) return;
+    toggleAccountSelection(clientId);
   }
 
   void exitSelectionMode() {
     isSelectionMode.value = false;
     selectedAccountIds.clear();
+    selectionOrder.clear();
+    lastMovedAccountId.value = '';
   }
 
   /// True while an acquire is writing. Drives the overlay that covers the

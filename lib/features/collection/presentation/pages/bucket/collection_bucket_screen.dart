@@ -37,12 +37,51 @@ import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart
 /// The filters stay where they are while things are ticked. They used to
 /// collapse the moment one row was selected — the search bar vanishing under
 /// the collector's finger on the way to the second account.
-class CollectionBucketScreen extends StatelessWidget {
+///
+/// A ticked account rides to the top of the list, newest tick first, so the
+/// pick is always together and always countable. A catalogue of 261 accounts
+/// scatters a pick over screens otherwise, and by the fifth one a collector
+/// cannot see what they hold.
+///
+/// The card leaves upward, never downward: rows below the one just ticked hold
+/// still, and that is where the next target is. The view itself never moves —
+/// the app bar carries a "Jump to selected" control for going back up to the
+/// pick, so working down the catalogue is not interrupted by a list that
+/// scrolls itself.
+class CollectionBucketScreen extends StatefulWidget {
   const CollectionBucketScreen({super.key});
 
+  @override
+  State<CollectionBucketScreen> createState() => _CollectionBucketScreenState();
+}
+
+class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
   /// The one tempo for state changes on this screen: the acquire bar
   /// arriving, the list ↔ empty swap.
   static const Duration _stateDuration = Duration(milliseconds: 200);
+
+  /// Owned here so the collector can ride back up to their pick from wherever
+  /// they have scrolled to. The list moves rows on its own; the view does not,
+  /// because a list that scrolls itself on every tick is a list you cannot
+  /// work down.
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Carry the view to the head of the list, where the pick is.
+  Future<void> _jumpToSelected() async {
+    if (_scroll.hasClients && _scroll.offset > 0) {
+      await _scroll.animateTo(
+        0,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
 
   /// Captured before the move, because the selection is cleared on the way
   /// into it and the snackbar still has to name what was taken.
@@ -76,11 +115,21 @@ class CollectionBucketScreen extends StatelessWidget {
                   onPressed: controller.exitSelectionMode,
                 )
               : null,
+          // No style override: the app bar theme's 18pt is the size for a bar
+          // title. headlineMedium is 24pt — a page heading, which on a 56pt
+          // bar crowded the back arrow and the actions either side of it.
           title: Text(
             selecting ? '${selected.accounts} selected' : 'Collection Bucket',
-            style: Theme.of(context).textTheme.headlineMedium,
           ),
           actions: [
+            if (selecting)
+              // The pick is always at the head of the list; this is the way
+              // back to it after scrolling down for the next account.
+              IconButton(
+                tooltip: 'Jump to selected',
+                icon: const Icon(Icons.vertical_align_top_rounded),
+                onPressed: _jumpToSelected,
+              ),
             if (selecting)
               // "Take the whole area": once the filters have narrowed the
               // list to today's route, this is the second and last tap.
@@ -134,6 +183,13 @@ class CollectionBucketScreen extends StatelessWidget {
                 Expanded(
                   child: Obx(() {
                     final accounts = controller.bucketAccounts;
+                    // A line is only worth ruling when there is something on
+                    // both sides of it.
+                    final picked = controller.selectedVisibleCount;
+                    final groupEnd =
+                        picked > 0 && picked < accounts.length ? picked : 0;
+                    final movedId = controller.lastMovedAccountId.value;
+                    final generation = controller.selectionGeneration.value;
 
                     // Cross-fade between the list and the empty state so a
                     // filter that empties the list does not hard-cut to a
@@ -152,6 +208,7 @@ class CollectionBucketScreen extends StatelessWidget {
                             )
                           : ListView.separated(
                               key: const ValueKey('list'),
+                              controller: _scroll,
                               padding: EdgeInsets.fromLTRB(
                                 BSizes.defaultSpace,
                                 BSizes.sm,
@@ -162,11 +219,13 @@ class CollectionBucketScreen extends StatelessWidget {
                                     BDevicesUtils.systemBottomInset(context),
                               ),
                               itemCount: accounts.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: BSizes.sm),
+                              separatorBuilder: (_, index) =>
+                                  index == groupEnd - 1
+                                      ? const _GatheredGroupDivider()
+                                      : const SizedBox(height: BSizes.sm),
                               itemBuilder: (context, index) {
                                 final client = accounts[index];
-                                return Obx(() => AccountCard(
+                                final card = Obx(() => AccountCard(
                                       client: client,
                                       invoiceCount: controller
                                           .getAccountInvoiceCount(client.id),
@@ -193,6 +252,17 @@ class CollectionBucketScreen extends StatelessWidget {
                                       // labelled as such.
                                       onInfoTap: () => _openAccount(client),
                                     ));
+
+                                // The one row that just moved arrives rather
+                                // than appears. Only that row: animating the
+                                // whole group on every tick would make a
+                                // five-account pick flash five times.
+                                return index == 0 && client.id == movedId
+                                    ? _GatheredEntry(
+                                        key: ValueKey('moved-$generation'),
+                                        child: card,
+                                      )
+                                    : card;
                               },
                             ),
                     );
@@ -221,6 +291,72 @@ class CollectionBucketScreen extends StatelessWidget {
       count: controller.countBucketAccounts,
     );
     if (chosen != null) controller.bucketFilterSpec.value = chosen;
+  }
+}
+
+/// The entrance for the row that has just moved to the top: a 160ms fade and
+/// an 8px rise, so it reads as having arrived rather than having been swapped
+/// in behind the collector's back.
+///
+/// Short on purpose. This plays on every tick, dozens of times a route, and an
+/// animation seen that often is one to feel rather than wait for.
+class _GatheredEntry extends StatelessWidget {
+  const _GatheredEntry({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child:
+            Transform.translate(offset: Offset(0, 8 * (1 - t)), child: child),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// The line under the ticked group.
+///
+/// Without it the top of the list is just some ticked cards that happen to be
+/// first, and a collector scrolling back up cannot tell where their pick ends
+/// and the catalogue resumes. The label carries that, so the line itself can
+/// stay a hairline.
+class _GatheredGroupDivider extends StatelessWidget {
+  const _GatheredGroupDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: BSizes.md),
+      child: Row(
+        children: [
+          Text(
+            'All accounts',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: BCollectionColors.inkMuted,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(width: BSizes.sm),
+          const Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: BCollectionColors.outline,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

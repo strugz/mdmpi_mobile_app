@@ -79,6 +79,10 @@ class AccountCard extends StatelessWidget {
 
   static const Duration _stateDuration = Duration(milliseconds: 160);
 
+  /// The selection circle's box, and the indent the metadata line uses to line
+  /// up under the name. One constant, so the two cannot drift apart.
+  static const double _circleBox = 28;
+
   /// Placeholders the backend sends for an address it does not have. A pin
   /// icon next to the letters "N/A" is a row that costs space and says
   /// nothing, so an unknown address is simply not shown.
@@ -109,7 +113,11 @@ class AccountCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: _stateDuration,
         curve: Curves.easeOut,
-        padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
+        // Tighter top and bottom than the sides. This is a work queue: the
+        // card earns its height from content, and vertical padding is the one
+        // part of it that carries none.
+        padding: const EdgeInsets.symmetric(
+            horizontal: BSizes.spaceBtwItemsLight, vertical: BSizes.sm),
         decoration: BoxDecoration(
           color: isSelected
               ? BCollectionColors.primary.withValues(alpha: 0.05)
@@ -129,7 +137,9 @@ class AccountCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _topLine(theme, address),
-            const SizedBox(height: BSizes.xs),
+            // The amount is already set apart by its size, its colour and its
+            // right edge. It does not also need a gap.
+            const SizedBox(height: 2),
             _amountLine(theme),
             const SizedBox(height: BSizes.xs),
             _meta(theme),
@@ -257,7 +267,7 @@ class AccountCard extends StatelessWidget {
             maxLines: 1,
             style: theme.textTheme.titleMedium?.copyWith(
               fontSize: 17,
-              height: 1.2,
+              height: 1.1,
               fontWeight: FontWeight.w800,
               color: _settled
                   ? BCollectionColors.success
@@ -267,8 +277,12 @@ class AccountCard extends StatelessWidget {
         ],
       );
 
-  /// Tick on the left. A 40pt target around a 22pt mark, because it is hit
-  /// with a thumb while walking, and one tap per account is the whole point.
+  /// Tick on the left, in a 28pt box around a 22pt mark.
+  ///
+  /// It was 40pt square, which set the height of the whole top line: a 17pt
+  /// name in a 40pt row, 23pt of nothing on every card in a list of 261. The
+  /// box can be small because it is not the target — the whole card toggles
+  /// the account, and this circle is the state more than the control.
   Widget _selectionCircle() => GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onSelectTap,
@@ -276,8 +290,8 @@ class AccountCard extends StatelessWidget {
           checked: isSelected,
           label: 'Select ${client.name}',
           child: SizedBox(
-            width: 40,
-            height: 40,
+            width: _circleBox,
+            height: _circleBox,
             child: Center(
               child: AnimatedContainer(
                 duration: _stateDuration,
@@ -360,7 +374,8 @@ class AccountCard extends StatelessWidget {
         children: [
           // Under the name, not under the circle: secondary text lines up
           // with the primary text it belongs to, the way a mail list does.
-          if (onSelectTap != null) const SizedBox(width: 40 + BSizes.sm),
+          if (onSelectTap != null)
+            const SizedBox(width: _circleBox + BSizes.sm),
           // The count and badge take whatever width the Details control
           // leaves. As one Expanded group, the count only ellipsizes when
           // there is genuinely no room. As a Flexible beside a Spacer it got
@@ -427,10 +442,10 @@ class AccountCard extends StatelessWidget {
                 onTap: onInfoTap,
                 borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
                 child: Padding(
-                  // 32pt tall target on a 20pt line: reachable with a thumb
+                  // 28pt tall target on a 20pt line: reachable with a thumb
                   // without pushing the row taller.
                   padding: const EdgeInsets.symmetric(
-                      horizontal: BSizes.sm, vertical: 6),
+                      horizontal: BSizes.sm, vertical: 4),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

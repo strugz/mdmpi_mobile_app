@@ -74,6 +74,32 @@ void main() {
       expect((selected, opened), (1, 1), reason: 'the row opens');
     });
 
+    testWidgets('a picking row stays short enough to stack', (tester) async {
+      // 261 accounts on a phone: every point of card height is a point of
+      // scrolling. The 40pt selection circle used to set the height of a line
+      // holding a 17pt name.
+      await tester.pumpWidget(MaterialApp(
+        theme: BAppTheme.lightTheme,
+        home: Scaffold(
+          body: SizedBox(
+            width: 390,
+            child: AccountCard(
+              client: _client('1', 'Abbott Laboratories'),
+              invoiceCount: 1,
+              totalAmount: 112000,
+              overdueCount: 1,
+              onTap: () {},
+              onSelectTap: () {},
+              onInfoTap: () {},
+            ),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.getSize(find.byType(AccountCard)).height, lessThan(100));
+    });
+
     testWidgets('no details button where the row already opens the account',
         (tester) async {
       await tester.pumpWidget(host(AccountCard(
@@ -155,6 +181,53 @@ void main() {
       c.selectAllVisibleAccounts();
       expect(c.selectedAccountIds, {'1'});
       expect(c.isSelectionMode.value, isTrue);
+    });
+
+    test('a ticked account rides to the top, newest tick first', () {
+      final c = _seeded();
+      c.toggleAccountSelection('3'); // Zuellig, last alphabetically
+      expect(c.bucketAccounts.first.name, 'Zuellig Pharma');
+
+      c.toggleAccountSelection('2'); // Ace
+      expect(c.bucketAccounts.map((a) => a.name).toList(),
+          ['Ace Diagnostics Corp.', 'Zuellig Pharma', 'Abbott Laboratories'],
+          reason: 'the row that moves is the row being looked at');
+      expect(c.selectedVisibleCount, 2);
+      expect(c.lastMovedAccountId.value, '2');
+    });
+
+    test('unticking returns the row to its sorted place', () {
+      final c = _seeded();
+      c.toggleAccountSelection('3');
+      c.toggleAccountSelection('2');
+      c.toggleAccountSelection('3'); // changed their mind about Zuellig
+
+      expect(c.bucketAccounts.map((a) => a.name).toList(),
+          ['Ace Diagnostics Corp.', 'Abbott Laboratories', 'Zuellig Pharma']);
+      expect(c.selectedAccountIds, {'2'});
+      expect(c.selectionOrder, ['2']);
+    });
+
+    test('taking the lot leaves every row where it already was', () {
+      final c = _seeded();
+      c.toggleAccountSelection('3'); // Zuellig to the top
+      final before = c.bucketAccounts.map((a) => a.name).toList();
+
+      c.selectAllVisibleAccounts();
+
+      expect(c.bucketAccounts.map((a) => a.name).toList(), before,
+          reason: 'ticking everything must not shuffle the screen');
+      expect(c.selectedVisibleCount, 3);
+    });
+
+    test('clearing the selection puts the list back in its sorted order', () {
+      final c = _seeded();
+      c.toggleAccountSelection('3');
+      c.exitSelectionMode();
+
+      expect(c.bucketAccounts.map((a) => a.name).toList(),
+          ['Abbott Laboratories', 'Ace Diagnostics Corp.', 'Zuellig Pharma']);
+      expect(c.selectedVisibleCount, 0);
     });
 
     test('counts overdue invoices per bucket account', () {
@@ -259,6 +332,29 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Collection Bucket'), findsOneWidget);
       expect(find.textContaining('Acquire'), findsNothing);
+    });
+
+    testWidgets('ticking an account moves it to the top', (tester) async {
+      _seeded();
+      await pump(tester);
+      expect(tester.getRect(find.text('Abbott Laboratories')).top,
+          lessThan(tester.getRect(find.text('Zuellig Pharma')).top));
+
+      await tester.tap(find.bySemanticsLabel('Select Zuellig Pharma'));
+      await tester.pumpAndSettle();
+
+      expect(tester.getRect(find.text('Zuellig Pharma')).top,
+          lessThan(tester.getRect(find.text('Abbott Laboratories')).top));
+      expect(find.text('All accounts'), findsOneWidget,
+          reason: 'the line that says where the pick ends');
+      expect(find.byTooltip('Jump to selected'), findsOneWidget,
+          reason: 'the way back up to the pick after scrolling on');
+
+      // The newest tick leads, so the pick reads newest-first from the top.
+      await tester.tap(find.bySemanticsLabel('Select Ace Diagnostics Corp.'));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(find.text('Ace Diagnostics Corp.')).top,
+          lessThan(tester.getRect(find.text('Zuellig Pharma')).top));
     });
 
     // The count and the total are separate widgets so the total can refuse to
