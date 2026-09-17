@@ -84,7 +84,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('leads with the amount and keeps the number quiet',
+    testWidgets('leads with the amount, with the number set to be read',
         (tester) async {
       await tester
           .pumpWidget(_host(InvoiceCard(item: _item(toBeCollected: 37759.82))));
@@ -96,6 +96,13 @@ void main() {
       expect(amount.style!.fontSize!, greaterThan(number.style!.fontSize!),
           reason: 'the amount is what the collector is here for');
       expect(amount.style!.color, BColors.primary);
+
+      // The number is how the document is referred to and what a deposit is
+      // matched back to. It was once a grey label — the quietest thing on the
+      // card — and stopped being findable.
+      expect(number.style!.fontWeight, FontWeight.w700);
+      expect(number.style!.color, isNot(BColors.darkGrey),
+          reason: 'an identifier people look up is not set in secondary grey');
     });
 
     testWidgets('hides the account name by default and shows it on request',

@@ -16,9 +16,11 @@ enum InvoiceUrgency { settled, upcoming, due, late }
 /// tile and the Bucket card), so Bucket, Activity and the dashboard category
 /// lists all read the same.
 ///
-/// The amount is the hero. The invoice number is an identifier, so it is
-/// quiet; it was previously set at the same weight and size as the amount and
-/// competed with it.
+/// The amount is the hero, but the invoice number is a close second: it is
+/// what the collector and the customer both call the document, and what a
+/// deposit is matched back to. Both are set to be read. Earlier the number
+/// was reduced to a grey label so it would not compete with the amount, and
+/// it stopped being findable.
 ///
 /// Urgency is graded rather than binary. Every overdue invoice used to paint
 /// its whole card red, and since almost all of them are overdue the entire
@@ -157,13 +159,17 @@ class InvoiceCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Set to be read, not merely present. The number is how the
+              // collector and the customer both refer to the document, and
+              // what a deposit is matched back to. It was labelMedium grey —
+              // the quietest thing on the card — which is the wrong weight
+              // for the one line people look up.
               Text(
                 '#${item.id}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: BColors.darkGrey,
-                  fontWeight: FontWeight.w600,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
                 ),
               ),

@@ -59,8 +59,10 @@ class CategoryDetailScreen extends StatelessWidget {
                 itemBuilder: (context, index) {
                   return InvoiceCard(
                     item: invoices[index],
-                    // Mixed accounts here, so the client name earns its place.
-                    showAccountName: true,
+                    // One account's invoices, under a title that names it.
+                    // Repeating the name on every card put a line of noise
+                    // between the invoice number and the amount.
+                    showAccountName: false,
                   );
                 },
               ),
