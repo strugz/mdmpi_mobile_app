@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/home_skeleton.dart';
 
@@ -31,26 +32,49 @@ void main() {
     expect(c.isFirstLoad, isFalse);
   });
 
-  testWidgets('skeleton fills a bounded height without overflow',
-      (tester) async {
-    await tester.pumpWidget(const MaterialApp(
+  // The dashboard measures its own intrinsic height (scroll view, min-height
+  // box, IntrinsicHeight, Expanded tail), so the skeleton has to be able to
+  // answer that question. A LayoutBuilder inside it could not, which failed
+  // the whole page's layout and painted a blank screen on the device.
+  testWidgets('lays out inside the dashboard fit recipe', (tester) async {
+    await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: Column(children: [
-          SizedBox(height: 120),
-          Expanded(
-            child: HomeSkeleton(
-              margin: 16,
-              gap: 12,
-              sectionGap: 20,
-              historyCardHeight: 172,
+        body: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(children: const [
+                  SizedBox(height: 120),
+                  Expanded(
+                    child: HomeSkeleton(
+                      margin: 16,
+                      gap: 12,
+                      sectionGap: 20,
+                      historyCardHeight: 172,
+                    ),
+                  ),
+                ]),
+              ),
             ),
           ),
-        ]),
+        ),
       ),
     ));
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(HomeSkeleton), findsOneWidget);
+    final size = tester.getSize(find.byType(HomeSkeleton));
+    expect(size.height, greaterThan(0));
+    expect(size.width, greaterThan(0));
+  });
+
+  test('the bones are darker than the body they sit on', () {
+    // Shimmer paints the bone in its base colour and sweeps the highlight
+    // across it. The first attempt used a base a shade off the body, and the
+    // skeleton was invisible on the device.
+    expect(HomeSkeleton.boneBase, isNot(BCollectionColors.background));
+    expect(HomeSkeleton.boneBase.computeLuminance(),
+        lessThan(BCollectionColors.background.computeLuminance()));
   });
 }

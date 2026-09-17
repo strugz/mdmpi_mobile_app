@@ -28,76 +28,74 @@ class HomeSkeleton extends StatelessWidget {
   final double sectionGap;
   final double historyCardHeight;
 
+  /// The bone fill, and the sweep that crosses it. The bones sit on the
+  /// off-white body, so the base has to be darker than that body or they are
+  /// invisible; the highlight is the body colour itself, so the sweep reads
+  /// as light passing over rather than as a second shape.
+  @visibleForTesting
+  static const Color boneBase = BCollectionColors.outline;
+  static const Color _boneHighlight = BCollectionColors.background;
+
   @override
   Widget build(BuildContext context) {
+    // A plain Column, nothing that measures itself: the dashboard asks this
+    // widget for an intrinsic height, and a LayoutBuilder here cannot answer
+    // that (it failed the whole page's layout and painted a blank screen).
+    // The height comes from the Expanded the dashboard wraps this in.
     return Shimmer.fromColors(
-      baseColor: BCollectionColors.surfaceMuted,
-      highlightColor: BCollectionColors.surface,
+      baseColor: boneBase,
+      highlightColor: _boneHighlight,
       period: const Duration(milliseconds: 1400),
-      // Same fit recipe as the live dashboard: the panel takes the rest of
-      // the height, and a viewport shorter than the bones clips quietly
-      // instead of overflowing.
-      child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: IntrinsicHeight(
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: margin),
+            child: Column(
+              children: [
+                const _Bone(height: 100),
+                SizedBox(height: gap),
+                const _Bone(height: 90),
+                SizedBox(height: gap),
+                Row(
+                  children: const [
+                    Expanded(child: _Bone(height: 44)),
+                    SizedBox(width: BSizes.spaceBtwItemsLight),
+                    Expanded(child: _Bone(height: 44)),
+                  ],
+                ),
+                SizedBox(height: sectionGap),
+                const _Bone(height: 104),
+                const SizedBox(height: BSizes.sm),
+                const _Bone(height: 6, width: 40, radius: 3),
+                SizedBox(height: sectionGap),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: BCollectionColors.surface,
+                borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(BSizes.borderRadiusLg)),
+              ),
+              padding: EdgeInsets.fromLTRB(margin, BSizes.md, margin, 0),
               child: Column(
                 children: [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: Column(
-                      children: [
-                        const _Bone(height: 100),
-                        SizedBox(height: gap),
-                        const _Bone(height: 90),
-                        SizedBox(height: gap),
-                        Row(
-                          children: const [
-                            Expanded(child: _Bone(height: 44)),
-                            SizedBox(width: BSizes.spaceBtwItemsLight),
-                            Expanded(child: _Bone(height: 44)),
-                          ],
-                        ),
-                        SizedBox(height: sectionGap),
-                        const _Bone(height: 104),
-                        const SizedBox(height: BSizes.sm),
-                        const _Bone(height: 6, width: 40, radius: 3),
-                        SizedBox(height: sectionGap),
-                      ],
-                    ),
+                  Row(
+                    children: const [
+                      _Bone(height: 20, width: 180, radius: 6),
+                      Spacer(),
+                      _Bone(height: 14, width: 60, radius: 6),
+                    ],
                   ),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      decoration: const BoxDecoration(
-                        color: BCollectionColors.surface,
-                        borderRadius: BorderRadius.vertical(
-                            top: Radius.circular(BSizes.borderRadiusLg)),
-                      ),
-                      padding:
-                          EdgeInsets.fromLTRB(margin, BSizes.md, margin, 0),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: const [
-                              _Bone(height: 20, width: 180, radius: 6),
-                              Spacer(),
-                              _Bone(height: 14, width: 60, radius: 6),
-                            ],
-                          ),
-                          const SizedBox(height: BSizes.md),
-                          _Bone(height: historyCardHeight),
-                        ],
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: BSizes.md),
+                  _Bone(height: historyCardHeight),
                 ],
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -121,7 +119,7 @@ class _Bone extends StatelessWidget {
       height: height,
       width: width,
       decoration: BoxDecoration(
-        color: BCollectionColors.surfaceMuted,
+        color: HomeSkeleton.boneBase,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
