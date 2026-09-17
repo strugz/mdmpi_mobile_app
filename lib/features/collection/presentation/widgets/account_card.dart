@@ -227,46 +227,44 @@ class AccountCard extends StatelessWidget {
 
   /// What is owed, on its own line under the name.
   ///
-  /// Indented to the name's left edge rather than the card's, so the amounts
-  /// still form a column that can be read down the list. Nothing shares the
-  /// line, so the figure is never squeezed and never truncated: a cut number
-  /// is a different number, not merely a shorter one.
-  Widget _amountLine(ThemeData theme) => Padding(
-        padding:
-            EdgeInsets.only(left: onSelectTap != null ? 40 + BSizes.sm : 0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
+  /// Flush to the card's right edge, so the figures line up on their last
+  /// digit and a column of different-length amounts can be compared at a
+  /// glance. Nothing shares the line, so the figure is never squeezed and
+  /// never truncated: a cut number is a different number, not merely a
+  /// shorter one.
+  Widget _amountLine(ThemeData theme) => Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          // Only on the rows that are the exception. Every other row in this
+          // list is an outstanding balance, so labelling each one
+          // "outstanding" repeats the column heading down the whole screen.
+          if (_settled) ...[
             Text(
-              BFormatter.formatPesoCurrency(
-                  _settled ? totalCollected : totalAmount),
-              maxLines: 1,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontSize: 17,
-                height: 1.2,
-                fontWeight: FontWeight.w800,
-                color: _settled
-                    ? BCollectionColors.success
-                    : BCollectionColors.primary,
+              'collected',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: BCollectionColors.success,
+                fontWeight: FontWeight.w600,
+                fontSize: 10,
               ),
             ),
-            // Only on the rows that are the exception. Every other row in this
-            // list is an outstanding balance, so labelling each one
-            // "outstanding" repeats the column heading down the whole screen.
-            if (_settled) ...[
-              const SizedBox(width: BSizes.xs),
-              Text(
-                'collected',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: BCollectionColors.success,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 10,
-                ),
-              ),
-            ],
+            const SizedBox(width: BSizes.xs),
           ],
-        ),
+          Text(
+            BFormatter.formatPesoCurrency(
+                _settled ? totalCollected : totalAmount),
+            maxLines: 1,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontSize: 17,
+              height: 1.2,
+              fontWeight: FontWeight.w800,
+              color: _settled
+                  ? BCollectionColors.success
+                  : BCollectionColors.primary,
+            ),
+          ),
+        ],
       );
 
   /// Tick on the left. A 40pt target around a 22pt mark, because it is hit
