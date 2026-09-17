@@ -53,14 +53,16 @@ class AccountCard extends StatelessWidget {
 
   final VoidCallback onTap;
 
-  /// Opens the account's details. Null where tapping the row already does
-  /// that, so the row is not offered the same destination twice.
+  /// Opens the account's page, from a labelled "Details" control on the
+  /// row. Null where tapping the row already does that, so the row is not
+  /// offered the same destination twice.
   final VoidCallback? onInfoTap;
 
-  /// Given, the row carries a selection circle on its left that toggles on
-  /// tap while the rest of the row keeps doing whatever [onTap] does. This is
-  /// how a screen makes picking several rows an ordinary thing to do rather
-  /// than a mode found by holding a finger down.
+  /// Given, the row carries a selection circle on its left. The circle
+  /// toggles on tap; what the rest of the row does is up to [onTap] — on a
+  /// picking screen that is also toggle, so the whole card is the target and
+  /// [onInfoTap] is the way in. This is how picking several rows becomes an
+  /// ordinary thing to do rather than a mode found by holding a finger down.
   final VoidCallback? onSelectTap;
 
   final VoidCallback? onClaimTap;
@@ -323,49 +325,93 @@ class AccountCard extends StatelessWidget {
           // Under the name, not under the circle: secondary text lines up
           // with the primary text it belongs to, the way a mail list does.
           if (onSelectTap != null) const SizedBox(width: 40 + BSizes.sm),
-          const Icon(Iconsax.document_text, size: 13, color: BColors.darkGrey),
-          const SizedBox(width: BSizes.xs),
-          Text(
-            '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: BColors.darkGrey,
-              fontWeight: FontWeight.w600,
+          // The count and badge take whatever width the Details control
+          // leaves. As one Expanded group, the count only ellipsizes when
+          // there is genuinely no room. As a Flexible beside a Spacer it got
+          // half the free space and truncated "1 invoice" at 390pt.
+          Expanded(
+            child: Row(
+              children: [
+                const Icon(Iconsax.document_text,
+                    size: 13, color: BColors.darkGrey),
+                const SizedBox(width: BSizes.xs),
+                Flexible(
+                  child: Text(
+                    '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: BColors.darkGrey,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                if (overdueCount > 0) ...[
+                  const SizedBox(width: BSizes.sm),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      // Tinted, not solid: in these lists almost everything
+                      // is overdue, and a wall of filled red badges carries
+                      // no signal.
+                      color: BColors.error.withValues(alpha: 0.12),
+                      borderRadius:
+                          BorderRadius.circular(BSizes.borderRadiusSm),
+                    ),
+                    child: Text(
+                      '$overdueCount overdue',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: BColors.error,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-          if (overdueCount > 0) ...[
-            const SizedBox(width: BSizes.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                // Tinted, not solid: in these lists almost everything is
-                // overdue, and a wall of filled red badges carries no signal.
-                color: BColors.error.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-              ),
-              child: Text(
-                '$overdueCount overdue',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: BColors.error,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 10,
-                ),
-              ),
-            ),
-          ],
-          const Spacer(),
+          // A labelled way into the account. Where the row itself selects,
+          // this is the only route to the account's page, so it has to read
+          // as one — a bare 18pt info glyph in the corner did not, and a
+          // control nobody recognises is a control nobody finds.
           if (!isSelectionMode && onInfoTap != null)
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: IconButton(
-                tooltip: 'Account details',
-                onPressed: onInfoTap,
-                icon: const Icon(Iconsax.info_circle,
-                    size: 18, color: BColors.darkGrey),
-                padding: EdgeInsets.zero,
-                constraints:
-                    const BoxConstraints.tightFor(width: 24, height: 24),
-                splashRadius: 18,
+            Semantics(
+              // Its own node: a discrete button, announced on its own rather
+              // than folded into whatever surrounds it.
+              container: true,
+              button: true,
+              label: 'Open ${client.name}',
+              // The visible "Details" is for sighted users; a screen reader
+              // should hear which account this opens, not "Details" tacked
+              // onto the end of it.
+              excludeSemantics: true,
+              child: InkWell(
+                onTap: onInfoTap,
+                borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                child: Padding(
+                  // 32pt tall target on a 20pt line: reachable with a thumb
+                  // without pushing the row taller.
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: BSizes.sm, vertical: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Details',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: BColors.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      const Icon(Iconsax.arrow_right_3,
+                          size: 14, color: BColors.primary),
+                    ],
+                  ),
+                ),
               ),
             ),
         ],

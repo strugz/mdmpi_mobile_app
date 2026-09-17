@@ -24,12 +24,13 @@ import 'widgets/collection_search_filter_bar.dart';
 /// and taking five accounts meant five taps, five snackbars and five list
 /// reflows.
 ///
-/// One model now. Every row has a selection circle; tapping it ticks the
-/// account, tapping the row itself opens the account. Once anything is
-/// ticked, a bar slides in with the count and the total value, and one tap
-/// acquires the lot. Taking one account is two taps instead of one; taking a
-/// route is one tap per account plus one, instead of one per account plus a
-/// snackbar per account.
+/// One model now. Tapping a card ticks the account — the whole card, not
+/// just the circle, because ticking is what this screen is for and a thumb
+/// should not have to aim. A labelled "Details" control on each card is the
+/// way into the account's page. Once anything is ticked, a bar slides in
+/// with the count and the total value, and one tap acquires the lot. Taking
+/// one account is two taps instead of one; taking a route is one tap per
+/// account plus one, instead of one per account plus a snackbar per account.
 ///
 /// The filters stay where they are while things are ticked. They used to
 /// collapse the moment one row was selected — the search bar vanishing under
@@ -169,12 +170,19 @@ class CollectionBucketScreen extends StatelessWidget {
                                       .getBucketAccountOverdueCount(client.id),
                                   isSelected: controller.selectedAccountIds
                                       .contains(client.id),
+                                  // The whole card is the target for the
+                                  // thing this screen is for. The circle is
+                                  // the state, not the only place to tap.
+                                  onTap: () => controller
+                                      .toggleAccountSelection(client.id),
                                   onSelectTap: () => controller
                                       .toggleAccountSelection(client.id),
                                   // Kept as a shortcut for anyone used to it.
                                   onLongPress: () => controller
                                       .toggleAccountSelection(client.id),
-                                  onTap: () => _openAccount(client),
+                                  // The one way into the account's page, and
+                                  // labelled as such.
+                                  onInfoTap: () => _openAccount(client),
                                 ));
                           },
                         ),

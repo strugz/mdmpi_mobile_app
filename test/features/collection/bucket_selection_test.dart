@@ -10,8 +10,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/accoun
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 /// The Bucket is a catalogue you pick from, so what these protect is the one
-/// way of picking: a circle on every row, the row itself opening the account,
-/// and a bar that totals what is ticked.
+/// way of picking: the whole card ticks the account, a labelled "Details"
+/// control is the way into its page, and a bar totals what is ticked.
 
 class _Stub extends CollectionActivityController {
   @override
@@ -19,11 +19,17 @@ class _Stub extends CollectionActivityController {
 }
 
 ClientModel _client(String id, String name) => ClientModel(
-    id: id, code: 'NLN-1', name: name, address: '', contact: '', emailAddress: '');
+    id: id,
+    code: 'NLN-1',
+    name: name,
+    address: '',
+    contact: '',
+    emailAddress: '');
 
 CollectionItemModel _invoice(String id, ClientModel c, double due,
         {String dueDate = '2999-01-01'}) =>
-    CollectionItemModel(id: id, client: c, toBeCollected: due, dueDate: dueDate);
+    CollectionItemModel(
+        id: id, client: c, toBeCollected: due, dueDate: dueDate);
 
 _Stub _seeded() {
   final c = Get.put<CollectionActivityController>(_Stub()) as _Stub;
@@ -101,12 +107,14 @@ void main() {
       await tester.pumpAndSettle();
 
       final label = find.text('Acquire Account');
-      final button = find.ancestor(of: label, matching: find.byType(OutlinedButton));
+      final button =
+          find.ancestor(of: label, matching: find.byType(OutlinedButton));
       final labelBox = tester.getRect(label);
       final buttonBox = tester.getRect(button);
       expect(buttonBox.contains(labelBox.topLeft), isTrue);
       expect(buttonBox.contains(labelBox.bottomRight), isTrue,
-          reason: 'the label must sit wholly inside the button, not be clipped');
+          reason:
+              'the label must sit wholly inside the button, not be clipped');
     });
   });
 
@@ -179,6 +187,30 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('tapping the card body ticks the account, not opens it',
+        (tester) async {
+      _seeded();
+      await pump(tester);
+
+      // Anywhere on the card — the name is as good a place as any.
+      await tester.tap(find.text('Abbott Laboratories'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 selected'), findsOneWidget,
+          reason: 'the card is the target for the thing this screen is for');
+      expect(find.byType(CollectionBucketScreen), findsOneWidget,
+          reason: 'still on the Bucket - nothing was navigated to');
+    });
+
+    testWidgets('every card carries a labelled way into the account',
+        (tester) async {
+      _seeded();
+      await pump(tester);
+
+      expect(find.text('Details'), findsNWidgets(3));
+      expect(find.bySemanticsLabel('Open Abbott Laboratories'), findsOneWidget);
+    });
+
     testWidgets('the filters stay put while rows are ticked', (tester) async {
       _seeded();
       await pump(tester);
@@ -208,7 +240,8 @@ void main() {
       await tester.tap(find.bySemanticsLabel('Select Ace Diagnostics Corp.'));
       await tester.pumpAndSettle();
       expect(find.text('2 selected'), findsOneWidget);
-      expect(find.text('₱132,000.00'), findsOneWidget, reason: 'the basket total');
+      expect(find.text('₱132,000.00'), findsOneWidget,
+          reason: 'the basket total');
       expect(find.text('Acquire 2 accounts'), findsOneWidget);
     });
 
