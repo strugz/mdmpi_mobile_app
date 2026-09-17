@@ -9,8 +9,8 @@ import 'activity_detail_screen.dart';
 import 'batch_activity_detail_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'widgets/activity_filter_modal.dart';
+import 'widgets/defer_reason_sheet.dart';
 import 'widgets/invoice_details_modal.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/side_filter_drawer.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -37,84 +37,21 @@ class _CollectionActivityAccountInvoicesScreenState
     super.dispose();
   }
 
-  void _showUnclaimWithReasonDialog() {
-    final reasons = [
-      CollectionStatusColors.statusFollowUp,
-      CollectionStatusColors.statusUnavailable,
-      CollectionStatusColors.statusRefused,
-      CollectionStatusColors.statusOthers,
-    ];
+  Future<void> _showUnclaimWithReasonDialog() async {
+    final reason = await DeferReasonSheet.show(
+      context,
+      accountName: widget.client.name,
+    );
+    if (reason == null || !mounted) return;
 
-    final RxString selectedReason = CollectionStatusColors.statusFollowUp.obs;
-    final othersController = TextEditingController();
+    controller.unclaimWithReason(
+        widget.client.id, reason.status, reason.remarks);
 
-    Get.defaultDialog(
-      title: 'Release Account',
-      content: Obx(() => ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: Get.height * 0.5),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Select reason for deferred engagement:',
-                      textAlign: TextAlign.center),
-                  const SizedBox(height: BSizes.md),
-                  ...reasons.map((reason) => RadioListTile<String>(
-                        title: Text(reason),
-                        value: reason,
-                        groupValue: selectedReason.value,
-                        onChanged: (val) => selectedReason.value = val!,
-                        contentPadding: EdgeInsets.zero,
-                        dense: true,
-                      )),
-                  if (selectedReason.value ==
-                      CollectionStatusColors.statusOthers)
-                    Padding(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: BSizes.md),
-                      child: TextField(
-                        controller: othersController,
-                        decoration: const InputDecoration(
-                            hintText: 'Enter custom reason...'),
-                        maxLines: 2,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          )),
-      textConfirm: 'Confirm',
-      textCancel: 'Cancel',
-      confirmTextColor: BColors.white,
-      buttonColor: BColors.error,
-      onConfirm: () {
-        final rawReason = selectedReason.value;
-        final customRemark = othersController.text.trim();
+    Get.back(); // Return to Activity list
 
-        if (rawReason == CollectionStatusColors.statusOthers &&
-            customRemark.isEmpty) {
-          BLoaders.warningSnackBar(
-              title: 'Required', message: 'Please enter a reason');
-          return;
-        }
-
-        final status = rawReason == CollectionStatusColors.statusOthers
-            ? 'Others'
-            : rawReason;
-        final remarks = rawReason == CollectionStatusColors.statusOthers
-            ? customRemark
-            : 'No collection done: $rawReason';
-
-        controller.unclaimWithReason(widget.client.id, status, remarks);
-
-        Get.back(); // Close dialog
-        Get.back(); // Return to Activity list
-
-        BLoaders.successSnackBar(
-          title: 'Account Released',
-          message: '${widget.client.name} moved back to bucket.',
-        );
-      },
+    BLoaders.successSnackBar(
+      title: 'Account Released',
+      message: '${widget.client.name} moved back to bucket.',
     );
   }
 
