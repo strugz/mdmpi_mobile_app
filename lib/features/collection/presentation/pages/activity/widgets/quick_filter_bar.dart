@@ -23,6 +23,7 @@ class QuickFilterBar extends StatelessWidget {
     required this.filter,
     required this.onChanged,
     this.areas = const [],
+    this.defaultSort = ActivitySort.mostOverdue,
   });
 
   final ActivityFilter filter;
@@ -30,6 +31,11 @@ class QuickFilterBar extends StatelessWidget {
 
   /// Territory codes present in the data, offered after the presets.
   final List<String> areas;
+
+  /// The order the screen uses when no sort chip is on: the engagement list
+  /// leads with the most overdue, the bucket is a catalogue ordered by name.
+  /// Turning a sort chip off returns here rather than to a shared default.
+  final ActivitySort defaultSort;
 
   @override
   Widget build(BuildContext context) {
@@ -43,12 +49,8 @@ class QuickFilterBar extends StatelessWidget {
           // Clears everything, including dimensions with no preset here.
           BQuickFillChip(
             label: 'All',
-            selected: !filter.isActive,
-            onTap: () => onChanged(filter.copyWith(
-              due: DueBand.any,
-              amount: AmountBand.any,
-              area: '',
-            )),
+            selected: !filter.isActive && filter.sort == defaultSort,
+            onTap: () => onChanged(ActivityFilter(sort: defaultSort)),
           ),
           _gap,
           _toggle(
@@ -69,6 +71,14 @@ class QuickFilterBar extends StatelessWidget {
                 filter.copyWith(due: on ? DueBand.late30 : DueBand.any),
           ),
           _gap,
+          // Orders, not filters: they hide nothing, so they never make the
+          // list shorter and never count towards a filter being active.
+          _sort(ActivitySort.amountHigh, Iconsax.arrow_down),
+          _gap,
+          _sort(ActivitySort.mostInvoices, Iconsax.document_copy),
+          _gap,
+          _sort(ActivitySort.fewestInvoices, Iconsax.document),
+          _gap,
           for (final area in areas) ...[
             _toggle(
               label: BCollectionArea.labelFor(area),
@@ -88,6 +98,16 @@ class QuickFilterBar extends StatelessWidget {
             ),
             _gap,
           ],
+          if (filter.sort != defaultSort &&
+              filter.sort != ActivitySort.amountHigh &&
+              filter.sort != ActivitySort.mostInvoices &&
+              filter.sort != ActivitySort.fewestInvoices) ...[
+            _removable(
+              filter.sort.label,
+              () => onChanged(filter.copyWith(sort: defaultSort)),
+            ),
+            _gap,
+          ],
           if (filter.area.isNotEmpty && !areas.contains(filter.area))
             _removable(
               BCollectionArea.labelFor(filter.area),
@@ -99,6 +119,16 @@ class QuickFilterBar extends StatelessWidget {
   }
 
   static const _gap = SizedBox(width: BSizes.sm);
+
+  /// A sort chip. Tapping the one already on returns to [defaultSort], so the
+  /// row never traps the list in an order with no way back.
+  Widget _sort(ActivitySort sort, IconData icon) => _toggle(
+        label: sort.label,
+        icon: icon,
+        color: BCollectionColors.primary,
+        on: filter.sort == sort,
+        set: (on) => filter.copyWith(sort: on ? sort : defaultSort),
+      );
 
   Widget _toggle({
     required String label,

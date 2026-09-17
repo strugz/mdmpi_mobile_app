@@ -279,6 +279,90 @@ void main() {
       expect(find.text(CollectionStatusColors.statusUnavailable), findsNothing);
     });
 
+    // The orders sit in the same row as the filters, but they hide nothing,
+    // so All stays lit and a second tap returns to the screen's own order.
+    testWidgets('a sort chip turns on, then back to the screen default',
+        (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      await tester.pumpWidget(host(ActivityFilter.none, (f) => last = f));
+
+      await tester.tap(find.text(ActivitySort.amountHigh.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.amountHigh);
+      expect(last?.isActive, isFalse, reason: 'an order hides nothing');
+
+      await tester.tap(find.text(ActivitySort.amountHigh.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.mostOverdue);
+    });
+
+    testWidgets('the invoice-count orders are one tap each', (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      await tester.pumpWidget(host(ActivityFilter.none, (f) => last = f));
+
+      await tester.tap(find.text(ActivitySort.mostInvoices.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.mostInvoices);
+
+      await tester.tap(find.text(ActivitySort.fewestInvoices.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.fewestInvoices);
+    });
+
+    testWidgets('the bucket returns to its own catalogue order',
+        (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      var filter = const ActivityFilter(sort: ActivitySort.amountHigh);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => QuickFilterBar(
+              filter: filter,
+              defaultSort: ActivitySort.name,
+              onChanged: (f) => setState(() {
+                filter = f;
+                last = f;
+              }),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text(ActivitySort.amountHigh.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.name);
+    });
+
+    testWidgets('a sort chosen only in the sheet shows here as removable',
+        (tester) async {
+      tester.view.physicalSize = const Size(3000, 600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      ActivityFilter? last;
+      await tester.pumpWidget(host(
+        const ActivityFilter(sort: ActivitySort.lastVisitOldest),
+        (f) => last = f,
+      ));
+
+      expect(find.text(ActivitySort.lastVisitOldest.label), findsOneWidget);
+      await tester.tap(find.text(ActivitySort.lastVisitOldest.label));
+      await tester.pumpAndSettle();
+      expect(last?.sort, ActivitySort.mostOverdue);
+    });
+
     testWidgets('areas present in the data are offered', (tester) async {
       tester.view.physicalSize = const Size(3000, 600);
       tester.view.devicePixelRatio = 1;

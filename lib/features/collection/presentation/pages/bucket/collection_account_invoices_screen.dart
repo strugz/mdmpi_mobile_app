@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_filter_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_filter_bar.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
 
 class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -91,6 +92,7 @@ class _CollectionAccountInvoicesScreenState
                 )),
             Obx(() => QuickFilterBar(
                   filter: controller.bucketFilterSpec.value,
+                  defaultSort: ActivitySort.name,
                   onChanged: (f) => controller.bucketFilterSpec.value = f,
                 )),
 

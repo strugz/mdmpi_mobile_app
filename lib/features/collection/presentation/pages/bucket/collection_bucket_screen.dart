@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/accoun
 import 'collection_account_information_screen.dart';
 import 'widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
 
 /// The Collection Bucket: every account a collector could take on.
 ///
@@ -120,6 +121,7 @@ class CollectionBucketScreen extends StatelessWidget {
             // the toolbar below already owns that chip.
             Obx(() => QuickFilterBar(
                   filter: controller.bucketFilterSpec.value,
+                  defaultSort: ActivitySort.name,
                   onChanged: (f) => controller.bucketFilterSpec.value = f,
                 )),
             const BucketToolbar(),
