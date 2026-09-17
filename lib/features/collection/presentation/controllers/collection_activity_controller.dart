@@ -524,12 +524,16 @@ class CollectionActivityController extends GetxController {
     return [for (final k in keys.take(limit)) display[k]!];
   }
 
-  /// Number of bucket accounts in [area] (a BCollectionArea code, the "Others"
-  /// sentinel, or '' for every account). Ignores the other bucket filters so
-  /// the Filter by Area screen shows what each choice would reveal.
-  int accountCountForArea(String area) => masterAccountList
-      .where((c) => BCollectionArea.matches(c.code, area))
-      .length;
+  /// Number of bucket accounts [area] would show (a BCollectionArea code, the
+  /// "Others" sentinel, or '' for every account).
+  ///
+  /// Exactly what picking that area produces: the same population and the same
+  /// filters as [bucketAccounts], with only the territory swapped. Counting
+  /// the master account list instead reported accounts the bucket can never
+  /// show — ones already claimed into an engagement, or settled to a zero
+  /// balance — so the picker offered 45 and the list then held 44.
+  int accountCountForArea(String area) =>
+      _bucketAccountsFor(bucketFilterSpec.value, area: area).length;
 
   /// True when any bucket-narrowing input (search, amount/invoice range, area)
   /// is active. Drives the empty-state copy and the "Clear all filters" action.
@@ -569,15 +573,19 @@ class CollectionActivityController extends GetxController {
   /// Accounts with at least one bucket invoice that passes [spec], the area
   /// and the search. An account is judged by its best invoice, so filtering
   /// for "late 30+" keeps every account holding such an invoice.
-  List<ClientModel> _bucketAccountsFor(ActivityFilter spec) {
+  ///
+  /// [area] overrides the selected territory, which is how the area picker
+  /// asks what each choice would actually show.
+  List<ClientModel> _bucketAccountsFor(ActivityFilter spec, {String? area}) {
     final query = bucketSearchQuery.value.toLowerCase();
+    final inArea = area ?? selectedArea.value;
     final matching = <String, List<CollectionItemModel>>{};
     for (final item in bucketItems) {
       if (item.toBeCollected <= 0 || !spec.matches(item)) continue;
       matching.putIfAbsent(item.client.id, () => []).add(item);
     }
     final accounts = masterAccountList.where((client) {
-      if (!_matchesArea(client.code)) return false;
+      if (!BCollectionArea.matches(client.code, inArea)) return false;
       if (!matching.containsKey(client.id)) return false;
       return query.isEmpty || client.name.toLowerCase().contains(query);
     }).toList();
