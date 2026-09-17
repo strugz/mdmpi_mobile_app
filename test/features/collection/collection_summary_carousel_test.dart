@@ -164,9 +164,11 @@ void main() {
     // (The first pump only starts the ticker; the second advances it.)
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
+    // Pages are virtual and start far from zero, so check the fraction.
     final page = tester.widget<PageView>(find.byType(PageView)).controller!;
-    expect(page.page, greaterThan(0.5));
-    expect(page.page, lessThan(1.0));
+    final fraction = page.page! - page.page!.floorToDouble();
+    expect(fraction, greaterThan(0.5));
+    expect(fraction, lessThan(1.0));
     await tester.tap(find.byType(PageView));
     await tester.pumpAndSettle();
 
@@ -185,7 +187,73 @@ void main() {
     final controller =
         tester.widget<PageView>(find.byType(PageView)).controller!;
     expect(controller.position.isScrollingNotifier.value, isFalse);
-    expect(controller.page, 1);
+    expect(controller.page, controller.page!.roundToDouble());
+    expect(find.text('Due Date'), findsOneWidget);
+  });
+
+  Future<void> swipe(WidgetTester tester, {required bool forward}) async {
+    await tester.fling(
+        find.byType(PageView), Offset(forward ? -300 : 300, 0), 1200);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('swiping past the last card loops back to the first',
+      (tester) async {
+    await tester.pumpWidget(_inUnboundedColumn(
+        CollectionSummaryCarousel(pages: _pages(), initialPage: 3)));
+    await tester.pumpAndSettle();
+    expect(find.text('Advanced Payment'), findsOneWidget);
+
+    await swipe(tester, forward: true);
+
+    expect(find.text('Settled'), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+  });
+
+  testWidgets('swiping back from the first card shows the last',
+      (tester) async {
+    await tester.pumpWidget(
+        _inUnboundedColumn(CollectionSummaryCarousel(pages: _pages())));
+    await tester.pumpAndSettle();
+
+    await swipe(tester, forward: false);
+
+    expect(find.text('Advanced Payment'), findsOneWidget);
+  });
+
+  testWidgets('a full lap returns to the first card with its dot active',
+      (tester) async {
+    await tester.pumpWidget(
+        _inUnboundedColumn(CollectionSummaryCarousel(pages: _pages())));
+    await tester.pumpAndSettle();
+
+    for (var i = 0; i < 4; i++) {
+      await swipe(tester, forward: true);
+    }
+
+    expect(find.text('Settled'), findsOneWidget);
+    // The active dot is the wide one; only one dot should be wide.
+    final wide = tester
+        .widgetList<AnimatedContainer>(find.byType(AnimatedContainer))
+        .where((c) => c.constraints?.maxWidth == 16)
+        .toList();
+    expect(wide, hasLength(1));
+  });
+
+  testWidgets('a tap that lands during the loop-around opens the first card',
+      (tester) async {
+    var taps = 0;
+    await tester.pumpWidget(_inUnboundedColumn(CollectionSummaryCarousel(
+        pages: _pages(onSettledTap: () => taps++), initialPage: 3)));
+    await tester.pumpAndSettle();
+
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1200);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.byType(PageView));
+    await tester.pumpAndSettle();
+
+    expect(taps, 1);
   });
 
   testWidgets('survives a large system text scale', (tester) async {

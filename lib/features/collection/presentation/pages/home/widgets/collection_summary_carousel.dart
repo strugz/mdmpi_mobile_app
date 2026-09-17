@@ -26,6 +26,11 @@ class CollectionSummaryPage {
 
 /// Horizontal carousel of [CollectionSummaryCard]s with a mirror transition.
 ///
+/// The carousel loops: swiping past the last card brings the first one back,
+/// and swiping back from the first shows the last. The PageView runs over an
+/// unbounded virtual index that starts far from zero; the real card is
+/// `virtual % pages.length`.
+///
 /// The card being swiped away turns on its vertical axis until it is edge-on,
 /// and the next card turns in from the opposite side, like a panel flipping to
 /// show its mirror face. The angle is driven by the scroll offset, so the
@@ -63,11 +68,25 @@ class CollectionSummaryCarousel extends StatefulWidget {
 }
 
 class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
+  /// Virtual start, far enough from zero that a user never reaches the
+  /// front edge by swiping backwards. A multiple of the page count keeps the
+  /// modulo lined up with the real index.
+  late final int _origin = widget.pages.length * 10000 + widget.initialPage;
+
   late final PageController _controller = PageController(
     viewportFraction: CollectionSummaryCarousel.viewportFraction,
-    initialPage: widget.initialPage,
+    initialPage: _origin,
   );
-  late int _current = widget.initialPage;
+
+  /// Virtual page the PageView reports as current.
+  late int _current = _origin;
+
+  int get _pageCount => widget.pages.length;
+
+  /// Real card index for a virtual page.
+  int _real(int virtual) => virtual % _pageCount;
+
+  CollectionSummaryPage _pageAt(int virtual) => widget.pages[_real(virtual)];
 
   /// A tap that begins while the page is still settling. Scrollable wraps
   /// its children in IgnorePointer for the whole ballistic settle, so the
@@ -95,8 +114,7 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
     if (_settlingPointer != null || !_isSettling) return;
     _settlingPointer = event.pointer;
     _settlingDown = event.position;
-    _settlingTarget =
-        _controller.page!.round().clamp(0, widget.pages.length - 1);
+    _settlingTarget = _controller.page!.round();
   }
 
   void _onPointerUp(PointerUpEvent event) {
@@ -106,7 +124,7 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
     _settlingPointer = null;
     _settlingDown = null;
     _settlingTarget = null;
-    if (moved <= kTouchSlop) widget.pages[target].onTap?.call();
+    if (moved <= kTouchSlop) _pageAt(target).onTap?.call();
   }
 
   void _onPointerCancel(PointerCancelEvent event) {
@@ -114,6 +132,14 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
     _settlingPointer = null;
     _settlingDown = null;
     _settlingTarget = null;
+  }
+
+  /// The virtual page for real index [real] that is closest to the current
+  /// one, so a dot tap turns the short way round the loop.
+  int _nearestVirtual(int real) {
+    final forward = (real - _real(_current)) % _pageCount;
+    final backward = forward - _pageCount;
+    return _current + (forward <= -backward ? forward : backward);
   }
 
   @override
@@ -184,10 +210,10 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
               controller: _controller,
               physics: const _SnappyPagePhysics(),
               clipBehavior: Clip.none,
-              itemCount: widget.pages.length,
+              // No itemCount: the index is unbounded so the loop never ends.
               onPageChanged: (i) => setState(() => _current = i),
               itemBuilder: (context, index) {
-                final page = widget.pages[index];
+                final page = _pageAt(index);
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: _mirror(
@@ -208,11 +234,11 @@ class _CollectionSummaryCarouselState extends State<CollectionSummaryCarousel> {
         ),
         const SizedBox(height: BSizes.sm),
         _Dots(
-          count: widget.pages.length,
-          current: _current,
-          color: widget.pages[_current].color,
+          count: _pageCount,
+          current: _real(_current),
+          color: _pageAt(_current).color,
           onTap: (i) => _controller.animateToPage(
-            i,
+            _nearestVirtual(i),
             duration: const Duration(milliseconds: 260),
             curve: Curves.easeOutCubic,
           ),
