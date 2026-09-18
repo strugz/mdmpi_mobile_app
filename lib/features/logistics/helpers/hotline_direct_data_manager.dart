@@ -26,6 +26,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Manager for Hotline Direct domain orchestration (save/update flows).
 ///
@@ -488,7 +489,8 @@ class HotlineDirectDataManager {
   ///
   /// Filters for Hotline Direct category only and applies active filters after loading data.
   Future<void> fetchHotlineDirectRequests(HotlineDirectController controller,
-      [bool useLocalStorage = true]) async {
+      [bool useLocalStorage = true,
+      RequestDateScope scope = RequestDateScope.all]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -497,7 +499,7 @@ class HotlineDirectDataManager {
 
       results = await OfflineDataLoader.loadLocalThenRemoteIfOnline(
         loadLocal: _dbHelper.getRequests,
-        loadRemote: _repository.getAllPending,
+        loadRemote: () => _repository.getAllPending(scope: scope),
         cacheRemote: _dbHelper.insertRequests,
         sourceName: 'HotlineDirectDataManager.fetchHotlineDirectRequests',
         forceRemote: !useLocalStorage,
@@ -508,6 +510,7 @@ class HotlineDirectDataManager {
           results.where((r) => r.formCategoryID == FormCategoryIds.hotlineDirect).toList();
 
       controller.allPendingRequests.assignAll(hotlineDirectRequests);
+      controller.loadedDateScope = scope;
 
       controller.filterManager
           .applyFilter(controller.allPendingRequests.toList());

@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -98,6 +99,7 @@ class DatabaseHelper {
       // would fail silently for exactly the installs that have been around
       // longest. Running here is idempotent and self-healing.
       onOpen: (db) async {
+        await ensureProofUploadTables(db);
         await ensureCollectionTables(db);
       },
     );
@@ -128,7 +130,7 @@ class DatabaseHelper {
     // already includes the column; on upgrade we ALTER only if missing.
     await _addColumnIfNotExists(db, 'a_tblRequestReceiverSignature',
         'ApiStatus', "TEXT DEFAULT 'Pending'");
-    await _ensureImageOutboxTable(db);
+    await ensureProofUploadTables(db);
 
     // Collection tables hold un-uploaded offline field work. Create them
     // non-destructively and keep them OUT of _recreateAllTables so an app
@@ -137,30 +139,48 @@ class DatabaseHelper {
   }
 
   /// Drop cache-backed tables and recreate from the canonical schema.
-  /// The `contacts` table is intentionally excluded to preserve user-entered
-  /// data across app upgrades.
+  ///
+  /// Excluded on purpose, because they hold data that exists nowhere else:
+  /// - `contacts` — user-entered;
+  /// - `a_tblRequestReceiverSignature`, `a_tblRequestImageOutbox` — captured
+  ///   signatures and queued proof images awaiting upload;
+  /// - every `a_tblCollection*` table — un-uploaded collector field work.
+  /// Tables the destructive rebuild drops. Server-backed cache only.
+  ///
+  /// Anything holding data that exists nowhere else must stay out of this
+  /// list — see the doc comment above. Adding a table here that carries
+  /// un-uploaded work silently destroys it on the next version bump.
+  @visibleForTesting
+  static const List<String> cacheBackedTables = [
+    'a_tblRequest',
+    'a_tblRequestDocumentReference',
+    'a_tblRequestImage',
+    'a_tblRequestRemarks',
+    'ACCMST_',
+    'a_tblMobile',
+    'Users',
+    'CNTMST',
+    'a_tblRequestPickUp',
+    'a_tblItemCategory',
+    'a_tblFormCategory',
+    'a_tblRequestAirSea',
+    'a_tblRequestPullOutReturnPickUp',
+    'a_tblLocationAlternative',
+    'a_tblClientContactPerson',
+    'a_tblRequestBackload',
+  ];
+
+  /// Tables that must survive the rebuild because nothing else holds their
+  /// data. Asserted against [cacheBackedTables] in tests.
+  @visibleForTesting
+  static const List<String> preservedOnUpgradeTables = [
+    'contacts',
+    'a_tblRequestReceiverSignature',
+    'a_tblRequestImageOutbox',
+  ];
+
   Future<void> _recreateAllTables(Database db) async {
-    const tables = [
-      'a_tblRequest',
-      'a_tblRequestDocumentReference',
-      'a_tblRequestReceiverSignature',
-      'a_tblRequestImage',
-      'a_tblRequestImageOutbox',
-      'a_tblRequestRemarks',
-      'ACCMST_',
-      'a_tblMobile',
-      'Users',
-      'CNTMST',
-      'a_tblRequestPickUp',
-      'a_tblItemCategory',
-      'a_tblFormCategory',
-      'a_tblRequestAirSea',
-      'a_tblRequestPullOutReturnPickUp',
-      'a_tblLocationAlternative',
-      'a_tblClientContactPerson',
-      'a_tblRequestBackload',
-    ];
-    for (final table in tables) {
+    for (final table in cacheBackedTables) {
       await db.execute('DROP TABLE IF EXISTS $table');
     }
     await createAllTables(db);
@@ -178,19 +198,6 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<void> _ensureImageOutboxTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS a_tblRequestImageOutbox (
-        RequestID TEXT NOT NULL,
-        ImageType TEXT NOT NULL,
-        ImageLookupKey TEXT NOT NULL,
-        RequestImage TEXT,
-        ApiStatus TEXT DEFAULT 'Pending',
-        CapturedAt TEXT,
-        UNIQUE(RequestID, ImageType, ImageLookupKey)
-      )
-    ''');
-  }
 
   /// Adds a column to a table if it does not already exist. This is idempotent
   /// and safe to call during upgrades to avoid destructive migrations.
@@ -423,14 +430,20 @@ class DatabaseHelper {
     return await dao.isRequestTableNotEmpty();
   }
 
-  /// Delete Request-related tables (used for refresh)
+  /// Clears the Standard Delivery / Hotline Direct request cache before a
+  /// hard reset re-downloads it.
+  ///
+  /// Only `a_tblRequest` is cleared. The support tables are keyed by
+  /// `RequestID` with no module discriminator and are written by Pick Up and
+  /// Air / Sea too, so clearing them here destroyed other modules' data:
+  /// - `a_tblRequestReceiverSignature`, `a_tblRequestImageOutbox` — captured
+  ///   signatures and queued proof images awaiting upload; unrecoverable;
+  /// - `a_tblRequestImage`, `a_tblRequestDocumentReference` — shared rows.
+  /// Re-downloaded requests re-attach to their existing support rows by id;
+  /// the inserts are upserts, so nothing duplicates.
   Future<void> deleteRequest() async {
     final db = await database;
     await db.delete('a_tblRequest');
-    await db.delete('a_tblRequestDocumentReference');
-    await db.delete('a_tblRequestReceiverSignature');
-    await db.delete('a_tblRequestImage');
-    await db.delete('a_tblRequestImageOutbox');
   }
 
   // --- Signature/image helpers delegated to RequestDao ---

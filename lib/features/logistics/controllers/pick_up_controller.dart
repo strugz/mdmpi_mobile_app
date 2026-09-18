@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -7,6 +8,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_fi
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_form_state.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pick_up_data_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Controller for managing pick-up requests lifecycle, state, and business operations.
 ///
@@ -41,6 +43,13 @@ class PickUpController extends GetxController {
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
   final RxBool useLocalStorage = false.obs;
+
+  /// Wire date scope the in-memory list was last loaded with.
+  RequestDateScope? loadedDateScope;
+
+  /// Wire scope required by the currently selected date filter.
+  RequestDateScope get activeScope =>
+      RequestDateScope.fromFilter(filterManager.selectedFilter.value);
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
@@ -88,7 +97,10 @@ class PickUpController extends GetxController {
 
     // Load initial data
     dataManager.loadCategories(this);
-    dataManager.fetchPickUps(this, useLocalStorage.value);
+    // Deliberately no fetch here. Whoever shows this tab drives the load:
+    // the Request screen loads the selected date filter only, and the Home
+    // dashboard loads the full history it needs for its year/month counts.
+    // Fetching here as well would race those two through the isLoading guard.
 
     // Set up user context
     userController = Get.find<UserController>();
@@ -120,8 +132,18 @@ class PickUpController extends GetxController {
   /// Fetches all pick-up requests from the configured data source.
   /// Uses local database if [useLocalStorage] is true, otherwise fetches from API.
   /// Automatically updates the [pickUps] list and applies active filters.
+  /// Only the currently selected date filter is fetched.
   Future<void> loadPickUps() async {
-    await dataManager.fetchPickUps(this, useLocalStorage.value);
+    await loadForScope(activeScope);
+  }
+
+  /// Loads pick-ups for an explicit [scope], bypassing the selected filter.
+  ///
+  /// Used by the Home dashboard, which needs the full history for its
+  /// year/month counts regardless of what this tab is filtered to.
+  Future<void> loadForScope(RequestDateScope dateScope) async {
+    await dataManager.fetchPickUps(this, useLocalStorage.value,
+        scope: dateScope);
   }
 
   Future<void> hardResetPickUps() async {
@@ -178,9 +200,15 @@ class PickUpController extends GetxController {
   /// - This Month: Shows requests from the current month
   /// - Custom Range: Shows requests within a user-defined date range
   ///
-  /// [filter] The date filter to apply
+  /// [filter] The date filter to apply. It is applied immediately, then
+  /// re-fetched only when the new filter
+  /// needs a wider date range than what is currently loaded (e.g. Today ->
+  /// All). Narrowing (All -> Today) needs no network call.
   void selectDateFilter(RequestFilter filter) {
     filterManager.selectFilter(filter, pickUps);
+    if (!shouldRefetch(loadedDateScope, filter)) return;
+    unawaited(loadPickUps().then(
+        (_) => filterManager.applyFilter(pickUps.toList())));
   }
 
   void selectDateFrom(DateTime? date) {

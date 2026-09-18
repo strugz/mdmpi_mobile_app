@@ -62,35 +62,12 @@ Future<void> createAllTables(Database db) async {
     )
   ''');
 
-  // Table: a_tblRequestReceiverSignature
-  await db.execute('''
-    CREATE TABLE a_tblRequestReceiverSignature (
-      RequestID INTEGER UNIQUE,
-      RequestReceiverSignature TEXT,
-      ApiStatus TEXT DEFAULT 'Failed',
-      FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
-    )
-  ''');
-
   // Table: a_tblRequestImage
   await db.execute('''
     CREATE TABLE a_tblRequestImage (
       RequestID INTEGER UNIQUE,
       RequestImage TEXT,
       FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
-    )
-  ''');
-
-  // Table: a_tblRequestImageOutbox
-  await db.execute('''
-    CREATE TABLE a_tblRequestImageOutbox (
-      RequestID TEXT NOT NULL,
-      ImageType TEXT NOT NULL,
-      ImageLookupKey TEXT NOT NULL,
-      RequestImage TEXT,
-      ApiStatus TEXT DEFAULT 'Pending',
-      CapturedAt TEXT,
-      UNIQUE(RequestID, ImageType, ImageLookupKey)
     )
   ''');
 
@@ -324,8 +301,47 @@ Future<void> createAllTables(Database db) async {
     )
   ''');
 
+  // Proof-upload tables (captured signatures and the queued-image outbox).
+  await ensureProofUploadTables(db);
+
   // Collection tables (bucket cache, engagement history, pending upload queue).
   await ensureCollectionTables(db);
+}
+
+/// Creates the proof-upload tables idempotently.
+///
+/// These hold work the device has captured but not yet uploaded: receiver
+/// signatures awaiting retry, and the queued proof-image outbox. They are
+/// created with `CREATE TABLE IF NOT EXISTS` and are deliberately EXCLUDED
+/// from the destructive `_recreateAllTables` rebuild in [DatabaseHelper], so a
+/// routine app upgrade cannot discard a driver's un-uploaded signatures and
+/// photos. Nothing else holds that image data once the picker temp file is
+/// gone, so a wipe here is unrecoverable.
+///
+/// Same reasoning as [ensureCollectionTables]; keep the two in step.
+Future<void> ensureProofUploadTables(Database db) async {
+  // Table: a_tblRequestReceiverSignature
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblRequestReceiverSignature (
+      RequestID INTEGER UNIQUE,
+      RequestReceiverSignature TEXT,
+      ApiStatus TEXT DEFAULT 'Failed',
+      FOREIGN KEY (RequestID) REFERENCES a_tblRequest (RequestID) ON DELETE CASCADE
+    )
+  ''');
+
+  // Table: a_tblRequestImageOutbox
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblRequestImageOutbox (
+      RequestID TEXT NOT NULL,
+      ImageType TEXT NOT NULL,
+      ImageLookupKey TEXT NOT NULL,
+      RequestImage TEXT,
+      ApiStatus TEXT DEFAULT 'Pending',
+      CapturedAt TEXT,
+      UNIQUE(RequestID, ImageType, ImageLookupKey)
+    )
+  ''');
 }
 
 /// Creates the Collection tables idempotently.

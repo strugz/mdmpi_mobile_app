@@ -3,6 +3,50 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 
 void main() {
+  group('BApiEnvironment.api4Uri query parameters', () {
+    test('no query argument is byte-identical to a bare path', () {
+      expect(
+        BApiEnvironment.api4Uri('/api4/request').toString(),
+        'https://inventory.mdmpi.com.ph/api4/request',
+      );
+    });
+
+    test('an empty query map changes nothing', () {
+      expect(
+        BApiEnvironment.api4Uri('/api4/request', const {}).toString(),
+        'https://inventory.mdmpi.com.ph/api4/request',
+      );
+    });
+
+    test('a query map is appended', () {
+      expect(
+        BApiEnvironment.api4Uri(
+            '/api4/request', const {'dateFilter': 'Today'}).toString(),
+        'https://inventory.mdmpi.com.ph/api4/request?dateFilter=Today',
+      );
+    });
+
+    test('a query already on the path is preserved alongside the map', () {
+      final uri = BApiEnvironment.api4Uri(
+        '/api4/RequestAirSea?includeHd=true',
+        const {'dateFilter': 'All'},
+      );
+
+      expect(uri.queryParameters['includeHd'], 'true');
+      expect(uri.queryParameters['dateFilter'], 'All');
+      expect(uri.path, '/api4/RequestAirSea');
+    });
+
+    test('the map wins over a colliding parameter on the path', () {
+      final uri = BApiEnvironment.api4Uri(
+        '/api4/request?dateFilter=All',
+        const {'dateFilter': 'Today'},
+      );
+
+      expect(uri.queryParameters['dateFilter'], 'Today');
+    });
+  });
+
   group('BApiEnvironment WebSocket resolution', () {
     test('toWebSocketUri swaps https to wss', () {
       final uri = BApiEnvironment.toWebSocketUri(

@@ -13,9 +13,13 @@ import 'package:mdmpi_mobile_app/features/logistics/mappers/air_sea_mapper.dart'
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/air_sea/air_sea_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/image/image_repository.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/api_response_keys.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/b_in_flight_requests.dart';
 
 /// Repository for Air/Sea request operations.
 /// Handles API communication and local database sync for Air/Sea requests.
@@ -23,11 +27,19 @@ class AirSeaRepository extends GetxController {
   static AirSeaRepository get instance => Get.find();
 
   String get _baseUrl => BApiEnvironment.api4BaseUrl;
-  Uri _uri(String path) => Uri.parse("$_baseUrl$path");
+  Uri _uri(String path, [Map<String, String>? query]) {
+    final uri = Uri.parse("$_baseUrl$path");
+    if (query == null || query.isEmpty) return uri;
+    return uri.replace(queryParameters: {...uri.queryParameters, ...query});
+  }
 
   static const String _resource = '/api4/RequestAirSea';
 
   AirSeaDao? _daoInstance;
+
+  /// Injects a DAO backed by a test database, bypassing [DatabaseHelper].
+  @visibleForTesting
+  set daoForTesting(AirSeaDao dao) => _daoInstance = dao;
 
   /// Lazy getter for AirSeaDao to avoid late initialization errors.
   /// Initializes the DAO on first access and caches it for subsequent calls.
@@ -97,9 +109,29 @@ class AirSeaRepository extends GetxController {
 
   /// Fetch all Air/Sea requests with local DB + API sync.
   /// Tries local DB first; if empty, fetches from API and caches locally.
+  /// [scope] narrows the fetch server-side via `?dateFilter=`. Offline and
+  /// error fallbacks still return the whole local table; the caller's
+  /// client-side filter narrows it.
+  /// Collapses concurrent identical fetches (paired tabs share this repo).
+  final BInFlightRequests _inFlight = BInFlightRequests();
+
   Future<List<AirSeaModel>> getAll({
     bool forceRefresh = false,
     bool allowLocalFallback = true,
+    RequestDateScope scope = RequestDateScope.all,
+  }) =>
+      _inFlight.run(
+        'getAll:${scope.wireValue}:$forceRefresh:$allowLocalFallback',
+        () => _getAllUncached(
+            forceRefresh: forceRefresh,
+            allowLocalFallback: allowLocalFallback,
+            scope: scope),
+      );
+
+  Future<List<AirSeaModel>> _getAllUncached({
+    required bool forceRefresh,
+    required bool allowLocalFallback,
+    required RequestDateScope scope,
   }) async {
     try {
       final dao = await _dao;
@@ -117,13 +149,13 @@ class AirSeaRepository extends GetxController {
         final hasLocalData = await dao.isAirSeaTableNotEmpty();
         if (hasLocalData) {
           final localData = await dao.getAirSeaRequests();
-          _syncFromApi();
+          _syncFromApi(scope);
           return localData;
         }
       }
       // includeHd=true: this build splits base vs HD rows client-side; the
       // backend excludes HD rows by default so older builds stay unaffected.
-      final url = _uri('$_resource?includeHd=true');
+      final url = _uri('$_resource?includeHd=true', scope.queryParameters);
 
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
@@ -137,15 +169,7 @@ class AirSeaRepository extends GetxController {
                 : AirSeaModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
 
-        // Cache to local DB
-        try {
-          await dao.deleteAll();
-          await dao.insertAirSeaRequests(airSeaRequests);
-          logDebug(
-              'AirSeaRepository: Cached ${airSeaRequests.length} Air/Sea requests to local DB');
-        } catch (dbError) {
-          logDebug('AirSeaRepository: Failed to cache to local DB: $dbError');
-        }
+        await cacheRequests(airSeaRequests, scope: scope);
 
         return airSeaRequests;
       }
@@ -173,10 +197,45 @@ class AirSeaRepository extends GetxController {
     }
   }
 
-  /// Background sync from API (non-blocking)
-  Future<void> _syncFromApi() async {
+  /// Writes [requests] to the local cache.
+  ///
+  /// A full-snapshot fetch ([RequestDateScope.all]) replaces the table
+  /// wholesale. A *scoped* fetch only ever saw part of the data, so it upserts
+  /// instead — wiping first would erase every other day's rows and break
+  /// Local-storage mode and offline.
+  @visibleForTesting
+  Future<void> cacheRequests(
+    List<AirSeaModel> requests, {
+    required RequestDateScope scope,
+  }) async {
     try {
-      final url = _uri('$_resource?includeHd=true');
+      final dao = await _dao;
+      if (scope == RequestDateScope.all) {
+        await dao.deleteAll();
+      }
+      await dao.insertAirSeaRequests(requests);
+      logDebug(
+          'AirSeaRepository: Cached ${requests.length} Air/Sea requests to local DB (scope: ${scope.wireValue})');
+    } catch (dbError) {
+      logDebug('AirSeaRepository: Failed to cache to local DB: $dbError');
+    }
+  }
+
+  /// Background sync from API (non-blocking)
+  Future<void> _syncFromApi(
+      [RequestDateScope scope = RequestDateScope.all]) {
+    // A foreground fetch for this scope already refreshes the cache; a second
+    // GET would be pure duplicate traffic.
+    if (_inFlight.isAnyInFlight('getAll:${scope.wireValue}:')) {
+      return Future.value();
+    }
+    return _inFlight.run(
+        'sync:${scope.wireValue}', () => _syncFromApiUncached(scope));
+  }
+
+  Future<void> _syncFromApiUncached(RequestDateScope scope) async {
+    try {
+      final url = _uri('$_resource?includeHd=true', scope.queryParameters);
       final response = await _safeGet(url);
 
       if (response.statusCode == 200) {
@@ -189,9 +248,7 @@ class AirSeaRepository extends GetxController {
                 : AirSeaModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
         if (airSeaRequests.isNotEmpty) {
-          final dao = await _dao;
-          await dao.deleteAll();
-          await dao.insertAirSeaRequests(airSeaRequests);
+          await cacheRequests(airSeaRequests, scope: scope);
           logDebug(
               'AirSeaRepository: Background sync completed, ${airSeaRequests.length} records');
         }
@@ -215,10 +272,14 @@ class AirSeaRepository extends GetxController {
         AirSeaModel updatedData = data;
         try {
           final decoded = jsonDecode(response.body);
-          if (decoded is Map && decoded.containsKey('RequestID')) {
-            updatedData = data.copyWith(id: decoded['RequestID'].toString());
+          final parsedId = BApiResponse.requestId(decoded);
+          if (parsedId != null) {
+            updatedData = data.copyWith(id: parsedId);
+            logDebug('AirSeaRepository: Got RequestID from server: $parsedId');
+          } else {
             logDebug(
-                'AirSeaRepository: Got RequestID from server: ${updatedData.id}');
+                'AirSeaRepository: create response carried no request id; '
+                'relying on the refetch. Body: ${response.body}');
           }
         } catch (parseError) {
           logDebug(

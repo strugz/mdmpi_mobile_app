@@ -4,6 +4,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/client_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/document_reference_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/status_progression.dart';
 
 class RequestDao {
   final Database db;
@@ -17,6 +18,7 @@ class RequestDao {
     'Item Prepared': 3,
     'For Delivery': 4,
     'Delivered': 5,
+    'Cancelled': 99,
   };
 
   Future<List<StandardDeliveryModel>> getRequests() async {
@@ -139,12 +141,13 @@ class RequestDao {
 
     if (currentRequestData.isEmpty) return;
 
-    final String currentStatusString = currentRequestData.first['RequestStatus'] as String;
-    final int? currentStatusInt = _statusStringToInt[currentStatusString];
-    final int? newStatusInt = _statusStringToInt[requestModel.status];
-
-    if (currentStatusInt != null && newStatusInt != null) {
-      if (newStatusInt < currentStatusInt) return;
+    // Never let an older server value overwrite a newer local status.
+    if (BStatusProgression.isRegression(
+      ranks: _statusStringToInt,
+      current: currentRequestData.first['RequestStatus'] as String?,
+      next: requestModel.status,
+    )) {
+      return;
     }
 
     Map<String, dynamic> requestData = {
@@ -189,11 +192,11 @@ class RequestDao {
     return false;
   }
 
+  /// Clears the request cache only. The support tables are shared with Pick
+  /// Up and Air / Sea and hold un-uploaded signatures and images, so they must
+  /// not be cleared from here. See [DatabaseHelper.deleteRequest].
   Future<void> deleteAll() async {
     await db.delete('a_tblRequest');
-    await db.delete('a_tblRequestDocumentReference');
-    await db.delete('a_tblRequestReceiverSignature');
-    await db.delete('a_tblRequestImage');
   }
 
   /// --- Receiver signature / image helpers ---

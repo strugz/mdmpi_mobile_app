@@ -9,9 +9,11 @@ import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/standard_delivery_mapper.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 import 'dart:convert';
 
 import '../../../features/logistics/models/cancel_remarks_model.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/b_in_flight_requests.dart';
 
 class StandardDeliveryRepository extends GetxController {
   static StandardDeliveryRepository get instance => Get.find();
@@ -185,8 +187,27 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
+  /// Fetches requests from `/api4/request`.
+  ///
+  /// [scope] narrows the fetch server-side via `?dateFilter=`. The offline and
+  /// error fallbacks deliberately return the *whole* local table regardless of
+  /// scope; the caller's client-side filter narrows it.
+  /// Collapses concurrent identical fetches (paired tabs share this repo).
+  final BInFlightRequests _inFlight = BInFlightRequests();
+
   Future<List<StandardDeliveryModel>> getAllPending({
     bool allowLocalFallback = true,
+    RequestDateScope scope = RequestDateScope.all,
+  }) =>
+      _inFlight.run(
+        'getAllPending:${scope.wireValue}:$allowLocalFallback',
+        () => _getAllPendingUncached(
+            allowLocalFallback: allowLocalFallback, scope: scope),
+      );
+
+  Future<List<StandardDeliveryModel>> _getAllPendingUncached({
+    required bool allowLocalFallback,
+    required RequestDateScope scope,
   }) async {
     try {
       final dbHelper = DatabaseHelper.instance;
@@ -200,7 +221,8 @@ class StandardDeliveryRepository extends GetxController {
         return await dbHelper.getRequests();
       }
 
-      final response = await http.get(BApiEnvironment.api4Uri('/api4/request'));
+      final response = await http
+          .get(BApiEnvironment.api4Uri('/api4/request', scope.queryParameters));
       if (response.statusCode == 200) {
         final dynamic decoded = json.decode(response.body);
         List<dynamic> jsonResponse;

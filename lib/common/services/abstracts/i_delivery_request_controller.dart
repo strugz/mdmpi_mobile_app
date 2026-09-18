@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_filter_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
@@ -39,6 +40,12 @@ abstract class IDeliveryRequestController {
 
   /// Most recent error message from failed operations.
   RxnString get errorMessage;
+
+  /// Wire date scope the in-memory list was last loaded with; null when
+  /// nothing has been loaded yet. Written by the data manager after a
+  /// successful fetch and read to decide whether a filter change needs a
+  /// wider fetch.
+  RequestDateScope? loadedDateScope;
 
   /// Cancellation remarks for the currently viewed delivery request.
   Rx<CancelRemarksModel?> get cancelRemarks;

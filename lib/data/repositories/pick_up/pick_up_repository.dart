@@ -12,7 +12,11 @@ import 'package:mdmpi_mobile_app/features/logistics/mappers/pick_up_mapper.dart'
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/pick_up/pick_up_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/api_response_keys.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/b_in_flight_requests.dart';
 
 /// Repository for pick-up request operations.
 /// Handles API communication and local database sync for pick-up requests.
@@ -20,11 +24,19 @@ class PickUpRepository extends GetxController {
   static PickUpRepository get instance => Get.find();
 
   String get _baseUrl => BApiEnvironment.api4BaseUrl;
-  Uri _uri(String path) => Uri.parse("$_baseUrl$path");
+  Uri _uri(String path, [Map<String, String>? query]) {
+    final uri = Uri.parse("$_baseUrl$path");
+    if (query == null || query.isEmpty) return uri;
+    return uri.replace(queryParameters: {...uri.queryParameters, ...query});
+  }
 
   static const String _resource = '/api4/RequestPickUp';
 
   PickUpDao? _daoInstance;
+
+  /// Injects a DAO backed by a test database, bypassing [DatabaseHelper].
+  @visibleForTesting
+  set daoForTesting(PickUpDao dao) => _daoInstance = dao;
 
   /// Lazy getter for PickUpDao to avoid late initialization errors.
   /// Initializes the DAO on first access and caches it for subsequent calls.
@@ -94,9 +106,29 @@ class PickUpRepository extends GetxController {
 
   /// Fetch all pick-up requests with local DB + API sync.
   /// Tries local DB first; if empty, fetches from API and caches locally.
+  /// [scope] narrows the fetch server-side via `?dateFilter=`. Offline and
+  /// error fallbacks still return the whole local table; the caller's
+  /// client-side filter narrows it.
+  /// Collapses concurrent identical fetches (paired tabs share this repo).
+  final BInFlightRequests _inFlight = BInFlightRequests();
+
   Future<List<PickUpModel>> getAll({
     bool forceRefresh = false,
     bool allowLocalFallback = true,
+    RequestDateScope scope = RequestDateScope.all,
+  }) =>
+      _inFlight.run(
+        'getAll:${scope.wireValue}:$forceRefresh:$allowLocalFallback',
+        () => _getAllUncached(
+            forceRefresh: forceRefresh,
+            allowLocalFallback: allowLocalFallback,
+            scope: scope),
+      );
+
+  Future<List<PickUpModel>> _getAllUncached({
+    required bool forceRefresh,
+    required bool allowLocalFallback,
+    required RequestDateScope scope,
   }) async {
     try {
       final dao = await _dao;
@@ -117,14 +149,14 @@ class PickUpRepository extends GetxController {
         if (hasLocalData) {
           final localData = await dao.getPickUps();
           // Trigger background sync without blocking
-          _syncFromApi();
+          _syncFromApi(scope);
           return localData;
         }
       }
 
       // Otherwise, fetch from API and cache
       logDebug('PickUpRepository: Fetching from API');
-      final url = _uri(_resource);
+      final url = _uri(_resource, scope.queryParameters);
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -135,15 +167,8 @@ class PickUpRepository extends GetxController {
                 ? PickUpModel.fromJson(e)
                 : PickUpModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
-        // Cache to local DB
-        try {
-          await dao.deleteAll();
-          await dao.insertPickUps(pickUps);
-          logDebug(
-              'PickUpRepository: Cached ${pickUps.length} pick-ups to local DB');
-        } catch (dbError) {
-          logDebug('PickUpRepository: Failed to cache to local DB: $dbError');
-        }
+
+        await cacheRequests(pickUps, scope: scope);
 
         return pickUps;
       }
@@ -172,9 +197,44 @@ class PickUpRepository extends GetxController {
   }
 
   /// Background sync from API (non-blocking)
-  Future<void> _syncFromApi() async {
+  /// Writes [pickUps] to the local cache.
+  ///
+  /// A full-snapshot fetch ([RequestDateScope.all]) replaces the table
+  /// wholesale. A *scoped* fetch only ever saw part of the data, so it upserts
+  /// instead — wiping first would erase every other day's rows and break
+  /// Local-storage mode and offline.
+  @visibleForTesting
+  Future<void> cacheRequests(
+    List<PickUpModel> pickUps, {
+    required RequestDateScope scope,
+  }) async {
     try {
-      final url = _uri(_resource);
+      final dao = await _dao;
+      if (scope == RequestDateScope.all) {
+        await dao.deleteAll();
+      }
+      await dao.insertPickUps(pickUps);
+      logDebug(
+          'PickUpRepository: Cached ${pickUps.length} pick-ups to local DB (scope: ${scope.wireValue})');
+    } catch (dbError) {
+      logDebug('PickUpRepository: Failed to cache to local DB: $dbError');
+    }
+  }
+
+  Future<void> _syncFromApi(
+      [RequestDateScope scope = RequestDateScope.all]) {
+    // A foreground fetch for this scope already refreshes the cache; a second
+    // GET would be pure duplicate traffic.
+    if (_inFlight.isAnyInFlight('getAll:${scope.wireValue}:')) {
+      return Future.value();
+    }
+    return _inFlight.run(
+        'sync:${scope.wireValue}', () => _syncFromApiUncached(scope));
+  }
+
+  Future<void> _syncFromApiUncached(RequestDateScope scope) async {
+    try {
+      final url = _uri(_resource, scope.queryParameters);
       final response = await _safeGet(url);
 
       if (response.statusCode == 200) {
@@ -187,9 +247,7 @@ class PickUpRepository extends GetxController {
                 : PickUpModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
         if (pickUps.isNotEmpty) {
-          final dao = await _dao;
-          await dao.deleteAll();
-          await dao.insertPickUps(pickUps);
+          await cacheRequests(pickUps, scope: scope);
           logDebug(
               'PickUpRepository: Background sync completed, ${pickUps.length} records');
         }
@@ -213,11 +271,14 @@ class PickUpRepository extends GetxController {
         PickUpModel updatedData = data;
         try {
           final decoded = jsonDecode(response.body);
-
-          if (decoded is Map && decoded.containsKey('requestID')) {
-            updatedData = data.copyWith(id: decoded['requestID'].toString());
+          final parsedId = BApiResponse.requestId(decoded);
+          if (parsedId != null) {
+            updatedData = data.copyWith(id: parsedId);
+            logDebug('PickUpRepository: Got RequestID from server: $parsedId');
+          } else {
             logDebug(
-                'PickUpRepository: Got RequestID from server: ${updatedData.id}');
+                'PickUpRepository: create response carried no request id; '
+                'relying on the refetch. Body: ${response.body}');
           }
         } catch (parseError) {
           logDebug(

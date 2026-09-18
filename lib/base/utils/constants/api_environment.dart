@@ -31,9 +31,20 @@ class BApiEnvironment {
     return platformOverride ?? _read('API4_URL') ?? liveBaseUrl;
   }
 
-  static Uri api4Uri(String path) => Uri.parse(
-        '${_withoutTrailingSlash(api4BaseUrl)}${_withLeadingSlash(path)}',
-      );
+  /// Builds a URI against the api4 host.
+  ///
+  /// [query] is merged into whatever query string [path] already carries, so
+  /// `api4Uri('/api4/RequestAirSea?includeHd=true', {'dateFilter': 'Today'})`
+  /// keeps both parameters.
+  static Uri api4Uri(String path, [Map<String, String>? query]) {
+    final uri = Uri.parse(
+      '${_withoutTrailingSlash(api4BaseUrl)}${_withLeadingSlash(path)}',
+    );
+    if (query == null || query.isEmpty) return uri;
+    return uri.replace(
+      queryParameters: {...uri.queryParameters, ...query},
+    );
+  }
 
   /// Builds a URI against the live host for endpoints unavailable locally.
   static Uri liveUri(String path) => Uri.parse(

@@ -12,6 +12,7 @@ docs/
   POST_DEMO_REVISIONS_TODO.md        # Post-demo revisions log (2026-09) — all 12 items delivered
   CODEX_TO_CLAUDE_TRANSITION.md      # One-time Codex -> Claude Code migration notes (2026-08)
   WEBSOCKET_DISCONNECT_HANDLING.md   # WebSocket disconnect/reconnect contract
+  DATA_PERSISTENCE_FLOW.md           # Server API <-> local SQLite flow (fetch/insert/update/delete)
   application/
     README.md                        # Application documentation landing page
     USER_GUIDE.md                    # Daily app usage guide
@@ -57,6 +58,7 @@ docs/
 | Post-Demo Revisions TO DO | Logistics / Cross-module | Complete (12/12) | [POST_DEMO_REVISIONS_TODO.md](POST_DEMO_REVISIONS_TODO.md) |
 | Codex to Claude Code transition | Tooling | Historical (2026-08) | [CODEX_TO_CLAUDE_TRANSITION.md](CODEX_TO_CLAUDE_TRANSITION.md) |
 | WebSocket disconnect handling | Cross-cutting | Active | [WEBSOCKET_DISCONNECT_HANDLING.md](WEBSOCKET_DISCONNECT_HANDLING.md) |
+| Data persistence flow (API <-> SQLite) | Cross-cutting | Active | [DATA_PERSISTENCE_FLOW.md](DATA_PERSISTENCE_FLOW.md) |
 | Air / Sea / Land | Logistics | Active | [modules/air-sea/](modules/air-sea/) |
 | Air / Sea / Land History Model Plan | Logistics | Superseded | [modules/air-sea/HISTORY_MODEL_PLAN.md](modules/air-sea/HISTORY_MODEL_PLAN.md) |
 | Standard Delivery | Logistics | Active | [modules/standard-delivery/](modules/standard-delivery/) |

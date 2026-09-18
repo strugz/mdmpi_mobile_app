@@ -27,6 +27,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Manager for Standard Delivery domain orchestration (save/update flows).
 ///
@@ -390,11 +391,11 @@ class StandardDeliveryDataManager {
 
     // Extra proof photos (slots 2-3) upload as their own image types
     // (Proof_2, Proof_3) through the same endpoint and outbox.
-    final Map<int, String> extraProofImages =
-        newStatus == BTexts.statusDoneDelivery && imageProofWasAdded
-            ? await BImageHelperFunctions.getExtraDeliveryImagesAsBase64(
-                request.id)
-            : const {};
+    final Map<int, String> extraProofImages = newStatus ==
+                BTexts.statusDoneDelivery &&
+            imageProofWasAdded
+        ? await BImageHelperFunctions.getExtraDeliveryImagesAsBase64(request.id)
+        : const {};
 
     if (!signatureWasAdded && !imageProofWasAdded) return;
 
@@ -664,7 +665,8 @@ class StandardDeliveryDataManager {
   /// Applies active filters after loading data.
   Future<void> fetchStandardDeliveryRequests(
       IDeliveryRequestController controller,
-      [bool useLocalStorage = true]) async {
+      [bool useLocalStorage = true,
+      RequestDateScope scope = RequestDateScope.all]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -673,17 +675,19 @@ class StandardDeliveryDataManager {
 
       results = await OfflineDataLoader.loadLocalThenRemoteIfOnline(
         loadLocal: _dbHelper.getRequests,
-        loadRemote: _repository.getAllPending,
+        loadRemote: () => _repository.getAllPending(scope: scope),
         cacheRemote: _dbHelper.insertRequests,
         sourceName: 'StandardDeliveryDataManager.fetchStandardDeliveryRequests',
         forceRemote: !useLocalStorage,
       );
 
       // Filter for Standard Delivery category only (formCategoryID = '6')
-      final standardDeliveryRequests =
-          results.where((r) => r.formCategoryID == FormCategoryIds.standardDelivery).toList();
+      final standardDeliveryRequests = results
+          .where((r) => r.formCategoryID == FormCategoryIds.standardDelivery)
+          .toList();
 
       controller.allPendingRequests.assignAll(standardDeliveryRequests);
+      controller.loadedDateScope = scope;
 
       // Only apply filter if controller has filterManager (StandardDeliveryController)
       try {
@@ -724,8 +728,9 @@ class StandardDeliveryDataManager {
       await _dbHelper.deleteRequest();
       await _dbHelper.insertRequests(apiRequests);
 
-      final standardDeliveryRequests =
-          apiRequests.where((r) => r.formCategoryID == FormCategoryIds.standardDelivery).toList();
+      final standardDeliveryRequests = apiRequests
+          .where((r) => r.formCategoryID == FormCategoryIds.standardDelivery)
+          .toList();
 
       controller.allPendingRequests.assignAll(standardDeliveryRequests);
 
