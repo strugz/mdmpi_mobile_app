@@ -135,8 +135,16 @@ class StandardDeliveryDataManager {
       );
 
       // Save to repository - include scanned items from form state
-      await _repository.insertDelivery(
+      final saved = await _repository.insertDelivery(
           newRequest, formState.scannedInventoryItems.toList());
+
+      // The request does not exist server-side, so nobody may be told about
+      // it: no notification, no SMS, and the form keeps its input so the
+      // requester can retry. The repository already reported the failure.
+      if (!saved) {
+        controller.errorMessage.value = 'Failed to save request.';
+        return;
+      }
 
       // Send notifications
       _webSocketController.sendNotificationMessage(
@@ -239,11 +247,18 @@ class StandardDeliveryDataManager {
         formState: formState,
         finalImageBase64: finalImageBase64,
       );
-      await _persistUpdatedRequest(
+      final persisted = await _persistUpdatedRequest(
         request: updatedRequest,
         userInitial: userInitial,
         useLocalStorage: controller.useLocalStorage.value,
       );
+
+      // The status change did not stick, so nobody may be told it did: no
+      // notification, no SMS, and the form keeps its input for a retry.
+      if (!persisted) {
+        controller.errorMessage.value = 'Failed to update request.';
+        return;
+      }
 
       // Save media to local DB
       await _dbHelper.saveRequestMedia(
@@ -445,7 +460,11 @@ class StandardDeliveryDataManager {
     }
   }
 
-  Future<void> _persistUpdatedRequest({
+  /// Returns whether the update was recorded. An offline or local-storage
+  /// write counts: the change is held on the device and syncs later. Only a
+  /// server that refused the update is a failure, and that is what has to
+  /// stop the notifications downstream.
+  Future<bool> _persistUpdatedRequest({
     required StandardDeliveryModel request,
     required String userInitial,
     required bool useLocalStorage,
@@ -458,18 +477,21 @@ class StandardDeliveryDataManager {
     try {
       if (useLocalStorage) {
         await _dbHelper.updateRequest(requestModel: request);
-        return;
+        return true;
       }
 
       final isConnected = await validateConnectivity();
       if (isConnected) {
-        await _repository.updateDelivery(
+        final updated = await _repository.updateDelivery(
           request,
           userInitial,
           showSuccessSnackBar: false,
         );
+        // The server holds the old status, so the device must not pretend
+        // otherwise. The repository already reported the failure.
+        if (!updated) return false;
         await _dbHelper.updateRequest(requestModel: request);
-        return;
+        return true;
       }
 
       await _dbHelper.updateRequest(requestModel: request);
@@ -478,6 +500,7 @@ class StandardDeliveryDataManager {
         message:
             'Request updated locally. Sync with server when connection returns.',
       );
+      return true;
     } finally {
       BFullScreenLoader.stopLoading();
     }
@@ -586,7 +609,14 @@ class StandardDeliveryDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _repository.cancelDelivery(request.id, remarks, user);
+          final cancelled =
+              await _repository.cancelDelivery(request.id, remarks, user);
+          // Still live on the server, so no cancellation SMS goes out. The
+          // repository already reported the failure.
+          if (!cancelled) {
+            controller.errorMessage.value = 'Failed to cancel request.';
+            return;
+          }
           await _dbHelper.cancelRequestWithRemarks(
               requestID: request.id,
               remarks: remarks,

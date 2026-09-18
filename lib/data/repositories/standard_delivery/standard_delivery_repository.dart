@@ -1,9 +1,7 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
-import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
@@ -13,133 +11,155 @@ import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_mod
 import 'package:mdmpi_mobile_app/features/logistics/mappers/standard_delivery_mapper.dart';
 import 'dart:convert';
 
-import '../../../base/utils/exceptions/platform_exceptions.dart';
 import '../../../features/logistics/models/cancel_remarks_model.dart';
 
 class StandardDeliveryRepository extends GetxController {
   static StandardDeliveryRepository get instance => Get.find();
 
-  Future<void> insertDelivery(StandardDeliveryModel requestData,
-      [List<InventoryItemModel>? items]) async {
+  /// Insert a new request, with its scanned [items]. Returns `true` only when
+  /// the server accepted it (HTTP 201) — callers must gate follow-up side
+  /// effects (SMS, WebSocket notifications) on that, so a failed POST never
+  /// notifies the recipient about a request that was never created.
+  ///
+  /// Never throws: whatever goes wrong is shown to the user here and comes
+  /// back as `false`.
+  Future<bool> insertDelivery(
+    StandardDeliveryModel requestData, [
+    List<InventoryItemModel>? items,
+    http.Client? client,
+  ]) async {
     try {
-      // Map request + scanned items into DTO
-      // Prefer explicitly provided items parameter; otherwise, try to read
-      // `items` from the requestData (some callers may attach items there).
-      final dto = StandardDeliveryMapper.toInsertDto(requestData, items);
-      final payload = dto.toJson();
+      final payload =
+          StandardDeliveryMapper.toInsertDto(requestData, items).toJson();
 
-      final response = await http.post(
+      final response = await (client ?? http.Client()).post(
         BApiEnvironment.api4Uri('/api4/request'),
-        headers: <String, String>{'Content-Type': 'application/json'},
+        headers: const {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
+
       if (response.statusCode == 201) {
         BLoaders.successSnackBar(
             title: 'Information', message: 'Success saving...');
-      } else {
-        BLoaders.errorSnackBar(
-            title: 'Error',
-            message:
-                'Failed to insert request. Status code: ${response.statusCode}');
+        return true;
       }
-    } on TFormatException catch (_) {
-      throw TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+
+      BLoaders.errorSnackBar(
+          title: 'Error',
+          message:
+              'Failed to insert request. Status code: ${response.statusCode}');
+      return false;
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred1: $e');
+      logDebug('StandardDeliveryRepository.insertDelivery error: $e');
+      BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred: $e');
+      return false;
     }
   }
 
-  Future<void> updateDelivery(
+  /// Update an existing request. Returns `true` only when the server
+  /// confirmed the update — callers must gate follow-up side effects (SMS,
+  /// WebSocket notifications, the local DB write) on that, so a rejected
+  /// update never notifies the recipient about a status the server never
+  /// recorded. A 200 carrying an error or unrecognised message counts as a
+  /// failure: it is already surfaced as a warning, and an unconfirmed update
+  /// is not something to text a client about.
+  ///
+  /// Never throws: whatever goes wrong is shown to the user here and comes
+  /// back as `false`.
+  Future<bool> updateDelivery(
     StandardDeliveryModel requestData,
     String actionBy, {
     bool showSuccessSnackBar = true,
+    http.Client? client,
   }) async {
     try {
-      final updateDto =
-          StandardDeliveryMapper.toUpdateDto(requestData, actionBy);
-      final payload = updateDto.toJson();
+      final payload =
+          StandardDeliveryMapper.toUpdateDto(requestData, actionBy).toJson();
 
-      final url = BApiEnvironment.api4Uri('/api4/request');
-
-      final response = await http
-          .patch(url,
-              headers: <String, String>{
+      final response = await (client ?? http.Client())
+          .patch(BApiEnvironment.api4Uri('/api4/request'),
+              headers: const {
                 'Content-Type': 'application/json; charset=UTF-8',
               },
               body: jsonEncode(payload))
           .timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
-        final rawBody = response.body;
-        dynamic decodedBody;
-        try {
-          decodedBody = jsonDecode(rawBody);
-        } catch (_) {
-          decodedBody = rawBody;
-        }
+        final message = _messageFrom(response.body);
 
-        String message;
-        if (decodedBody is Map && decodedBody.containsKey('error')) {
-          message = decodedBody['error'].toString();
-        } else if (decodedBody is String) {
-          message = decodedBody;
-        } else {
-          message = rawBody.toString();
-        }
-
-        if (message == 'Request updated successfully.' ||
-            message.contains('updated successfully')) {
+        if (message.contains('updated successfully')) {
           if (showSuccessSnackBar) {
             BLoaders.successSnackBar(title: 'Information', message: message);
           }
-          return;
-        } else {
-          BLoaders.warningSnackBar(title: 'Information', message: message);
+          return true;
         }
-      } else {
-        BLoaders.errorSnackBar(
-            title: 'Error',
-            message:
-                'Failed to update request. Status code: ${response.statusCode}');
+
+        BLoaders.warningSnackBar(title: 'Information', message: message);
+        return false;
       }
-    } on TFormatException catch (_) {
-      throw TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+
+      BLoaders.errorSnackBar(
+          title: 'Error',
+          message:
+              'Failed to update request. Status code: ${response.statusCode}');
+      return false;
     } catch (e) {
+      logDebug('StandardDeliveryRepository.updateDelivery error: $e');
       BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred: $e');
+      return false;
     }
   }
 
-  Future<void> cancelDelivery(
-      String requestID, String remarks, String user) async {
+  /// The human-readable message in an API response body, which may be a JSON
+  /// object (`{"error": ...}` / `{"message": ...}`), a bare JSON string, or
+  /// plain text.
+  static String _messageFrom(String body) {
+    dynamic decoded;
     try {
-      final response = await http
+      decoded = jsonDecode(body);
+    } catch (_) {
+      return body;
+    }
+    if (decoded is Map) {
+      return (decoded['error'] ?? decoded['message'] ?? body).toString();
+    }
+    return decoded is String ? decoded : body;
+  }
+
+  /// Cancel a request. Returns `true` only when the server accepted the
+  /// cancellation, so callers can withhold the cancellation SMS when it did
+  /// not go through.
+  ///
+  /// Never throws: whatever goes wrong is shown to the user here and comes
+  /// back as `false`.
+  Future<bool> cancelDelivery(String requestID, String remarks, String user,
+      {http.Client? client}) async {
+    try {
+      final response = await (client ?? http.Client())
           .patch(
             BApiEnvironment.api4Uri('/api4/request/cancel/$requestID/$user'),
-            headers: <String, String>{
+            headers: const {
               'Content-Type': 'application/json; charset=UTF-8',
             },
             body: jsonEncode(remarks),
           )
           .timeout(const Duration(seconds: 60));
+
       if (response.statusCode == 200) {
         BLoaders.successSnackBar(
             title: 'Information', message: 'Success saving...');
-      } else {
-        BLoaders.errorSnackBar(
-            title: 'Error',
-            message:
-                'Failed to insert request. Status code: ${response.statusCode}');
+        return true;
       }
-    } on TFormatException catch (_) {
-      throw TFormatException();
-    } on PlatformException catch (e) {
-      throw TPlatformException(e.code).message;
+
+      BLoaders.errorSnackBar(
+          title: 'Error',
+          message:
+              'Failed to cancel request. Status code: ${response.statusCode}');
+      return false;
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred1: $e');
+      logDebug('StandardDeliveryRepository.cancelDelivery error: $e');
+      BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred: $e');
+      return false;
     }
   }
 
