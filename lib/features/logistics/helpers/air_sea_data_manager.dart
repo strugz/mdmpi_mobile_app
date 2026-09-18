@@ -380,7 +380,10 @@ class AirSeaDataManager {
                 formState.receivedByController.text.isNotEmpty)
             ? formState.receivedByController.text
             : (request.receivedBy.isEmpty ? userInitial : request.receivedBy),
-        waybillNumber: newStatus == BTexts.statusReceived &&
+        // Captured on two branches: Received (Release lane) and Drop Off
+        // (courier lane) — the latter so the Drop Off SMS can print it.
+        waybillNumber: (newStatus == BTexts.statusReceived ||
+                    newStatus == BTexts.statusDropOff) &&
                 formState.waybillNumberController.text.isNotEmpty
             ? formState.waybillNumberController.text
             : request.waybillNumber,
@@ -774,6 +777,18 @@ class AirSeaDataManager {
     }
 
     if (newStatus == BTexts.statusDropOff) {
+      // The courier lane never passes through Received, so the waybill is
+      // captured here, right before Drop Off — the Drop Off SMS prints it.
+      final waybill = request.waybillNumber.trim().isNotEmpty
+          ? request.waybillNumber
+          : formState.waybillNumberController.text;
+      if (waybill.trim().isEmpty) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please enter Waybill Number',
+        );
+        return false;
+      }
       if (!_validateNamedSignature(
         name: request.receivedBy.trim().isNotEmpty
             ? request.receivedBy

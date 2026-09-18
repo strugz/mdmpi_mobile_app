@@ -33,6 +33,9 @@
 - [x] 20. Document References take over the request screens when a delivery carries many (15–20 DR/SI/PO numbers, one tall row + copy icon each) — `S` (done app-only: `DocumentReferenceList` rewritten as grouped DR / SI / PO chips, tap-to-copy, "Show all N" past 6, "Copy all"; the courier's Request Transport sheet reuses it)
 - [x] 23. Live map (Delivery Location): hidden drawer, fake "Vehicle 1/2/3" rows, one-line truncated info window — `M` (done app-only: fake vehicle repository/controller/model deleted; edge-swipe drawer replaced by a bottom "N live deliveries" sheet; tapping a car shows a card with **Call** / **Center**; FAB icon now says "show all")
 - [ ] 24. App-wide: keep the screen awake while the app is open (no screen dim/lock in use) — `S/M`
+- [x] 25. SMS: include the **waybill number** in the Drop Off message — `S` (done app-only; Drop Off split out of the shared template branch, waybill printed when present, base and HD alike)
+- [x] 26. Users **LNA** and **BON**: add the **Courier** role — ops/config, no code (done 2026-09-18 in Firebase)
+- [x] 27. SMS: a failed write must not text the recipient — the SMS went out even when the request was never saved — `M` (done app-only for Standard Delivery / Hotline Direct create, status update and cancel; the other four logistics forms were audited and already correct; QA + two optional hardening follow-ups still open)
 
 ---
 
@@ -1149,6 +1152,137 @@ times out and locks according to the phone's system settings.
 
 ---
 
+## 25. SMS — waybill number in the Drop Off message
+
+**Requirement (raised 2026-09-18).** The SMS sent when the courier presses **Drop
+Off** must carry the request's **waybill number**, for both **Air / Sea / Land** and
+**Air / Sea / Land HD**, when the request has one.
+
+**Previous behavior.** `BTexts.statusDropOff` sat in the shared
+`statusItemPacked / statusForDispatch / statusForPullOut / statusEndorsedToGuard /
+statusDropOff / statusProvincialPickUp / statusProvincialInTransit` branch of
+`sms_message_template_service.dart` — client name, document references, status,
+target date. `waybillNumber` lived only on `AirSeaModel` and never reached the SMS
+layer.
+
+**Done (2026-09-18, app-only — no backend, no DB migration).**
+- `lib/data/services/sms/sms_request_payload.dart` — new `waybillNumber` field
+  (defaults to `''`, so every other request type is unaffected).
+- `lib/data/services/sms/sms_payload_builder.dart` — `_buildForAirSea` maps
+  `model.waybillNumber`. Base and HD share `AirSeaModel` (they are split only by
+  `FormCategoryID`, see `AirSeaCategoryScope`), so one mapping covers both.
+- `lib/data/services/sms/sms_message_template_service.dart` — `statusDropOff` split
+  out of the shared branch and given a `Waybill Number: <n>` line between Document
+  References and Status. The line is rendered only when the value is non-blank; every
+  other status keeps its old text verbatim.
+- `test/data/services/sms/sms_drop_off_waybill_test.dart` — covers present /
+  absent / whitespace-only waybills, base vs HD through the builder, and asserts the
+  other statuses in the old shared branch never print a waybill.
+
+**Follow-up (same day): the waybill is now captured on the courier lane too.**
+It used to be asked for only on the **Received** step
+(`air_sea_modal_config.dart` `_validateReceived`), which is a different branch from
+the courier's For Dispatch → Dispatch → Drop Off path — so a Drop Off could reach the
+SMS with no waybill. Per decision, the courier now enters it on the **Drop Off form**,
+immediately before the status becomes Drop Off (not at Item Packed when Release picks
+For Dispatch — that would be one step too early):
+
+- `air_sea_drop_off_section.dart` — a **Waybill Number** field, first on the form,
+  above the proof photo. The section renders when `status == Dispatch` and the role is
+  Courier, i.e. the screen holding the "Mark Drop Off" button.
+- `air_sea_data_manager.dart` — the `statusDropOff` branch of
+  `_validateRequiredUpdateFields` **requires** it, falling back to the stored value so
+  a request that already carries one is not blocked; `waybillNumber` is persisted on
+  `statusDropOff` as well as `statusReceived`.
+- No backend or DB change: `WaybillNumber` already exists on the row, and the DTO and
+  the mapper already send it.
+
+The template still renders the line conditionally, so **legacy rows** dropped off
+before this build simply omit it rather than printing an empty label.
+
+---
+
+## 26. Users LNA and BON — add the Courier role
+
+**Requirement (raised 2026-09-18).** Users **LNA** and **BON** should be able to act
+as couriers. (Originally raised as "EBP and LNA"; corrected to LNA and BON.)
+
+**Resolved 2026-09-18 — no app change.** Roles live on the identity side, so this was
+done in **Firebase** (same place the "HD" role was added for item 10). Neither code
+appears in `lib/`.
+
+---
+
+## 27. SMS — a failed write must not text the recipient
+
+**Requirement (raised 2026-09-18).** When a requester creates a request and the POST
+fails, the SMS must **not** go out — the recipient was being told about a delivery
+that was never saved. Same rule for a status update and a cancellation.
+
+**Previous behavior.** `StandardDeliveryRepository` was the one repository that
+**swallowed write failures**: `insertDelivery`, `updateDelivery` and `cancelDelivery`
+all returned `Future<void>`, showed an error snackbar on a non-2xx, and caught
+network exceptions into another snackbar. The caller had no way to know, so it ran
+straight on to the WebSocket notification and `sendSmsMessage(...)`. Hotline Direct
+was a step worse on create: it sent the notification **and the SMS before** calling
+`insertDelivery` at all.
+
+**Done (2026-09-18, app-only — no backend, no DB migration).**
+- `lib/data/repositories/standard_delivery/standard_delivery_repository.dart` — the
+  three write methods now return `Future<bool>`, `true` only on a confirmed write
+  (`insertDelivery` 201 · `updateDelivery` a 200 that says `Request updated
+  successfully.` · `cancelDelivery` 200). `TFormatException` / `TPlatformException`
+  still throw as before; the snackbars are unchanged. Each also takes an optional
+  `http.Client` so the behavior is testable.
+- `standard_delivery_data_manager.dart` + `hotline_direct_data_manager.dart` —
+  **create**, **status update** and **cancel** gate the WebSocket notification and
+  the SMS on that result. On failure the form keeps its input for a retry and the
+  manager only sets `errorMessage` (the repository already showed the message).
+- A rejected update or cancel now also **skips the local DB write**, so the device
+  stops showing a status the server never recorded.
+- Hotline Direct create now **saves first**, then notifies.
+- Offline and local-storage writes still count as recorded — they are held on the
+  device and sync later — so **offline SMS behavior is unchanged**.
+- `test/data/repositories/standard_delivery/standard_delivery_write_result_test.dart`
+  — 10 tests across the three methods: success, server rejection, a 200 that does not
+  confirm, and a connection failure.
+
+**Why "200 but not that message" counts as a failure.** Checked against the sibling
+backend: `RequestController.UpdateRequest` answers `Ok("Request updated
+successfully.")` on success and `BadRequest` / `NotFound` otherwise. The same holds
+for `RequestPickUpController`, `RequestPullOutReturnPickUpController` and
+`RequestAirSeaController`.
+
+**Audited and already correct — no change made.**
+- **Pick Up · Pull Out · Air / Sea / Land · Stock Receive** pass `silent: true` to
+  `insert` / `updateWithPayload` / `cancel*API`, and those methods **throw** on any
+  non-2xx. The data managers' `try/catch` already skips the SMS.
+- **Collection** is offline-first by design: `saveActivity` / `saveBatchActivity`
+  write to the local DAO and queue for end-of-day upload — there is no POST at that
+  moment, so the SMS correctly follows a successful local write.
+- The **manual "resend SMS" buttons** on the request cards are deliberate user
+  actions (`BSmsResendIconButton`).
+- **Service** and **InHouse** send no SMS at all.
+
+**Open**
+- [ ] **Device QA (Android).** For Standard Delivery and Hotline Direct, force a
+  failure (airplane mode after the form opens, or point `API4_URL_ANDROID` at a dead
+  host) and confirm on each of the three paths — create, status update, cancel —
+  that no SMS leaves the handset, the error snackbar shows, and the form still holds
+  its input. Then repeat the happy path to confirm the SMS still goes out.
+- [ ] **Optional hardening — `updateWithPayload` 200-with-error-body.** In the Pick
+  Up / Pull Out / Air Sea repositories a 200 whose body does not say "success" falls
+  into `_showWarning` and then **proceeds** to the SMS. Unreachable against today's
+  backend (a 200 is always a success there), so it was left alone — but if that
+  contract ever loosens, these three become the same bug. Cheap fix: treat a decoded
+  body carrying an `error` key as a failure under `silent`.
+- [ ] **Optional — `uploadModifiedRequest` ignores the result.** Both managers loop
+  offline rows through `updateDelivery` and now discard the returned `bool`, so a
+  row the server refuses is still reported as "uploaded successfully". Worth
+  counting failures and naming them in the snackbar.
+
+---
+
 ## Cross-cutting notes & risks
 
 - **Backend coordination required** for items 2 (multiple image uploads), 3, 4, 7,
@@ -1181,7 +1315,8 @@ times out and locks according to the phone's system settings.
 3. **Backend-coupled tracks:** 2 (images) · 3→4 (pull-out items, remarks depends on
    items) · 7 (pick-up categories) · 11 (backload items).
 
-**Status (2026-09-11): items 1–23 delivered; item 24 (keep screen awake) is open.**
+**Status (2026-09-18): items 1–23 and 25–27 delivered; item 24 (keep screen awake) is open,
+and item 27 has QA plus two optional hardening follow-ups listed in §27.**
 What is still pending from 1–23 is rollout, not code:
 
 - **13 + 16 deploy order:** run `migration_20260910_add_air_sea_shippingmethod.sql` → set

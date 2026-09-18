@@ -13,11 +13,12 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_contr
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
 
-/// Widget for handling Drop Off status with 4 required fields:
-/// 1. Proof Image (camera capture)
-/// 2. ReceivedBy Name (text input)
-/// 3. Receiver Signature (digital signature)
-/// 4. DropOffAt Timestamp (auto-captured)
+/// Widget for handling Drop Off status with 5 required fields:
+/// 1. Waybill Number (text input)
+/// 2. Proof Image (camera capture)
+/// 3. ReceivedBy Name (text input)
+/// 4. Receiver Signature (digital signature)
+/// 5. DropOffAt Timestamp (auto-captured)
 class AirSeaDropOffSection extends StatelessWidget {
   const AirSeaDropOffSection({super.key, required this.requestModel});
 
@@ -38,7 +39,21 @@ class AirSeaDropOffSection extends StatelessWidget {
         const BTextDivider(text: 'Drop Off Confirmation'),
         const SizedBox(height: BSizes.sm),
 
-        /// FIELD 1: Proof of Drop Off Image Capture
+        /// FIELD 1: Waybill Number
+        /// The courier lane (For Dispatch -> Dispatch -> Drop Off) never
+        /// passes through Received, where the waybill is otherwise captured,
+        /// so it is entered here — right before Drop Off, the SMS that
+        /// prints it. Left blank when the request already carries one: the
+        /// validator falls back to the stored value.
+        BTextFormField(
+          controller: controller.formState.waybillNumberController,
+          label: 'Waybill Number',
+          prefixIcon: Iconsax.clipboard_text,
+        ),
+
+        const SizedBox(height: BSizes.spaceBtwItems),
+
+        /// FIELD 2: Proof of Drop Off Image Capture
         Obx(
           () => Center(
             child: Column(
@@ -68,7 +83,7 @@ class AirSeaDropOffSection extends StatelessWidget {
 
         const SizedBox(height: BSizes.spaceBtwItems),
 
-        /// FIELD 2: Receiver Name Field
+        /// FIELD 3: Receiver Name Field
         BTextFormField(
           controller: controller.formState.receivedByController,
           label: 'Received By',
@@ -78,7 +93,7 @@ class AirSeaDropOffSection extends StatelessWidget {
 
         const SizedBox(height: BSizes.spaceBtwItems),
 
-        /// FIELD 3: Signature Capture Button with Preview
+        /// FIELD 4: Signature Capture Button with Preview
         Center(
           child: Obx(() {
             final sig = controller.formState.receiverSignatureBytes.value;
@@ -145,7 +160,7 @@ class AirSeaDropOffSection extends StatelessWidget {
           }),
         ),
 
-        /// FIELD 4: DropOffAt Timestamp (Auto-captured, no UI needed)
+        /// FIELD 5: DropOffAt Timestamp (Auto-captured, no UI needed)
         /// This is handled automatically by air_sea_data_manager.dart
       ],
     );
