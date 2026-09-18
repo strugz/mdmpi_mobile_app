@@ -66,6 +66,10 @@ class DashboardController extends GetxController {
 
   final RxBool isRefreshing = false.obs;
 
+  /// True until the first cache read completes, so Home can show a skeleton
+  /// instead of a misleading zero.
+  final RxBool isLoading = true.obs;
+
   // ========================================================================
   // COMPUTED PROPERTIES
   // ========================================================================
@@ -128,7 +132,11 @@ class DashboardController extends GetxController {
 
   Future<void> _start() async {
     // Cache first: Home renders instantly and costs no network while fresh.
-    await _reloadFromCache();
+    try {
+      await _reloadFromCache();
+    } finally {
+      isLoading.value = false;
+    }
     // Then a full snapshot, but only if the cache has gone stale.
     final synced = await _source.syncIfStale(_loadFullHistory);
     if (synced) {

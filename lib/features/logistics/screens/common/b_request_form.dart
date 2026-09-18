@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/rounded_container.dart';
 import 'package:mdmpi_mobile_app/common/widgets/layouts/grid_layout.dart';
-import 'package:mdmpi_mobile_app/data/repositories/common/form_category_repository.dart';
-import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/request_form_navigator.dart';
 
 import '../../../../base/utils/constants/colors.dart';
-import '../../../../base/utils/logger.dart';
 import '../../../../base/utils/constants/sizes.dart';
 import '../../../../base/utils/helpers/helper_functions.dart';
 
@@ -94,59 +90,6 @@ class BRequestForm extends StatelessWidget {
     );
   }
 
-  /// Navigate to the form page and set the appropriate form category in RequestController.
-  /// Loads form categories directly from local database to ensure data consistency.
-  Future<void> _navigateToFormWithCategory(int index) async {
-    if (index < 0 || index >= pages.length) {
-      return;
-    }
-
-    try {
-      final formCategoryRepo = Get.find<FormCategoryRepository>();
-      final localCategories = await formCategoryRepo.getFromLocal();
-
-      if (localCategories.isEmpty) {
-        Get.to(() => pages[index]);
-        return;
-      }
-
-      final categoryType = FormCategoryConstants.fromIndex(index);
-      if (categoryType == null) {
-        Get.to(() => pages[index]);
-        return;
-      }
-
-      final targetCategoryName = categoryType.categoryName;
-      final category = localCategories.firstWhereOrNull(
-          (c) => c.name.toLowerCase() == targetCategoryName.toLowerCase());
-
-      if (category != null) {
-        try {
-          final requestController = Get.find<RequestController>();
-          requestController.currentSelectedCategory.value = category;
-
-          final categoryIndex = requestController.formCategories
-              .indexWhere((c) => c.id == category.id);
-          if (categoryIndex >= 0) {
-            requestController.updateTabIndex(categoryIndex);
-          }
-        } catch (e) {
-          logDebug(
-              'RequestController not found, but category will still be available: $e');
-        }
-
-        final formPageIndex = categoryType.actualFormPageIndex;
-
-        if (formPageIndex >= 0 && formPageIndex < pages.length) {
-          Get.to(() => pages[formPageIndex]);
-          return;
-        }
-      } else {
-        logDebug('Category "$targetCategoryName" not found in local DB');
-      }
-    } catch (e) {
-      logDebug('Error loading categories from local DB: $e');
-    }
-    Get.to(() => pages[index]);
-  }
+  Future<void> _navigateToFormWithCategory(int index) =>
+      RequestFormNavigator.open(index, pages);
 }
