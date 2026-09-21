@@ -16,30 +16,12 @@ class UserMdmpiController extends GetxController {
 
   final userList = RxList<CNTMSTModel>([]);
 
-  Future<void> fetchUserMdmpiFromDb() async {
-    try {
-      //  Show loader while loading user
-      isLoading.value = true;
+  /// Guards against the request forms calling [filterUserFromLocal] on every
+  /// rebuild while a hydration round-trip is still in flight.
+  bool _isHydrating = false;
 
-      final dbHelper = DatabaseHelper.instance;
-      final localUsers = await dbHelper.getCntmstRequesters();
-      if (localUsers.isNotEmpty) {
-        userList.assignAll(localUsers);
-      } else if (await NetworkManager.instance.isConnected()) {
-        final apiUser = await _userMdmpiRepository.getAllClientAPI();
-        if (apiUser.isNotEmpty) {
-          await dbHelper.insertCntmsts(apiUser);
-          userList.assignAll(apiUser);
-        } else {
-          BLoaders.errorSnackBar(
-              title: 'Oh Snap!', message: 'No User fetched from API');
-        }
-      }
-    } catch (e) {
-      logDebug('UserMdmpiController.fetchUserMdmpiFromDb failed: $e');
-    } finally {
-      isLoading.value = false;
-    }
+  Future<void> fetchUserMdmpiFromDb() async {
+    await _loadRequesters();
   }
 
   Future<void> hardResetUserMdmpiList(bool isDisplay) async {
@@ -60,7 +42,9 @@ class UserMdmpiController extends GetxController {
         await dbHelper.insertCntmsts(apiUser);
       }
 
-      userList.assignAll(apiUser);
+      // Same filter as the local-first path, so a hard reset and a normal
+      // load never disagree about who can be picked as a requester.
+      userList.assignAll(await dbHelper.getCntmstRequesters());
 
       if (isDisplay == true) {
         BLoaders.successSnackBar(
@@ -74,15 +58,52 @@ class UserMdmpiController extends GetxController {
   }
 
   Future<void> filterUserFromLocal() async {
+    await _loadRequesters();
+  }
+
+  /// Local-first load of the requester list, with an API re-hydration when the
+  /// local cache is empty.
+  ///
+  /// CNTMST is a cache-backed table: a DB version bump drops and recreates it
+  /// empty, and only the post-login loading screen used to refill it. A user
+  /// who updates the app while still signed in therefore skipped the only
+  /// refill there was, and "Requested By" stayed empty forever with no way to
+  /// recover short of a manual hard reset. Re-fetching here is idempotent and
+  /// self-healing, and also covers a first fetch that failed for one call.
+  Future<void> _loadRequesters() async {
+    if (_isHydrating) return;
+    _isHydrating = true;
     try {
       isLoading.value = true;
       final dbHelper = DatabaseHelper.instance;
-      final userListFromDb = await dbHelper.getCntmstRequesters();
-      userList.assignAll(userListFromDb);
+
+      final localUsers = await dbHelper.getCntmstRequesters();
+      if (localUsers.isNotEmpty) {
+        userList.assignAll(localUsers);
+        return;
+      }
+
+      if (!await NetworkManager.instance.isConnected()) {
+        logDebug(
+            'UserMdmpiController: requester cache empty and device offline');
+        return;
+      }
+
+      final apiUser = await _userMdmpiRepository.getAllClientAPI();
+      if (apiUser.isEmpty) {
+        logDebug('UserMdmpiController: API returned no requesters');
+        return;
+      }
+
+      await dbHelper.insertCntmsts(apiUser);
+      // Read back through the DAO so the same requester filter (no collectors,
+      // no inactive records) applies to the freshly fetched rows.
+      userList.assignAll(await dbHelper.getCntmstRequesters());
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      logDebug('UserMdmpiController._loadRequesters failed: $e');
     } finally {
       isLoading.value = false;
+      _isHydrating = false;
     }
   }
 }
