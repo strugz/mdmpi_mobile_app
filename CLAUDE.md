@@ -61,8 +61,10 @@ under `lib/features/<domain>/` (controllers, screens, helpers); repositories und
 
 - `/api4/*` → sibling `MDMPI.App` ASP.NET backend (production-testing only).
   Debug-only local overrides: `API4_URL_WINDOWS` / `API4_URL_ANDROID`.
-- `/api3/*` and everything else → live production backend (`API_URL`).
+- `/api2/*` and everything else → live production backend (`API_URL`).
 - Never redirect non-`/api4` traffic to `MDMPI.App`. See README "API Environments".
+- `/api3/*` is retired — it served incomplete records (`cntmst` without `CNTSTS`) and
+  502'd for long stretches. Nothing calls it; do not add new `/api3/*` calls.
 
 ## Secrets
 

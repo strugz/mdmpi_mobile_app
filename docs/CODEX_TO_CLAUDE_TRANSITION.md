@@ -93,7 +93,7 @@ output, including failures.
 
 Open `../MDMPI.FullStack.code-workspace`. Debug builds may use
 `API4_URL_WINDOWS=http://localhost:5177` / `API4_URL_ANDROID=http://10.0.2.2:5177`
-for `/api4/*` only. **Never** route `/api3/*` to the local backend.
+for `/api4/*` only. **Never** route `/api2/*` to the local backend.
 
 ## 4. Guardrails carried over (unchanged, enforced)
 

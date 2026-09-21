@@ -167,8 +167,12 @@ class StandardDeliveryRepository extends GetxController {
 
   Future<CancelRemarksModel> getCancelRemarks(String requestID) async {
     try {
+      // /api2, not /api4: the cancel route does not exist on the api4 host --
+      // every casing 404s there, while /api4/Request/image answers, so it is
+      // the route that is missing rather than the host. /api2 answers, and it
+      // is where cntmst and accmst already read from.
       final response = await http.get(Uri.parse(
-          "${dotenv.env['API_URL']!}/api3/request/cancel/$requestID"));
+          "${dotenv.env['API_URL']!}/api2/request/cancel/$requestID"));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = json.decode(response.body);

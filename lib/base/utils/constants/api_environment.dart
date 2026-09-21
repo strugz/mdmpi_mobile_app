@@ -5,8 +5,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Resolves API hosts while preserving the application's backend boundary.
 ///
-/// [liveBaseUrl] is used by `/api3/*` and other live integrations. Only
+/// [liveBaseUrl] is used by `/api2/*` and other live integrations. Only
 /// `/api4/*` requests may use the platform-specific production-testing host.
+///
+/// `/api3/*` is gone: it served stale or incomplete copies of the same data
+/// -- cntmst came back without CNTSTS -- and went 502 while /api2 stayed up.
 class BApiEnvironment {
   BApiEnvironment._();
 

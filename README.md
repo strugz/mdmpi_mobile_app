@@ -119,14 +119,20 @@ This application uses separate backends depending on the API route:
 - `mdmpi_mobile_app` is the Flutter client in this repository.
 - The sibling `MDMPI.App` ASP.NET repository implements `/api4/*` endpoints. This backend
   and its `/api4/*` routes are currently intended only for production testing.
-- `/api3/*` endpoints and all API integrations outside `/api4/*` continue to use the
+- `/api2/*` endpoints and all API integrations outside `/api4/*` continue to use the
   existing live production backend.
 - Firebase Authentication and other external integrations also remain connected to their
   live services.
 
-Do not redirect `/api3/*` or other non-`/api4/*` traffic to `MDMPI.App`. When changing API
+Do not redirect `/api2/*` or other non-`/api4/*` traffic to `MDMPI.App`. When changing API
 configuration, preserve this routing boundary unless the backend deployment strategy is
 explicitly changed.
+
+`/api3/*` is no longer called anywhere in the client. It returned incomplete copies of the
+same records — `cntmst` omitted `CNTSTS` and `CNTEGP`, which silently disabled the
+"skip deactivated staff" filter on the requester list — and it returned 502 for extended
+stretches while `/api2/*` stayed up. The requester list, client list and cancel remarks all
+read from `/api2/*` instead. Do not add new `/api3/*` calls.
 
 ### Full-stack workspace
 
@@ -137,14 +143,14 @@ analysis and tests, plus ASP.NET build, tests and local startup.
 Debug Flutter runs use `API4_URL_WINDOWS=http://localhost:5177` on Windows and
 `API4_URL_ANDROID=http://10.0.2.2:5177` on the Android emulator. Release builds ignore
 these local overrides. The overrides affect only locally implemented `/api4/*` routes;
-`/api3/*`, `/api4/CNTMST/initial` (not currently implemented by the local `MDMPI.App`
+`/api2/*`, `/api4/CNTMST/initial` (not currently implemented by the local `MDMPI.App`
 source), and all other integrations continue using `API_URL` and their live services.
 
 The local ASP.NET task prompts for production-database approval. Enter `true` only when
 production testing is intentional and the machine has LAN/VPN access to the production SQL
 Server and PostgreSQL services. `MDMPI.App` refuses to start in Development unless
 `ALLOW_PRODUCTION_DB=true` is explicitly supplied, and it does not redirect or implement
-`/api3/*` traffic.
+`/api2/*` traffic.
 
 ---
 
