@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
@@ -13,6 +14,9 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_da
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_activity_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_account_history_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/features/collection/dtos/collection_item_dto.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_workspace_parser.dart';
@@ -123,16 +127,19 @@ class CollectionRepository extends GetxController {
           await _replaceAccountLevelData(ws);
 
           localDataVersion.value++;
-          logDebug('CollectionRepository: workspace cached — ${ws.items.length} items, '
+          logDebug(
+              'CollectionRepository: workspace cached — ${ws.items.length} items, '
               '${ws.advances.length} advances, ${ws.activities.length} activities, '
               '${ws.accountHistory.length} history, ${ws.targets.length} targets');
           return ws.items;
         }
       } else {
-        logDebug('CollectionRepository: workspace returned ${response.statusCode}, falling back to bucket');
+        logDebug(
+            'CollectionRepository: workspace returned ${response.statusCode}, falling back to bucket');
       }
     } catch (e) {
-      logDebug('CollectionRepository: workspace fetch failed ($e), falling back to bucket');
+      logDebug(
+          'CollectionRepository: workspace fetch failed ($e), falling back to bucket');
     }
 
     // Older backend: bucket only.
@@ -151,7 +158,8 @@ class CollectionRepository extends GetxController {
     final helper = DatabaseHelper.instance;
     await (await helper.collectionAdvanceDao).replaceAll(ws.advances);
     await (await helper.collectionActivityDao).replaceAll(ws.activities);
-    await (await helper.collectionAccountHistoryDao).replaceAll(ws.accountHistory);
+    await (await helper.collectionAccountHistoryDao)
+        .replaceAll(ws.accountHistory);
     await (await helper.collectionTargetDao).replaceAll(ws.targets);
   }
 
@@ -247,7 +255,8 @@ class CollectionRepository extends GetxController {
     try {
       final pending = await Get.find<SyncManager>().getPendingChangeCount();
       if (pending > 0) {
-        logDebug('CollectionRepository: $pending pending changes — background sync skipped');
+        logDebug(
+            'CollectionRepository: $pending pending changes — background sync skipped');
         return;
       }
       await _downloadAndCache();
@@ -341,6 +350,23 @@ class CollectionRepository extends GetxController {
       // Save to local DB
       await dao.updateCollectionItem(updatedItem);
 
+      // And to the archive, which the refresh cannot touch. Same `now` as the
+      // queued change, so the two agree about when this happened.
+      await _archive(
+        kind: 'INVOICE',
+        engagedAt: now,
+        itemId: id,
+        clientId: item.client.id,
+        clientName: item.client.name,
+        status: status,
+        remarks: remarks,
+        amount: newlyCollected,
+        bankName: bankName,
+        checkNumber: checkNumber,
+        checkDate: checkDate,
+        purposeOfVisit: purposeOfVisit,
+      );
+
       // Queue for end-of-day upload.
       await _queueChange('SAVE_ACTIVITY', id, {
         'EngagementDate': now,
@@ -395,6 +421,10 @@ class CollectionRepository extends GetxController {
       double batchTotal = 0;
       int batchCount = 0;
 
+      // Gathered through the loop and committed once. The batch shares one
+      // `now`, and the itemId differs per row, so the keys still differ.
+      final archived = <CollectionEngagementRecord>[];
+
       for (final id in ids) {
         final item = await dao.getCollectionItemById(id);
         if (item == null) continue;
@@ -435,6 +465,22 @@ class CollectionRepository extends GetxController {
 
         await dao.updateCollectionItem(updatedItem);
 
+        final record = _engagementRecord(
+          kind: 'INVOICE',
+          engagedAt: now,
+          itemId: id,
+          clientId: item.client.id,
+          clientName: item.client.name,
+          status: itemStatus,
+          remarks: itemRemarks,
+          amount: manualAmount,
+          bankName: bankName,
+          checkNumber: checkNumber,
+          checkDate: checkDate,
+          purposeOfVisit: purposeOfVisit,
+        );
+        if (record != null) archived.add(record);
+
         await _queueChange('BATCH_ACTIVITY', id, {
           'EngagementDate': now,
           'Status': itemStatus,
@@ -446,6 +492,8 @@ class CollectionRepository extends GetxController {
           'PurposeOfVisit': purposeOfVisit,
         });
       }
+
+      await _archiveAll(archived);
 
       // One summary SMS to the collection head for the batch.
       if (batchCount > 0) {
@@ -459,8 +507,8 @@ class CollectionRepository extends GetxController {
       }
 
       _showSuccess('Batch activity saved successfully', silent: silent);
-      logDebug('CollectionRepository: Batch activity saved for ${ids.length} items');
-
+      logDebug(
+          'CollectionRepository: Batch activity saved for ${ids.length} items');
     } catch (e) {
       logDebug('CollectionRepository.saveBatchActivity error: $e');
       _showError('Failed to save batch activity', silent: silent);
@@ -661,6 +709,317 @@ class CollectionRepository extends GetxController {
 
   String _nowStamp() => DateTime.now().toIso8601String();
 
+  // ===========================================================================
+  // The engagement archive
+  //
+  // Every write path below also records what the collector did into
+  // a_tblCollectionEngagement, which no download path may rewrite. The
+  // repository is the only writer: the controller used to stamp its own
+  // 'yyyy-MM-dd HH:mm' alongside the ISO stamp written here, and two stamps for
+  // one engagement would mean two archive keys for it — exactly the duplication
+  // the key is derived to prevent.
+  // ===========================================================================
+
+  /// Bumped whenever an engagement is archived, so a controller can reload the
+  /// archive with one `ever` instead of a re-read at each of seven save sites —
+  /// which is also the version that cannot drift when an eighth is added.
+  final RxInt ownEngagementVersion = 0.obs;
+
+  /// Record one engagement in the archive.
+  ///
+  /// Awaited after the primary write and wrapped in its own try/catch: losing
+  /// the archive copy is a blank day on the calendar, while letting it throw
+  /// would cost the collector the engagement itself.
+  Future<void> _archive({
+    required String kind,
+    required String engagedAt,
+    String itemId = '',
+    String clientId = '',
+    String clientName = '',
+    String status = '',
+    String remarks = '',
+    double amount = 0,
+    String? bankName,
+    String? checkNumber,
+    String? checkDate,
+    String? purposeOfVisit,
+    List<String> documentIds = const [],
+  }) async {
+    try {
+      final record = _engagementRecord(
+        kind: kind,
+        engagedAt: engagedAt,
+        itemId: itemId,
+        clientId: clientId,
+        clientName: clientName,
+        status: status,
+        remarks: remarks,
+        amount: amount,
+        bankName: bankName,
+        checkNumber: checkNumber,
+        checkDate: checkDate,
+        purposeOfVisit: purposeOfVisit,
+        documentIds: documentIds,
+      );
+      if (record == null) return;
+      final dao = await DatabaseHelper.instance.collectionEngagementDao;
+      await dao.upsert(record);
+      ownEngagementVersion.value++;
+    } catch (e) {
+      logDebug('CollectionRepository._archive error: $e');
+    }
+  }
+
+  /// Archive a batch in one transaction. A batch engagement can cover a whole
+  /// account, and one commit beats one round trip per invoice.
+  Future<void> _archiveAll(List<CollectionEngagementRecord> records) async {
+    if (records.isEmpty) return;
+    try {
+      final dao = await DatabaseHelper.instance.collectionEngagementDao;
+      await dao.upsertAll(records);
+      ownEngagementVersion.value++;
+    } catch (e) {
+      logDebug('CollectionRepository._archiveAll error: $e');
+    }
+  }
+
+  /// Builds the record, or null when [engagedAt] is not a date we can file
+  /// under a day. A row the calendar could not place used to disappear into a
+  /// bare `catch`; here it is counted out loud.
+  CollectionEngagementRecord? _engagementRecord({
+    required String kind,
+    required String engagedAt,
+    String itemId = '',
+    String clientId = '',
+    String clientName = '',
+    String status = '',
+    String remarks = '',
+    double amount = 0,
+    String? bankName,
+    String? checkNumber,
+    String? checkDate,
+    String? purposeOfVisit,
+    List<String> documentIds = const [],
+    String source = CollectionEngagementRecord.sourceLocal,
+  }) {
+    final engagedOn = BFormatter.localDayKey(engagedAt);
+    if (engagedOn == null) {
+      logDebug('CollectionRepository: engagement not archived, '
+          'unreadable date "$engagedAt" ($kind)');
+      return null;
+    }
+    final subjectId = itemId.isEmpty ? clientId : itemId;
+    return CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+        kind: kind,
+        subjectId: subjectId,
+        engagedAt: engagedAt,
+      ),
+      collectorCode: collectorCode,
+      collectorName: collectorName,
+      kind: kind,
+      itemId: itemId,
+      clientId: clientId,
+      clientName: clientName,
+      engagedAt: engagedAt,
+      engagedOn: engagedOn,
+      status: status,
+      remarks: remarks,
+      amount: amount,
+      bankName: bankName,
+      checkNumber: checkNumber,
+      checkDate: checkDate,
+      purposeOfVisit: purposeOfVisit,
+      documentIds: documentIds,
+      createdAt: _nowStamp(),
+      source: source,
+    );
+  }
+
+  /// Every name this collector's own work may already be filed under.
+  ///
+  /// The legacy tables were written with three different identities over time —
+  /// the repository wrote the full name, the controller wrote initials, and one
+  /// card special-cased the literal 'You'. Matching all of them is what lets
+  /// the backfill recognise a collector's own history; new rows carry
+  /// [collectorCode] and need none of this.
+  Set<String> get collectorAliases {
+    final user = Get.find<UserController>().user.value;
+    return {
+      collectorCode,
+      user.fullName,
+      user.initials,
+      'You',
+    }.map((e) => e.trim().toLowerCase()).where((e) => e.isNotEmpty).toSet();
+  }
+
+  /// Rebuild the copied half of the archive from what the cache tables say
+  /// now.
+  ///
+  /// Without it the archive starts empty and a collector who has been working
+  /// for weeks opens a blank calendar. It can only rescue what the refresh has
+  /// not already erased, so it is a floor, not a recovery.
+  ///
+  /// It used to run once ever, guarded by "is the archive empty", and its rows
+  /// then lived forever alongside the collector's own. That made the archive
+  /// unfalsifiable: collection data deleted on the server stayed in the month's
+  /// total with nothing left to explain it. So the copies are now marked
+  /// [CollectionEngagementRecord.sourceServer], dropped and rewritten on each
+  /// load, and the archive's copied half tracks the server while its recorded
+  /// half is still untouchable.
+  ///
+  /// Only history from before [_archiveWatermark] — the day this archive
+  /// started — is copied. Anything after it was recorded by this device and is
+  /// already in the archive as its own row, so the cut is what keeps a
+  /// re-import from landing a second copy of work the collector did here. The
+  /// cut is by day, so the copy can miss part of the day the archive began;
+  /// that day is the one day where both halves could describe the same visit.
+  Future<void> backfillOwnEngagements() async {
+    try {
+      final helper = DatabaseHelper.instance;
+      final engDao = await helper.collectionEngagementDao;
+
+      final watermark = await _archiveWatermark();
+      final removed = await engDao.clearServerCopied();
+
+      final aliases = collectorAliases;
+      bool mine(String name) => aliases.contains(name.trim().toLowerCase());
+
+      final records = <CollectionEngagementRecord>[];
+      var skipped = 0;
+
+      void add(CollectionEngagementRecord? r) {
+        if (r == null) {
+          skipped++;
+        } else if (r.engagedOn.compareTo(watermark) < 0) {
+          // engagedOn is yyyy-MM-dd, fixed width and already normalised to the
+          // local day, so a plain string compare is a date compare. engagedAt
+          // is not: it carries whatever shape the server sent.
+          records.add(r);
+        }
+      }
+
+      for (final item in await (await _dao).getCollectionItems()) {
+        for (final h in item.history) {
+          if (!mine(h.collectorName)) continue;
+          add(_engagementRecord(
+            kind: 'INVOICE',
+            engagedAt: h.date,
+            itemId: item.id,
+            clientId: item.client.id,
+            clientName: item.client.name,
+            status: h.status,
+            remarks: h.remarks,
+            amount: h.totalCollected,
+            bankName: h.bankName,
+            checkNumber: h.checkNumber,
+            checkDate: h.checkDate,
+            purposeOfVisit: h.purposeOfVisit,
+            source: CollectionEngagementRecord.sourceServer,
+          ));
+        }
+      }
+
+      for (final h
+          in await (await helper.collectionAccountHistoryDao).getAll()) {
+        if (!mine(h.collectorName)) continue;
+        add(_engagementRecord(
+          kind: 'ACCOUNT',
+          engagedAt: h.date,
+          clientId: h.clientId,
+          status: h.reason,
+          remarks: h.remarks,
+          source: CollectionEngagementRecord.sourceServer,
+        ));
+      }
+
+      for (final a in await (await helper.collectionActivityDao).getAll()) {
+        if (!mine(a.collectorName)) continue;
+        add(_engagementRecord(
+          kind: 'OFFICE',
+          engagedAt: a.date,
+          clientId: a.clientId,
+          clientName: a.clientName,
+          status: a.type,
+          remarks: a.remarks,
+          amount: a.amount,
+          bankName: a.bankName,
+          checkNumber: a.checkNumber,
+          documentIds: a.documentIds,
+          source: CollectionEngagementRecord.sourceServer,
+        ));
+      }
+
+      for (final a in await (await helper.collectionAdvanceDao).getAll()) {
+        if (!mine(a.collectorName)) continue;
+        add(_engagementRecord(
+          kind: 'ADVANCE',
+          engagedAt: a.date,
+          itemId: a.externalRef,
+          clientId: a.clientId,
+          clientName: a.clientName,
+          status: 'Advanced Payment',
+          remarks: a.remarks,
+          amount: a.amount,
+          source: CollectionEngagementRecord.sourceServer,
+        ));
+      }
+
+      await _archiveAll(records);
+      // Bumped even when nothing is written, because dropping the old copies
+      // is itself a change the calendar and the month's total must see —
+      // otherwise deleted data stays on screen until the next restart.
+      if (records.isEmpty && removed > 0) ownEngagementVersion.value++;
+      logDebug('CollectionRepository: archive refreshed — '
+          '${records.length} copied from the server cache, $removed stale '
+          'copies dropped, watermark $watermark'
+          '${skipped > 0 ? ", $skipped skipped with no readable date" : ""}');
+    } catch (e) {
+      logDebug('CollectionRepository.backfillOwnEngagements error: $e');
+    }
+  }
+
+  /// The day this device's archive started, as yyyy-MM-dd.
+  ///
+  /// Set once, the first time the archive is built, and per collector: two
+  /// collectors sharing a device have their own cut. Everything from before it
+  /// can only have come from the server; everything after it this device
+  /// recorded itself.
+  Future<String> _archiveWatermark() async {
+    final box = GetStorage();
+    final key = 'collection.archiveWatermark.$collectorCode';
+    final stored = box.read<String>(key);
+    if (stored != null && stored.isNotEmpty) return stored;
+
+    final now = DateTime.now();
+    final day = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    await box.write(key, day);
+    return day;
+  }
+
+  /// The signed-in collector's own engagements.
+  ///
+  /// Reports its failure, unlike [loadOfficeActivities] and friends which fall
+  /// back to an empty list: a blank calendar with no explanation is the bug
+  /// this whole table exists to fix, so it must not be able to fail quietly.
+  Future<Result<List<CollectionEngagementRecord>>> loadOwnEngagements({
+    String? yearMonth,
+  }) async {
+    try {
+      final dao = await DatabaseHelper.instance.collectionEngagementDao;
+      final rows = yearMonth == null
+          ? await dao.getAll(collectorCode)
+          : await dao.getForMonth(
+              collectorCode: collectorCode, yearMonth: yearMonth);
+      return Result.success(rows);
+    } catch (e) {
+      logDebug('CollectionRepository.loadOwnEngagements error: $e');
+      return Result.failure('Could not read your engagements: $e');
+    }
+  }
+
   /// Release an account's invoices back to the bucket.
   ///
   /// [reason] null = Clear Engagement (no history); non-null = Deferred Engagement,
@@ -699,7 +1058,19 @@ class CollectionRepository extends GetxController {
       );
       final histDao = await DatabaseHelper.instance.collectionAccountHistoryDao;
       final id = await histDao.insert(record);
-      logDebug('CollectionRepository: released ${releasedInvoices.length} invoices for $clientId ($op)');
+
+      // A deferral is field work and belongs on the calendar. The CLEAR branch
+      // returned above and archives nothing: clearing an engagement is not one.
+      await _archive(
+        kind: 'ACCOUNT',
+        engagedAt: now,
+        clientId: clientId,
+        status: reason,
+        remarks: remarks,
+      );
+
+      logDebug(
+          'CollectionRepository: released ${releasedInvoices.length} invoices for $clientId ($op)');
       return CollectionAccountHistoryRecord(
         id: id,
         clientId: record.clientId,
@@ -749,6 +1120,22 @@ class CollectionRepository extends GetxController {
 
       final actDao = await DatabaseHelper.instance.collectionActivityDao;
       final id = await actDao.insert(record);
+
+      // Reconciliation is archived too. Which kinds a screen shows is that
+      // screen's decision, and the controller already makes it; dropping the
+      // row here would take the decision away from every future reader.
+      await _archive(
+        kind: 'OFFICE',
+        engagedAt: now,
+        clientId: clientId,
+        clientName: clientName,
+        status: type,
+        remarks: remarks,
+        amount: amount,
+        bankName: bankName,
+        checkNumber: checkNumber,
+        documentIds: documentIds,
+      );
 
       if (updatedInvoices.isNotEmpty) {
         final dao = await _dao;
@@ -812,6 +1199,17 @@ class CollectionRepository extends GetxController {
       final advDao = await DatabaseHelper.instance.collectionAdvanceDao;
       await advDao.upsert(record);
 
+      await _archive(
+        kind: 'ADVANCE',
+        engagedAt: now,
+        itemId: record.externalRef,
+        clientId: clientId,
+        clientName: clientName,
+        status: 'Advanced Payment',
+        remarks: remarks,
+        amount: amount,
+      );
+
       await _queueChange('ADVANCED_PAYMENT', record.externalRef, {
         'ClientCode': clientId,
         'ExternalRef': record.externalRef,
@@ -820,7 +1218,8 @@ class CollectionRepository extends GetxController {
         'Remarks': remarks,
       });
 
-      logDebug('CollectionRepository: saved advance ${record.externalRef} for $clientId');
+      logDebug(
+          'CollectionRepository: saved advance ${record.externalRef} for $clientId');
       return record;
     } catch (e) {
       logDebug('CollectionRepository.saveAdvance error: $e');
@@ -843,16 +1242,32 @@ class CollectionRepository extends GetxController {
       final advDao = await DatabaseHelper.instance.collectionAdvanceDao;
       await advDao.markAssigned(advance.externalRef, newInvoice.id);
 
+      // Hoisted rather than called inline below, so the queued change and the
+      // archive row carry the same stamp.
+      final now = _nowStamp();
+
+      await _archive(
+        kind: 'INVOICE',
+        engagedAt: now,
+        itemId: newInvoice.id,
+        clientId: advance.clientId,
+        clientName: advance.clientName,
+        status: 'Advanced Payment Applied',
+        remarks: advance.remarks,
+        amount: advance.amount,
+      );
+
       await _queueChange('ASSIGN_ADVANCE', newInvoice.id, {
         'ClientCode': advance.clientId,
         'ExternalRef': advance.externalRef,
-        'EngagementDate': _nowStamp(),
+        'EngagementDate': now,
         'AmountDue': amountDue,
         'DueDate': dueDate,
         'Remarks': advance.remarks,
       });
 
-      logDebug('CollectionRepository: assigned ${advance.externalRef} to ${newInvoice.id}');
+      logDebug(
+          'CollectionRepository: assigned ${advance.externalRef} to ${newInvoice.id}');
       return true;
     } catch (e) {
       logDebug('CollectionRepository.assignAdvance error: $e');
@@ -886,7 +1301,8 @@ class CollectionRepository extends GetxController {
 
   Future<List<CollectionActivityRecord>> loadOfficeActivities() async {
     try {
-      return await (await DatabaseHelper.instance.collectionActivityDao).getAll();
+      return await (await DatabaseHelper.instance.collectionActivityDao)
+          .getAll();
     } catch (e) {
       logDebug('CollectionRepository.loadOfficeActivities error: $e');
       return const [];
@@ -895,7 +1311,8 @@ class CollectionRepository extends GetxController {
 
   Future<List<CollectionAdvanceRecord>> loadUnassignedAdvances() async {
     try {
-      return await (await DatabaseHelper.instance.collectionAdvanceDao).getUnassigned();
+      return await (await DatabaseHelper.instance.collectionAdvanceDao)
+          .getUnassigned();
     } catch (e) {
       logDebug('CollectionRepository.loadUnassignedAdvances error: $e');
       return const [];
@@ -904,7 +1321,8 @@ class CollectionRepository extends GetxController {
 
   Future<List<CollectionAccountHistoryRecord>> loadAccountHistory() async {
     try {
-      return await (await DatabaseHelper.instance.collectionAccountHistoryDao).getAll();
+      return await (await DatabaseHelper.instance.collectionAccountHistoryDao)
+          .getAll();
     } catch (e) {
       logDebug('CollectionRepository.loadAccountHistory error: $e');
       return const [];

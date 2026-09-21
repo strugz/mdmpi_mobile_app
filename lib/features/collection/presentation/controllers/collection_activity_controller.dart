@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
-import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
@@ -93,6 +93,12 @@ class CollectionActivityController extends GetxController {
   void startAggregateTracking() {
     ever(bucketItems, (_) => invalidateAggregates());
     ever(activityItems, (_) => invalidateAggregates());
+    // The calendar's grouping resolves each engagement's invoice out of
+    // allItems, so it goes stale with the item lists as well as with the
+    // archive itself.
+    ever(bucketItems, (_) => _byDateDirty = true);
+    ever(activityItems, (_) => _byDateDirty = true);
+    ever(ownEngagements, (_) => _byDateDirty = true);
   }
 
   void _rebuildAggregates() {
@@ -322,6 +328,10 @@ class CollectionActivityController extends GetxController {
       final items = await repository.getLocalCollectionItems();
       _setItems(items);
     });
+    // One wire for all seven save paths, rather than a re-read at each of
+    // them: the repository bumps this whenever it archives an engagement, so
+    // a path added later cannot forget to refresh the calendar.
+    ever(repository.ownEngagementVersion, (_) => reloadOwnEngagements());
   }
 
   /// Load collection bucket items from repository.
@@ -1029,27 +1039,110 @@ class CollectionActivityController extends GetxController {
     return combined;
   }
 
-  /// Returns activities grouped by date for the calendar
+  // ========================================================================
+  // The calendar's grouping
+  // ========================================================================
+
+  /// This collector's own engagements, read from the archive.
+  ///
+  /// Not derived from [allRecentHistory]: that is built out of the invoices
+  /// currently in the bucket and the activity list, both of which are a cache
+  /// of what the server says today. An invoice that settles stops coming back
+  /// and takes its history with it, and the history table itself is truncated
+  /// on every download — so a calendar built on it went blank shortly after
+  /// the collector uploaded the work it was showing.
+  final RxList<CollectionEngagementRecord> ownEngagements =
+      <CollectionEngagementRecord>[].obs;
+
+  bool _byDateDirty = true;
+  int _byDateSourceLength = -1;
+  Map<DateTime, List<Map<String, dynamic>>> _byDateCache = const {};
+
+  /// Engagements grouped by the day they happened, for the calendar.
+  ///
+  /// Memoised. `table_calendar` asks once per visible cell through its event
+  /// loader and again in each day builder, so regrouping on every call meant
+  /// rebuilding the whole of the collector's history fifty to ninety times a
+  /// frame.
+  ///
+  /// Keyed to the list rather than to the calendar day, unlike the days-past
+  /// memo in BFormatter: which day an engagement belongs to was settled when
+  /// it was recorded and does not go stale at midnight, only when the data
+  /// changes.
   Map<DateTime, List<Map<String, dynamic>>> get activitiesByDate {
-    final Map<DateTime, List<Map<String, dynamic>>> grouped = {};
-
-    for (var entry in allRecentHistory) {
-      final history = entry['history'] as CollectionHistoryModel;
-      try {
-        // Parse yyyy-MM-dd HH:mm to get just the date part
-        final datePart = history.date.split(' ')[0];
-        final date = DateTime.parse(datePart);
-        final normalizedDate = DateTime(date.year, date.month, date.day);
-
-        if (!grouped.containsKey(normalizedDate)) {
-          grouped[normalizedDate] = [];
-        }
-        grouped[normalizedDate]!.add(entry);
-      } catch (e) {
-        // Skip unparseable dates
-      }
+    // Reading the length is not decorative: it re-registers ownEngagements
+    // with the enclosing Obx, which a cached read would otherwise touch
+    // nothing to subscribe to. See [_ensureAggregates] for the same trap.
+    final sourceLength = ownEngagements.length;
+    if (_byDateDirty || sourceLength != _byDateSourceLength) {
+      _rebuildByDate();
     }
-    return grouped;
+    return _byDateCache;
+  }
+
+  void _rebuildByDate() {
+    final grouped = <DateTime, List<Map<String, dynamic>>>{};
+    final itemsById = {for (final i in allItems) i.id: i};
+    var unplaceable = 0;
+
+    for (final e in ownEngagements) {
+      // Reconciliation reads through invoice status, not as an engagement —
+      // the same rule _loadPersistedExtras applies to the activity list.
+      if (e.kind == 'OFFICE' && e.status == 'Reconciliation') continue;
+
+      final day = BFormatter.parseLocal(e.engagedOn);
+      if (day == null) {
+        unplaceable++;
+        continue;
+      }
+      final key = DateTime(day.year, day.month, day.day);
+
+      // The same map shape ActivityHistoryCard already consumes, so nothing
+      // downstream changes. 'item' is simply null once the invoice has
+      // settled and left the bucket — the card already allows that.
+      grouped.putIfAbsent(key, () => []).add({
+        'history': CollectionHistoryModel(
+          date: e.engagedAt,
+          collectorName: e.collectorName,
+          status: e.status,
+          remarks: e.remarks,
+          totalCollected: e.amount,
+          bankName: e.bankName,
+          checkNumber: e.checkNumber,
+          checkDate: e.checkDate,
+          purposeOfVisit: e.purposeOfVisit,
+        ),
+        'accountName': e.clientName,
+        'invoiceId': e.itemId.isEmpty ? null : e.itemId,
+        'item': itemsById[e.itemId],
+      });
+    }
+
+    for (final entries in grouped.values) {
+      entries.sort((a, b) => (b['history'] as CollectionHistoryModel)
+          .date
+          .compareTo((a['history'] as CollectionHistoryModel).date));
+    }
+
+    if (unplaceable > 0) {
+      logDebug('[CollectionActivityController] $unplaceable engagement(s) '
+          'had no readable date and are not on the calendar');
+    }
+
+    _byDateCache = grouped;
+    _byDateSourceLength = ownEngagements.length;
+    _byDateDirty = false;
+  }
+
+  /// Re-read the archive. Cheap: one indexed query over the collector's own
+  /// rows, and nothing else in the app writes to that table.
+  Future<void> reloadOwnEngagements() async {
+    final result = await repository.loadOwnEngagements();
+    result.fold(
+      onSuccess: ownEngagements.assignAll,
+      onFailure: (e) =>
+          logDebug('[CollectionActivityController] reloadOwnEngagements: $e'),
+    );
   }
 
   void setActivityFilter(String filter) => activityFilter.value = filter;
@@ -1190,8 +1283,8 @@ class CollectionActivityController extends GetxController {
 
   Future<void> markInvoicesForReconciliation(
       String clientId, List<String> invoiceIds, String remarks) async {
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    final collectorInitials = UserController.instance.user.value.initials;
+    final now = DateTime.now().toIso8601String();
+    final collectorLabel = repository.collectorName;
     final updated = <CollectionItemModel>[];
 
     CollectionItemModel mark(CollectionItemModel item) => item.copyWith(
@@ -1200,7 +1293,7 @@ class CollectionActivityController extends GetxController {
             ...item.history,
             CollectionHistoryModel(
               date: now,
-              collectorName: collectorInitials,
+              collectorName: collectorLabel,
               status: 'Reconciliation',
               remarks: remarks,
             )
@@ -1274,16 +1367,15 @@ class CollectionActivityController extends GetxController {
     final client = masterAccountList.firstWhere((c) => c.id == clientId,
         orElse: () => ClientModel.empty());
 
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    final collectorInitials =
-        payment['collectorName'] ?? UserController.instance.user.value.initials;
+    final now = DateTime.now().toIso8601String();
+    final collectorLabel = payment['collectorName'] ?? repository.collectorName;
 
     final remainingDue = (amountDue - paidAmount).clamp(0.0, double.infinity);
     final isFullyPaid = remainingDue == 0;
 
     final historyEntry = CollectionHistoryModel(
       date: now,
-      collectorName: collectorInitials,
+      collectorName: collectorLabel,
       status: 'Advanced Payment Applied',
       remarks: 'Applied from advanced payment: ${payment['remarks']}',
       totalCollected: paidAmount > amountDue ? amountDue : paidAmount,
@@ -1310,7 +1402,7 @@ class CollectionActivityController extends GetxController {
         amount: paidAmount,
         date: (payment['date'] ?? now).toString(),
         remarks: (payment['remarks'] ?? '').toString(),
-        collectorName: collectorInitials.toString(),
+        collectorName: collectorLabel.toString(),
       ),
       newInvoice: newItem,
       amountDue: amountDue,
@@ -1389,11 +1481,11 @@ class CollectionActivityController extends GetxController {
       remarks: remarks,
     );
 
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    final collectorInitials = UserController.instance.user.value.initials;
+    final now = DateTime.now().toIso8601String();
+    final collectorLabel = repository.collectorName;
     final historyEntry = CollectionHistoryModel(
       date: record?.date ?? now,
-      collectorName: record?.collectorName ?? collectorInitials,
+      collectorName: record?.collectorName ?? collectorLabel,
       status: reason,
       remarks: remarks,
       totalCollected: 0,
@@ -1444,7 +1536,7 @@ class CollectionActivityController extends GetxController {
 
     try {
       final wanted = ids.toSet();
-      final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+      final now = DateTime.now().toIso8601String();
 
       final keep = <CollectionItemModel>[];
       final moved = <CollectionItemModel>[];
@@ -1585,7 +1677,7 @@ class CollectionActivityController extends GetxController {
       }
 
       final oldItem = activityItems[index];
-      final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+      final now = DateTime.now().toIso8601String();
       final double newlyCollected = totalCollected ?? 0;
       final double updatedTotalCollected =
           oldItem.totalCollected + newlyCollected;
@@ -1603,7 +1695,7 @@ class CollectionActivityController extends GetxController {
 
       final historyEntry = CollectionHistoryModel(
         date: now,
-        collectorName: UserController.instance.user.value.initials,
+        collectorName: repository.collectorName,
         status: status,
         remarks: remarks,
         totalCollected: newlyCollected,
@@ -1690,7 +1782,7 @@ class CollectionActivityController extends GetxController {
     try {
       final selectedItems =
           activityItems.where((item) => ids.contains(item.id)).toList();
-      final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+      final now = DateTime.now().toIso8601String();
 
       for (var item in selectedItems) {
         final double manualAmount = amounts[item.id] ?? 0;
@@ -1713,7 +1805,7 @@ class CollectionActivityController extends GetxController {
 
         final historyEntry = CollectionHistoryModel(
           date: now,
-          collectorName: UserController.instance.user.value.initials,
+          collectorName: repository.collectorName,
           status: itemStatus,
           remarks: itemRemarks,
           totalCollected: manualAmount,
@@ -1783,8 +1875,8 @@ class CollectionActivityController extends GetxController {
     String? clientId,
     List<String> documentIds = const [],
   }) async {
-    final now = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
-    final collectorInitials = UserController.instance.user.value.initials;
+    final now = DateTime.now().toIso8601String();
+    final collectorLabel = repository.collectorName;
 
     // Persist + queue (DEPOSIT / CWT_PICKUP). Forms that only know the account
     // name (CWT) get the id resolved from the loaded account list.
@@ -1804,7 +1896,7 @@ class CollectionActivityController extends GetxController {
 
     final historyEntry = CollectionHistoryModel(
       date: now,
-      collectorName: collectorInitials,
+      collectorName: collectorLabel,
       status: type,
       remarks: remarks,
       totalCollected: totalCollected,
@@ -1867,6 +1959,13 @@ class CollectionActivityController extends GetxController {
             ));
       }
       clientHistory.assignAll(grouped);
+
+      // Before the first read, so an upgrading collector does not open a blank
+      // calendar. It also drops the copies it made last time and takes them
+      // again from the cache that was just refreshed, which is how collection
+      // data deleted on the server stops being reported here.
+      await repository.backfillOwnEngagements();
+      await reloadOwnEngagements();
 
       logDebug(
           '[CollectionActivityController] Loaded ${activities.length} activities, '

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
@@ -15,6 +16,8 @@ class ActivityHistoryList extends StatelessWidget {
     this.accountNames,
     this.invoiceIds,
     this.items,
+    this.accountFirst = false,
+    this.timeOnly = false,
   });
 
   final List<CollectionHistoryModel> history;
@@ -27,6 +30,12 @@ class ActivityHistoryList extends StatelessWidget {
 
   /// Optional: Map of history index to full invoice item
   final Map<int, CollectionItemModel?>? items;
+
+  /// See [ActivityHistoryCard.accountFirst] and
+  /// [ActivityHistoryCard.timeOnly]. Both default to the card's own
+  /// behaviour, so the screens that already use this list are untouched.
+  final bool accountFirst;
+  final bool timeOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +61,8 @@ class ActivityHistoryList extends StatelessWidget {
           accountName: accountNames?[index],
           invoiceId: invoiceIds?[index],
           item: items?[index],
+          accountFirst: accountFirst,
+          timeOnly: timeOnly,
         );
       },
     );
@@ -69,6 +80,8 @@ class ActivityHistoryCard extends StatelessWidget {
     this.invoiceId,
     this.item,
     this.margin = const EdgeInsets.only(bottom: BSizes.sm),
+    this.accountFirst = false,
+    this.timeOnly = false,
   });
 
   final CollectionHistoryModel history;
@@ -76,14 +89,47 @@ class ActivityHistoryCard extends StatelessWidget {
   final String? invoiceId;
   final CollectionItemModel? item;
 
+  /// Lead with the account and demote the invoice number.
+  ///
+  /// On an account's own screen the invoice number is what tells two entries
+  /// apart. In a day's list it is not: the reader is scanning who they
+  /// visited, and an invoice number they never memorised is a poor headline
+  /// for a visit.
+  final bool accountFirst;
+
+  /// Show the time and not the date.
+  ///
+  /// For a list already sitting under a heading that names the day, repeating
+  /// the date on every card says nothing, and the time — which is the part
+  /// that orders the day — is buried at the end of it.
+  final bool timeOnly;
+
   /// Space around the card. The list stacks cards with a bottom gap; a
   /// carousel page wants none.
   final EdgeInsetsGeometry margin;
 
   /// The collector label as shown on the card: initials for the current user.
+  ///
+  /// Matched against every name this user's own work may be stored under
+  /// rather than against one literal. Engagements have been written with the
+  /// full name, with initials and with 'You' at different times, and the
+  /// archive now writes the full name — a single-literal test recognised at
+  /// most one of those and showed the other two in full.
   String get _collectorLabel {
-    final name = history.collectorName;
-    if (name == 'You') return UserController.instance.user.value.initials;
+    final name = history.collectorName.trim();
+    if (name.isEmpty) return name;
+    // Without a signed-in user there is nothing to compare against, so the
+    // stored name stands. This is also what lets the card be pumped on its
+    // own in a widget test.
+    if (!Get.isRegistered<UserController>()) return name;
+    final user = UserController.instance.user.value;
+    final mine = {
+      user.fullName,
+      user.initials,
+      user.username,
+      'You',
+    }.map((e) => e.trim().toLowerCase()).where((e) => e.isNotEmpty);
+    if (mine.contains(name.toLowerCase())) return user.initials;
     return name;
   }
 
@@ -320,9 +366,13 @@ class ActivityHistoryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          invoiceId != null || item != null
-                              ? 'Invoice #${invoiceId ?? item?.id}'
-                              : (accountName ?? 'Account Engagement'),
+                          accountFirst
+                              ? (accountName ??
+                                  item?.client.name ??
+                                  'Account Engagement')
+                              : (invoiceId != null || item != null
+                                  ? 'Invoice #${invoiceId ?? item?.id}'
+                                  : (accountName ?? 'Account Engagement')),
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
@@ -330,7 +380,20 @@ class ActivityHistoryCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (item != null)
+                        if (accountFirst && (invoiceId ?? item?.id) != null)
+                          Text(
+                            'Invoice #${invoiceId ?? item?.id}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: BCollectionColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else if (!accountFirst && item != null)
                           Text(
                             item!.client.name,
                             style: Theme.of(context)
@@ -459,8 +522,11 @@ class ActivityHistoryCard extends StatelessWidget {
                 children: [
                   Text(
                     // Stored as ISO (2026-09-17T11:45:12.579265); shown as a
-                    // date a person reads, not a stamp with a T in it.
-                    BFormatter.formatDateWithAmPm(history.date),
+                    // date a person reads, not a stamp with a T in it. Under a
+                    // heading that already names the day, only the time is new.
+                    timeOnly
+                        ? BFormatter.formatTimeAmPm(history.date)
+                        : BFormatter.formatDateWithAmPm(history.date),
                     style: Theme.of(context)
                         .textTheme
                         .labelSmall

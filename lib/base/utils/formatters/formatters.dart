@@ -7,32 +7,27 @@ class BFormatter {
     return DateFormat('MM-dd-yyyy').format(date);
   }
 
+  // The display formatters below all go through [parseLocal], so a server
+  // stamp carrying a 'Z' is shown in the reader's own timezone rather than in
+  // UTC. Each keeps the fallback it had: the raw value, or its first ten
+  // characters, when the string is not a date.
+
   static String formatDate2(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) {
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) {
       return value.length >= 10 ? value.substring(0, 10) : value;
     }
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy HH:mm').format(dt);
-    } catch (_) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
+    return DateFormat('MMM d, yyyy HH:mm').format(dt);
   }
 
   static String formatDate3(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) {
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) {
       return value.length >= 10 ? value.substring(0, 10) : value;
     }
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy').format(dt);
-    } catch (_) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
+    return DateFormat('MMM d, yyyy').format(dt);
   }
 
   /// Formats datetime strings to a readable form with AM/PM.
@@ -41,26 +36,17 @@ class BFormatter {
   /// to the original value on parse failure.
   static String formatDateWithAmPm(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) return value;
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy hh:mm a').format(dt);
-    } catch (_) {
-      return value;
-    }
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) return value;
+    return DateFormat('MMM d, yyyy hh:mm a').format(dt);
   }
 
   /// Time of day only, e.g. "04:31 PM". Falls back to the raw value.
   static String formatTimeAmPm(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) return value;
-    try {
-      return DateFormat('hh:mm a').format(DateTime.parse(norm));
-    } catch (_) {
-      return value;
-    }
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) return value;
+    return DateFormat('hh:mm a').format(dt);
   }
 
   /// "12:46 PM → 12:52 PM · Sep 10, 2026" when both stamps fall on the same
@@ -286,19 +272,56 @@ class BFormatter {
     return trimmed;
   }
 
+  /// A stamp as a [DateTime] in the reader's own timezone, or null when the
+  /// string is not a date at all.
+  ///
+  /// The `.toLocal()` is the whole point. The server sends ISO stamps with a
+  /// `Z`, [DateTime.parse] returns a UTC [DateTime], and both `DateFormat` and
+  /// the `.year`/`.month`/`.day` fields then read UTC values off it. At UTC+8
+  /// that printed the wrong time on every card and filed every engagement
+  /// recorded before 08:00 under the previous calendar day.
+  ///
+  /// Null, not a throw and not a fallback string: the callers that used to
+  /// swallow a parse failure silently could not tell a missing date from a
+  /// malformed one, and both were being dropped without a trace.
+  static DateTime? parseLocal(String? value) {
+    final norm = normalizeToIsoDatetime(value);
+    if (norm == null) return null;
+    try {
+      return DateTime.parse(norm).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Memo for [localDayKey], keyed by the raw stamp.
+  ///
+  /// Unlike [_daysPastCache] this never goes stale: which local day a stamp
+  /// falls on is fixed the moment the stamp is written, and does not change at
+  /// midnight. Distinct stamps over a month number in the hundreds; the cap is
+  /// only there so a long-lived session cannot grow it without bound.
+  static final Map<String, String> _localDayCache = {};
+
+  /// The local calendar day of a stamp, as `yyyy-MM-dd`. Null when the string
+  /// is not a date.
+  static String? localDayKey(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final hit = _localDayCache[value];
+    if (hit != null) return hit;
+    final dt = parseLocal(value);
+    if (dt == null) return null;
+    if (_localDayCache.length > 5000) _localDayCache.clear();
+    return _localDayCache[value] = DateFormat('yyyy-MM-dd').format(dt);
+  }
+
   /// Formats picked-up / received datetime strings to 'MMM d, yyyy hh:mm a'.
   /// Example output: "Mar 5, 2026 04:31 PM".
   /// Returns original value if parsing fails.
   static String formatPickedUpAt(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) return value;
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy hh:mm a').format(dt);
-    } catch (_) {
-      return value;
-    }
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) return value;
+    return DateFormat('MMM d, yyyy hh:mm a').format(dt);
   }
 }
 

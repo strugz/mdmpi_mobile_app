@@ -97,6 +97,24 @@ case 'collection':
   `data/local/dao/collection/`.
 - Collections captured offline are held by `collection_pending_dao.dart` and flushed by
   `SyncManager`.
+- **`a_tblCollectionEngagement` is the one collection table a download may not rewrite.**
+  Every other one is a cache of what the server currently says:
+  `deleteAllCollectionItems()` truncates the items and their history, and
+  `_replaceAccountLevelData` replaces the advance, activity, account-history and target
+  tables on each workspace download. Uploading triggers a download, so a collector's own
+  engagements used to be erased minutes after they were recorded, and a settled invoice
+  took its history with it when the server stopped returning it. The archive is written
+  through by `CollectionRepository` on every save path, read by the calendar and by the
+  monthly ledger, and `CollectionEngagementDao` deliberately exposes no `clear()` or
+  `replaceAll()` so no download path can reach it.
+- Engagement stamps are **local ISO-8601**, written only by the repository. Read them with
+  `BFormatter.parseLocal` / `localDayKey`, which apply `.toLocal()`: a server stamp with a
+  `Z` parses to UTC, and reading its `y/m/d` fields filed every engagement before 08:00 PH
+  under the previous day.
+- A collector is identified for filtering by `collectorCode` (stable); `collectorName` is
+  for display only. Older rows may carry the full name, initials or the literal `'You'`,
+  which is what `CollectionRepository.collectorAliases` and the one-shot
+  `backfillOwnEngagements()` match against.
 - The module uses the same `NavigationMenu` bottom-tab shell as other departments after
   onboarding.
 - This is one of the four department types alongside Logistics, Service, and InHouse.

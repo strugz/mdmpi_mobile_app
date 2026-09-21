@@ -35,6 +35,7 @@ import 'dao/collection/collection_activity_dao.dart';
 import 'dao/collection/collection_advance_dao.dart';
 import 'dao/collection/collection_account_history_dao.dart';
 import 'dao/collection/collection_target_dao.dart';
+import 'dao/collection/collection_engagement_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -69,6 +70,7 @@ class DatabaseHelper {
   CollectionAdvanceDao? _collectionAdvanceDao;
   CollectionAccountHistoryDao? _collectionAccountHistoryDao;
   CollectionTargetDao? _collectionTargetDao;
+  CollectionEngagementDao? _collectionEngagementDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -365,7 +367,8 @@ class DatabaseHelper {
   }
 
   Future<CollectionAccountHistoryDao> get collectionAccountHistoryDao async {
-    if (_collectionAccountHistoryDao != null) return _collectionAccountHistoryDao!;
+    if (_collectionAccountHistoryDao != null)
+      return _collectionAccountHistoryDao!;
     final db = await database;
     _collectionAccountHistoryDao = CollectionAccountHistoryDao(db);
     return _collectionAccountHistoryDao!;
@@ -376,6 +379,13 @@ class DatabaseHelper {
     final db = await database;
     _collectionTargetDao = CollectionTargetDao(db);
     return _collectionTargetDao!;
+  }
+
+  Future<CollectionEngagementDao> get collectionEngagementDao async {
+    if (_collectionEngagementDao != null) return _collectionEngagementDao!;
+    final db = await database;
+    _collectionEngagementDao = CollectionEngagementDao(db);
+    return _collectionEngagementDao!;
   }
 
   Future<List<String>> getContactPhoneNumbers() async {

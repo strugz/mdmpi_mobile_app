@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
 
 /// The month's ledger. What these protect: the headline total is the month's
 /// total and not the search result's; the month cannot be stepped into the
@@ -45,6 +46,32 @@ CollectionHistoryModel _paid(String date, double amount,
       totalCollected: amount,
     );
 
+/// The archive row behind a collection. The ledger reads these rather than the
+/// invoices' own history: an invoice that settles stops coming back from the
+/// server, and the month used to lose its collections along with it.
+CollectionEngagementRecord _engagement(
+  String date,
+  double amount, {
+  required String itemId,
+  required String clientName,
+  String collector = 'Jay',
+}) =>
+    CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+          kind: 'INVOICE', subjectId: itemId, engagedAt: date),
+      collectorCode: 'jay',
+      collectorName: collector,
+      kind: 'INVOICE',
+      itemId: itemId,
+      clientId: itemId,
+      clientName: clientName,
+      engagedAt: date,
+      engagedOn: date.split(' ').first,
+      status: 'Collected',
+      amount: amount,
+      createdAt: date,
+    );
+
 /// Three collections on two days, two accounts, one collector.
 ({_Activity activity, _Totals totals}) _seed({bool twoCollectors = false}) {
   final activity = _Activity();
@@ -74,6 +101,17 @@ CollectionHistoryModel _paid(String date, double amount,
         _paid(_onDay(12), 9716, collector: twoCollectors ? 'Maria' : 'Jay')
       ],
     ),
+  ]);
+
+  activity.ownEngagements.assignAll([
+    _engagement(_onDay(17), 32261.31,
+        itemId: '97339', clientName: 'Alexis Yu Best Care Pharmacy'),
+    _engagement(_onDay(17, 14), 5000,
+        itemId: '97340', clientName: 'Alexis Yu Best Care Pharmacy'),
+    _engagement(_onDay(12), 9716,
+        itemId: '96776',
+        clientName: 'Bicol Medical Center',
+        collector: twoCollectors ? 'Maria' : 'Jay'),
   ]);
 
   final totals = _Totals();

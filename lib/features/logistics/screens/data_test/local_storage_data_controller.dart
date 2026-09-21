@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
+import 'package:mdmpi_mobile_app/data/local/db_schema.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
@@ -14,38 +15,38 @@ class LocalStorageDataController extends GetxController {
   final RxList<Map<String, dynamic>> tableData = <Map<String, dynamic>>[].obs;
   final RxBool isLoading = false.obs;
 
-  /// All available tables in the database
-  final List<String> availableTables = [
-    'a_tblRequest',
-    'a_tblRequestDocumentReference',
-    'a_tblRequestReceiverSignature',
-    'a_tblRequestImage',
-    'a_tblRequestRemarks',
-    'a_tblRequestPickUp',
-    'a_tblRequestAirSea',
-    'a_tblRequestPullOutReturnPickUp',
-    'ACCMST_',
-    'a_tblMobile',
-    'Users',
-    'CNTMST',
-    'a_tblItemCategory',
-    'a_tblFormCategory',
-    'a_tblLocationAlternative',
-    'a_tblClientContactPerson',
-    'a_tblRequestBackload',
-    'a_tblCollectionItems',
-    'a_tblCollectionHistory',
-    'a_tblCollectionPending',
-    'a_tblCollectionActivity',
-    'a_tblCollectionAdvance',
-    'a_tblCollectionAccountHistory',
-    'a_tblCollectionTarget'
-  ];
+  /// Every table in the database, read from SQLite itself.
+  ///
+  /// This used to be a hand-written list, and it had drifted: the engagement
+  /// archive, the bank cache and the image outbox were all missing, so the one
+  /// tool for answering "what is actually stored on this device" could not see
+  /// three of the tables. A list that has to be updated by hand is a list that
+  /// is wrong, and it is wrong precisely about the newest table — the one
+  /// somebody is most likely to be looking for.
+  final RxList<String> availableTables = <String>[].obs;
 
   @override
   void onInit() {
     super.onInit();
-    loadTableData();
+    loadTables();
+  }
+
+  /// Ask the database what it holds. `sqlite_%` is SQLite's own bookkeeping.
+  Future<void> loadTables() async {
+    try {
+      final db = await _dbHelper.database;
+      final names = await listUserTables(db);
+      availableTables.assignAll(names);
+
+      // Keep whatever was selected if it is still there, so a refresh does not
+      // throw the reader back to the first table.
+      if (!names.contains(selectedTable.value) && names.isNotEmpty) {
+        selectedTable.value = names.first;
+      }
+    } catch (e) {
+      logDebug('Error listing tables: $e');
+    }
+    await loadTableData();
   }
 
   /// Select a table and load its data

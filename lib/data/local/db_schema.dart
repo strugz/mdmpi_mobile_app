@@ -476,4 +476,112 @@ Future<void> ensureCollectionTables(Database db) async {
       amount REAL DEFAULT 0
     )
   ''');
+
+  // Table: a_tblCollectionEngagement (the collector's own field-work archive)
+  //
+  // Every other collection table is a cache of what the server currently says,
+  // and is truncated and rewritten on each download: a_tblCollectionHistory by
+  // deleteAllCollectionItems, the rest by _replaceAccountLevelData. That is
+  // correct for a cache and fatal for a record of work — an engagement was
+  // erased minutes after it was recorded, because uploading triggers a refresh,
+  // and a settled invoice takes its history with it when the server stops
+  // returning it. This table is the one that is never rewritten. It is the
+  // collector's own account of their days, and it outlives the invoice.
+  //
+  // No foreign key to a_tblCollectionItems: sqflite leaves PRAGMA foreign_keys
+  // off, so the constraint would be inert anyway, and outliving that row is the
+  // entire point.
+  //
+  // localRef is 'kind|subjectId|engagedAt' (CollectionEngagementRecord
+  // .buildLocalRef). Deriving the key from the engagement rather than using an
+  // AUTOINCREMENT id is what makes a re-save idempotent: a retry, a re-sync, a
+  // double tap or a second run of the backfill updates one row instead of
+  // leaving two. The two sibling tables that do use AUTOINCREMENT are exactly
+  // the two that duplicate on re-save.
+  //
+  // engagedOn is the local calendar day, stored rather than derived, so the day
+  // a row belongs to is decided once by the device that recorded it. Deriving
+  // it on read is how engagements before 08:00 ended up on the previous day's
+  // cell: a server 'Z' stamp parses to a UTC DateTime, whose y/m/d fields are
+  // still UTC.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionEngagement (
+      localRef       TEXT PRIMARY KEY,
+      collectorCode  TEXT NOT NULL,
+      collectorName  TEXT NOT NULL DEFAULT '',
+      kind           TEXT NOT NULL,
+      itemId         TEXT NOT NULL DEFAULT '',
+      clientId       TEXT NOT NULL DEFAULT '',
+      clientName     TEXT NOT NULL DEFAULT '',
+      engagedAt      TEXT NOT NULL,
+      engagedOn      TEXT NOT NULL,
+      status         TEXT NOT NULL DEFAULT '',
+      remarks        TEXT NOT NULL DEFAULT '',
+      amount         REAL NOT NULL DEFAULT 0,
+      bankName       TEXT,
+      checkNumber    TEXT,
+      checkDate      TEXT,
+      purposeOfVisit TEXT,
+      documentIds    TEXT NOT NULL DEFAULT '',
+      createdAt      TEXT NOT NULL,
+      source         TEXT NOT NULL DEFAULT 'LOCAL'
+    )
+  ''');
+  // source says where the row came from, and it is what makes the "never
+  // rewritten" rule survivable.
+  //
+  // 'LOCAL' is an engagement this device recorded. Nothing may rewrite it;
+  // that is the whole point of the table.
+  //
+  // 'SERVER' is a copy of the collector's history as the server told it,
+  // written by the backfill. Those rows are a projection, not a record, and
+  // they used to be indistinguishable from real work and just as permanent —
+  // so when collection data was deleted on the server, the archive went on
+  // reporting it and "Collected this Month" stayed at a figure nothing could
+  // explain. They are now refreshed with each download instead.
+  await _addColumnIfMissing(
+      db, 'a_tblCollectionEngagement', 'source', "TEXT NOT NULL DEFAULT 'LOCAL'");
+  // IF NOT EXISTS on the indexes too: this whole function re-runs on every
+  // database open, not just on create and upgrade (see DatabaseHelper._initDB).
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_engagement_day
+      ON a_tblCollectionEngagement (collectorCode, engagedOn)
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_engagement_client
+      ON a_tblCollectionEngagement (collectorCode, clientId)
+  ''');
+}
+
+/// Every table this app made, newest schema included, in name order.
+///
+/// Asking SQLite is what keeps the Local Storage Data Viewer honest: its table
+/// list used to be typed out by hand and had fallen three tables behind, so
+/// the tool for seeing what is on the device could not see the engagement
+/// archive — the one table somebody debugging stale data most needs to read.
+///
+/// `sqlite_%` is SQLite's own bookkeeping (`sqlite_sequence` and friends) and
+/// is not ours to show or clear.
+Future<List<String>> listUserTables(Database db) async {
+  final rows = await db.rawQuery(
+    "SELECT name FROM sqlite_master WHERE type = 'table' "
+    "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+  );
+  return rows.map((r) => (r['name'] ?? '').toString()).toList();
+}
+
+/// Adds a column to an existing collection table, once.
+///
+/// The collection tables are never dropped and rebuilt — that is what keeps
+/// un-uploaded field work alive across upgrades — so a new column has to
+/// arrive by ALTER. Safe to call on every open: it asks first.
+Future<void> _addColumnIfMissing(
+  Database db,
+  String table,
+  String column,
+  String definition,
+) async {
+  final info = await db.rawQuery('PRAGMA table_info($table)');
+  if (info.any((row) => (row['name'] as String?) == column)) return;
+  await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
 }

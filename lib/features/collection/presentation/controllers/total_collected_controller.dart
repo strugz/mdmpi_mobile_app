@@ -47,32 +47,31 @@ class TotalCollectedController extends GetxController {
   List<MonthlyEntry> get monthlyEntries =>
       _filterAndSortEntries(_collectMonth());
 
+  /// The month's collections, read from the engagement archive.
+  ///
+  /// It used to walk the invoices currently in the bucket and the activity
+  /// list. Those are a cache of what the server says today, and an invoice
+  /// that settles stops coming back — so a month quietly lost collections as
+  /// they were paid off and uploaded, which is the same defect that emptied
+  /// the calendar. Both screens now read the one record that is never
+  /// rewritten, so they cannot disagree about a month.
   List<MonthlyEntry> _collectMonth() {
     final List<MonthlyEntry> entries = [];
+    final month = selectedMonth.value;
 
-    // Every invoice once — an id can sit in both lists right after Upload All.
-    final allItems = _activityController.allItems;
-
-    for (final item in allItems) {
-      for (final h in item.history) {
-        final dt = _parseDateSafe(h.date);
-        if (dt == null) continue;
-        if (dt.year == selectedMonth.value.year &&
-            dt.month == selectedMonth.value.month) {
-          final amount = h.totalCollected;
-          if (amount > 0) {
-            entries.add(MonthlyEntry(
-              date: dt,
-              amount: amount,
-              accountName: item.client.name,
-              invoiceNumber: item.id,
-              collectorName: h.collectorName.isNotEmpty
-                  ? h.collectorName
-                  : item.collectorName,
-            ));
-          }
-        }
-      }
+    for (final e in _activityController.ownEngagements) {
+      if (e.amount <= 0) continue;
+      final dt = BFormatter.parseLocal(e.engagedAt);
+      if (dt == null) continue;
+      if (dt.year != month.year || dt.month != month.month) continue;
+      entries.add(MonthlyEntry(
+        date: dt,
+        amount: e.amount,
+        accountName: e.clientName,
+        // An office activity has no invoice; the ledger names what it was.
+        invoiceNumber: e.itemId.isNotEmpty ? e.itemId : e.status,
+        collectorName: e.collectorName,
+      ));
     }
 
     return entries;
@@ -137,21 +136,13 @@ class TotalCollectedController extends GetxController {
   double get actualCollectionTotal =>
       depositEntries.fold(0.0, (p, e) => p + e.amount);
 
-  /// Helper to parse a date string safely using BFormatter normalization
-  DateTime? _parseDateSafe(String? s) {
-    if (s == null) return null;
-    try {
-      final norm = BFormatter.normalizeToIsoDatetime(s);
-      if (norm == null) return null;
-      return DateTime.parse(norm);
-    } catch (_) {
-      try {
-        return DateTime.parse(s);
-      } catch (_) {
-        return null;
-      }
-    }
-  }
+  /// Helper to parse a date string safely, in the reader's own timezone.
+  ///
+  /// The `.toLocal()` inside [BFormatter.parseLocal] matters here as much as
+  /// on the calendar: a server stamp carrying a 'Z' parsed to UTC, and a
+  /// collection late on the last day of the month was filed under the next
+  /// one.
+  DateTime? _parseDateSafe(String? s) => BFormatter.parseLocal(s);
 
   /// Set the selected month using a DateTime (only year+month used)
   void setSelectedMonth(DateTime dt) {
