@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/data/repositories/client/client_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
+import '../../base/utils/exceptions/api_exception.dart';
 import '../../base/utils/helpers/network_manager.dart';
 import '../local/database_helper.dart';
 
@@ -83,7 +84,9 @@ class ClientController extends GetxController {
             title: 'Success', message: 'Client List Updated');
       }
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      BLoaders.errorSnackBar(
+          title: 'Oh Snap!',
+          message: e is BApiException ? e.message : e.toString());
     } finally {
       //  Remove Loader
       isLoading.value = false;
@@ -118,7 +121,9 @@ class ClientController extends GetxController {
             title: 'Success', message: 'Client List Updated');
       }
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      BLoaders.errorSnackBar(
+          title: 'Oh Snap!',
+          message: e is BApiException ? e.message : e.toString());
     } finally {
       isLoading.value = false;
     }
@@ -141,7 +146,9 @@ class ClientController extends GetxController {
             client.code.toLowerCase().contains(searchQuery.toLowerCase())));
       }
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      BLoaders.errorSnackBar(
+          title: 'Oh Snap!',
+          message: e is BApiException ? e.message : e.toString());
     } finally {
       isLoading.value = false;
     }

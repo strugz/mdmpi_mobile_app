@@ -5,14 +5,19 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../base/utils/exceptions/api_exception.dart';
+
 class ClientRepository extends GetxController {
   static ClientRepository get instance => Get.find();
 
   /// -- WEB API HTTPS
   Future<List<ClientModel>> getAllClientAPI() async {
     try {
+      // /api2 rather than /api3: the two return byte-identical payloads here,
+      // and keeping both reference lists on one API version means they cannot
+      // drift apart the way cntmst did, where /api3 quietly dropped fields.
       final response =
-          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api3/accmst"));
+          await http.get(Uri.parse("${dotenv.env['API_URL']!}/api2/accmst"));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonResponse = json.decode(response.body);
@@ -25,11 +30,13 @@ class ClientRepository extends GetxController {
         }).toList();
 
         return clients;
-      } else {
-        throw Exception('Failed to load Client');
       }
+
+      throw BApiException('client list', '/api2/accmst', response.statusCode);
+    } on BApiException {
+      rethrow;
     } catch (e) {
-      throw Exception('Something went wrong. Please try again: $e');
+      throw Exception('Could not load the client list: $e');
     }
   }
 }

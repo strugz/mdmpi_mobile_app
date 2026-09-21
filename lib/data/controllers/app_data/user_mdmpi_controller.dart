@@ -3,6 +3,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
+import '../../../base/utils/exceptions/api_exception.dart';
 import '../../local/database_helper.dart';
 import '../../models/cntmst_model.dart';
 import '../../repositories/user/user_mdmpi_repository.dart';
@@ -51,7 +52,9 @@ class UserMdmpiController extends GetxController {
             title: 'Success', message: 'User List Updated');
       }
     } catch (e) {
-      BLoaders.errorSnackBar(title: 'Oh Snap!', message: e.toString());
+      BLoaders.errorSnackBar(
+          title: 'Oh Snap!',
+          message: e is BApiException ? e.message : e.toString());
     } finally {
       isLoading.value = false;
     }
