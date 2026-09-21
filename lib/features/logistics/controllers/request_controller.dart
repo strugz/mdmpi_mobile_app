@@ -123,6 +123,7 @@ class RequestController extends GetxController {
       // Set initial selected category
       if (sortedCategories.isNotEmpty) {
         currentSelectedCategory.value = sortedCategories[0];
+        unawaited(ensureTabLoaded(currentTabIndex.value));
       }
     } catch (e) {
       errorMessage.value = 'Failed to load categories: $e';
@@ -505,6 +506,26 @@ class RequestController extends GetxController {
     if (index >= 0 && index < formCategories.length) {
       currentTabIndex.value = index;
       currentSelectedCategory.value = formCategories[index];
+      unawaited(ensureTabLoaded(index));
+    }
+  }
+
+  /// Loads the tab at [index] if it has never been loaded.
+  ///
+  /// Only the selected date filter is fetched (Today by default). A tab that
+  /// already holds data — typically because the Home dashboard loaded the full
+  /// history — is left alone; its client-side filter narrows what it shows.
+  Future<void> ensureTabLoaded(int index) async {
+    if (index < 0 || index >= formCategories.length) return;
+
+    final controller = getControllerForCategory(formCategories[index].name);
+    if (controller == null) return;
+
+    try {
+      if (controller.loadedDateScope != null) return;
+      await controller.loadForScope(controller.activeScope);
+    } catch (e) {
+      logDebug('RequestController.ensureTabLoaded($index) failed: $e');
     }
   }
 

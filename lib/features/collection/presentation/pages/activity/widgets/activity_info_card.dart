@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class ActivityInfoCard extends StatelessWidget {
   const ActivityInfoCard({super.key, required this.item});
@@ -13,7 +13,8 @@ class ActivityInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(BSizes.cardRadiusLg)),
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(BSizes.cardRadiusLg)),
       child: Padding(
         padding: const EdgeInsets.all(BSizes.md),
         child: Column(
@@ -23,9 +24,14 @@ class ActivityInfoCard extends StatelessWidget {
             _ActivityDetailRow(label: 'Collector', value: item.collectorName),
             _ActivityDetailRow(label: 'Account Name', value: item.client.name),
             _ActivityDetailRow(label: 'Address', value: item.client.address),
-            _ActivityDetailRow(label: 'To be Collected', value: BFormatter.formatPesoCurrency(item.toBeCollected)),
-            _ActivityDetailRow(label: 'Total Collected', value: BFormatter.formatPesoCurrency(item.totalCollected)),
-            _ActivityDetailRow(label: 'Documents', value: item.documentReferences.join(', ')),
+            _ActivityDetailRow(
+                label: 'To be Collected',
+                value: BFormatter.formatPesoCurrency(item.toBeCollected)),
+            _ActivityDetailRow(
+                label: 'Total Collected',
+                value: BFormatter.formatPesoCurrency(item.totalCollected)),
+            _ActivityDetailRow(
+                label: 'Documents', value: item.documentReferences.join(', ')),
           ],
         ),
       ),
@@ -48,10 +54,18 @@ class _ActivityDetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey)),
+            child: Text(label,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: BCollectionColors.inkMuted)),
           ),
           Expanded(
-            child: Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+            child: Text(value,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600)),
           ),
         ],
       ),

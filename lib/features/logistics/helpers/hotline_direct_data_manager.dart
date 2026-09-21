@@ -26,6 +26,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.
 import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Manager for Hotline Direct domain orchestration (save/update flows).
 ///
@@ -145,6 +146,19 @@ class HotlineDirectDataManager {
         formCategoryID: normalizedFormCategory,
       );
 
+      // Save to repository first - include scanned items from form state.
+      // Notifications only go out once the server has the request.
+      final saved = await _repository.insertDelivery(
+          newRequest, formState.scannedInventoryItems.toList());
+
+      // The request does not exist server-side, so nobody may be told about
+      // it: no notification, no SMS, and the form keeps its input so the
+      // requester can retry. The repository already reported the failure.
+      if (!saved) {
+        controller.errorMessage.value = 'Failed to save request.';
+        return;
+      }
+
       // Send notifications
       _webSocketController.sendNotificationMessage(
         NotificationModel(
@@ -153,10 +167,6 @@ class HotlineDirectDataManager {
 
       await _messageController.sendSmsMessage(
           BTexts.statusNewRequest, newRequest);
-
-      // Save to repository - include scanned items from form state
-      await _repository.insertDelivery(
-          newRequest, formState.scannedInventoryItems.toList());
 
       // Reload requests
       await fetchHotlineDirectRequests(
@@ -318,7 +328,16 @@ class HotlineDirectDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _repository.updateDelivery(updatedRequest, userInitial);
+          final updated =
+              await _repository.updateDelivery(updatedRequest, userInitial);
+          // The server holds the old status, so the status change did not
+          // stick and nobody may be told it did: no local write, no
+          // notification, no SMS. The repository already reported the
+          // failure, and the form keeps its input for a retry.
+          if (!updated) {
+            controller.errorMessage.value = 'Failed to update request.';
+            return;
+          }
           await _dbHelper.updateRequest(requestModel: updatedRequest);
         } else {
           await _dbHelper.updateRequest(requestModel: updatedRequest);
@@ -412,7 +431,14 @@ class HotlineDirectDataManager {
       } else {
         final isConnected = await validateConnectivity();
         if (isConnected) {
-          await _repository.cancelDelivery(request.id, remarks, user);
+          final cancelled =
+              await _repository.cancelDelivery(request.id, remarks, user);
+          // Still live on the server, so no cancellation SMS goes out. The
+          // repository already reported the failure.
+          if (!cancelled) {
+            controller.errorMessage.value = 'Failed to cancel request.';
+            return;
+          }
           await _dbHelper.cancelRequestWithRemarks(
               requestID: request.id,
               remarks: remarks,
@@ -463,7 +489,8 @@ class HotlineDirectDataManager {
   ///
   /// Filters for Hotline Direct category only and applies active filters after loading data.
   Future<void> fetchHotlineDirectRequests(HotlineDirectController controller,
-      [bool useLocalStorage = true]) async {
+      [bool useLocalStorage = true,
+      RequestDateScope scope = RequestDateScope.all]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -472,7 +499,7 @@ class HotlineDirectDataManager {
 
       results = await OfflineDataLoader.loadLocalThenRemoteIfOnline(
         loadLocal: _dbHelper.getRequests,
-        loadRemote: _repository.getAllPending,
+        loadRemote: () => _repository.getAllPending(scope: scope),
         cacheRemote: _dbHelper.insertRequests,
         sourceName: 'HotlineDirectDataManager.fetchHotlineDirectRequests',
         forceRemote: !useLocalStorage,
@@ -483,6 +510,7 @@ class HotlineDirectDataManager {
           results.where((r) => r.formCategoryID == FormCategoryIds.hotlineDirect).toList();
 
       controller.allPendingRequests.assignAll(hotlineDirectRequests);
+      controller.loadedDateScope = scope;
 
       controller.filterManager
           .applyFilter(controller.allPendingRequests.toList());

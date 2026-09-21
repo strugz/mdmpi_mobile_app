@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Central status color & icon mapping for collection.
 class CollectionStatusColors {
@@ -46,51 +46,57 @@ class CollectionStatusColors {
   ];
 
   /// Returns a tuple of (background, foreground) colours for the given [status].
-  static (Color bg, Color fg) colorsFor(String status, {bool darkMode = false}) {
+  static (Color bg, Color fg) colorsFor(String status,
+      {bool darkMode = false}) {
     final s = status.trim();
     Color bg;
-    Color fg = BColors.white;
+    Color fg = BCollectionColors.surface;
 
     switch (s) {
       case statusCollected:
-        bg = BColors.success;
+        bg = BCollectionColors.success;
         break;
       case statusPartial:
-        bg = Colors.lightGreen;
+        bg = BCollectionColors.warning;
         break;
       case statusPreCollection:
-        bg = BColors.primary;
+        bg = BCollectionColors.primary;
         break;
       case statusFollowUp:
-        bg = BColors.info;
+        bg = BCollectionColors.info;
         break;
       case statusRefused:
-        bg = BColors.error;
+        bg = BCollectionColors.danger;
         break;
       case statusUnavailable:
-        bg = Colors.amber;
+        bg = BCollectionColors.warning;
         break;
       case statusOthers:
-        bg = BColors.darkGrey;
+        bg = BCollectionColors.neutral;
         break;
       case statusDeposit:
-        bg = Colors.blue;
+        bg = BCollectionColors.info;
         break;
       case statusCWTPickup:
-        bg = Colors.orange;
+        bg = BCollectionColors.warning;
         break;
       case statusReconciliation:
-        bg = Colors.purple;
+        bg = BCollectionColors.reconcile;
         break;
       default:
-        bg = darkMode ? BColors.darkerGrey : BColors.light;
-        fg = darkMode ? BColors.light : BColors.darkGrey;
+        bg = darkMode
+            ? BCollectionColors.inkSecondary
+            : BCollectionColors.surfaceMuted;
+        fg = darkMode
+            ? BCollectionColors.surfaceMuted
+            : BCollectionColors.inkMuted;
     }
 
     return (bg, fg);
   }
 
-  static (Color bg, Color fg) colorsForAuto(BuildContext context, String status) {
+  static (Color bg, Color fg) colorsForAuto(
+      BuildContext context, String status) {
     final dark = BHelperFunctions.isDarkMode(context);
     return colorsFor(status, darkMode: dark);
   }

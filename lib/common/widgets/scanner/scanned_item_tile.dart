@@ -12,6 +12,7 @@ import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 
 import '../../../base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// A single scanned item tile that shows item details and opens the
 /// edit modal when tapped. Extracted from `BItemScanner` to reduce
@@ -496,8 +497,10 @@ class ScannedItemTile extends StatelessWidget {
                                           try {
                                             (list as dynamic).refresh();
                                           } catch (_) {}
-                                          Get.snackbar('Item updated',
-                                              'Saved changes applied.');
+                                          BLoaders.successSnackBar(
+                                              title: 'Item updated',
+                                              message:
+                                                  'Saved changes applied.');
                                           return;
                                         }
                                       }
@@ -510,8 +513,9 @@ class ScannedItemTile extends StatelessWidget {
                                             'updateScannedItemByIdentity returned: $didIdentity');
                                       } catch (_) {}
                                       if (didIdentity) {
-                                        Get.snackbar('Item updated',
-                                            'Saved changes applied.');
+                                        BLoaders.successSnackBar(
+                                            title: 'Item updated',
+                                            message: 'Saved changes applied.');
                                         return;
                                       }
 
@@ -524,8 +528,9 @@ class ScannedItemTile extends StatelessWidget {
                                             'updateScannedItemByKey returned: $didKey');
                                       } catch (_) {}
                                       if (didKey) {
-                                        Get.snackbar('Item updated',
-                                            'Saved changes applied.');
+                                        BLoaders.successSnackBar(
+                                            title: 'Item updated',
+                                            message: 'Saved changes applied.');
                                         return;
                                       }
 
@@ -534,19 +539,25 @@ class ScannedItemTile extends StatelessWidget {
                                         try {
                                           (list as dynamic).refresh();
                                         } catch (_) {}
-                                        Get.snackbar('Item updated',
-                                            'Saved changes applied (fallback appended).');
+                                        BLoaders.successSnackBar(
+                                            title: 'Item updated',
+                                            message:
+                                                'Saved changes applied (fallback appended).');
                                       } catch (_) {
-                                        Get.snackbar('Update failed',
-                                            'Unable to update scanned item');
+                                        BLoaders.errorSnackBar(
+                                            title: 'Update failed',
+                                            message:
+                                                'Unable to update scanned item');
                                       }
                                     } catch (e) {
                                       try {
                                         logDebug(
                                             'Error during post-save update: $e');
                                       } catch (_) {}
-                                      Get.snackbar('Update failed',
-                                          'Unable to update scanned item');
+                                      BLoaders.errorSnackBar(
+                                          title: 'Update failed',
+                                          message:
+                                              'Unable to update scanned item');
                                     }
                                   });
                                 },

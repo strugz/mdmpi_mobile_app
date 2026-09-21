@@ -13,17 +13,29 @@ import 'package:mdmpi_mobile_app/features/logistics/mappers/pull_out_mapper.dart
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/pull_out/pull_out_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/api_response_keys.dart';
+import 'package:mdmpi_mobile_app/base/utils/helpers/b_in_flight_requests.dart';
 
 class PullOutRepository extends GetxController {
   static PullOutRepository get instance => Get.find();
 
   String get _baseUrl => BApiEnvironment.api4BaseUrl;
-  Uri _uri(String path) => Uri.parse("$_baseUrl$path");
+  Uri _uri(String path, [Map<String, String>? query]) {
+    final uri = Uri.parse("$_baseUrl$path");
+    if (query == null || query.isEmpty) return uri;
+    return uri.replace(queryParameters: {...uri.queryParameters, ...query});
+  }
 
   static const String _resource = '/api4/RequestPullOutReturnPickUp';
 
   PullOutDao? _daoInstance;
+
+  /// Injects a DAO backed by a test database, bypassing [DatabaseHelper].
+  @visibleForTesting
+  set daoForTesting(PullOutDao dao) => _daoInstance = dao;
 
   /// Lazy getter for PullOutDao to avoid late initialization errors.
   /// Initializes the DAO on first access and caches it for subsequent calls.
@@ -92,9 +104,29 @@ class PullOutRepository extends GetxController {
           .timeout(const Duration(seconds: 60));
 
   /// Fetch all pull-out requests and cache them to the local Pull-Out table.
+  /// [scope] narrows the fetch server-side via `?dateFilter=`. Offline and
+  /// error fallbacks still return the whole local table; the caller's
+  /// client-side filter narrows it.
+  /// Collapses concurrent identical fetches (paired tabs share this repo).
+  final BInFlightRequests _inFlight = BInFlightRequests();
+
   Future<List<PullOutModel>> getAll({
     bool forceRefresh = false,
     bool allowLocalFallback = true,
+    RequestDateScope scope = RequestDateScope.all,
+  }) =>
+      _inFlight.run(
+        'getAll:${scope.wireValue}:$forceRefresh:$allowLocalFallback',
+        () => _getAllUncached(
+            forceRefresh: forceRefresh,
+            allowLocalFallback: allowLocalFallback,
+            scope: scope),
+      );
+
+  Future<List<PullOutModel>> _getAllUncached({
+    required bool forceRefresh,
+    required bool allowLocalFallback,
+    required RequestDateScope scope,
   }) async {
     try {
       final dao = await _dao;
@@ -110,11 +142,11 @@ class PullOutRepository extends GetxController {
 
       if (!forceRefresh && await dao.isPullOutTableNotEmpty()) {
         final localData = await dao.getPullOutRequests();
-        _syncFromApi();
+        _syncFromApi(scope);
         return localData;
       }
 
-      final url = _uri(_resource);
+      final url = _uri(_resource, scope.queryParameters);
       final response = await _safeGet(url);
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
@@ -127,16 +159,7 @@ class PullOutRepository extends GetxController {
                 : PullOutModel.fromJson(Map<String, dynamic>.from(e)))
             .toList();
 
-        try {
-          await dao.deleteAll();
-          for (final request in requests) {
-            await dao.insertPullOut(request);
-          }
-          logDebug(
-              'PullOutRepository: Cached ${requests.length} pull-out requests to local DB');
-        } catch (dbError) {
-          logDebug('PullOutRepository: Failed to cache to local DB: $dbError');
-        }
+        await cacheRequests(requests, scope: scope);
 
         return requests;
       }
@@ -161,9 +184,48 @@ class PullOutRepository extends GetxController {
     }
   }
 
-  Future<void> _syncFromApi() async {
+  /// Writes [requests] to the local cache.
+  ///
+  /// A full-snapshot fetch ([RequestDateScope.all]) replaces the table
+  /// wholesale. A *scoped* fetch only ever saw part of the data, so it upserts
+  /// instead — wiping first would erase every other day's rows and break
+  /// Local-storage mode and offline. Both insert paths are upserts, so changed
+  /// rows still refresh; only server-side deletions linger, and `clearCache()`
+  /// / the unscoped fetch still clear those.
+  @visibleForTesting
+  Future<void> cacheRequests(
+    List<PullOutModel> requests, {
+    required RequestDateScope scope,
+  }) async {
     try {
-      final url = _uri(_resource);
+      final dao = await _dao;
+      if (scope == RequestDateScope.all) {
+        await dao.deleteAll();
+      }
+      for (final request in requests) {
+        await dao.insertPullOut(request);
+      }
+      logDebug(
+          'PullOutRepository: Cached ${requests.length} pull-out requests to local DB (scope: ${scope.wireValue})');
+    } catch (dbError) {
+      logDebug('PullOutRepository: Failed to cache to local DB: $dbError');
+    }
+  }
+
+  Future<void> _syncFromApi(
+      [RequestDateScope scope = RequestDateScope.all]) {
+    // A foreground fetch for this scope already refreshes the cache; a second
+    // GET would be pure duplicate traffic.
+    if (_inFlight.isAnyInFlight('getAll:${scope.wireValue}:')) {
+      return Future.value();
+    }
+    return _inFlight.run(
+        'sync:${scope.wireValue}', () => _syncFromApiUncached(scope));
+  }
+
+  Future<void> _syncFromApiUncached(RequestDateScope scope) async {
+    try {
+      final url = _uri(_resource, scope.queryParameters);
       final response = await _safeGet(url);
       if (response.statusCode != 200) return;
 
@@ -177,9 +239,7 @@ class PullOutRepository extends GetxController {
           .toList();
       if (requests.isEmpty) return;
 
-      final dao = await _dao;
-      await dao.deleteAll();
-      await dao.insertPullOutRequests(requests);
+      await cacheRequests(requests, scope: scope);
       logDebug(
           'PullOutRepository: Background sync completed, ${requests.length} records');
     } catch (e) {
@@ -220,11 +280,14 @@ class PullOutRepository extends GetxController {
         PullOutModel updatedData = data;
         try {
           final decoded = jsonDecode(response.body);
-
-          if (decoded is Map && decoded.containsKey('requestID')) {
-            updatedData = data.copyWith(id: decoded['requestID'].toString());
+          final parsedId = BApiResponse.requestId(decoded);
+          if (parsedId != null) {
+            updatedData = data.copyWith(id: parsedId);
+            logDebug('PullOutRepository: Got RequestID from server: $parsedId');
+          } else {
             logDebug(
-                'PullOutRepository: Got RequestID from server: ${updatedData.id}');
+                'PullOutRepository: create response carried no request id; '
+                'relying on the refetch. Body: ${response.body}');
           }
         } catch (parseError) {
           logDebug(

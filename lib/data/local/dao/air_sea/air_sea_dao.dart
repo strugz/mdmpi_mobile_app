@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/client_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/status_progression.dart';
 
 /// DAO for Air/Sea request local database operations.
 class AirSeaDao {
@@ -183,11 +184,34 @@ class AirSeaDao {
   }
 
   /// Insert multiple Air/Sea requests in batch.
+
+  /// Statuses currently stored, keyed by `RequestID` as text.
+  ///
+  /// Read in one query so a bulk refresh can honour the progression guard
+  /// without issuing a query per row.
+  Future<Map<String, String>> _storedStatuses(String table) async {
+    final rows = await db.query(table, columns: ['RequestID', 'Status']);
+    return {
+      for (final row in rows)
+        row['RequestID'].toString(): (row['Status'] ?? '').toString(),
+    };
+  }
+
   Future<void> insertAirSeaRequests(List<AirSeaModel> airSeaModels) async {
     Batch batch = db.batch();
+    final storedStatuses = await _storedStatuses('a_tblRequestAirSea');
 
     for (AirSeaModel airSeaModel in airSeaModels) {
       final parsedId = int.tryParse(airSeaModel.id) ?? airSeaModel.id;
+
+      // A list refresh must not rewind a status this device already advanced.
+      // The single-row update path guards against that; without this check a
+      // stale server snapshot would overwrite it via ConflictAlgorithm.replace.
+      final regresses = BStatusProgression.isRegression(
+        ranks: _statusStringToInt,
+        current: storedStatuses[parsedId.toString()],
+        next: airSeaModel.status,
+      );
 
       Map<String, dynamic> airSeaData = {
         'RequestID': parsedId,
@@ -223,11 +247,13 @@ class AirSeaDao {
         'ShippingMethod': airSeaModel.shippingMethod,
       };
 
-      batch.insert(
-        'a_tblRequestAirSea',
-        airSeaData,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      if (!regresses) {
+        batch.insert(
+          'a_tblRequestAirSea',
+          airSeaData,
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
 
       // Insert document references
       if (airSeaModel.documentReference.isNotEmpty) {
@@ -285,16 +311,13 @@ class AirSeaDao {
 
     if (currentData.isEmpty) return;
 
-    final String currentStatusString = currentData.first['Status'] as String;
-    final int? currentStatusInt = _statusStringToInt[currentStatusString];
-    final int? newStatusInt = _statusStringToInt[airSeaModel.status];
-
     // Don't allow status regression (except for cancelled)
-    if (currentStatusInt != null && newStatusInt != null) {
-      if (newStatusInt < currentStatusInt &&
-          airSeaModel.status != 'Cancelled') {
-        return;
-      }
+    if (BStatusProgression.isRegression(
+      ranks: _statusStringToInt,
+      current: currentData.first['Status'] as String?,
+      next: airSeaModel.status,
+    )) {
+      return;
     }
 
     Map<String, dynamic> airSeaData = {

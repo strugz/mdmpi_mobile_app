@@ -1,5 +1,5 @@
 /// Data Transfer Object for Collection Items API responses.
-/// 
+///
 /// Maps between API JSON format and internal domain model.
 /// Use this when API field names differ from the domain model.
 class CollectionItemDto {
@@ -65,13 +65,20 @@ class CollectionItemDto {
   factory CollectionItemDto.fromJson(Map<String, dynamic> json) {
     return CollectionItemDto(
       id: json['id']?.toString() ?? '',
-      client: json['Client'] is Map ? Map<String, dynamic>.from(json['Client']) : {},
+      client: json['Client'] is Map
+          ? Map<String, dynamic>.from(json['Client'])
+          : {},
       documentReferences: json['DocumentReferences'] is List
-          ? List<String>.from(json['DocumentReferences'].map((e) => e.toString()))
+          ? List<String>.from(
+              json['DocumentReferences'].map((e) => e.toString()))
           : [],
       bankName: json['BankName']?.toString() ?? 'N/A',
-      toBeCollected: (json['ToBeCollected'] is num ? (json['ToBeCollected'] as num).toDouble() : 0.0),
-      totalCollected: (json['TotalCollected'] is num ? (json['TotalCollected'] as num).toDouble() : 0.0),
+      toBeCollected: (json['ToBeCollected'] is num
+          ? (json['ToBeCollected'] as num).toDouble()
+          : 0.0),
+      totalCollected: (json['TotalCollected'] is num
+          ? (json['TotalCollected'] as num).toDouble()
+          : 0.0),
       remarks: json['Remarks']?.toString() ?? 'No remarks',
       documentDate: json['DocumentDate']?.toString() ?? 'N/A',
       bpCode: json['BPCode']?.toString() ?? 'N/A',
@@ -81,7 +88,9 @@ class CollectionItemDto {
       lastOutcome: json['LastOutcome']?.toString(),
       assignedAt: json['AssignedAt']?.toString() ?? '',
       collectorName: json['CollectorName']?.toString() ?? 'Unassigned',
-      history: json['History'] is List ? List<Map<String, dynamic>>.from(json['History']) : [],
+      history: json['History'] is List
+          ? List<Map<String, dynamic>>.from(json['History'])
+          : [],
     );
   }
 
@@ -126,4 +135,3 @@ class CollectionItemDto {
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -28,6 +29,13 @@ import 'dao/common/item_category_dao.dart';
 import 'dao/common/form_category_dao.dart';
 import 'dao/common/client_contact_person_dao.dart';
 import 'dao/common/contact_dao.dart';
+import 'dao/collection/collection_dao.dart';
+import 'dao/collection/collection_pending_dao.dart';
+import 'dao/collection/collection_activity_dao.dart';
+import 'dao/collection/collection_advance_dao.dart';
+import 'dao/collection/collection_account_history_dao.dart';
+import 'dao/collection/collection_target_dao.dart';
+import 'dao/collection/collection_engagement_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -56,6 +64,13 @@ class DatabaseHelper {
   FormCategoryDao? _formCategoryDao;
   ClientContactPersonDao? _clientContactPersonDao;
   ContactDao? _contactDao;
+  CollectionDao? _collectionDao;
+  CollectionPendingDao? _collectionPendingDao;
+  CollectionActivityDao? _collectionActivityDao;
+  CollectionAdvanceDao? _collectionAdvanceDao;
+  CollectionAccountHistoryDao? _collectionAccountHistoryDao;
+  CollectionTargetDao? _collectionTargetDao;
+  CollectionEngagementDao? _collectionEngagementDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -68,7 +83,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 19,
+      version: 21,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -76,6 +91,18 @@ class DatabaseHelper {
         // Keep legacy behavior for cache-backed tables while preserving the
         // user-entered `contacts` table across version bumps.
         await _upgradeSchema(db, oldVersion, newVersion);
+      },
+      // Every open, not just create and upgrade.
+      //
+      // Collection tables are added additively with CREATE TABLE IF NOT
+      // EXISTS and deliberately kept out of the destructive rebuild, so a new
+      // one shipped without a version bump would never exist on a device that
+      // is already at the current version — and the feature that needs it
+      // would fail silently for exactly the installs that have been around
+      // longest. Running here is idempotent and self-healing.
+      onOpen: (db) async {
+        await ensureProofUploadTables(db);
+        await ensureCollectionTables(db);
       },
     );
   }
@@ -105,34 +132,57 @@ class DatabaseHelper {
     // already includes the column; on upgrade we ALTER only if missing.
     await _addColumnIfNotExists(db, 'a_tblRequestReceiverSignature',
         'ApiStatus', "TEXT DEFAULT 'Pending'");
-    await _ensureImageOutboxTable(db);
+    await ensureProofUploadTables(db);
+
+    // Collection tables hold un-uploaded offline field work. Create them
+    // non-destructively and keep them OUT of _recreateAllTables so an app
+    // upgrade never wipes a collector's pending collections.
+    await ensureCollectionTables(db);
   }
 
   /// Drop cache-backed tables and recreate from the canonical schema.
-  /// The `contacts` table is intentionally excluded to preserve user-entered
-  /// data across app upgrades.
+  ///
+  /// Excluded on purpose, because they hold data that exists nowhere else:
+  /// - `contacts` — user-entered;
+  /// - `a_tblRequestReceiverSignature`, `a_tblRequestImageOutbox` — captured
+  ///   signatures and queued proof images awaiting upload;
+  /// - every `a_tblCollection*` table — un-uploaded collector field work.
+  /// Tables the destructive rebuild drops. Server-backed cache only.
+  ///
+  /// Anything holding data that exists nowhere else must stay out of this
+  /// list — see the doc comment above. Adding a table here that carries
+  /// un-uploaded work silently destroys it on the next version bump.
+  @visibleForTesting
+  static const List<String> cacheBackedTables = [
+    'a_tblRequest',
+    'a_tblRequestDocumentReference',
+    'a_tblRequestImage',
+    'a_tblRequestRemarks',
+    'ACCMST_',
+    'a_tblMobile',
+    'Users',
+    'CNTMST',
+    'a_tblRequestPickUp',
+    'a_tblItemCategory',
+    'a_tblFormCategory',
+    'a_tblRequestAirSea',
+    'a_tblRequestPullOutReturnPickUp',
+    'a_tblLocationAlternative',
+    'a_tblClientContactPerson',
+    'a_tblRequestBackload',
+  ];
+
+  /// Tables that must survive the rebuild because nothing else holds their
+  /// data. Asserted against [cacheBackedTables] in tests.
+  @visibleForTesting
+  static const List<String> preservedOnUpgradeTables = [
+    'contacts',
+    'a_tblRequestReceiverSignature',
+    'a_tblRequestImageOutbox',
+  ];
+
   Future<void> _recreateAllTables(Database db) async {
-    const tables = [
-      'a_tblRequest',
-      'a_tblRequestDocumentReference',
-      'a_tblRequestReceiverSignature',
-      'a_tblRequestImage',
-      'a_tblRequestImageOutbox',
-      'a_tblRequestRemarks',
-      'ACCMST_',
-      'a_tblMobile',
-      'Users',
-      'CNTMST',
-      'a_tblRequestPickUp',
-      'a_tblItemCategory',
-      'a_tblFormCategory',
-      'a_tblRequestAirSea',
-      'a_tblRequestPullOutReturnPickUp',
-      'a_tblLocationAlternative',
-      'a_tblClientContactPerson',
-      'a_tblRequestBackload',
-    ];
-    for (final table in tables) {
+    for (final table in cacheBackedTables) {
       await db.execute('DROP TABLE IF EXISTS $table');
     }
     await createAllTables(db);
@@ -150,19 +200,6 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<void> _ensureImageOutboxTable(Database db) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS a_tblRequestImageOutbox (
-        RequestID TEXT NOT NULL,
-        ImageType TEXT NOT NULL,
-        ImageLookupKey TEXT NOT NULL,
-        RequestImage TEXT,
-        ApiStatus TEXT DEFAULT 'Pending',
-        CapturedAt TEXT,
-        UNIQUE(RequestID, ImageType, ImageLookupKey)
-      )
-    ''');
-  }
 
   /// Adds a column to a table if it does not already exist. This is idempotent
   /// and safe to call during upgrades to avoid destructive migrations.
@@ -301,6 +338,56 @@ class DatabaseHelper {
     return _contactDao!;
   }
 
+  Future<CollectionDao> get collectionDao async {
+    if (_collectionDao != null) return _collectionDao!;
+    final db = await database;
+    _collectionDao = CollectionDao(db);
+    return _collectionDao!;
+  }
+
+  Future<CollectionPendingDao> get collectionPendingDao async {
+    if (_collectionPendingDao != null) return _collectionPendingDao!;
+    final db = await database;
+    _collectionPendingDao = CollectionPendingDao(db);
+    return _collectionPendingDao!;
+  }
+
+  Future<CollectionActivityDao> get collectionActivityDao async {
+    if (_collectionActivityDao != null) return _collectionActivityDao!;
+    final db = await database;
+    _collectionActivityDao = CollectionActivityDao(db);
+    return _collectionActivityDao!;
+  }
+
+  Future<CollectionAdvanceDao> get collectionAdvanceDao async {
+    if (_collectionAdvanceDao != null) return _collectionAdvanceDao!;
+    final db = await database;
+    _collectionAdvanceDao = CollectionAdvanceDao(db);
+    return _collectionAdvanceDao!;
+  }
+
+  Future<CollectionAccountHistoryDao> get collectionAccountHistoryDao async {
+    if (_collectionAccountHistoryDao != null)
+      return _collectionAccountHistoryDao!;
+    final db = await database;
+    _collectionAccountHistoryDao = CollectionAccountHistoryDao(db);
+    return _collectionAccountHistoryDao!;
+  }
+
+  Future<CollectionTargetDao> get collectionTargetDao async {
+    if (_collectionTargetDao != null) return _collectionTargetDao!;
+    final db = await database;
+    _collectionTargetDao = CollectionTargetDao(db);
+    return _collectionTargetDao!;
+  }
+
+  Future<CollectionEngagementDao> get collectionEngagementDao async {
+    if (_collectionEngagementDao != null) return _collectionEngagementDao!;
+    final db = await database;
+    _collectionEngagementDao = CollectionEngagementDao(db);
+    return _collectionEngagementDao!;
+  }
+
   Future<List<String>> getContactPhoneNumbers() async {
     final dao = await contactDao;
     return await dao.getAllPhoneNumbers();
@@ -353,14 +440,20 @@ class DatabaseHelper {
     return await dao.isRequestTableNotEmpty();
   }
 
-  /// Delete Request-related tables (used for refresh)
+  /// Clears the Standard Delivery / Hotline Direct request cache before a
+  /// hard reset re-downloads it.
+  ///
+  /// Only `a_tblRequest` is cleared. The support tables are keyed by
+  /// `RequestID` with no module discriminator and are written by Pick Up and
+  /// Air / Sea too, so clearing them here destroyed other modules' data:
+  /// - `a_tblRequestReceiverSignature`, `a_tblRequestImageOutbox` — captured
+  ///   signatures and queued proof images awaiting upload; unrecoverable;
+  /// - `a_tblRequestImage`, `a_tblRequestDocumentReference` — shared rows.
+  /// Re-downloaded requests re-attach to their existing support rows by id;
+  /// the inserts are upserts, so nothing duplicates.
   Future<void> deleteRequest() async {
     final db = await database;
     await db.delete('a_tblRequest');
-    await db.delete('a_tblRequestDocumentReference');
-    await db.delete('a_tblRequestReceiverSignature');
-    await db.delete('a_tblRequestImage');
-    await db.delete('a_tblRequestImageOutbox');
   }
 
   // --- Signature/image helpers delegated to RequestDao ---

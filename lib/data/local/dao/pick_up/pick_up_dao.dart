@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/common/client_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/status_progression.dart';
 
 /// DAO for pick-up request local database operations.
 class PickUpDao {
@@ -12,6 +13,7 @@ class PickUpDao {
   // Local status map for status progression validation
   static const Map<String, int> _statusStringToInt = {
     'New Request': 1,
+    'Getting supplies ready': 2,
     'Item Prepared': 2,
     'Item Packed': 3,
     'Received': 4,
@@ -157,11 +159,34 @@ class PickUpDao {
   }
 
   /// Insert multiple pick-up requests in batch.
+
+  /// Statuses currently stored, keyed by `RequestID` as text.
+  ///
+  /// Read in one query so a bulk refresh can honour the progression guard
+  /// without issuing a query per row.
+  Future<Map<String, String>> _storedStatuses(String table) async {
+    final rows = await db.query(table, columns: ['RequestID', 'Status']);
+    return {
+      for (final row in rows)
+        row['RequestID'].toString(): (row['Status'] ?? '').toString(),
+    };
+  }
+
   Future<void> insertPickUps(List<PickUpModel> pickUpModels) async {
     Batch batch = db.batch();
+    final storedStatuses = await _storedStatuses('a_tblRequestPickUp');
 
     for (PickUpModel pickUpModel in pickUpModels) {
       final parsedId = int.tryParse(pickUpModel.id) ?? pickUpModel.id;
+
+      // A list refresh must not rewind a status this device already advanced.
+      // The single-row update path guards against that; without this check a
+      // stale server snapshot would overwrite it via ConflictAlgorithm.replace.
+      final regresses = BStatusProgression.isRegression(
+        ranks: _statusStringToInt,
+        current: storedStatuses[parsedId.toString()],
+        next: pickUpModel.status,
+      );
 
       Map<String, dynamic> pickUpData = {
         'RequestID': parsedId,
@@ -182,11 +207,13 @@ class PickUpDao {
         'UpdatedAt': pickUpModel.updatedAt,
       };
 
-      batch.insert(
-        'a_tblRequestPickUp',
-        pickUpData,
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      if (!regresses) {
+        batch.insert(
+          'a_tblRequestPickUp',
+          pickUpData,
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
 
       // Insert document references
       if (pickUpModel.documentReference.isNotEmpty) {
@@ -244,15 +271,13 @@ class PickUpDao {
 
     if (currentData.isEmpty) return;
 
-    final String currentStatusString = currentData.first['Status'] as String;
-    final int? currentStatusInt = _statusStringToInt[currentStatusString];
-    final int? newStatusInt = _statusStringToInt[pickUpModel.status];
-
     // Don't allow status regression (except for cancelled)
-    if (currentStatusInt != null && newStatusInt != null) {
-      if (newStatusInt < currentStatusInt && pickUpModel.status != 'Cancelled') {
-        return;
-      }
+    if (BStatusProgression.isRegression(
+      ranks: _statusStringToInt,
+      current: currentData.first['Status'] as String?,
+      next: pickUpModel.status,
+    )) {
+      return;
     }
 
     Map<String, dynamic> pickUpData = {

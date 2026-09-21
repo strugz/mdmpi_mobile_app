@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -11,7 +12,8 @@ class AdvancedPaymentFormScreen extends StatefulWidget {
   const AdvancedPaymentFormScreen({super.key});
 
   @override
-  State<AdvancedPaymentFormScreen> createState() => _AdvancedPaymentFormScreenState();
+  State<AdvancedPaymentFormScreen> createState() =>
+      _AdvancedPaymentFormScreenState();
 }
 
 class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
@@ -30,19 +32,21 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
   void _save() {
     if (!formKey.currentState!.validate()) return;
     if (selectedAccount == null) {
-      BLoaders.errorSnackBar(title: 'Error', message: 'Please select an account');
+      BLoaders.errorSnackBar(
+          title: 'Error', message: 'Please select an account');
       return;
     }
 
     final controller = CollectionActivityController.instance;
     controller.saveAdvancedPayment(
       clientId: selectedAccount!.id,
-      amount: double.tryParse(amountController.text) ?? 0.0,
+      amount: BFormatter.parseAmount(amountController.text),
       remarks: remarksController.text,
     );
 
     Get.back(); // Close form
-    BLoaders.successSnackBar(title: 'Success', message: 'Advanced Payment recorded.');
+    BLoaders.successSnackBar(
+        title: 'Success', message: 'Advanced Payment recorded.');
   }
 
   @override
@@ -51,7 +55,8 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
     final accounts = controller.masterAccountList;
 
     return Scaffold(
-      appBar: const BAppBar(title: Text('Record Advanced Payment'), showBackArrow: true),
+      appBar: const BAppBar(
+          title: Text('Record Advanced Payment'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(BSizes.defaultSpace),
@@ -72,22 +77,34 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                     );
                   }).toList(),
                   onChanged: (v) => setState(() => selectedAccount = v),
-                  validator: (value) => value == null ? 'Account is required' : null,
+                  validator: (value) =>
+                      value == null ? 'Account is required' : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-
                 TextFormField(
                   controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
                   decoration: const InputDecoration(
                     labelText: 'Amount Paid',
                     prefixIcon: Icon(Iconsax.money_send),
                     prefixText: '₱ ',
                   ),
-                  validator: (value) => value == null || value.isEmpty ? 'Amount is required' : null,
+                  // "Not empty" was the whole check, so a zero or an
+                  // unparseable amount sailed through and was recorded as
+                  // ₱0.00 against the account.
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Amount is required';
+                    }
+                    if (BFormatter.parseAmount(value) <= 0) {
+                      return 'Enter an amount greater than zero';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-                
                 TextFormField(
                   controller: remarksController,
                   maxLines: 4,
@@ -97,7 +114,6 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
-                
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

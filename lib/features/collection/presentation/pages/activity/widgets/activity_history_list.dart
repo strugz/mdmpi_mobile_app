@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class ActivityHistoryList extends StatelessWidget {
   const ActivityHistoryList({
@@ -15,18 +16,26 @@ class ActivityHistoryList extends StatelessWidget {
     this.accountNames,
     this.invoiceIds,
     this.items,
+    this.accountFirst = false,
+    this.timeOnly = false,
   });
 
   final List<CollectionHistoryModel> history;
-  
+
   /// Optional: Map of history index to account name (for global lists)
   final Map<int, String>? accountNames;
-  
+
   /// Optional: Map of history index to invoice ID (for global lists)
   final Map<int, String?>? invoiceIds;
 
   /// Optional: Map of history index to full invoice item
   final Map<int, CollectionItemModel?>? items;
+
+  /// See [ActivityHistoryCard.accountFirst] and
+  /// [ActivityHistoryCard.timeOnly]. Both default to the card's own
+  /// behaviour, so the screens that already use this list are untouched.
+  final bool accountFirst;
+  final bool timeOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -47,29 +56,85 @@ class ActivityHistoryList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: displayList.length,
       itemBuilder: (context, index) {
-        return _ActivityHistoryCard(
+        return ActivityHistoryCard(
           history: displayList[index],
           accountName: accountNames?[index],
           invoiceId: invoiceIds?[index],
           item: items?[index],
+          accountFirst: accountFirst,
+          timeOnly: timeOnly,
         );
       },
     );
   }
 }
 
-class _ActivityHistoryCard extends StatelessWidget {
-  const _ActivityHistoryCard({
+/// One engagement entry. Tapping opens the detail sheet; [showDetail] opens
+/// the same sheet for callers that intercept the tap themselves (the home
+/// carousel does, for a tap that lands mid-settle).
+class ActivityHistoryCard extends StatelessWidget {
+  const ActivityHistoryCard({
+    super.key,
     required this.history,
     this.accountName,
     this.invoiceId,
     this.item,
+    this.margin = const EdgeInsets.only(bottom: BSizes.sm),
+    this.accountFirst = false,
+    this.timeOnly = false,
   });
 
   final CollectionHistoryModel history;
   final String? accountName;
   final String? invoiceId;
   final CollectionItemModel? item;
+
+  /// Lead with the account and demote the invoice number.
+  ///
+  /// On an account's own screen the invoice number is what tells two entries
+  /// apart. In a day's list it is not: the reader is scanning who they
+  /// visited, and an invoice number they never memorised is a poor headline
+  /// for a visit.
+  final bool accountFirst;
+
+  /// Show the time and not the date.
+  ///
+  /// For a list already sitting under a heading that names the day, repeating
+  /// the date on every card says nothing, and the time — which is the part
+  /// that orders the day — is buried at the end of it.
+  final bool timeOnly;
+
+  /// Space around the card. The list stacks cards with a bottom gap; a
+  /// carousel page wants none.
+  final EdgeInsetsGeometry margin;
+
+  /// The collector label as shown on the card: initials for the current user.
+  ///
+  /// Matched against every name this user's own work may be stored under
+  /// rather than against one literal. Engagements have been written with the
+  /// full name, with initials and with 'You' at different times, and the
+  /// archive now writes the full name — a single-literal test recognised at
+  /// most one of those and showed the other two in full.
+  String get _collectorLabel {
+    final name = history.collectorName.trim();
+    if (name.isEmpty) return name;
+    // Without a signed-in user there is nothing to compare against, so the
+    // stored name stands. This is also what lets the card be pumped on its
+    // own in a widget test.
+    if (!Get.isRegistered<UserController>()) return name;
+    final user = UserController.instance.user.value;
+    final mine = {
+      user.fullName,
+      user.initials,
+      user.username,
+      'You',
+    }.map((e) => e.trim().toLowerCase()).where((e) => e.isNotEmpty);
+    if (mine.contains(name.toLowerCase())) return user.initials;
+    return name;
+  }
+
+  void showDetail(BuildContext context) =>
+      _showDetail(context, _collectorLabel);
 
   void _showDetail(BuildContext context, String collectorName) {
     showModalBottomSheet(
@@ -79,8 +144,9 @@ class _ActivityHistoryCard extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         decoration: const BoxDecoration(
-          color: BColors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
+          color: BCollectionColors.surface,
+          borderRadius: BorderRadius.vertical(
+              top: Radius.circular(BSizes.borderRadiusLg)),
         ),
         padding: EdgeInsets.fromLTRB(
             BSizes.defaultSpace,
@@ -98,7 +164,7 @@ class _ActivityHistoryCard extends StatelessWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: BSizes.md),
                 decoration: BoxDecoration(
-                  color: BColors.grey.withValues(alpha: 0.5),
+                  color: BCollectionColors.outline.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -106,7 +172,8 @@ class _ActivityHistoryCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Engagement Details', style: Theme.of(context).textTheme.headlineSmall),
+                Text('Engagement Details',
+                    style: Theme.of(context).textTheme.headlineSmall),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
@@ -119,10 +186,14 @@ class _ActivityHistoryCard extends StatelessWidget {
             if (accountName != null || invoiceId != null || item != null) ...[
               Text(
                 accountName ?? item?.client.name ?? 'Unknown Account',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(color: BColors.primary),
+                style: Theme.of(context)
+                    .textTheme
+                    .titleLarge
+                    ?.copyWith(color: BCollectionColors.primary),
               ),
               if (invoiceId != null || item != null)
-                Text('Invoice #${invoiceId ?? item?.id}', style: Theme.of(context).textTheme.labelMedium),
+                Text('Invoice #${invoiceId ?? item?.id}',
+                    style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: BSizes.md),
             ],
 
@@ -131,11 +202,28 @@ class _ActivityHistoryCard extends StatelessWidget {
                 spacing: BSizes.sm,
                 runSpacing: BSizes.sm,
                 children: [
-                  _buildInfoTile(context, 'Total Amount', BFormatter.formatPesoCurrency(item!.toBeCollected + item!.totalCollected), Iconsax.money),
-                  _buildInfoTile(context, 'Current Balance', BFormatter.formatPesoCurrency(item!.toBeCollected), Iconsax.wallet_money, valueColor: BColors.primary),
-                  _buildInfoTile(context, 'Due Date', item!.dueDate, Iconsax.calendar, valueColor: item!.isOverdue ? BColors.error : null),
+                  _buildInfoTile(
+                      context,
+                      'Total Amount',
+                      BFormatter.formatPesoCurrency(
+                          item!.toBeCollected + item!.totalCollected),
+                      Iconsax.money),
+                  _buildInfoTile(
+                      context,
+                      'Current Balance',
+                      BFormatter.formatPesoCurrency(item!.toBeCollected),
+                      Iconsax.wallet_money,
+                      valueColor: BCollectionColors.primary),
+                  _buildInfoTile(
+                      context, 'Due Date', item!.dueDate, Iconsax.calendar,
+                      valueColor:
+                          item!.isOverdue ? BCollectionColors.danger : null),
                   if (item!.documentReferences.isNotEmpty)
-                    _buildInfoTile(context, 'References', item!.documentReferences.join(', '), Iconsax.document_text),
+                    _buildInfoTile(
+                        context,
+                        'References',
+                        item!.documentReferences.join(', '),
+                        Iconsax.document_text),
                 ],
               ),
               const Divider(height: BSizes.lg),
@@ -145,33 +233,37 @@ class _ActivityHistoryCard extends StatelessWidget {
               spacing: BSizes.sm,
               runSpacing: BSizes.sm,
               children: [
-                _buildInfoTile(context, 'Date', history.date, Iconsax.calendar),
-                _buildInfoTile(context, 'Collector', collectorName, Iconsax.user),
                 _buildInfoTile(
-                  context, 
-                  'Status', 
-                  history.status, 
+                    context,
+                    'Date',
+                    BFormatter.formatDateWithAmPm(history.date),
+                    Iconsax.calendar),
+                _buildInfoTile(
+                    context, 'Collector', collectorName, Iconsax.user),
+                _buildInfoTile(
+                  context,
+                  'Status',
+                  history.status,
                   Iconsax.activity,
                   isBadge: true,
                 ),
-                
                 if (history.totalCollected > 0)
                   _buildInfoTile(
-                    context, 
-                    'Amount Collected', 
-                    BFormatter.formatPesoCurrency(history.totalCollected),
-                    Iconsax.wallet_money,
-                    valueColor: BColors.success
-                  ),
-
+                      context,
+                      'Amount Collected',
+                      BFormatter.formatPesoCurrency(history.totalCollected),
+                      Iconsax.wallet_money,
+                      valueColor: BCollectionColors.success),
                 if (history.bankName != null && history.bankName!.isNotEmpty)
-                  _buildInfoTile(context, 'Bank', history.bankName!, Iconsax.bank),
-
-                if (history.checkNumber != null && history.checkNumber!.isNotEmpty)
-                  _buildInfoTile(context, 'Check Number', history.checkNumber!, Iconsax.card_edit),
-
+                  _buildInfoTile(
+                      context, 'Bank', history.bankName!, Iconsax.bank),
+                if (history.checkNumber != null &&
+                    history.checkNumber!.isNotEmpty)
+                  _buildInfoTile(context, 'Check Number', history.checkNumber!,
+                      Iconsax.card_edit),
                 if (history.checkDate != null && history.checkDate!.isNotEmpty)
-                  _buildInfoTile(context, 'Check Date', history.checkDate!, Iconsax.calendar_1),
+                  _buildInfoTile(context, 'Check Date', history.checkDate!,
+                      Iconsax.calendar_1),
               ],
             ),
 
@@ -182,12 +274,12 @@ class _ActivityHistoryCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(BSizes.md),
               decoration: BoxDecoration(
-                color: BColors.lightGrey,
+                color: BCollectionColors.background,
                 borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
               ),
               child: Text(
-                history.remarks.isEmpty || history.remarks == 'No remarks' 
-                    ? 'No additional remarks provided.' 
+                history.remarks.isEmpty || history.remarks == 'No remarks'
+                    ? 'No additional remarks provided.'
                     : history.remarks,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -200,24 +292,24 @@ class _ActivityHistoryCard extends StatelessWidget {
   }
 
   Widget _buildInfoTile(
-    BuildContext context, 
-    String label, 
-    String value, 
-    IconData icon, 
-    {bool isBadge = false, Color? valueColor}
-  ) {
-    final width = (MediaQuery.of(context).size.width - (BSizes.defaultSpace * 2) - BSizes.sm) / 2;
+      BuildContext context, String label, String value, IconData icon,
+      {bool isBadge = false, Color? valueColor}) {
+    final width = (MediaQuery.of(context).size.width -
+            (BSizes.defaultSpace * 2) -
+            BSizes.sm) /
+        2;
     return Container(
       width: width,
       padding: const EdgeInsets.all(BSizes.sm),
       decoration: BoxDecoration(
-        color: BColors.grey.withValues(alpha: 0.1),
+        color: BCollectionColors.outline.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-        border: Border.all(color: BColors.grey.withValues(alpha: 0.2)),
+        border:
+            Border.all(color: BCollectionColors.outline.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: BColors.primary),
+          Icon(icon, size: 20, color: BCollectionColors.primary),
           const SizedBox(width: BSizes.sm),
           Expanded(
             child: Column(
@@ -231,12 +323,12 @@ class _ActivityHistoryCard extends StatelessWidget {
                   )
                 else
                   Text(
-                    value, 
+                    value,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: valueColor,
-                      fontSize: 12,
-                    ),
+                          fontWeight: FontWeight.bold,
+                          color: valueColor,
+                          fontSize: 12,
+                        ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -250,16 +342,13 @@ class _ActivityHistoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String displayCollectorName = history.collectorName;
-    if (displayCollectorName == 'You') {
-      displayCollectorName = UserController.instance.user.value.initials;
-    }
+    final displayCollectorName = _collectorLabel;
 
     final isOverdue = item?.isOverdue ?? false;
     final daysPast = item?.daysPastDue ?? 0;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: BSizes.sm),
+      margin: margin,
       child: InkWell(
         onTap: () => _showDetail(context, displayCollectorName),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
@@ -277,20 +366,41 @@ class _ActivityHistoryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          invoiceId != null || item != null 
-                              ? 'Invoice #${invoiceId ?? item?.id}' 
-                              : (accountName ?? 'Account Engagement'),
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                          accountFirst
+                              ? (accountName ??
+                                  item?.client.name ??
+                                  'Account Engagement')
+                              : (invoiceId != null || item != null
+                                  ? 'Invoice #${invoiceId ?? item?.id}'
+                                  : (accountName ?? 'Account Engagement')),
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (item != null)
+                        if (accountFirst && (invoiceId ?? item?.id) != null)
+                          Text(
+                            'Invoice #${invoiceId ?? item?.id}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: BCollectionColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else if (!accountFirst && item != null)
                           Text(
                             item!.client.name,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: BColors.primary,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: BCollectionColors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                             maxLines: 1,
@@ -311,13 +421,17 @@ class _ActivityHistoryCard extends StatelessWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        const Icon(Iconsax.calendar, size: 14, color: BColors.darkGrey),
+                        const Icon(Iconsax.calendar,
+                            size: 14, color: BCollectionColors.inkMuted),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             'Invoice Date: ${item?.postingDate ?? 'N/A'}',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: BColors.darkGrey,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: BCollectionColors.inkMuted,
                                 ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -330,7 +444,7 @@ class _ActivityHistoryCard extends StatelessWidget {
                     Text(
                       BFormatter.formatPesoCurrency(history.totalCollected),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: BColors.success,
+                            color: BCollectionColors.success,
                             fontWeight: FontWeight.bold,
                           ),
                     ),
@@ -345,13 +459,22 @@ class _ActivityHistoryCard extends StatelessWidget {
                   Expanded(
                     child: Row(
                       children: [
-                        Icon(Iconsax.timer, size: 14, color: isOverdue ? BColors.error : BColors.darkGrey),
+                        Icon(Iconsax.timer,
+                            size: 14,
+                            color: isOverdue
+                                ? BCollectionColors.danger
+                                : BCollectionColors.inkMuted),
                         const SizedBox(width: 4),
                         Flexible(
                           child: Text(
                             'Due: ${item?.dueDate ?? 'N/A'}',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: isOverdue ? BColors.error : BColors.darkGrey,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: isOverdue
+                                      ? BCollectionColors.danger
+                                      : BCollectionColors.inkMuted,
                                   fontWeight: FontWeight.bold,
                                 ),
                             maxLines: 1,
@@ -361,15 +484,20 @@ class _ActivityHistoryCard extends StatelessWidget {
                         if (isOverdue) ...[
                           const SizedBox(width: BSizes.xs),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: BColors.error,
-                              borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                              color: BCollectionColors.danger,
+                              borderRadius:
+                                  BorderRadius.circular(BSizes.borderRadiusSm),
                             ),
                             child: Text(
                               BFormatter.formatDaysOverdue(daysPast),
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: BColors.white,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: BCollectionColors.surface,
                                     fontSize: 8,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -381,7 +509,8 @@ class _ActivityHistoryCard extends StatelessWidget {
                   ),
                   Text(
                     displayCollectorName,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: BColors.darkGrey, fontSize: 10),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: BCollectionColors.inkMuted, fontSize: 10),
                   ),
                 ],
               ),
@@ -392,18 +521,27 @@ class _ActivityHistoryCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    history.date,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 10),
+                    // Stored as ISO (2026-09-17T11:45:12.579265); shown as a
+                    // date a person reads, not a stamp with a T in it. Under a
+                    // heading that already names the day, only the time is new.
+                    timeOnly
+                        ? BFormatter.formatTimeAmPm(history.date)
+                        : BFormatter.formatDateWithAmPm(history.date),
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelSmall
+                        ?.copyWith(fontSize: 10),
                   ),
-                  if (history.remarks.isNotEmpty && history.remarks != 'No remarks')
+                  if (history.remarks.isNotEmpty &&
+                      history.remarks != 'No remarks')
                     Expanded(
                       child: Text(
                         '  |  ${history.remarks}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                          fontSize: 10,
-                          color: BColors.darkerGrey,
-                        ),
+                              fontStyle: FontStyle.italic,
+                              fontSize: 10,
+                              color: BCollectionColors.inkSecondary,
+                            ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.end,
@@ -429,7 +567,8 @@ class _ActivityHistoryBadge extends StatelessWidget {
     if (status.isEmpty) return const SizedBox.shrink();
     final (bg, _) = CollectionStatusColors.colorsForAuto(context, status);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: BSizes.sm, vertical: BSizes.xxs),
+      padding: const EdgeInsets.symmetric(
+          horizontal: BSizes.sm, vertical: BSizes.xxs),
       decoration: BoxDecoration(
         color: bg.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),

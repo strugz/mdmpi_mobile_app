@@ -25,6 +25,8 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/settings/signa
 import '../../../features/logistics/screens/request.dart';
 import '../../../features/logistics/screens/data_test/local_storage_data_viewer.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/upload/collection_upload_outbox_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/add_to_bucket_screen.dart';
 
 class AppRoutes {
   static final pages = [
@@ -60,8 +62,9 @@ class AppRoutes {
         return BackLoadTransactionPage(requestModel: model);
       },
     ),
-    GetPage(name: BRoutes.localStorageViewer, page: () => const LocalStorageDataViewer()),
     GetPage(name: BRoutes.totalCollected, page: () => const MonthlySummaryScreen(type: 'Collection')),
+    GetPage(name: BRoutes.collectionUploadOutbox, page: () => const CollectionUploadOutboxScreen()),
+    GetPage(name: BRoutes.addToBucket, page: () => const AddToBucketScreen()),
   ];
 
   // Pages to navigate to

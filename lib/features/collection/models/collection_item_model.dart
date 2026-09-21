@@ -15,7 +15,7 @@ class CollectionItemModel {
   final String bpCode;
   final String postingDate;
   final String dueDate;
-  
+
   /// Consolidated status field (Pending, On-going, Collected).
   final String status;
 
@@ -105,7 +105,10 @@ class CollectionItemModel {
           ? (json['ToBeCollected'] as num).toDouble()
           : (json['Amount'] is num)
               ? (json['Amount'] as num).toDouble()
-              : double.tryParse((json['ToBeCollected'] ?? json['Amount'])?.toString() ?? '') ?? 0,
+              : double.tryParse(
+                      (json['ToBeCollected'] ?? json['Amount'])?.toString() ??
+                          '') ??
+                  0,
       totalCollected: (json['TotalCollected'] is num)
           ? (json['TotalCollected'] as num).toDouble()
           : double.tryParse(json['TotalCollected']?.toString() ?? '') ?? 0,
@@ -114,13 +117,13 @@ class CollectionItemModel {
       bpCode: (json['BPCode'] ?? json['CustomerCode'] ?? 'N/A').toString(),
       postingDate: (json['PostingDate'] ?? 'N/A').toString(),
       dueDate: (json['DueDate'] ?? 'N/A').toString(),
-       status: (json['Status'] ?? json['CoreStatus'] ?? '').toString(),
+      status: (json['Status'] ?? json['CoreStatus'] ?? '').toString(),
       lastOutcome: json['LastOutcome']?.toString(),
       assignedAt: (json['AssignedAt'] ?? 'N/A').toString(),
       collectorName: (json['CollectorName'] ?? 'Unassigned').toString(),
       history: json['History'] != null && json['History'] is List
-          ? List<CollectionHistoryModel>.from(
-              (json['History'] as List).map((e) => CollectionHistoryModel.fromJson(e)))
+          ? List<CollectionHistoryModel>.from((json['History'] as List)
+              .map((e) => CollectionHistoryModel.fromJson(e)))
           : [],
     );
   }

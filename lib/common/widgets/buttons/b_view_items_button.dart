@@ -35,13 +35,14 @@ class BViewItemsButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             foregroundColor: Theme.of(context).colorScheme.primary,
           ),
-          onPressed: onPressed ?? () {
-            final page = pageBuilder?.call() ?? InventoryItemsPage(requestId: requestId);
-            Get.to(() => page);
-          },
+          onPressed: onPressed ??
+              () {
+                final page = pageBuilder?.call() ??
+                    InventoryItemsPage(requestId: requestId);
+                Get.to(() => page);
+              },
         ),
       ),
     );
   }
 }
-

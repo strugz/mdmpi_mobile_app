@@ -8,7 +8,7 @@ import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../base/utils/constants/sizes.dart';
 import '../../../../../../base/utils/devices/device_utility.dart';
 import '../../../../../../base/utils/helpers/helper_functions.dart';
-
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class OnBoardingDotNavigation extends StatelessWidget {
   const OnBoardingDotNavigation({
@@ -21,14 +21,18 @@ class OnBoardingDotNavigation extends StatelessWidget {
     final dark = BHelperFunctions.isDarkMode(context);
 
     return Positioned(
-      bottom: BDevicesUtils.systemBottomInset(context) + kBottomNavigationBarHeight + 25,
+      bottom: BDevicesUtils.systemBottomInset(context) +
+          kBottomNavigationBarHeight +
+          25,
       left: BSizes.defaultSpace,
       child: SmoothPageIndicator(
         controller: controller.pageController,
         onDotClicked: controller.dotNavigationClick,
         count: 3,
         effect: ExpandingDotsEffect(
-            activeDotColor: dark ? BColors.light : BColors.dark, dotHeight: 6),
+            activeDotColor:
+                dark ? BCollectionColors.surfaceMuted : BColors.dark,
+            dotHeight: 6),
       ),
     );
   }

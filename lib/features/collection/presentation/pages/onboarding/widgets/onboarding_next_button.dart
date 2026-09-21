@@ -3,10 +3,10 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_onboarding_controller.dart';
 
-import '../../../../../../base/utils/constants/colors.dart';
 import '../../../../../../base/utils/constants/sizes.dart';
 import '../../../../../../base/utils/devices/device_utility.dart';
 import '../../../../../../base/utils/helpers/helper_functions.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class OnBoardingNextButton extends StatelessWidget {
   const OnBoardingNextButton({
@@ -19,12 +19,13 @@ class OnBoardingNextButton extends StatelessWidget {
     final controller = Get.find<CollectionOnboardingController>();
     return Positioned(
         right: BSizes.defaultSpace,
-        bottom: BDevicesUtils.systemBottomInset(context) + kBottomNavigationBarHeight,
+        bottom: BDevicesUtils.systemBottomInset(context) +
+            kBottomNavigationBarHeight,
         child: ElevatedButton(
           onPressed: () => controller.nextPage(),
           style: ElevatedButton.styleFrom(
               shape: CircleBorder(),
-              backgroundColor: dark ? BColors.primary : Colors.black),
+              backgroundColor: dark ? BCollectionColors.primary : Colors.black),
           child: const Icon(Iconsax.arrow_right_3),
         ));
   }

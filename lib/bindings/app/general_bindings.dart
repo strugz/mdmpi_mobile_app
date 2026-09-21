@@ -53,6 +53,7 @@ import 'package:mdmpi_mobile_app/data/repositories/pull_out/pull_out_repository.
 import 'package:mdmpi_mobile_app/data/repositories/standard_delivery/standard_delivery_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/forget_password_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/verify_email_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_onboarding_controller.dart';
@@ -83,6 +84,8 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import '../../data/repositories/collection/collection_repository.dart';
 import '../../features/collection/helpers/sync_manager.dart';
 import '../../features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
+import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -240,6 +243,13 @@ class GeneralBindings extends Bindings {
     /// Collection Activity Controller
     Get.lazyPut(() => CollectionActivityController(), fenix: true);
     Get.lazyPut(() => CollectionRepository(), fenix: true);
+    Get.lazyPut(() => BankRepository(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
+    Get.lazyPut(() => CollectionSmsService(), fenix: true);
+
+    // Eager, not lazy: it must be alive to hear connectivity and lifecycle
+    // events, otherwise nothing drains the proof outboxes automatically.
+    // Registered last so NetworkManager and ImageRepository already exist.
+    Get.put(ProofOutboxSyncService(), permanent: true);
   }
 }

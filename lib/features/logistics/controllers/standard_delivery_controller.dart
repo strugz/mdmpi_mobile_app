@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -22,6 +23,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Controller for managing Standard Delivery requests lifecycle, state, and business operations.
 ///
@@ -69,6 +71,14 @@ class StandardDeliveryController extends GetxController
   /// - false: Fetch directly from API/server (default)
   @override
   final RxBool useLocalStorage = false.obs;
+
+  /// Wire date scope the in-memory list was last loaded with.
+  @override
+  RequestDateScope? loadedDateScope;
+
+  /// Wire scope required by the currently selected date filter.
+  RequestDateScope get activeScope =>
+      RequestDateScope.fromFilter(filterManager.selectedFilter.value);
 
   /// Stores the most recent error message from failed operations.
   /// Null when no error has occurred.
@@ -143,7 +153,10 @@ class StandardDeliveryController extends GetxController
 
     // Load initial data
     await dataManager.loadCategories(this);
-    await loadRequests();
+    // Deliberately no fetch here. Whoever shows this tab drives the load:
+    // the Request screen loads the selected date filter only, and the Home
+    // dashboard loads the full history it needs for its year/month counts.
+    // Fetching here as well would race those two through the isLoading guard.
 
     // Set up user context
     userController = Get.find<UserController>();
@@ -178,9 +191,18 @@ class StandardDeliveryController extends GetxController
   /// Uses local database if [useLocalStorage] is true, otherwise fetches from API.
   /// Automatically updates the [allPendingRequests] list and applies active filters.
   @override
+  /// Loads requests for the currently selected date filter.
   Future<void> loadRequests() async {
+    await loadForScope(activeScope);
+  }
+
+  /// Loads requests for an explicit [scope], bypassing the selected filter.
+  ///
+  /// Used by the Home dashboard, which needs the full history for its
+  /// year/month counts regardless of what this tab is filtered to.
+  Future<void> loadForScope(RequestDateScope scope) async {
     await dataManager.fetchStandardDeliveryRequests(
-        this, useLocalStorage.value);
+        this, useLocalStorage.value, scope);
   }
 
   /// Loads item categories from the repository and populates form state.
@@ -213,7 +235,7 @@ class StandardDeliveryController extends GetxController
   /// Forces a fresh data load from the server.
   @override
   Future<void> refreshRequests() async {
-    await dataManager.fetchStandardDeliveryRequests(this, false);
+    await dataManager.fetchStandardDeliveryRequests(this, false, activeScope);
   }
 
   Future<void> hardResetRequests() async {
@@ -275,8 +297,14 @@ class StandardDeliveryController extends GetxController
   ///
   /// [filter] The date filter to apply
   @override
+  /// Applies [filter] immediately, then re-fetches only when the new filter
+  /// needs a wider date range than what is currently loaded (e.g. Today ->
+  /// All). Narrowing (All -> Today) needs no network call.
   void selectFilter(RequestFilter filter) {
     filterManager.selectFilter(filter, allPendingRequests);
+    if (!shouldRefetch(loadedDateScope, filter)) return;
+    unawaited(loadRequests().then(
+        (_) => filterManager.applyFilter(allPendingRequests.toList())));
   }
 
   void selectDateFrom(DateTime? date) {

@@ -21,6 +21,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/item_category_reposito
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../data/repositories/image/image_repository.dart';
 import '../../personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Manages pick-up request data operations and orchestrates business logic.
 /// Handles CRUD operations, status updates, form validation, and data synchronization
@@ -61,8 +62,8 @@ class PickUpDataManager {
   ///
   /// [controller] The pick-up controller to update with fetched data
   /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
-  Future<void> fetchPickUps(
-      PickUpController controller, bool useLocalStorage) async {
+  Future<void> fetchPickUps(PickUpController controller, bool useLocalStorage,
+      {RequestDateScope scope = RequestDateScope.all}) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -71,13 +72,13 @@ class PickUpDataManager {
       if (!useLocalStorage) {
         logDebug(
             'PickUpDataManager: Fetching from API ($useLocalStorage=false, forcing refresh)');
-        results = await _repository.getAll(forceRefresh: true);
+        results = await _repository.getAll(forceRefresh: true, scope: scope);
       } else {
         logDebug('PickUpDataManager: Fetching from local DB first');
         results = await _repository.getLocalPickUps();
         if (results.isEmpty) {
           logDebug('PickUpDataManager: Local DB empty, fetching from API');
-          results = await _repository.getAll();
+          results = await _repository.getAll(scope: scope);
         } else {
           logDebug(
               'PickUpDataManager: Loaded ${results.length} items from local DB');
@@ -85,6 +86,7 @@ class PickUpDataManager {
       }
 
       controller.pickUps.assignAll(results);
+      controller.loadedDateScope = scope;
       logDebug(
           'PickUpDataManager: Assigned ${results.length} pick-ups to controller');
 

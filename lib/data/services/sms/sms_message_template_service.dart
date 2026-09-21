@@ -26,6 +26,14 @@ class SmsMessageTemplateService {
     final cancellationRemarks =
         payload.cancelRemarks.isEmpty ? 'Not provided.' : payload.cancelRemarks;
 
+    // Air / Sea / Land (base and HD share one model): printed only when the
+    // request actually carries a waybill. Both lanes now capture one — the
+    // Received step and the For Dispatch form — but rows that reached For
+    // Dispatch before that second capture existed have none.
+    final waybillLine = payload.waybillNumber.trim().isEmpty
+        ? ''
+        : 'Waybill Number: ${payload.waybillNumber.trim()}\n';
+
     final inventoryItemsText = payload.inventoryItems.isEmpty
         ? ''
         : '\nItems:\n${formatInventoryItemsForSms(payload.inventoryItems)}';
@@ -80,12 +88,20 @@ class SmsMessageTemplateService {
       case BTexts.statusForDispatch:
       case BTexts.statusForPullOut:
       case BTexts.statusEndorsedToGuard:
-      case BTexts.statusDropOff:
       case BTexts.statusProvincialPickUp:
       case BTexts.statusProvincialInTransit:
         return '${payload.clientName} \n'
             'Document References:\n'
             '$documentReferencesText\n'
+            'Status: $status.'
+            '$targetDateLine';
+      case BTexts.statusDropOff:
+        // Air / Sea / Land — base and HD go through the same model, so both
+        // print the waybill when the request has one.
+        return '${payload.clientName} \n'
+            'Document References:\n'
+            '$documentReferencesText\n'
+            '$waybillLine'
             'Status: $status.'
             '$targetDateLine';
       case BTexts.statusDoneDelivery:

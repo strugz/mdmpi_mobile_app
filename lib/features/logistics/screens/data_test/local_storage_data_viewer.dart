@@ -34,6 +34,12 @@ class LocalStorageDataViewer extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(BSizes.defaultSpace),
             child: Obx(() {
+              final tables = controller.availableTables;
+              // The list arrives from SQLite a frame or two after the first
+              // build, and a DropdownButton whose value is not among its items
+              // throws rather than rendering.
+              if (tables.isEmpty) return const LinearProgressIndicator();
+
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
@@ -41,10 +47,12 @@ class LocalStorageDataViewer extends StatelessWidget {
                   borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
                 ),
                 child: DropdownButton<String>(
-                  value: controller.selectedTable.value,
+                  value: tables.contains(controller.selectedTable.value)
+                      ? controller.selectedTable.value
+                      : tables.first,
                   isExpanded: true,
                   underline: const SizedBox(),
-                  items: controller.availableTables.map((table) {
+                  items: tables.map((table) {
                     return DropdownMenuItem<String>(
                       value: table,
                       child: Text(table),
@@ -76,7 +84,9 @@ class LocalStorageDataViewer extends StatelessWidget {
                 }),
                 IconButton(
                   icon: const Icon(Icons.refresh),
-                  onPressed: () => controller.loadTableData(),
+                  // The table list too, not just the rows: a table created by
+                  // a migration on this run should show up without a restart.
+                  onPressed: () => controller.loadTables(),
                 ),
               ],
             ),

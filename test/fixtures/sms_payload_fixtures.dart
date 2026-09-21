@@ -12,6 +12,7 @@ class SmsPayloadFixtures {
     String completionStatusLabel = 'DELIVERED',
     List<InventoryItemModel> inventoryItems = const [],
     String dispatchAt = '',
+    String waybillNumber = '',
   }) {
     return SmsRequestPayload(
       requestId: 'REQ-001',
@@ -27,6 +28,7 @@ class SmsPayloadFixtures {
       completionStatusLabel: completionStatusLabel,
       inventoryItems: inventoryItems,
       dispatchAt: dispatchAt,
+      waybillNumber: waybillNumber,
     );
   }
 

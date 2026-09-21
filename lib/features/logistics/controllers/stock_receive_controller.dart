@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -12,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_filter_mana
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/stock_receive_data_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Controller for managing Stock Receive requests state and operations.
 ///
@@ -40,6 +42,13 @@ class StockReceiveController extends GetxController
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
   final RxBool useLocalStorage = false.obs;
+
+  /// Wire date scope the in-memory list was last loaded with.
+  RequestDateScope? loadedDateScope;
+
+  /// Wire scope required by the currently selected date filter.
+  RequestDateScope get activeScope =>
+      RequestDateScope.fromFilter(filterManager.selectedFilter.value);
 
   /// Last error message, if any.
   final RxnString errorMessage = RxnString();
@@ -75,7 +84,10 @@ class StockReceiveController extends GetxController
     formState = PullOutFormState();
     formState.initializeDefaultDate();
     dataManager.loadCategories(this);
-    dataManager.fetchStockReceives(this, useLocalStorage.value);
+    // Deliberately no fetch here. Whoever shows this tab drives the load:
+    // the Request screen loads the selected date filter only, and the Home
+    // dashboard loads the full history it needs for its year/month counts.
+    // Fetching here as well would race those two through the isLoading guard.
 
     userController = Get.find<UserController>();
     createdBy = userController.user.value.initial;
@@ -90,9 +102,14 @@ class StockReceiveController extends GetxController
     filterManager.selectStatusFilter(statusFilter, stockReceives);
   }
 
-  /// Update date filter.
+  /// Applies [filter] immediately, then re-fetches only when the new filter
+  /// needs a wider date range than what is currently loaded (e.g. Today ->
+  /// All). Narrowing (All -> Today) needs no network call.
   void selectDateFilter(RequestFilter filter) {
     filterManager.selectFilter(filter, stockReceives);
+    if (!shouldRefetch(loadedDateScope, filter)) return;
+    unawaited(loadStockReceives().then(
+        (_) => filterManager.applyFilter(stockReceives.toList())));
   }
 
   void selectDateFrom(DateTime? date) {
@@ -115,9 +132,18 @@ class StockReceiveController extends GetxController
     filterManager.setDocumentReferenceQuery(query, stockReceives);
   }
 
-  /// Fetch all Stock Receive requests from repository.
+  /// Loads stock receives for the currently selected date filter.
   Future<void> loadStockReceives() async {
-    await dataManager.fetchStockReceives(this, useLocalStorage.value);
+    await loadForScope(activeScope);
+  }
+
+  /// Loads stock receives for an explicit [scope], bypassing the selected
+  /// filter.
+  ///
+  /// Used by the Home dashboard, which needs the full history for its
+  /// year/month counts regardless of what this tab is filtered to.
+  Future<void> loadForScope(RequestDateScope scope) async {
+    await dataManager.fetchStockReceives(this, useLocalStorage.value, scope);
   }
 
   Future<void> hardResetStockReceives() async {

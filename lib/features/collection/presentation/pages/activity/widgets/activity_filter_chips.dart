@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Horizontal scrollable filter chips for the Activity screen.
 class ActivityFilterChips extends StatefulWidget {
@@ -28,15 +28,17 @@ class ActivityFilterChips extends StatefulWidget {
 class _ActivityFilterChipsState extends State<ActivityFilterChips> {
   int _selectedIndex = 0;
 
-  List<String> get _currentFilters => widget.filters ?? [
-    'All',
-    ...CollectionStatusColors.allStatuses,
-  ];
+  List<String> get _currentFilters =>
+      widget.filters ??
+      [
+        'All',
+        ...CollectionStatusColors.allStatuses,
+      ];
 
   @override
   Widget build(BuildContext context) {
     final filters = _currentFilters;
-    final selectedColor = widget.activeColor ?? BColors.primary;
+    final selectedColor = widget.activeColor ?? BCollectionColors.primary;
 
     return SizedBox(
       height: 40,
@@ -56,7 +58,9 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
             },
             selectedColor: selectedColor,
             labelStyle: TextStyle(
-              color: isSelected ? BColors.white : BColors.darkerGrey,
+              color: isSelected
+                  ? BCollectionColors.surface
+                  : BCollectionColors.inkSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               fontSize: 13,
             ),
@@ -64,7 +68,7 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
               borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
             ),
             side: BorderSide(
-              color: isSelected ? selectedColor : BColors.grey,
+              color: isSelected ? selectedColor : BCollectionColors.outline,
             ),
             padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
             pressElevation: 0,

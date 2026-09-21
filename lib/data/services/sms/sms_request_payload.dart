@@ -20,6 +20,11 @@ class SmsRequestPayload {
   /// the template formats it. Empty when the request type has no dispatch.
   final String dispatchAt;
 
+  /// Air / Sea / Land waybill number (base and HD share one model). Empty for
+  /// every other request type, and for Air / Sea requests that never went
+  /// through the Received step where the waybill is captured.
+  final String waybillNumber;
+
   const SmsRequestPayload({
     required this.requestId,
     required this.requesterCode,
@@ -34,6 +39,7 @@ class SmsRequestPayload {
     required this.completionStatusLabel,
     this.inventoryItems = const [],
     this.dispatchAt = '',
+    this.waybillNumber = '',
   });
 }
 

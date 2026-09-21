@@ -1,57 +1,117 @@
-import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/common/widgets/animations/tap_to_animate_navigate.dart' as tap_anim;
+import 'dart:async';
 
-/// A prominent card representing the collection bucket.
+import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+
+/// Navigation card for the collection bucket.
 ///
-/// Shows a large centered image (which plays an animation when tapped), with
-/// the label and a subtitle placed below the image. The whole card is
-/// tappable but the animation is handled by the image widget so it plays and
-/// then navigation is triggered after the animation completes.
+/// Tapping plays the bucket animation and opens the bucket screen. The
+/// animation is the card's personality, so it stays, but it never blocks
+/// navigation: playback starts, [navigateDelay] later the push begins, and the
+/// animation keeps running on the outgoing page while it slides away.
+///
+/// Why it is cheap. The GIF was 640x640 over 127 frames (2.0MB), drawn at
+/// 64pt: every frame decoded at about eleven times the pixels the screen can
+/// use, which was enough main-thread work to stutter the page transition. The
+/// asset is now authored at 192x192 over 64 frames (481KB, same 2.66s), and
+/// [decodePx] additionally caps decoding at display size so an oversized
+/// replacement could never reintroduce the stutter. It is precached on first
+/// build so the first tap costs no bundle read.
 class CollectionBucketButton extends StatefulWidget {
   final int itemCount;
   final VoidCallback onTap;
   final String label;
   final String imageAsset;
   final String animationAsset;
-  final bool isLottie;
-  final Duration gifDuration;
-  /// Fade duration used by the internal animation transition when the image
-  /// switches to the animation. Forwarded to [TapToAnimateNavigate].
-  final Duration fadeDuration;
-  /// Scale applied to the animation relative to the static image size.
-  /// Values > 1.0 make the animation larger than the static image.
-  final double animationScale;
+
+  /// How long the animation plays before the page push starts. Kept short: the
+  /// animation continues during the transition, so this only needs to be long
+  /// enough for the tap to register as a response. Set to [Duration.zero] to
+  /// navigate instantly.
+  final Duration navigateDelay;
 
   const CollectionBucketButton({
     super.key,
     required this.itemCount,
     required this.onTap,
-    this.label = 'COLLECTION BUCKET',
+    this.label = 'Collection Bucket',
     this.imageAsset = 'assets/images/bucket-list.png',
     this.animationAsset = 'assets/images/animations/bucket-list.gif',
-    this.isLottie = false,
-    this.gifDuration = const Duration(seconds: 1),
-    this.fadeDuration = const Duration(milliseconds: 300),
-    this.animationScale = 1,
+    this.navigateDelay = const Duration(milliseconds: 240),
   });
+
+  /// Illustration size on the card.
+  static const double imageSize = 64;
+
+  /// Decode target in physical pixels: [imageSize] at a 3x device. Bounded so
+  /// a 640x640 frame never decodes at full resolution.
+  static const int decodePx = 192;
 
   @override
   State<CollectionBucketButton> createState() => _CollectionBucketButtonState();
 }
 
 class _CollectionBucketButtonState extends State<CollectionBucketButton> {
-  final ValueNotifier<int> _trigger = ValueNotifier<int>(0);
+  bool _playing = false;
+
+  /// Changes on every tap so the GIF is rebuilt and restarts at frame 0.
+  int _playToken = 0;
+
+  Timer? _navigateTimer;
+  Timer? _resetTimer;
+  bool _precached = false;
+
+  /// Long enough to cover the delay plus the page transition, after which the
+  /// card is covered and can quietly go back to the still image.
+  static const Duration _resetAfter = Duration(milliseconds: 1200);
+
+  ImageProvider get _animationProvider => ResizeImage(
+        AssetImage(widget.animationAsset),
+        width: CollectionBucketButton.decodePx,
+        height: CollectionBucketButton.decodePx,
+      );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_precached) return;
+    _precached = true;
+    // Pull the 2MB asset into the image cache up front so the first tap is as
+    // smooth as every later one. Failure here is not worth interrupting the
+    // screen for: the tap just decodes on demand instead.
+    precacheImage(_animationProvider, context).catchError((_) {});
+  }
 
   @override
   void dispose() {
-    _trigger.dispose();
+    _navigateTimer?.cancel();
+    _resetTimer?.cancel();
     super.dispose();
   }
 
-  void _onCardTap() {
-    // trigger the animation; TapToAnimateNavigate listens for changes
-    _trigger.value = _trigger.value + 1;
+  void _handleTap() {
+    // Ignore repeat taps while a push is already queued.
+    if (_playing) return;
+
+    setState(() {
+      _playing = true;
+      _playToken++;
+    });
+
+    if (widget.navigateDelay == Duration.zero) {
+      widget.onTap();
+    } else {
+      _navigateTimer = Timer(widget.navigateDelay, () {
+        if (mounted) widget.onTap();
+      });
+    }
+
+    _resetTimer = Timer(_resetAfter, () {
+      if (mounted) setState(() => _playing = false);
+    });
   }
 
   @override
@@ -59,60 +119,40 @@ class _CollectionBucketButtonState extends State<CollectionBucketButton> {
     final theme = Theme.of(context);
     final primaryColor = theme.primaryColor;
 
-    // Make the image larger to be the main attraction; match animationScale
-    final double imageSize = BSizes.productImageSize * widget.animationScale;
-
-    return GestureDetector(
-      onTap: _onCardTap,
+    return BPressableScale(
+      onTap: _handleTap,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(
           horizontal: BSizes.md,
-          vertical: BSizes.md,
+          vertical: BSizes.spaceBtwItemsLight,
         ),
         decoration: BoxDecoration(
-          color: primaryColor.withAlpha((0.08 * 255).round()),
-          borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
+          color: primaryColor.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(BSizes.cardRadiusLg),
           border: Border.all(
-            color: primaryColor.withAlpha((0.25 * 255).round()),
-            width: 5,
-          ),
+              color: primaryColor.withValues(alpha: 0.35), width: 1.5),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(
-              width: imageSize,
-              height: imageSize,
-              child: tap_anim.TapToAnimateNavigate(
-                imageAsset: widget.imageAsset,
-                animationAsset: widget.animationAsset,
-                isLottie: widget.isLottie,
-                gifDuration: widget.gifDuration,
-                fadeDuration: widget.fadeDuration,
-                animationScale: widget.animationScale,
-                onNavigate: widget.onTap,
-                fit: BoxFit.contain,
-                externalTrigger: _trigger,
-                width: imageSize,
-                height: imageSize,
-              ),
+              width: CollectionBucketButton.imageSize,
+              height: CollectionBucketButton.imageSize,
+              child: _playing ? _animation() : _stillImage(),
             ),
-
             const SizedBox(width: BSizes.spaceBtwItems),
-
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.label,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontSize: BSizes.fontSizeLg * 1.2,
-                      fontWeight: FontWeight.w900,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: BSizes.fontSizeLg,
+                      fontWeight: FontWeight.w800,
                       color: primaryColor,
                     ),
                   ),
@@ -121,21 +161,44 @@ class _CollectionBucketButtonState extends State<CollectionBucketButton> {
                     widget.itemCount == 0
                         ? 'No items in bucket'
                         : '${widget.itemCount} item${widget.itemCount == 1 ? '' : 's'} to collect',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontSize: BSizes.fontSizeMd * 1.05,
-                      color: Colors.grey.shade600,
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: BCollectionColors.inkSecondary),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: BSizes.sm),
+            Icon(Iconsax.arrow_right_3,
+                size: 18, color: primaryColor.withValues(alpha: 0.7)),
           ],
         ),
       ),
     );
   }
+
+  Widget _stillImage() => Image.asset(
+        widget.imageAsset,
+        key: const ValueKey('bucket-still'),
+        width: CollectionBucketButton.imageSize,
+        height: CollectionBucketButton.imageSize,
+        fit: BoxFit.contain,
+        cacheWidth: CollectionBucketButton.decodePx,
+        cacheHeight: CollectionBucketButton.decodePx,
+      );
+
+  Widget _animation() => Image.asset(
+        widget.animationAsset,
+        // A new key each tap restarts the animation at its first frame.
+        key: ValueKey('bucket-anim-$_playToken'),
+        width: CollectionBucketButton.imageSize,
+        height: CollectionBucketButton.imageSize,
+        fit: BoxFit.contain,
+        cacheWidth: CollectionBucketButton.decodePx,
+        cacheHeight: CollectionBucketButton.decodePx,
+        // Hold the last painted frame while the codec spins up, so the swap
+        // from the still image never flashes empty.
+        gaplessPlayback: true,
+      );
 }
-
-
-

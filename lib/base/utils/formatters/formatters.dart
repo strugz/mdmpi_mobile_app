@@ -2,38 +2,32 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 
 class BFormatter {
-
   static String formatDate(DateTime? date) {
     date ??= DateTime.now();
     return DateFormat('MM-dd-yyyy').format(date);
   }
 
- static String formatDate2(String value) {
+  // The display formatters below all go through [parseLocal], so a server
+  // stamp carrying a 'Z' is shown in the reader's own timezone rather than in
+  // UTC. Each keeps the fallback it had: the raw value, or its first ten
+  // characters, when the string is not a date.
+
+  static String formatDate2(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) {
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) {
       return value.length >= 10 ? value.substring(0, 10) : value;
     }
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy HH:mm').format(dt);
-    } catch (_) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
+    return DateFormat('MMM d, yyyy HH:mm').format(dt);
   }
 
   static String formatDate3(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) {
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) {
       return value.length >= 10 ? value.substring(0, 10) : value;
     }
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy').format(dt);
-    } catch (_) {
-      return value.length >= 10 ? value.substring(0, 10) : value;
-    }
+    return DateFormat('MMM d, yyyy').format(dt);
   }
 
   /// Formats datetime strings to a readable form with AM/PM.
@@ -42,26 +36,17 @@ class BFormatter {
   /// to the original value on parse failure.
   static String formatDateWithAmPm(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) return value;
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy hh:mm a').format(dt);
-    } catch (_) {
-      return value;
-    }
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) return value;
+    return DateFormat('MMM d, yyyy hh:mm a').format(dt);
   }
 
   /// Time of day only, e.g. "04:31 PM". Falls back to the raw value.
   static String formatTimeAmPm(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) return value;
-    try {
-      return DateFormat('hh:mm a').format(DateTime.parse(norm));
-    } catch (_) {
-      return value;
-    }
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) return value;
+    return DateFormat('hh:mm a').format(dt);
   }
 
   /// "12:46 PM → 12:52 PM · Sep 10, 2026" when both stamps fall on the same
@@ -89,13 +74,32 @@ class BFormatter {
   ///
   /// Returns a string like `₱25,000.00`. Pass [includeSymbol] `false` to omit
   /// the `₱` prefix (e.g. when the caller prepends its own symbol).
-  static String formatPesoCurrency(double amount,
-      {bool includeSymbol = true}) {
+  static String formatPesoCurrency(double amount, {bool includeSymbol = true}) {
     return NumberFormat.currency(
       locale: 'en_PH',
       symbol: includeSymbol ? '₱' : '',
       decimalDigits: 2,
     ).format(amount);
+  }
+
+  /// Read a money amount back out of a text field.
+  ///
+  /// The inverse of [formatPesoCurrency], and the only way money fields should
+  /// be parsed. A bare `double.tryParse` returns null for anything carrying a
+  /// thousands separator, a peso sign or a stray space — and every call site
+  /// wrote `?? 0` after it, so a perfectly readable "1,000" was silently
+  /// recorded as zero. Whatever the collector can see in the field, this
+  /// reads.
+  ///
+  /// Only the first decimal point counts, so a fat-fingered "12.34.5" is 12.34
+  /// rather than 12.345: an extra keystroke must never change the magnitude.
+  static double parseAmount(String? raw) {
+    if (raw == null) return 0;
+    final sanitized = raw.replaceAll(RegExp(r'[^0-9.]'), '');
+    if (sanitized.isEmpty) return 0;
+    final parts = sanitized.split('.');
+    final cleaned = parts.length > 1 ? '${parts[0]}.${parts[1]}' : parts[0];
+    return double.tryParse(cleaned) ?? 0;
   }
 
   /// Formats a numeric value as an integer string (no decimals, no currency symbol).
@@ -187,15 +191,41 @@ class BFormatter {
     }
   }
 
+  /// Memo for [daysPastFromString], keyed by the raw string, cleared when the
+  /// calendar day turns over.
+  ///
+  /// The answer only changes once a day, but the collection lists ask for it
+  /// constantly: filtering, sorting and drawing a bucket of 4,500 invoices ran
+  /// this 4,500 times per rebuild and spent 180ms of a 188ms pass inside
+  /// DateTime.parse. Distinct due dates number in the hundreds, so the map
+  /// stays small.
+  static final Map<String, int> _daysPastCache = {};
+  static DateTime? _daysPastCacheDay;
+
   /// Parses a date string (attempting ISO / epoch forms) and returns days past due
   /// relative to now. Positive means overdue. Returns 0 for invalid input or not overdue.
   static int daysPastFromString(String? dateStr, {DateTime? now}) {
     if (dateStr == null || dateStr.isEmpty) return 0;
+    // An injected clock is a test's or a caller's own reference point, so it
+    // neither reads nor fills the cache.
+    if (now != null) return _daysPastUncached(dateStr, now);
+
+    final today = DateTime.now();
+    final day = DateTime(today.year, today.month, today.day);
+    if (_daysPastCacheDay != day) {
+      _daysPastCache.clear();
+      _daysPastCacheDay = day;
+    }
+    final hit = _daysPastCache[dateStr];
+    if (hit != null) return hit;
+    return _daysPastCache[dateStr] = _daysPastUncached(dateStr, today);
+  }
+
+  static int _daysPastUncached(String dateStr, DateTime now) {
     final norm = normalizeToIsoDatetime(dateStr);
     if (norm == null) return 0;
     try {
-      final dt = DateTime.parse(norm);
-      return daysBetweenNow(dt, now: now);
+      return daysBetweenNow(DateTime.parse(norm), now: now);
     } catch (_) {
       return 0;
     }
@@ -242,19 +272,56 @@ class BFormatter {
     return trimmed;
   }
 
+  /// A stamp as a [DateTime] in the reader's own timezone, or null when the
+  /// string is not a date at all.
+  ///
+  /// The `.toLocal()` is the whole point. The server sends ISO stamps with a
+  /// `Z`, [DateTime.parse] returns a UTC [DateTime], and both `DateFormat` and
+  /// the `.year`/`.month`/`.day` fields then read UTC values off it. At UTC+8
+  /// that printed the wrong time on every card and filed every engagement
+  /// recorded before 08:00 under the previous calendar day.
+  ///
+  /// Null, not a throw and not a fallback string: the callers that used to
+  /// swallow a parse failure silently could not tell a missing date from a
+  /// malformed one, and both were being dropped without a trace.
+  static DateTime? parseLocal(String? value) {
+    final norm = normalizeToIsoDatetime(value);
+    if (norm == null) return null;
+    try {
+      return DateTime.parse(norm).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Memo for [localDayKey], keyed by the raw stamp.
+  ///
+  /// Unlike [_daysPastCache] this never goes stale: which local day a stamp
+  /// falls on is fixed the moment the stamp is written, and does not change at
+  /// midnight. Distinct stamps over a month number in the hundreds; the cap is
+  /// only there so a long-lived session cannot grow it without bound.
+  static final Map<String, String> _localDayCache = {};
+
+  /// The local calendar day of a stamp, as `yyyy-MM-dd`. Null when the string
+  /// is not a date.
+  static String? localDayKey(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final hit = _localDayCache[value];
+    if (hit != null) return hit;
+    final dt = parseLocal(value);
+    if (dt == null) return null;
+    if (_localDayCache.length > 5000) _localDayCache.clear();
+    return _localDayCache[value] = DateFormat('yyyy-MM-dd').format(dt);
+  }
+
   /// Formats picked-up / received datetime strings to 'MMM d, yyyy hh:mm a'.
   /// Example output: "Mar 5, 2026 04:31 PM".
   /// Returns original value if parsing fails.
   static String formatPickedUpAt(String value) {
     if (value.isEmpty) return '';
-    final norm = BFormatter.normalizeToIsoDatetime(value);
-    if (norm == null) return value;
-    try {
-      final dt = DateTime.parse(norm);
-      return DateFormat('MMM d, yyyy hh:mm a').format(dt);
-    } catch (_) {
-      return value;
-    }
+    final dt = BFormatter.parseLocal(value);
+    if (dt == null) return value;
+    return DateFormat('MMM d, yyyy hh:mm a').format(dt);
   }
 }
 
@@ -264,30 +331,43 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
   final NumberFormat _intFormat = NumberFormat('#,##0', 'en_US');
 
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
     if (newValue.text.isEmpty) return newValue;
 
     // Preserve selection index later
-    final selectionIndexFromTheRight = newValue.text.length - newValue.selection.end;
+    final selectionIndexFromTheRight =
+        newValue.text.length - newValue.selection.end;
 
     // Remove all characters except digits and dot
-    final sanitized = newValue.text.replaceAll(RegExp('[^0-9\.]'), '');
+    final sanitized = newValue.text.replaceAll(RegExp(r'[^0-9.]'), '');
 
-    // If more than one dot, keep only first
+    // Keep the first decimal point and drop the rest. Joining the extra
+    // groups (the old behaviour) turned "12.34.5" into 12.345, so one stray
+    // keystroke moved the decimal place on a money field.
     final parts = sanitized.split('.');
     final intPartRaw = parts[0];
-    final decPartRaw = parts.length > 1 ? parts.sublist(1).join('') : '';
+    final decPartRaw = parts.length > 1
+        // Centavos, so two digits. Past that the extra digits are noise that
+        // would only surface as a sub-centavo mismatch somewhere later.
+        ? parts[1].substring(0, parts[1].length > 2 ? 2 : parts[1].length)
+        : '';
 
     // Format integer part with commas
     String formattedInt;
     try {
-      formattedInt = _intFormat.format(int.parse(intPartRaw.isEmpty ? '0' : intPartRaw));
+      formattedInt =
+          _intFormat.format(int.parse(intPartRaw.isEmpty ? '0' : intPartRaw));
     } catch (_) {
       // Fallback: use raw integer part
       formattedInt = intPartRaw;
     }
 
-    final newText = decPartRaw.isNotEmpty ? '$formattedInt.$decPartRaw' : formattedInt;
+    // Keyed off "was there a dot", not "are there decimals yet": testing the
+    // decimals swallowed the point the moment it was typed, so centavos could
+    // not be entered at all.
+    final newText =
+        parts.length > 1 ? '$formattedInt.$decPartRaw' : formattedInt;
 
     // Recalculate selection
     final selectionIndex = newText.length - selectionIndexFromTheRight;

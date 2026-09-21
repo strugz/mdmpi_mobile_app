@@ -22,6 +22,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 
 import '../helpers/pull_out_filter_manager.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Request screen displaying different request form categories in a tabbed carousel interface.
 /// Uses RequestController for all business logic and state management.
@@ -145,9 +146,10 @@ class _RequestScreenState extends State<RequestScreen>
             lowerName.contains('receive');
 
     if (!isStandardDelivery && !isPullOut && !isPickUp && !isAirSea && !isHotlineDirect && !isStockReceive) {
-      Get.snackbar(
-        'Custom Filter',
-        'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, Air / Sea / Land, Hotline Direct, and Stock Receive only.',
+      BLoaders.warningSnackBar(
+        title: 'Custom Filter',
+        message:
+            'Custom filters are available for Standard Delivery, Pull Out / Return, Pick Up, Air / Sea / Land, Hotline Direct, and Stock Receive only.',
       );
       return;
     }

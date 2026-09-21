@@ -285,11 +285,21 @@ Displays:
 
 - actual collection total card
 - total collected card
-- collection bucket button
+- summary grid (Settled, Due Date, Reconciliation, Advanced Payment): four
+  counts two by two, all visible at once, each opening its category
+  (`home/widgets/collection_summary_grid.dart`). These were carousel pages —
+  118pt of screen for one integer, the other three behind swipes — until it
+  was clear a scoreboard is read at a glance, not browsed.
 - summary cards (Settled, Due Date, Reconciliation, Advanced Payment)
-- recent activity section
+- recent activity section: the seven most recent engagement entries in the same mirror carousel (`lib/common/widgets/animations/mirror_carousel.dart`); Show All has the rest
 
 ### Bucket screen
+
+The bucket uses the same `ActivityFilter` as the engagement list, held as
+`bucketFilterSpec`, with the same sheet and `QuickFilterBar`. Two differences:
+it defaults to `ActivitySort.name` because the bucket is a catalogue people
+scan alphabetically, and the area lives on `selectedArea` because the toolbar's
+own "All areas" chip owns it, so the quick bar there offers no area chips.
 - `presentation/pages/bucket/collection_bucket_screen.dart`
 
 Represents the main assignment and review queue.
@@ -302,6 +312,30 @@ Used for:
 - multi-select claim workflow
 
 ### Activity screen
+
+Filtering and sort are one value, `ActivityFilter` (`models/activity_filter.dart`),
+held by the controller as `activityFilterSpec`. It covers four groups:
+
+- **Due**: any, due in 7 days, overdue, late 30+, late 1 year+ (from `dueDate`).
+- **Amount due**: preset bands rather than a slider (from `toBeCollected`).
+- **Area**: territory prefix of the client code, via `BCollectionArea`; only
+  areas present in the engaged items are offered.
+- **Sort**: most overdue, amount high to low, amount low to high, most
+  invoices, fewest invoices, longest since visit, account name. The two
+  invoice-count orders are account-level (`ActivitySort.isAccountLevel`): the
+  count belongs to the account, so the controllers order by it directly and
+  `compare` falls back to the default order inside one account.
+
+The filter applies to both the account list and each account's invoice list, so
+opening an account shows the invoices that put it on the list. The sheet
+(`ActivityFilterSheet`) edits a draft and its apply button carries a live count;
+a `QuickFilterBar` under the search bar carries the presets reached for every
+morning (overdue, late 30+, amount, invoice count, each area) as one-tap chips.
+The two order chips carry both directions: a first tap sorts descending, a
+second flips to ascending, a third returns to the screen's own `defaultSort`
+(most overdue on the engagement list, account name in the bucket). The bar also
+shows anything set only in the sheet as a removable chip, so there is one place
+to see and undo what is filtering the list. Nothing here needs an API change.
 - `presentation/pages/activity/activity.dart`
 
 Represents the post-claim workflow and includes:
@@ -323,6 +357,22 @@ Used for monthly analytics by type:
 
 - `Collection`
 - `Deposit`
+
+## 8.1 Theme
+
+Collection has its own theme, `BCollectionTheme.light`, applied for the whole
+session by `BCollectionTheme.applyFor(department)` (called from `AppRouter` and
+again whenever `UserController.user` changes). Tokens live in
+`BCollectionColors` (`helpers/collection_theme.dart`). Rules:
+
+- Off-white body (`background`), white cards with no border at rest.
+- One accent (`primary`) per screen: the primary button, selection, active dot.
+- Status colours (`success`, `warning`, `danger`, `info`, `reconcile`,
+  `neutral`) appear on badges and the invoice stripe only, never on body text.
+- Text is `ink` / `inkSecondary` / `inkMuted`. Amounts are ink, green only
+  when settled.
+- Collection code references `BCollectionColors`, not `BColors`, so the
+  department can be re-themed in one file.
 
 ## 9. Backend handoff expectations
 

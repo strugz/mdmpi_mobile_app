@@ -28,6 +28,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/item_category_reposito
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../data/models/realtime_location_model.dart';
 import '../../../data/repositories/image/image_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Manages Air/Sea request data operations and orchestrates business logic.
 /// Handles CRUD operations, status updates, form validation, and data synchronization
@@ -75,19 +76,20 @@ class AirSeaDataManager {
   /// [controller] The Air/Sea controller to update with fetched data
   /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
   /// [forceRefresh] If true, forces fetching from API regardless of useLocalStorage
-  Future<void> fetchAirSeaRequests(
-      AirSeaController controller, bool useLocalStorage) async {
+  Future<void> fetchAirSeaRequests(AirSeaController controller,
+      bool useLocalStorage,
+      {RequestDateScope scope = RequestDateScope.all}) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
     try {
       List<AirSeaModel> results;
       if (!useLocalStorage) {
-        results = await _repository.getAll(forceRefresh: true);
+        results = await _repository.getAll(forceRefresh: true, scope: scope);
       } else {
         results = await _repository.getLocalAirSeaRequests();
         if (results.isEmpty) {
-          results = await _repository.getAll();
+          results = await _repository.getAll(scope: scope);
         } else {
           logDebug(
               'AirSeaDataManager: Loaded ${results.length} items from local DB');
@@ -98,6 +100,7 @@ class AirSeaDataManager {
       // the rows matching its scope (legacy NULL rows belong to the base tab).
       controller.airSeaRequests.assignAll(
           results.where((r) => controller.scope.matches(r.formCategoryID)));
+      controller.loadedDateScope = scope;
 
       controller.filterManager.applyFilter(controller.airSeaRequests.toList());
     } catch (e) {
@@ -380,7 +383,10 @@ class AirSeaDataManager {
                 formState.receivedByController.text.isNotEmpty)
             ? formState.receivedByController.text
             : (request.receivedBy.isEmpty ? userInitial : request.receivedBy),
-        waybillNumber: newStatus == BTexts.statusReceived &&
+        // Captured on two branches: Received (Release lane) and Drop Off
+        // (courier lane) — the latter so the Drop Off SMS can print it.
+        waybillNumber: (newStatus == BTexts.statusReceived ||
+                    newStatus == BTexts.statusDropOff) &&
                 formState.waybillNumberController.text.isNotEmpty
             ? formState.waybillNumberController.text
             : request.waybillNumber,
@@ -774,6 +780,18 @@ class AirSeaDataManager {
     }
 
     if (newStatus == BTexts.statusDropOff) {
+      // The courier lane never passes through Received, so the waybill is
+      // captured here, right before Drop Off — the Drop Off SMS prints it.
+      final waybill = request.waybillNumber.trim().isNotEmpty
+          ? request.waybillNumber
+          : formState.waybillNumberController.text;
+      if (waybill.trim().isEmpty) {
+        BLoaders.errorSnackBar(
+          title: 'Validation Error',
+          message: 'Please enter Waybill Number',
+        );
+        return false;
+      }
       if (!_validateNamedSignature(
         name: request.receivedBy.trim().isNotEmpty
             ? request.receivedBy

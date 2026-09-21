@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
-/// A small reusable card used on collection home to show a KPI/value.
+/// A small KPI tile used on the collection home grid.
+///
+/// Colour carries the category, so the type can stay modest: a 12pt label
+/// that may wrap to two lines (never truncates) and a 24pt value.
 class CollectionSummaryCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
   final Color color;
+
   /// When true the card will expand to occupy available width. Set to false
   /// when placing cards horizontally inside a Row.
   final bool expand;
@@ -24,44 +30,62 @@ class CollectionSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = color.withAlpha((0.08 * 255).round());
+    final theme = Theme.of(context);
 
-    return GestureDetector(
+    return BPressableScale(
       onTap: onTap,
       child: Container(
-        // Respect `expand` when used inside a Row. If not expanding, let the
-        // width be null so the parent (e.g., Expanded) controls sizing.
         width: expand ? double.infinity : null,
-        padding: const EdgeInsets.all(BSizes.defaultSpace / 2),
+        // Tight, because four of these sit two-by-two and the block competes
+        // with the work below it for the fold. The figures are counts, rarely
+        // more than four digits, so they do not need a card's worth of room.
+        padding: const EdgeInsets.symmetric(
+            horizontal: BSizes.spaceBtwItemsLight, vertical: BSizes.sm),
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(12),
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 25),
-                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 1),
+                  child: Icon(icon, color: color, size: 15),
+                ),
+                const SizedBox(width: BSizes.xs),
                 Expanded(
                   child: Text(
                     title,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    // Every label fits one line at half the card width; two
+                    // are allowed so a large system text size wraps rather
+                    // than truncating a category name.
+                    maxLines: 2,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: BCollectionColors.inkSecondary,
+                      fontSize: 11,
+                      height: 1.2,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: BSizes.fontSizeLg * 1.5,
-                  ),
+            const SizedBox(height: BSizes.xs),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                  height: 1.1,
+                ),
+              ),
             ),
           ],
         ),

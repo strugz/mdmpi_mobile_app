@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
@@ -9,22 +10,23 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_control
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/dashboard_aggregator.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/dashboard_data_source.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/dashboard_bucket_config.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/dashboard_date_filter.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Controller for the Home activity dashboard, aggregating all six request
 /// modules (Standard Delivery, Pull Out, Pick Up, Air/Sea, Hotline Direct,
 /// Stock Receive) into filterable counts.
 ///
 /// Architecture:
-/// - Sources data from the existing module controllers (which own caching and
-///   local-DB-first loading); a controller that cannot be resolved (e.g.
-///   desktop without Firebase-backed repositories) is treated as an empty
-///   module instead of crashing.
+/// - Reads its numbers from the local SQLite cache via [DashboardDataSource],
+///   so opening Home costs no network calls while the cache is fresh. A full
+///   server snapshot is fetched only when the cache is older than
+///   [DashboardDataSource.staleAfter] or on pull-to-refresh.
+/// - Watches whichever module controllers are already alive and re-reads the
+///   cache when their lists change, so a status update on a tab shows on Home
+///   without a fetch. It never instantiates a controller just to watch it.
 /// - Normalizes every request into [DashboardEntry]; all counting/filtering
 ///   is delegated to the pure [DashboardAggregator].
 class DashboardController extends GetxController {
@@ -43,6 +45,8 @@ class DashboardController extends GetxController {
   StockReceiveController? _stockReceive;
 
   final List<Worker> _workers = [];
+  final Set<Type> _watched = <Type>{};
+  final DashboardDataSource _source = DashboardDataSource();
 
   // ========================================================================
   // FILTER STATE
@@ -61,6 +65,10 @@ class DashboardController extends GetxController {
   final RxList<DashboardEntry> entries = <DashboardEntry>[].obs;
 
   final RxBool isRefreshing = false.obs;
+
+  /// True until the first cache read completes, so Home can show a skeleton
+  /// instead of a misleading zero.
+  final RxBool isLoading = true.obs;
 
   // ========================================================================
   // COMPUTED PROPERTIES
@@ -118,23 +126,46 @@ class DashboardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _standardDelivery = _tryFind<StandardDeliveryController>();
-    _hotlineDirect = _tryFind<HotlineDirectController>();
-    _pullOut = _tryFind<PullOutController>();
-    _pickUp = _tryFind<PickUpController>();
-    _airSea = _tryFind<AirSeaController>();
-    _airSeaHd = _tryFind<AirSeaHdController>();
-    _stockReceive = _tryFind<StockReceiveController>();
+    _bindLiveSources();
+    unawaited(_start());
+  }
 
-    _watch(_standardDelivery?.allPendingRequests);
-    _watch(_hotlineDirect?.allPendingRequests);
-    _watch(_pullOut?.pullOuts);
-    _watch(_pickUp?.pickUps);
-    _watch(_airSea?.airSeaRequests);
-    _watch(_airSeaHd?.airSeaRequests);
-    _watch(_stockReceive?.stockReceives);
+  Future<void> _start() async {
+    // Cache first: Home renders instantly and costs no network while fresh.
+    try {
+      await _reloadFromCache();
+    } finally {
+      isLoading.value = false;
+    }
+    // Then a full snapshot, but only if the cache has gone stale.
+    final synced = await _source.syncIfStale(_loadFullHistory);
+    if (synced) {
+      _bindLiveSources();
+      await _reloadFromCache();
+    }
+  }
 
-    _rebuildEntries();
+  /// Watch every module controller that is already alive, once each.
+  ///
+  /// Uses `Get.isRegistered`, never `Get.find`, so the dashboard does not
+  /// instantiate seven controllers (and their fetches) just to observe them.
+  /// Called again after a full sync, which does instantiate them.
+  void _bindLiveSources() {
+    _standardDelivery ??= _tryFind<StandardDeliveryController>();
+    _hotlineDirect ??= _tryFind<HotlineDirectController>();
+    _pullOut ??= _tryFind<PullOutController>();
+    _pickUp ??= _tryFind<PickUpController>();
+    _airSea ??= _tryFind<AirSeaController>();
+    _airSeaHd ??= _tryFind<AirSeaHdController>();
+    _stockReceive ??= _tryFind<StockReceiveController>();
+
+    _watch(StandardDeliveryController, _standardDelivery?.allPendingRequests);
+    _watch(HotlineDirectController, _hotlineDirect?.allPendingRequests);
+    _watch(PullOutController, _pullOut?.pullOuts);
+    _watch(PickUpController, _pickUp?.pickUps);
+    _watch(AirSeaController, _airSea?.airSeaRequests);
+    _watch(AirSeaHdController, _airSeaHd?.airSeaRequests);
+    _watch(StockReceiveController, _stockReceive?.stockReceives);
   }
 
   @override
@@ -146,7 +177,19 @@ class DashboardController extends GetxController {
     super.onClose();
   }
 
+  /// The controller if it already exists; never creates one.
   T? _tryFind<T>() {
+    if (!Get.isRegistered<T>()) return null;
+    try {
+      return Get.find<T>();
+    } catch (e) {
+      logDebug('DashboardController: $T unavailable: $e');
+      return null;
+    }
+  }
+
+  /// Resolve-or-create, used only by the full sync which needs every module.
+  T? _findOrCreate<T>() {
     try {
       return Get.find<T>();
     } catch (e) {
@@ -155,9 +198,12 @@ class DashboardController extends GetxController {
     }
   }
 
-  void _watch<T>(RxList<T>? source) {
-    if (source == null) return;
-    _workers.add(ever<List<T>>(source, (_) => _rebuildEntries()));
+  void _watch<T>(Type owner, RxList<T>? source) {
+    if (source == null || _watched.contains(owner)) return;
+    _watched.add(owner);
+    // Every write path updates SQLite before it patches its Rx list, so
+    // re-reading the cache here sees the change.
+    _workers.add(ever<List<T>>(source, (_) => unawaited(_reloadFromCache())));
   }
 
   // ========================================================================
@@ -184,23 +230,53 @@ class DashboardController extends GetxController {
   // DATA
   // ========================================================================
 
-  /// Re-fetch every module's requests (e.g. pull-to-refresh).
+  /// Pull-to-refresh: force a full snapshot, then re-read the cache.
   Future<void> refreshDashboard() async {
     if (isRefreshing.value) return;
     isRefreshing.value = true;
     try {
-      await Future.wait([
-        _guarded('standardDelivery', _standardDelivery?.loadRequests),
-        _guarded('hotlineDirect', _hotlineDirect?.loadRequests),
-        _guarded('pullOut', _pullOut?.loadPullOuts),
-        _guarded('pickUp', _pickUp?.loadPickUps),
-        _guarded('airSea', _airSea?.loadAirSeaRequests),
-        _guarded('airSeaHd', _airSeaHd?.loadAirSeaRequests),
-        _guarded('stockReceive', _stockReceive?.loadStockReceives),
-      ]);
+      await _source.syncIfStale(_loadFullHistory, force: true);
+      _bindLiveSources();
     } finally {
       isRefreshing.value = false;
-      _rebuildEntries();
+      await _reloadFromCache();
+    }
+  }
+
+  /// Load every module's full history through its controller, so each
+  /// repository refreshes the SQLite cache the dashboard reads.
+  ///
+  /// This is the one place the dashboard instantiates controllers. It counts
+  /// by year and month, so it always needs the full history, never a tab's
+  /// scoped (e.g. Today-only) load. Each tab's own client-side filter still
+  /// narrows what it displays.
+  Future<void> _loadFullHistory() async {
+    _standardDelivery ??= _findOrCreate<StandardDeliveryController>();
+    _hotlineDirect ??= _findOrCreate<HotlineDirectController>();
+    _pullOut ??= _findOrCreate<PullOutController>();
+    _pickUp ??= _findOrCreate<PickUpController>();
+    _airSea ??= _findOrCreate<AirSeaController>();
+    _airSeaHd ??= _findOrCreate<AirSeaHdController>();
+    _stockReceive ??= _findOrCreate<StockReceiveController>();
+
+    {
+      const scope = RequestDateScope.all;
+      await Future.wait([
+        _guarded('standardDelivery',
+            () => _standardDelivery?.loadForScope(scope) ?? Future.value()),
+        _guarded('hotlineDirect',
+            () => _hotlineDirect?.loadForScope(scope) ?? Future.value()),
+        _guarded(
+            'pullOut', () => _pullOut?.loadForScope(scope) ?? Future.value()),
+        _guarded(
+            'pickUp', () => _pickUp?.loadForScope(scope) ?? Future.value()),
+        _guarded(
+            'airSea', () => _airSea?.loadForScope(scope) ?? Future.value()),
+        _guarded('airSeaHd',
+            () => _airSeaHd?.loadForScope(scope) ?? Future.value()),
+        _guarded('stockReceive',
+            () => _stockReceive?.loadForScope(scope) ?? Future.value()),
+      ]);
     }
   }
 
@@ -213,69 +289,12 @@ class DashboardController extends GetxController {
     }
   }
 
-  /// Rebuild the normalized entry list from all resolved source controllers.
-  void _rebuildEntries() {
-    final result = <DashboardEntry>[];
-
-    for (final request
-        in _standardDelivery?.allPendingRequests ?? const <StandardDeliveryModel>[]) {
-      result.add(DashboardEntry(
-        module: FormCategoryType.standardDelivery,
-        status: request.status,
-        date: DashboardAggregator.tryParseDate(request.deliveryDate) ??
-            DashboardAggregator.tryParseDate(request.createdAt),
-      ));
+  /// Re-read every cached request and rebuild the normalized entry list.
+  Future<void> _reloadFromCache() async {
+    try {
+      entries.assignAll(await _source.loadFromCache());
+    } catch (e) {
+      logDebug('DashboardController: cache read failed: $e');
     }
-    for (final request
-        in _hotlineDirect?.allPendingRequests ?? const <StandardDeliveryModel>[]) {
-      result.add(DashboardEntry(
-        module: FormCategoryType.hotlineDirect,
-        status: request.status,
-        date: DashboardAggregator.tryParseDate(request.deliveryDate) ??
-            DashboardAggregator.tryParseDate(request.createdAt),
-      ));
-    }
-    for (final request in _pullOut?.pullOuts ?? const <PullOutModel>[]) {
-      result.add(DashboardEntry(
-        module: FormCategoryType.pullOutReturn,
-        status: request.requestStatus,
-        date: DashboardAggregator.tryParseDate(request.pullOutDate) ??
-            DashboardAggregator.tryParseDate(request.createdAt),
-      ));
-    }
-    for (final request in _pickUp?.pickUps ?? const <PickUpModel>[]) {
-      result.add(DashboardEntry(
-        module: FormCategoryType.pickUp,
-        status: request.status,
-        date: DashboardAggregator.tryParseDate(request.datePickUp) ??
-            DashboardAggregator.tryParseDate(request.createdAt),
-      ));
-    }
-    for (final request in _airSea?.airSeaRequests ?? const <AirSeaModel>[]) {
-      result.add(DashboardEntry(
-        module: FormCategoryType.airSea,
-        status: request.status,
-        date: DashboardAggregator.tryParseDate(request.datePickUp) ??
-            DashboardAggregator.tryParseDate(request.createdAt),
-      ));
-    }
-    for (final request in _airSeaHd?.airSeaRequests ?? const <AirSeaModel>[]) {
-      result.add(DashboardEntry(
-        module: FormCategoryType.airSeaHd,
-        status: request.status,
-        date: DashboardAggregator.tryParseDate(request.datePickUp) ??
-            DashboardAggregator.tryParseDate(request.createdAt),
-      ));
-    }
-    for (final request in _stockReceive?.stockReceives ?? const <PullOutModel>[]) {
-      result.add(DashboardEntry(
-        module: FormCategoryType.stockReceive,
-        status: request.requestStatus,
-        date: DashboardAggregator.tryParseDate(request.pullOutDate) ??
-            DashboardAggregator.tryParseDate(request.createdAt),
-      ));
-    }
-
-    entries.assignAll(result);
   }
 }

@@ -10,15 +10,19 @@ class BPrimaryHeaderContainer extends StatelessWidget {
   const BPrimaryHeaderContainer({
     super.key,
     required this.child,
+    this.color = BColors.primary,
   });
 
   final Widget child;
+
+  /// Fill colour. Departments with their own theme pass their header colour.
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return BCurvedEdgeWidget(
       child: Container(
-        color: BColors.primary,
+        color: color,
         padding: const EdgeInsets.all(0),
         child: SizedBox(
           child: Stack(

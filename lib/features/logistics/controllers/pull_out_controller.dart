@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -11,6 +12,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_fi
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_data_manager.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Controller for managing pull-out requests state and operations.
 class PullOutController extends GetxController
@@ -31,6 +33,13 @@ class PullOutController extends GetxController
   /// - true: Use local database (offline-first approach)
   /// - false: Fetch directly from API/server (default)
   final RxBool useLocalStorage = false.obs;
+
+  /// Wire date scope the in-memory list was last loaded with.
+  RequestDateScope? loadedDateScope;
+
+  /// Wire scope required by the currently selected date filter.
+  RequestDateScope get activeScope =>
+      RequestDateScope.fromFilter(filterManager.selectedFilter.value);
 
   /// Last error message, if any.
   final RxnString errorMessage = RxnString();
@@ -66,7 +75,10 @@ class PullOutController extends GetxController
     formState = PullOutFormState();
     formState.initializeDefaultDate();
     dataManager.loadCategories(this);
-    dataManager.fetchPullOuts(this, useLocalStorage.value);
+    // Deliberately no fetch here. Whoever shows this tab drives the load:
+    // the Request screen loads the selected date filter only, and the Home
+    // dashboard loads the full history it needs for its year/month counts.
+    // Fetching here as well would race those two through the isLoading guard.
 
     userController = Get.find<UserController>();
     createdBy = userController.user.value.initial;
@@ -80,9 +92,14 @@ class PullOutController extends GetxController
     filterManager.selectStatusFilter(statusFilter, pullOuts);
   }
 
-  /// Update date filter.
+  /// Applies [filter] immediately, then re-fetches only when the new filter
+  /// needs a wider date range than what is currently loaded (e.g. Today ->
+  /// All). Narrowing (All -> Today) needs no network call.
   void selectDateFilter(RequestFilter filter) {
     filterManager.selectFilter(filter, pullOuts);
+    if (!shouldRefetch(loadedDateScope, filter)) return;
+    unawaited(loadPullOuts().then(
+        (_) => filterManager.applyFilter(pullOuts.toList())));
   }
 
   void selectDateFrom(DateTime? date) {
@@ -105,9 +122,17 @@ class PullOutController extends GetxController
     filterManager.setDocumentReferenceQuery(query, pullOuts);
   }
 
-  /// Fetch all pull-out requests from repository.
+  /// Loads pull-outs for the currently selected date filter.
   Future<void> loadPullOuts() async {
-    await dataManager.fetchPullOuts(this, useLocalStorage.value);
+    await loadForScope(activeScope);
+  }
+
+  /// Loads pull-outs for an explicit [scope], bypassing the selected filter.
+  ///
+  /// Used by the Home dashboard, which needs the full history for its
+  /// year/month counts regardless of what this tab is filtered to.
+  Future<void> loadForScope(RequestDateScope scope) async {
+    await dataManager.fetchPullOuts(this, useLocalStorage.value, scope);
   }
 
   Future<void> hardResetPullOuts() async {

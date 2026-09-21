@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../../../../base/utils/constants/colors.dart';
 import '../../../../../base/utils/logger.dart';
 import '../../../controllers/request_transport_controller.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Widget for displaying route loading overlay with auto-retry functionality
 class RouteLoadingOverlay extends StatefulWidget {
@@ -71,12 +72,11 @@ class _RouteLoadingOverlayState extends State<RouteLoadingOverlay> {
   void _showMaxRetriesReached() {
     logDebug('❌ Max retries reached ($_maxRetries attempts)');
 
-    Get.snackbar(
-      'Route Loading Failed',
-      'Unable to load route after $_maxRetries attempts. Please check your internet connection and try again.',
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 5),
+    BLoaders.errorSnackBar(
+      title: 'Route Loading Failed',
+      message:
+          'Unable to load route after $_maxRetries attempts. Please check your internet connection and try again.',
+      duration: 5,
     );
   }
 

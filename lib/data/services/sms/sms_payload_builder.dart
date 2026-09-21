@@ -149,6 +149,7 @@ class SmsPayloadBuilder {
       completionStatusLabel: _resolveAirSeaCompletionStatusLabel(status),
       inventoryItems: const [],
       dispatchAt: model.dispatchedAt,
+      waybillNumber: model.waybillNumber,
     );
   }
 

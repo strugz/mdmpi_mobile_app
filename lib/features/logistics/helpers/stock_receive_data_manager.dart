@@ -22,6 +22,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../data/repositories/image/image_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Manager for Stock Receive domain orchestration (save/update flows).
 ///
@@ -295,7 +296,8 @@ class StockReceiveDataManager {
   /// [controller] The Stock Receive controller to update with fetched data
   /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
   Future<void> fetchStockReceives(dynamic controller,
-      [bool useLocalStorage = true]) async {
+      [bool useLocalStorage = true,
+      RequestDateScope scope = RequestDateScope.all]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -306,14 +308,14 @@ class StockReceiveDataManager {
         // Force API fetch by passing forceRefresh: true
         logDebug(
             'StockReceiveDataManager: Fetching from API (useLocalStorage=false, forcing refresh)');
-        results = await _repository.getAll(forceRefresh: true);
+        results = await _repository.getAll(forceRefresh: true, scope: scope);
       } else {
         logDebug('StockReceiveDataManager: Fetching from local DB first');
         results = await _repository.getLocalPullOuts();
         if (results.isEmpty) {
           logDebug(
               'StockReceiveDataManager: Local DB empty, fetching from API');
-          results = await _repository.getAll();
+          results = await _repository.getAll(scope: scope);
         } else {
           logDebug(
               'StockReceiveDataManager: Loaded ${results.length} items from local DB');
@@ -326,6 +328,7 @@ class StockReceiveDataManager {
 
       (controller.stockReceives as RxList<PullOutModel>)
           .assignAll(stockReceiveRequests);
+      controller.loadedDateScope = scope;
       logDebug(
           'StockReceiveDataManager: Assigned ${stockReceiveRequests.length} Stock Receive requests to controller');
 

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/icon_label_chip.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// A card representing a single collection bucket item.
 ///
@@ -34,20 +34,22 @@ class BucketItemCard extends StatelessWidget {
         padding: const EdgeInsets.all(BSizes.md),
         decoration: BoxDecoration(
           color: isSelected
-              ? BColors.primary.withValues(alpha: 0.08)
+              ? BCollectionColors.primary.withValues(alpha: 0.08)
               : dark
-                  ? BColors.darkerGrey.withValues(alpha: 0.3)
-                  : BColors.white,
+                  ? BCollectionColors.inkSecondary.withValues(alpha: 0.3)
+                  : BCollectionColors.surface,
           borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
           border: Border.all(
-            color: isSelected ? BColors.primary : BColors.grey,
+            color: isSelected
+                ? BCollectionColors.primary
+                : BCollectionColors.outline,
             width: isSelected ? 1.5 : 1,
           ),
           boxShadow: dark
               ? null
               : [
                   BoxShadow(
-                    color: BColors.darkGrey.withValues(alpha: 0.06),
+                    color: BCollectionColors.inkMuted.withValues(alpha: 0.06),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -63,14 +65,18 @@ class BucketItemCard extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isSelected ? BColors.primary : Colors.transparent,
+                color:
+                    isSelected ? BCollectionColors.primary : Colors.transparent,
                 border: Border.all(
-                  color: isSelected ? BColors.primary : BColors.darkGrey,
+                  color: isSelected
+                      ? BCollectionColors.primary
+                      : BCollectionColors.inkMuted,
                   width: 2,
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check, size: 16, color: BColors.white)
+                  ? const Icon(Icons.check,
+                      size: 16, color: BCollectionColors.surface)
                   : null,
             ),
 
@@ -97,7 +103,8 @@ class BucketItemCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Iconsax.location,
-                          size: BSizes.iconSm, color: BColors.darkGrey),
+                          size: BSizes.iconSm,
+                          color: BCollectionColors.inkMuted),
                       const SizedBox(width: BSizes.xs),
                       Expanded(
                         child: Text(
@@ -105,7 +112,7 @@ class BucketItemCard extends StatelessWidget {
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
-                              ?.copyWith(color: BColors.darkGrey),
+                              ?.copyWith(color: BCollectionColors.inkMuted),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -133,7 +140,8 @@ class BucketItemCard extends StatelessWidget {
                             vertical: BSizes.xxs,
                           ),
                           decoration: BoxDecoration(
-                            color: BColors.primary.withValues(alpha: 0.1),
+                            color: BCollectionColors.primary
+                                .withValues(alpha: 0.1),
                             borderRadius:
                                 BorderRadius.circular(BSizes.borderRadiusSm),
                           ),
@@ -143,7 +151,7 @@ class BucketItemCard extends StatelessWidget {
                                 .textTheme
                                 .labelSmall
                                 ?.copyWith(
-                                  color: BColors.primary,
+                                  color: BCollectionColors.primary,
                                   fontWeight: FontWeight.w600,
                                 ),
                           ),
@@ -163,15 +171,21 @@ class BucketItemCard extends StatelessWidget {
                         children: [
                           Text(
                             'To be Collected',
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: BColors.darkGrey,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: BCollectionColors.inkMuted,
                                 ),
                           ),
                           Text(
                             BFormatter.formatPesoCurrency(item.toBeCollected),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: BColors.primary,
+                                  color: BCollectionColors.primary,
                                 ),
                           ),
                         ],
@@ -179,7 +193,7 @@ class BucketItemCard extends StatelessWidget {
                       Text(
                         item.documentDate,
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: BColors.darkGrey,
+                              color: BCollectionColors.inkMuted,
                             ),
                       ),
                     ],
@@ -191,7 +205,7 @@ class BucketItemCard extends StatelessWidget {
                     Text(
                       item.remarks,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: BColors.darkGrey,
+                            color: BCollectionColors.inkMuted,
                             fontStyle: FontStyle.italic,
                           ),
                       maxLines: 1,
@@ -206,6 +220,4 @@ class BucketItemCard extends StatelessWidget {
       ),
     );
   }
-
 }
-

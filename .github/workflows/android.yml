@@ -1,0 +1,81 @@
+name: Build & Release Android APK
+
+on:
+  workflow_dispatch: # Enables manual run button in GitHub Actions UI
+  push:
+    tags:
+      - 'v*' # Triggers when you push a tag like v1.0.0
+# ADD THIS PERMISSIONS BLOCK HERE
+permissions:
+  contents: write
+  
+jobs:
+  build-and-release:
+    name: Build & Publish Release
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repository code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Set up Java JDK 17
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      # 3. Set up Flutter environment
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # 4. Get Flutter Dependencies
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # 5. Decode Android Keystore from Secrets
+      - name: Decode Android Keystore
+        run: |
+          echo "${{ secrets.MDMPIAPP }}" | base64 --decode > android/app/mdmpi-app-keystore.jks
+
+      # 6. Generate .env File Dynamically
+      - name: Create .env File
+        run: |
+          touch .env
+          echo "API_URL=${{ secrets.API_URL }}" >> .env
+          echo "API4_URL=${{ secrets.API4_URL }}" >> .env
+          echo "API_KEY=${{ secrets.API_KEY }}" >> .env
+          echo "AI_TOOLKIT_GOOGLE_URL=${{ secrets.AI_TOOLKIT_GOOGLE_URL }}" >> .env
+          echo "AI_TOOLKIT_MODEL=${{ secrets.AI_TOOLKIT_MODEL }}" >> .env
+          echo "AI_TOOLKIT_API_KEY=${{ secrets.AI_TOOLKIT_API_KEY }}" >> .env
+          echo "AI_TOOLKIT_AUTH_TYPE=${{ secrets.AI_TOOLKIT_AUTH_TYPE }}" >> .env
+          echo "AI_TOOLKIT_PROVIDER=${{ secrets.AI_TOOLKIT_PROVIDER }}" >> .env
+          echo "AI_PROMPT=${{ secrets.AI_PROMPT }}" >> .env
+          echo "USE_GOOGLE_GENERATIVE=${{ secrets.USE_GOOGLE_GENERATIVE }}" >> .env
+
+      # 7. Build Signed Release APK
+      - name: Build Signed Release APK
+        run: flutter build apk --release
+        env:
+          KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }} # Corrected relative path from root
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      # 8. Publish to GitHub Releases
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/app-release.apk
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.1.106' }}
+          name: ${{ github.ref_type == 'tag' && github.ref_name || 'Release v1.1.106' }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

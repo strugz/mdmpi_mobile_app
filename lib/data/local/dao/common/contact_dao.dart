@@ -37,6 +37,23 @@ class ContactDao {
         .toList();
   }
 
+  /// Phone numbers for contacts tagged with [department] (case-insensitive).
+  /// Used to resolve Collection SMS recipients.
+  Future<List<String>> getPhoneNumbersByDepartment(String department) async {
+    final rows = await db.query(
+      'contacts',
+      columns: ['contact_number'],
+      where: 'LOWER(department) = ?',
+      whereArgs: [department.toLowerCase()],
+      orderBy: 'created_at DESC',
+    );
+
+    return rows
+        .map((row) => (row['contact_number'] ?? '').toString().trim())
+        .where((phoneNumber) => phoneNumber.isNotEmpty)
+        .toList();
+  }
+
   Future<int> deleteById(int id) async {
     return db.delete(
       'contacts',

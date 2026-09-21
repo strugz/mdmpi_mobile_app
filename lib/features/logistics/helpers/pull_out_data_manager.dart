@@ -27,6 +27,7 @@ import 'package:mdmpi_mobile_app/data/repositories/common/form_category_reposito
 import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart';
 import '../../../data/repositories/image/image_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 
 /// Manager for Pull-Out domain orchestration (save/update flows).
 class PullOutDataManager {
@@ -342,7 +343,8 @@ class PullOutDataManager {
   /// [controller] The pull-out controller to update with fetched data
   /// [useLocalStorage] If true, prefer local DB; if false, fetch directly from API
   Future<void> fetchPullOuts(PullOutController controller,
-      [bool useLocalStorage = true]) async {
+      [bool useLocalStorage = true,
+      RequestDateScope scope = RequestDateScope.all]) async {
     if (controller.isLoading.value) return;
     controller.isLoading.value = true;
     controller.errorMessage.value = null;
@@ -350,11 +352,11 @@ class PullOutDataManager {
       List<PullOutModel> results;
 
       if (!useLocalStorage) {
-        results = await _repository.getAll(forceRefresh: true);
+        results = await _repository.getAll(forceRefresh: true, scope: scope);
       } else {
         results = await _repository.getLocalPullOuts();
         if (results.isEmpty) {
-          results = await _repository.getAll();
+          results = await _repository.getAll(scope: scope);
         } else {
           logDebug(
               'PullOutDataManager: Loaded ${results.length} items from local DB');
@@ -365,6 +367,7 @@ class PullOutDataManager {
           results.where((r) => r.formCategoryId == FormCategoryIds.pullOutReturn).toList();
 
       controller.pullOuts.assignAll(pullOutsRequests);
+      controller.loadedDateScope = scope;
 
       controller.filterManager.applyFilter(controller.pullOuts.toList());
     } catch (e) {

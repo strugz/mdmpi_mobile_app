@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/helper_functions.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/scanner/simple_text_scanner.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
 /// Full-screen editor for document references.
 ///
@@ -67,10 +68,10 @@ class DocumentReferenceScreen extends StatelessWidget {
                             }
                             if (result.isEmpty) {
                               // No matches found
-                              Get.snackbar(
-                                'No Text Found',
-                                'Could not detect any document references. Please try again.',
-                                snackPosition: SnackPosition.BOTTOM,
+                              BLoaders.warningSnackBar(
+                                title: 'No Text Found',
+                                message:
+                                    'Could not detect any document references. Please try again.',
                               );
                               return;
                             }
