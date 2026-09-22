@@ -27,6 +27,10 @@ import '../../../features/logistics/screens/data_test/local_storage_data_viewer.
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/upload/collection_upload_outbox_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/add_to_bucket_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/advanced_payment_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/deposit_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/reconciliation_form.dart';
 
 class AppRoutes {
   static final pages = [
@@ -65,6 +69,12 @@ class AppRoutes {
     GetPage(name: BRoutes.totalCollected, page: () => const MonthlySummaryScreen(type: 'Collection')),
     GetPage(name: BRoutes.collectionUploadOutbox, page: () => const CollectionUploadOutboxScreen()),
     GetPage(name: BRoutes.addToBucket, page: () => const AddToBucketScreen()),
+    // Engagement forms take no arguments; they read the account and invoice
+    // selection from CollectionActivityController.
+    GetPage(name: BRoutes.collectionDepositForm, page: () => const DepositFormScreen()),
+    GetPage(name: BRoutes.collectionCwtPickupForm, page: () => const CWTPickupFormScreen()),
+    GetPage(name: BRoutes.collectionReconciliationForm, page: () => const ReconciliationFormScreen()),
+    GetPage(name: BRoutes.collectionAdvancedPaymentForm, page: () => const AdvancedPaymentFormScreen()),
   ];
 
   // Pages to navigate to

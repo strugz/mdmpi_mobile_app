@@ -12,6 +12,7 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_da
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation_fold.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
@@ -973,12 +974,16 @@ class CollectionActivityController extends GetxController {
 
     final List<Map<String, dynamic>> combined = [];
 
-    // 1. Add invoice-level history
+    // 1. Add invoice-level history. A reconciliation an outcome has since
+    //    finished folds into that outcome, as in [allRecentHistory], so the
+    //    list never shows "Reconciliation" and then "Collected" as two events.
     for (var item in accountItems) {
-      for (var history in item.history) {
+      for (final entry in foldFinishedReconciliations(item.history)) {
         combined.add({
-          'history': history,
+          'history': entry.history,
+          'invoiceId': item.id,
           'item': item,
+          'reconciledOn': entry.reconciledOn,
         });
       }
     }
@@ -1003,15 +1008,17 @@ class CollectionActivityController extends GetxController {
   List<Map<String, dynamic>> get allRecentHistory {
     final List<Map<String, dynamic>> combined = [];
 
-    // 1. Add invoice-level history
+    // 1. Add invoice-level history. A reconciliation an outcome has since
+    //    finished folds into that outcome; see [reconciliationMerge].
     final allItems = this.allItems;
     for (var item in allItems) {
-      for (var history in item.history) {
+      for (final entry in foldFinishedReconciliations(item.history)) {
         combined.add({
-          'history': history,
+          'history': entry.history,
           'accountName': item.client.name,
           'invoiceId': item.id,
           'item': item,
+          'reconciledOn': entry.reconciledOn,
         });
       }
     }
@@ -1085,10 +1092,45 @@ class CollectionActivityController extends GetxController {
     final itemsById = {for (final i in allItems) i.id: i};
     var unplaceable = 0;
 
+    // Some archive rows do not name their account: a deferral copied from
+    // the server (the history table has no name column), or a deferral
+    // recorded when the account had no invoice left in the bucket to copy
+    // the name from. The card then had a blank headline and the day's
+    // account filter had no chip for it. The name is known elsewhere: on the
+    // client's invoices, in the master account list, or on another archive
+    // row of the same client.
+    final namesByClient = <String, String>{};
+    for (final i in allItems) {
+      if (i.client.name.isNotEmpty) {
+        namesByClient.putIfAbsent(i.client.id, () => i.client.name);
+      }
+    }
+    for (final c in masterAccountList) {
+      if (c.name.isNotEmpty) namesByClient.putIfAbsent(c.id, () => c.name);
+    }
+    for (final e in ownEngagements) {
+      if (e.clientName.isNotEmpty) {
+        namesByClient.putIfAbsent(e.clientId, () => e.clientName);
+      }
+    }
+
+    // A reconciliation and the outcome that finished it are one story, told
+    // once. A Reconciliation row followed by an outcome on the same invoice
+    // (or by a deferral of its account) folds into that outcome, which is
+    // then labelled "Reconciliation Collected", "Reconciliation Refused to
+    // Pay", and so on; a reconciliation nothing has finished yet stands on
+    // its own. Read from the archive rather than the cached invoice: once
+    // the invoice settles it leaves the cache, and the archive is what is
+    // left.
+    final merge = reconciliationMerge(ownEngagements);
+
     for (final e in ownEngagements) {
       // Reconciliation reads through invoice status, not as an engagement —
       // the same rule _loadPersistedExtras applies to the activity list.
       if (e.kind == 'OFFICE' && e.status == 'Reconciliation') continue;
+      // A reconciliation an outcome has since finished: shown as part of
+      // that outcome, not as a row of its own.
+      if (merge.finished.contains(e.localRef)) continue;
 
       final day = BFormatter.parseLocal(e.engagedOn);
       if (day == null) {
@@ -1112,9 +1154,17 @@ class CollectionActivityController extends GetxController {
           checkDate: e.checkDate,
           purposeOfVisit: e.purposeOfVisit,
         ),
-        'accountName': e.clientName,
+        'accountName': e.clientName.isNotEmpty
+            ? e.clientName
+            : (namesByClient[e.clientId] ?? ''),
         'invoiceId': e.itemId.isEmpty ? null : e.itemId,
         'item': itemsById[e.itemId],
+        'reconciledOn': merge.reconciledOn[e.localRef],
+        // An account-level outcome covers several invoices; the card says
+        // how many in place of the one invoice it does not have.
+        'invoiceCount': e.kind == 'ACCOUNT' && e.documentIds.isNotEmpty
+            ? e.documentIds.length
+            : null,
       });
     }
 
@@ -1132,6 +1182,84 @@ class CollectionActivityController extends GetxController {
     _byDateCache = grouped;
     _byDateSourceLength = ownEngagements.length;
     _byDateDirty = false;
+  }
+
+  /// Which reconciliations an outcome has finished, and which outcome.
+  ///
+  /// Returns the localRefs of every INVOICE Reconciliation row that a later
+  /// engagement has finished, and for each finishing outcome the date of the
+  /// latest reconciliation it finished. The outcome then shows as one entry
+  /// labelled with both, and the reconciliation row is not shown again. A
+  /// reconciliation with no outcome after it is in neither map: it is still
+  /// open and shows on its own.
+  ///
+  /// Two kinds of outcome finish a reconciliation:
+  ///  * an INVOICE engagement on the same invoice (Collected, Partially
+  ///    Collected, ...);
+  ///  * an ACCOUNT engagement of the same client (a deferral: Refused to
+  ///    Pay, Customer Unavailable, ...). A deferral is recorded once per
+  ///    account and lists the invoices it released in [documentIds]; it
+  ///    finishes the open reconciliations of exactly those. Rows copied from
+  ///    the server carry no document ids and fall back to every open
+  ///    reconciliation of the client.
+  ///
+  /// Chronology is per client, so a deferral only reaches reconciliations
+  /// recorded before it.
+  @visibleForTesting
+  static ReconciliationMerge reconciliationMerge(
+      Iterable<CollectionEngagementRecord> engagements) {
+    final finished = <String>{};
+    final reconciledOn = <String, String>{};
+
+    final byClient = <String, List<(DateTime, CollectionEngagementRecord)>>{};
+    for (final r in engagements) {
+      if (r.kind != 'INVOICE' && r.kind != 'ACCOUNT') continue;
+      if (r.kind == 'INVOICE' && r.itemId.isEmpty) continue;
+      if (r.kind == 'ACCOUNT' && r.status.isEmpty) continue;
+      final at = BFormatter.parseLocal(r.engagedAt);
+      if (at == null) continue;
+      byClient.putIfAbsent(r.clientId, () => []).add((at, r));
+    }
+
+    for (final timeline in byClient.values) {
+      timeline.sort((a, b) => a.$1.compareTo(b.$1));
+
+      // invoice id -> the reconciliation still waiting for an outcome
+      final open = <String, CollectionEngagementRecord>{};
+
+      for (final (_, r) in timeline) {
+        if (r.kind == 'INVOICE') {
+          if (r.status == 'Reconciliation') {
+            open[r.itemId] = r;
+            continue;
+          }
+          final rec = open.remove(r.itemId);
+          if (rec != null) {
+            finished.add(rec.localRef);
+            reconciledOn[r.localRef] = rec.engagedAt;
+          }
+          continue;
+        }
+
+        // ACCOUNT: finish the open reconciliations this deferral covered.
+        final covered = r.documentIds.isEmpty
+            ? open.keys.toList()
+            : open.keys.where(r.documentIds.contains).toList();
+        String? latest;
+        DateTime? latestAt;
+        for (final id in covered) {
+          final rec = open.remove(id)!;
+          finished.add(rec.localRef);
+          final at = BFormatter.parseLocal(rec.engagedAt);
+          if (at != null && (latestAt == null || at.isAfter(latestAt))) {
+            latestAt = at;
+            latest = rec.engagedAt;
+          }
+        }
+        if (latest != null) reconciledOn[r.localRef] = latest;
+      }
+    }
+    return ReconciliationMerge(finished: finished, reconciledOn: reconciledOn);
   }
 
   /// Re-read the archive. Cheap: one indexed query over the collector's own

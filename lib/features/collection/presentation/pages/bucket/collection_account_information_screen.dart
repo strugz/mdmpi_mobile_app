@@ -161,9 +161,17 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                       history: history
                           .map((e) => e['history'] as CollectionHistoryModel)
                           .toList(),
+                      invoiceIds: {
+                        for (var i = 0; i < history.length; i++)
+                          i: history[i]['invoiceId'] as String?
+                      },
                       items: {
                         for (var i = 0; i < history.length; i++)
                           i: history[i]['item'] as CollectionItemModel?
+                      },
+                      reconciledOn: {
+                        for (var i = 0; i < history.length; i++)
+                          i: history[i]['reconciledOn'] as String?
                       },
                     ),
                 ],

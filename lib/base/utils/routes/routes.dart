@@ -34,6 +34,13 @@ class BRoutes{
   static const totalCollected = '/collection/total-collected';
   static const collectionUploadOutbox = '/collection/upload-outbox';
   static const addToBucket = '/collection/add-to-bucket';
+  // Collection - engagement forms (opened from the activity type sheet)
+  static const collectionDepositForm = '/collection/engagement/deposit';
+  static const collectionCwtPickupForm = '/collection/engagement/cwt-pickup';
+  static const collectionReconciliationForm =
+      '/collection/engagement/reconciliation';
+  static const collectionAdvancedPaymentForm =
+      '/collection/engagement/advanced-payment';
   static const signatureOutbox = '/signature-outbox';
   static const imageOutbox = '/image-outbox';
   // Back load routes

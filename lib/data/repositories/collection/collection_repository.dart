@@ -899,7 +899,32 @@ class CollectionRepository extends GetxController {
         }
       }
 
-      for (final item in await (await _dao).getCollectionItems()) {
+      // The account-history table has no name column, so a deferral copied
+      // from it would be archived nameless and the calendar card would have a
+      // blank headline. The invoices know their account; remember the name
+      // per client while walking them, and add the office and advance rows'
+      // names too so an account with no invoice left still gets one.
+      final namesByClient = <String, String>{};
+      void learn(String clientId, String name) {
+        if (clientId.isNotEmpty && name.isNotEmpty) {
+          namesByClient.putIfAbsent(clientId, () => name);
+        }
+      }
+
+      final items = await (await _dao).getCollectionItems();
+      for (final item in items) {
+        learn(item.client.id, item.client.name);
+      }
+      final activities = await (await helper.collectionActivityDao).getAll();
+      for (final a in activities) {
+        learn(a.clientId, a.clientName);
+      }
+      final advances = await (await helper.collectionAdvanceDao).getAll();
+      for (final a in advances) {
+        learn(a.clientId, a.clientName);
+      }
+
+      for (final item in items) {
         for (final h in item.history) {
           if (!mine(h.collectorName)) continue;
           add(_engagementRecord(
@@ -927,13 +952,14 @@ class CollectionRepository extends GetxController {
           kind: 'ACCOUNT',
           engagedAt: h.date,
           clientId: h.clientId,
+          clientName: namesByClient[h.clientId] ?? '',
           status: h.reason,
           remarks: h.remarks,
           source: CollectionEngagementRecord.sourceServer,
         ));
       }
 
-      for (final a in await (await helper.collectionActivityDao).getAll()) {
+      for (final a in activities) {
         if (!mine(a.collectorName)) continue;
         add(_engagementRecord(
           kind: 'OFFICE',
@@ -950,7 +976,7 @@ class CollectionRepository extends GetxController {
         ));
       }
 
-      for (final a in await (await helper.collectionAdvanceDao).getAll()) {
+      for (final a in advances) {
         if (!mine(a.collectorName)) continue;
         add(_engagementRecord(
           kind: 'ADVANCE',
@@ -1061,12 +1087,23 @@ class CollectionRepository extends GetxController {
 
       // A deferral is field work and belongs on the calendar. The CLEAR branch
       // returned above and archives nothing: clearing an engagement is not one.
+      //
+      // The row names the account and lists the invoices it released. Without
+      // the name the card had a blank header; without the invoices a
+      // reconciliation on one of them could not be folded into this outcome
+      // (see CollectionActivityController.reconciliationMerge). The name
+      // comes from a released invoice, else from any stored invoice of the
+      // account: a deferral with nothing to release still names who refused.
       await _archive(
         kind: 'ACCOUNT',
         engagedAt: now,
         clientId: clientId,
+        clientName: releasedInvoices.isNotEmpty
+            ? releasedInvoices.first.client.name
+            : await _clientNameFor(clientId),
         status: reason,
         remarks: remarks,
+        documentIds: [for (final inv in releasedInvoices) inv.id],
       );
 
       logDebug(
@@ -1083,6 +1120,22 @@ class CollectionRepository extends GetxController {
       logDebug('CollectionRepository.releaseInvoices error: $e');
       return null;
     }
+  }
+
+  /// The account's name as any stored invoice of it gives it, or '' when
+  /// none is stored. Only for the archive, which must never throw.
+  Future<String> _clientNameFor(String clientId) async {
+    try {
+      final items = await (await _dao).getCollectionItems();
+      for (final item in items) {
+        if (item.client.id == clientId && item.client.name.isNotEmpty) {
+          return item.client.name;
+        }
+      }
+    } catch (e) {
+      logDebug('CollectionRepository._clientNameFor error: $e');
+    }
+    return '';
   }
 
   /// Record an office activity (Deposit / CWT Pick-up / Reconciliation).
@@ -1141,6 +1194,27 @@ class CollectionRepository extends GetxController {
         final dao = await _dao;
         for (final inv in updatedInvoices) {
           await dao.updateCollectionItem(inv);
+        }
+      }
+
+      // A reconciliation is read on the calendar and in Field Engagement
+      // through the invoice, not through the OFFICE row above (the controller
+      // hides that one). Until now the only invoice-level trace was the
+      // history entry inside the cached item, which the next download
+      // replaced with the server's copy; once the collector collected the
+      // invoice, nothing was left to say it had been reconciled. A field
+      // outcome writes its own INVOICE row; so does this now.
+      if (type.trim().toLowerCase() == 'reconciliation') {
+        for (final inv in updatedInvoices) {
+          await _archive(
+            kind: 'INVOICE',
+            engagedAt: now,
+            itemId: inv.id,
+            clientId: inv.client.id,
+            clientName: inv.client.name,
+            status: 'Reconciliation',
+            remarks: remarks,
+          );
         }
       }
 

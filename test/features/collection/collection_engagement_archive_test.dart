@@ -6,6 +6,8 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_activity_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_account_history_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -22,23 +24,45 @@ CollectionEngagementRecord _row(
   double amount = 100,
   String status = 'Collected',
   String source = CollectionEngagementRecord.sourceLocal,
+  String clientId = 'C1',
+  String clientName = 'Alexis Yu Best Care Pharmacy',
+  List<String> documentIds = const [],
 }) =>
     CollectionEngagementRecord(
       localRef: CollectionEngagementRecord.buildLocalRef(
-          kind: kind, subjectId: itemId, engagedAt: engagedAt),
+          kind: kind,
+          subjectId: kind == 'ACCOUNT' ? clientId : itemId,
+          engagedAt: engagedAt),
       collectorCode: collectorCode,
       collectorName: 'Jay Bryan Abaoag',
       kind: kind,
       itemId: itemId,
-      clientId: 'C1',
-      clientName: 'Alexis Yu Best Care Pharmacy',
+      clientId: clientId,
+      clientName: clientName,
       engagedAt: engagedAt,
       engagedOn: BFormatter.localDayKey(engagedAt) ?? '',
       status: status,
       amount: amount,
+      documentIds: documentIds,
       createdAt: engagedAt,
       source: source,
     );
+
+/// A deferral of the account: one ACCOUNT row, no invoice of its own, listing
+/// the invoices it released (empty for rows copied from the server).
+CollectionEngagementRecord _deferral(String engagedAt,
+        {String status = 'Refused to Pay',
+        String clientId = 'C1',
+        String clientName = 'Alexis Yu Best Care Pharmacy',
+        List<String> documentIds = const []}) =>
+    _row(engagedAt,
+        kind: 'ACCOUNT',
+        itemId: '',
+        status: status,
+        amount: 0,
+        clientId: clientId,
+        clientName: clientName,
+        documentIds: documentIds);
 
 class _Activity extends CollectionActivityController {
   @override
@@ -298,6 +322,183 @@ void main() {
         _row('2026-09-17T11:00:00', kind: 'OFFICE', status: 'Deposit'),
       ]);
       expect(c.activitiesByDate[DateTime(2026, 9, 17)]?.length, 1);
+    });
+
+    test('shows an open reconciliation through its invoice row', () {
+      // The OFFICE row is hidden above; the INVOICE row the repository now
+      // writes for each reconciled invoice is what the collector sees while
+      // nothing has finished it.
+      final c = seeded([
+        _row('2026-09-17T10:15:00',
+            kind: 'OFFICE', itemId: '', status: 'Reconciliation'),
+        _row('2026-09-17T10:15:00', status: 'Reconciliation'),
+      ]);
+
+      final day17 = c.activitiesByDate[DateTime(2026, 9, 17)]!;
+      final history = day17.single['history'] as CollectionHistoryModel;
+      expect(history.status, 'Reconciliation');
+      expect(day17.single['invoiceId'], 'INV-1');
+      expect(day17.single['reconciledOn'], isNull);
+    });
+
+    test(
+        'a finished reconciliation is told once, on the outcome that '
+        'finished it', () {
+      final c = seeded([
+        _row('2026-09-17T10:15:00',
+            kind: 'OFFICE', itemId: '', status: 'Reconciliation'),
+        _row('2026-09-17T10:15:00', status: 'Reconciliation'),
+        _row('2026-09-19T09:30:00', status: 'Collected'),
+      ]);
+
+      // The reconciliation's own day no longer lists it...
+      expect(c.activitiesByDate[DateTime(2026, 9, 17)], isNull);
+
+      // ...the collection carries it instead, even though the invoice has
+      // settled and left the cache.
+      final day19 = c.activitiesByDate[DateTime(2026, 9, 19)]!;
+      final history = day19.single['history'] as CollectionHistoryModel;
+      expect(history.status, 'Collected');
+      expect(day19.single['reconciledOn'], '2026-09-17T10:15:00');
+    });
+
+    test('a refusal finishes a reconciliation the same way', () {
+      final c = seeded([
+        _row('2026-09-17T10:15:00', status: 'Reconciliation'),
+        _row('2026-09-19T09:30:00', status: 'Refused to Pay', amount: 0),
+      ]);
+
+      expect(c.activitiesByDate[DateTime(2026, 9, 17)], isNull);
+      final day19 = c.activitiesByDate[DateTime(2026, 9, 19)]!;
+      expect((day19.single['history'] as CollectionHistoryModel).status,
+          'Refused to Pay');
+      expect(day19.single['reconciledOn'], '2026-09-17T10:15:00');
+    });
+
+    test('a deferral of the account finishes the reconciliations it released',
+        () {
+      // 06:23 invoice reconciled, 06:24 the account refused to pay. One card,
+      // "Reconciliation Refused to Pay", covering the released invoice.
+      final c = seeded([
+        _row('2026-09-22T06:23:00', status: 'Reconciliation'),
+        _deferral('2026-09-22T06:24:00', documentIds: ['INV-1']),
+      ]);
+
+      final day = c.activitiesByDate[DateTime(2026, 9, 22)]!;
+      expect(day.length, 1);
+      final only = day.single;
+      expect(
+          (only['history'] as CollectionHistoryModel).status, 'Refused to Pay');
+      expect(only['reconciledOn'], '2026-09-22T06:23:00');
+      expect(only['invoiceId'], isNull);
+      expect(only['invoiceCount'], 1);
+      expect(only['accountName'], 'Alexis Yu Best Care Pharmacy');
+    });
+
+    test('a deferral only reaches the invoices it lists', () {
+      final c = seeded([
+        _row('2026-09-22T06:23:00', status: 'Reconciliation'),
+        _row('2026-09-22T06:23:30', itemId: 'INV-2', status: 'Reconciliation'),
+        _deferral('2026-09-22T06:24:00', documentIds: ['INV-2']),
+      ]);
+
+      final day = c.activitiesByDate[DateTime(2026, 9, 22)]!;
+      expect(day.length, 2, reason: 'INV-1 is still open and still shown');
+      final statuses = day
+          .map((e) => (e['history'] as CollectionHistoryModel).status)
+          .toSet();
+      expect(statuses, {'Reconciliation', 'Refused to Pay'});
+      final refusal = day.singleWhere((e) =>
+          (e['history'] as CollectionHistoryModel).status == 'Refused to Pay');
+      expect(refusal['reconciledOn'], '2026-09-22T06:23:30');
+      expect(refusal['invoiceCount'], 1);
+    });
+
+    test(
+        'a deferral copied from the server, with no invoice list, falls back '
+        'to every open reconciliation of the client', () {
+      final c = seeded([
+        _row('2026-09-22T06:23:00', status: 'Reconciliation'),
+        _row('2026-09-22T06:23:30', itemId: 'INV-2', status: 'Reconciliation'),
+        _deferral('2026-09-22T06:24:00', status: 'Customer Unavailable'),
+      ]);
+
+      final day = c.activitiesByDate[DateTime(2026, 9, 22)]!;
+      expect(day.length, 1);
+      expect(day.single['reconciledOn'], '2026-09-22T06:23:30');
+      expect(day.single['invoiceCount'], isNull);
+    });
+
+    test(
+        "another client's deferral does not finish this client's "
+        'reconciliation', () {
+      final c = seeded([
+        _row('2026-09-22T06:23:00', status: 'Reconciliation'),
+        _deferral('2026-09-22T06:24:00', clientId: 'C2', documentIds: ['X']),
+      ]);
+
+      final day = c.activitiesByDate[DateTime(2026, 9, 22)]!;
+      expect(day.length, 2);
+      expect(day.every((e) => e['reconciledOn'] == null), isTrue);
+    });
+
+    test('a deferral before the reconciliation does not reach forward', () {
+      final c = seeded([
+        _deferral('2026-09-22T06:20:00', documentIds: ['INV-1']),
+        _row('2026-09-22T06:23:00', status: 'Reconciliation'),
+      ]);
+
+      final day = c.activitiesByDate[DateTime(2026, 9, 22)]!;
+      expect(day.length, 2);
+      expect(day.every((e) => e['reconciledOn'] == null), isTrue);
+    });
+
+    test('a collection with no reconciliation before it is not marked', () {
+      final c = seeded([
+        _row('2026-09-19T09:30:00', status: 'Collected'),
+        // A later reconciliation of the same invoice does not reach back,
+        // and stays on the calendar as an open one.
+        _row('2026-09-21T10:15:00', status: 'Reconciliation'),
+        // Another invoice's reconciliation is not this invoice's.
+        _row('2026-09-17T10:15:00', itemId: 'INV-2', status: 'Reconciliation'),
+      ]);
+
+      expect(c.activitiesByDate[DateTime(2026, 9, 19)]!.single['reconciledOn'],
+          isNull);
+      expect(c.activitiesByDate[DateTime(2026, 9, 21)]?.length, 1);
+      expect(c.activitiesByDate[DateTime(2026, 9, 17)]?.length, 1);
+    });
+
+    test('names the account on a deferral row that arrived without a name', () {
+      // The server's account-history table has no name column, so a deferral
+      // copied from it is archived with clientName ''. The card was showing a
+      // blank headline and the day's filter had no chip for it. The master
+      // account list knows the name.
+      final c = seeded([
+        _deferral('2026-09-22T06:24:00', clientName: ''),
+      ]);
+      c.masterAccountList.add(ClientModel(
+          id: 'C1',
+          name: 'Amrox Medical Systems',
+          address: '',
+          contact: '',
+          emailAddress: ''));
+      c.ownEngagements.refresh();
+
+      final day = c.activitiesByDate[DateTime(2026, 9, 22)]!;
+      expect(day.single['accountName'], 'Amrox Medical Systems');
+    });
+
+    test(
+        'names the account from another archive row of the same client '
+        'when the list does not know it either', () {
+      final c = seeded([
+        _row('2026-09-20T10:00:00'),
+        _deferral('2026-09-22T06:24:00', clientName: ''),
+      ]);
+
+      final day = c.activitiesByDate[DateTime(2026, 9, 22)]!;
+      expect(day.single['accountName'], 'Alexis Yu Best Care Pharmacy');
     });
 
     test('keeps an engagement whose invoice has already settled and gone', () {

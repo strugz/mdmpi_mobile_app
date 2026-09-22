@@ -59,14 +59,24 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
           title: Text('Record Advanced Payment'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(BSizes.defaultSpace),
+          padding: EdgeInsets.fromLTRB(
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Form(
             key: formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<ClientModel>(
+                  // The button sizes itself to the widest client name unless told
+                  // to fill the row, and long pharmacy names overflowed by hundreds
+                  // of pixels. Expanded, the name ellipsises inside the field.
+                  isExpanded: true,
                   decoration: const InputDecoration(
-                    labelText: 'Select Account',
+                    labelText: 'Account',
                     prefixIcon: Icon(Iconsax.user),
                   ),
                   value: selectedAccount,
@@ -108,18 +118,18 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                 TextFormField(
                   controller: remarksController,
                   maxLines: 4,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: 'Remarks',
+                    labelText: 'Remarks (optional)',
                     prefixIcon: Icon(Iconsax.edit),
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    child: const Text('Save Activity'),
-                  ),
+                ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48)),
+                  child: const Text('Record advanced payment'),
                 ),
               ],
             ),

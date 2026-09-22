@@ -47,18 +47,26 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
           const BAppBar(title: Text('Record CWT Pick-up'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(BSizes.defaultSpace),
+          padding: EdgeInsets.fromLTRB(
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Form(
             key: formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TextFormField(
                   controller: accountNameController,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
-                    labelText: 'Account Name',
+                    labelText: 'Account',
                     prefixIcon: Icon(Iconsax.user),
                   ),
-                  validator: (value) => value == null || value.isEmpty
+                  validator: (value) => value == null || value.trim().isEmpty
                       ? 'Account name is required'
                       : null,
                 ),
@@ -66,18 +74,18 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
                 TextFormField(
                   controller: remarksController,
                   maxLines: 4,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: 'Remarks',
+                    labelText: 'Remarks (optional)',
                     prefixIcon: Icon(Iconsax.edit),
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    child: const Text('Save Activity'),
-                  ),
+                ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48)),
+                  child: const Text('Record CWT pick-up'),
                 ),
               ],
             ),

@@ -71,6 +71,10 @@ class RecentActivitiesScreen extends StatelessWidget {
                 for (var i = 0; i < filteredItems.length; i++)
                   i: filteredItems[i]['item'] as CollectionItemModel?
               };
+              final reconciledOn = {
+                for (var i = 0; i < filteredItems.length; i++)
+                  i: filteredItems[i]['reconciledOn'] as String?
+              };
 
               return SingleChildScrollView(
                 padding:
@@ -80,6 +84,7 @@ class RecentActivitiesScreen extends StatelessWidget {
                   accountNames: accountNames,
                   invoiceIds: invoiceIds,
                   items: items,
+                  reconciledOn: reconciledOn,
                 ),
               );
             }),

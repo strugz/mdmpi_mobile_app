@@ -101,10 +101,25 @@ class CalendarDayEmptyState extends StatelessWidget {
               ),
               // Nothing to offer on a day that has not happened: an engagement
               // is recorded where the collector is standing, now.
+              // The one action on an empty day, so it wears the accent
+              // rather than the grey outline that read as secondary.
               if (!isFuture) ...[
                 const SizedBox(height: BSizes.spaceBtwItems),
-                OutlinedButton.icon(
+                FilledButton.icon(
                   onPressed: onAdd,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: BCollectionColors.primary,
+                    foregroundColor: BCollectionColors.onPrimary,
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: BSizes.lg, vertical: 0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(BSizes.borderRadiusLg),
+                    ),
+                    textStyle: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
                   icon: const Icon(Iconsax.add_circle, size: 18),
                   label: const Text('Add field engagement'),
                 ),

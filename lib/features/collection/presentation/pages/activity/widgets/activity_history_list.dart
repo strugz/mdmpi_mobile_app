@@ -16,6 +16,8 @@ class ActivityHistoryList extends StatelessWidget {
     this.accountNames,
     this.invoiceIds,
     this.items,
+    this.reconciledOn,
+    this.invoiceCounts,
     this.accountFirst = false,
     this.timeOnly = false,
   });
@@ -30,6 +32,20 @@ class ActivityHistoryList extends StatelessWidget {
 
   /// Optional: Map of history index to full invoice item
   final Map<int, CollectionItemModel?>? items;
+
+  /// Optional: Map of history index to the date the invoice was put into
+  /// reconciliation before this engagement. See
+  /// [ActivityHistoryCard.reconciledOn].
+  ///
+  /// The list renders what it is given and never folds history itself. The
+  /// controller's history getters (`getAccountHistory`, `allRecentHistory`,
+  /// `activitiesByDate`) already fold finished reconciliations into their
+  /// outcomes and carry the date here.
+  final Map<int, String?>? reconciledOn;
+
+  /// Optional: Map of history index to how many invoices an account-level
+  /// entry covered. See [ActivityHistoryCard.invoiceCount].
+  final Map<int, int?>? invoiceCounts;
 
   /// See [ActivityHistoryCard.accountFirst] and
   /// [ActivityHistoryCard.timeOnly]. Both default to the card's own
@@ -48,19 +64,19 @@ class ActivityHistoryList extends StatelessWidget {
       );
     }
 
-    // The history is already sorted newest-first by the controller.
-    final List<CollectionHistoryModel> displayList = history;
-
+    // The history is already sorted newest-first and folded by the controller.
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: displayList.length,
+      itemCount: history.length,
       itemBuilder: (context, index) {
         return ActivityHistoryCard(
-          history: displayList[index],
+          history: history[index],
           accountName: accountNames?[index],
           invoiceId: invoiceIds?[index],
           item: items?[index],
+          reconciledOn: reconciledOn?[index],
+          invoiceCount: invoiceCounts?[index],
           accountFirst: accountFirst,
           timeOnly: timeOnly,
         );
@@ -79,6 +95,8 @@ class ActivityHistoryCard extends StatelessWidget {
     this.accountName,
     this.invoiceId,
     this.item,
+    this.reconciledOn,
+    this.invoiceCount,
     this.margin = const EdgeInsets.only(bottom: BSizes.sm),
     this.accountFirst = false,
     this.timeOnly = false,
@@ -88,6 +106,76 @@ class ActivityHistoryCard extends StatelessWidget {
   final String? accountName;
   final String? invoiceId;
   final CollectionItemModel? item;
+
+  /// How many invoices an account-level entry (a deferral) covered.
+  ///
+  /// A deferral is one event for the whole account, so it has no single
+  /// invoice, posting date or due date. The card used to print
+  /// "Invoice Date: N/A" and "Due: N/A" for it; it now says "3 invoices".
+  final int? invoiceCount;
+
+  bool get _isAccountLevel =>
+      item == null && (invoiceId == null || invoiceId!.isEmpty);
+
+  /// The account's name, or null when the caller had none. An empty string
+  /// is "none" too: the archive stores one for a row the server sent without
+  /// a name, and a card that printed it had a blank headline.
+  String? get _accountName {
+    final name = accountName ?? item?.client.name;
+    return name == null || name.isEmpty ? null : name;
+  }
+
+  /// What an account-level entry covered, in place of the one invoice it
+  /// does not have: "3 invoices" when the row lists them, "Whole account"
+  /// when it does not. Never "Invoice Date: N/A" — a deferral has no invoice
+  /// date, and saying so twice told the reader nothing.
+  String get _accountScopeLabel => invoiceCount != null
+      ? '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}'
+      : 'Whole account';
+
+  /// When this invoice was put into reconciliation before this engagement,
+  /// or null if it never was.
+  ///
+  /// A collection that came out of a reconciliation used to look exactly like
+  /// any other collection: the Reconciliation entry was a separate row, and
+  /// once the invoice settled and left the bucket there was nothing on the
+  /// Collected card to say the balance had been disputed first. The two are
+  /// now one entry: this card's badge reads "Reconciliation Collected" (or
+  /// "Reconciliation Refused to Pay", whatever the outcome was) and the
+  /// detail sheet names the date. Callers that have the archive (the
+  /// calendar) pass the date in; everyone else gets it derived from [item]'s
+  /// history.
+  final String? reconciledOn;
+
+  /// The badge text: the outcome, prefixed when it finished a reconciliation.
+  String get _statusLabel => _reconciledOn == null
+      ? history.status
+      : '${CollectionStatusColors.statusReconciliation} ${history.status}';
+
+  /// The reconciliation this engagement came out of, if any: the explicit
+  /// [reconciledOn], else the latest Reconciliation entry in the invoice's
+  /// history that is not later than this entry. A card whose own status is
+  /// Reconciliation never carries the chip; the badge already says so.
+  String? get _reconciledOn {
+    if (history.status == CollectionStatusColors.statusReconciliation) {
+      return null;
+    }
+    if (reconciledOn != null && reconciledOn!.isNotEmpty) return reconciledOn;
+    final own = BFormatter.parseLocal(history.date);
+    String? latest;
+    DateTime? latestAt;
+    for (final h in item?.history ?? const <CollectionHistoryModel>[]) {
+      if (h.status != CollectionStatusColors.statusReconciliation) continue;
+      final at = BFormatter.parseLocal(h.date);
+      if (at == null) continue;
+      if (own != null && at.isAfter(own)) continue;
+      if (latestAt == null || at.isAfter(latestAt)) {
+        latestAt = at;
+        latest = h.date;
+      }
+    }
+    return latest;
+  }
 
   /// Lead with the account and demote the invoice number.
   ///
@@ -243,10 +331,18 @@ class ActivityHistoryCard extends StatelessWidget {
                 _buildInfoTile(
                   context,
                   'Status',
-                  history.status,
+                  _statusLabel,
                   Iconsax.activity,
                   isBadge: true,
+                  badgeStatus: history.status,
                 ),
+                if (_reconciledOn != null)
+                  _buildInfoTile(
+                      context,
+                      'Reconciled on',
+                      BFormatter.formatDateWithAmPm(_reconciledOn!),
+                      Iconsax.status_up,
+                      valueColor: BCollectionColors.reconcile),
                 if (history.totalCollected > 0)
                   _buildInfoTile(
                       context,
@@ -293,7 +389,7 @@ class ActivityHistoryCard extends StatelessWidget {
 
   Widget _buildInfoTile(
       BuildContext context, String label, String value, IconData icon,
-      {bool isBadge = false, Color? valueColor}) {
+      {bool isBadge = false, Color? valueColor, String? badgeStatus}) {
     final width = (MediaQuery.of(context).size.width -
             (BSizes.defaultSpace * 2) -
             BSizes.sm) /
@@ -319,7 +415,8 @@ class ActivityHistoryCard extends StatelessWidget {
                 if (isBadge)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
-                    child: _ActivityHistoryBadge(status: value),
+                    child: ActivityStatusBadge(
+                        status: badgeStatus ?? value, label: value),
                   )
                 else
                   Text(
@@ -367,12 +464,10 @@ class ActivityHistoryCard extends StatelessWidget {
                       children: [
                         Text(
                           accountFirst
-                              ? (accountName ??
-                                  item?.client.name ??
-                                  'Account Engagement')
+                              ? (_accountName ?? 'Account Engagement')
                               : (invoiceId != null || item != null
                                   ? 'Invoice #${invoiceId ?? item?.id}'
-                                  : (accountName ?? 'Account Engagement')),
+                                  : (_accountName ?? 'Account Engagement')),
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.bold,
@@ -409,7 +504,8 @@ class ActivityHistoryCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _ActivityHistoryBadge(status: history.status),
+                  ActivityStatusBadge(
+                      status: history.status, label: _statusLabel),
                 ],
               ),
               const SizedBox(height: BSizes.sm),
@@ -426,7 +522,9 @@ class ActivityHistoryCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            'Invoice Date: ${item?.postingDate ?? 'N/A'}',
+                            _isAccountLevel
+                                ? _accountScopeLabel
+                                : 'Invoice Date: ${item?.postingDate ?? 'N/A'}',
                             style: Theme.of(context)
                                 .textTheme
                                 .labelSmall
@@ -456,57 +554,66 @@ class ActivityHistoryCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Icon(Iconsax.timer,
-                            size: 14,
-                            color: isOverdue
-                                ? BCollectionColors.danger
-                                : BCollectionColors.inkMuted),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            'Due: ${item?.dueDate ?? 'N/A'}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: isOverdue
-                                      ? BCollectionColors.danger
-                                      : BCollectionColors.inkMuted,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (isOverdue) ...[
-                          const SizedBox(width: BSizes.xs),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: BCollectionColors.danger,
-                              borderRadius:
-                                  BorderRadius.circular(BSizes.borderRadiusSm),
-                            ),
+                  // An account-level row with no invoice list already says
+                  // "Whole account" above; there is no due date to add and
+                  // nothing else worth a second line, so the collector's
+                  // name stands alone on the right.
+                  if (_isAccountLevel && invoiceCount == null)
+                    const Spacer()
+                  else
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(Iconsax.timer,
+                              size: 14,
+                              color: isOverdue
+                                  ? BCollectionColors.danger
+                                  : BCollectionColors.inkMuted),
+                          const SizedBox(width: 4),
+                          Flexible(
                             child: Text(
-                              BFormatter.formatDaysOverdue(daysPast),
+                              _isAccountLevel
+                                  ? 'Whole account'
+                                  : 'Due: ${item?.dueDate ?? 'N/A'}',
                               style: Theme.of(context)
                                   .textTheme
                                   .labelSmall
                                   ?.copyWith(
-                                    color: BCollectionColors.surface,
-                                    fontSize: 8,
+                                    color: isOverdue
+                                        ? BCollectionColors.danger
+                                        : BCollectionColors.inkMuted,
                                     fontWeight: FontWeight.bold,
                                   ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          if (isOverdue) ...[
+                            const SizedBox(width: BSizes.xs),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: BCollectionColors.danger,
+                                borderRadius: BorderRadius.circular(
+                                    BSizes.borderRadiusSm),
+                              ),
+                              child: Text(
+                                BFormatter.formatDaysOverdue(daysPast),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .labelSmall
+                                    ?.copyWith(
+                                      color: BCollectionColors.surface,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
-                  ),
                   Text(
                     displayCollectorName,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -557,10 +664,17 @@ class ActivityHistoryCard extends StatelessWidget {
   }
 }
 
-class _ActivityHistoryBadge extends StatelessWidget {
-  const _ActivityHistoryBadge({required this.status});
+/// The engagement status badge, shared by the history card, its detail sheet
+/// and the calendar's visit card. [status] picks the colour; [label] is what
+/// it says, which differs from the status when an outcome finished a
+/// reconciliation ("Reconciliation Collected" in the Collected green).
+class ActivityStatusBadge extends StatelessWidget {
+  const ActivityStatusBadge(
+      {super.key, required this.status, String? label})
+      : label = label ?? status;
 
   final String status;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -574,7 +688,7 @@ class _ActivityHistoryBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
       ),
       child: Text(
-        status,
+        label,
         style: TextStyle(color: bg, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
