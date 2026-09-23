@@ -61,6 +61,26 @@ enum AmountBand {
   bool matches(double amount) => amount >= min && amount < max;
 }
 
+/// Whether an invoice carries a customer P.O. number at all.
+///
+/// SAP delivers a few invoices without one, and those often need a P.O. from
+/// the customer before accounts payable will release payment; the office
+/// wants to see them as a group. [has] is what the typed lookup implies.
+enum PoPresence {
+  any('Any'),
+  has('Has P.O.'),
+  none('No P.O.');
+
+  const PoPresence(this.label);
+  final String label;
+
+  bool matches(CollectionItemModel item) => switch (this) {
+        PoPresence.any => true,
+        PoPresence.has => item.hasPoNumber,
+        PoPresence.none => !item.hasPoNumber,
+      };
+}
+
 /// Order of the list.
 ///
 /// Some orders are account-level: they are properties of the account, not of
@@ -109,6 +129,8 @@ class ActivityFilter {
     this.due = DueBand.any,
     this.amount = AmountBand.any,
     this.area = '',
+    this.poPresence = PoPresence.any,
+    this.poNumber = '',
     this.sort = ActivitySort.mostOverdue,
   });
 
@@ -120,18 +142,45 @@ class ActivityFilter {
   /// Territory prefix, as [BCollectionArea] defines them. Empty is every area.
   final String area;
 
+  /// Whether the invoice has a P.O. at all. Independent of [poNumber] in the
+  /// value; the sheet keeps the two from contradicting each other.
+  final PoPresence poPresence;
+
+  /// Part of a customer P.O. number (SAP "BP Ref. No."), typed. Empty is any.
+  ///
+  /// Not a chip row: a bucket carries thousands of distinct P.O.s and a
+  /// customer's clerk quotes one from a remittance advice, so the collector
+  /// types it. Matching is a case-insensitive "contains", because the same
+  /// P.O. is often billed as several invoices and people remember the middle
+  /// of a long reference more reliably than its exact ends.
+  final String poNumber;
+
   final ActivitySort sort;
+
+  /// [poNumber] as it is matched: trimmed, lower-cased.
+  String get _poNeedle => poNumber.trim().toLowerCase();
+
+  /// Whether the P.O. lookup is set. Whitespace alone is not a lookup.
+  bool get hasPoNumber => _poNeedle.isNotEmpty;
+
+  /// Whether the P.O. group is set, by presence or by typed text.
+  bool get isPoActive => poPresence != PoPresence.any || hasPoNumber;
 
   /// Whether anything other than the sort is set. Sort alone is not a
   /// filter: it hides nothing.
   bool get isActive =>
-      due != DueBand.any || amount != AmountBand.any || area.isNotEmpty;
+      due != DueBand.any ||
+      amount != AmountBand.any ||
+      area.isNotEmpty ||
+      isPoActive;
 
   /// How many filter groups are set, for the badge on the filter button.
+  /// Presence and typed P.O. are one group: they answer the same question.
   int get activeCount =>
       (due != DueBand.any ? 1 : 0) +
       (amount != AmountBand.any ? 1 : 0) +
-      (area.isNotEmpty ? 1 : 0);
+      (area.isNotEmpty ? 1 : 0) +
+      (isPoActive ? 1 : 0);
 
   /// When [item] was last visited, or null if never.
   static DateTime? lastVisitOf(CollectionItemModel item) {
@@ -148,6 +197,10 @@ class ActivityFilter {
     if (!due.matches(item)) return false;
     if (!amount.matches(item.toBeCollected)) return false;
     if (!BCollectionArea.matches(item.client.code, area)) return false;
+    if (!poPresence.matches(item)) return false;
+    if (hasPoNumber && !item.poNumber.toLowerCase().contains(_poNeedle)) {
+      return false;
+    }
     return true;
   }
 
@@ -189,12 +242,16 @@ class ActivityFilter {
     DueBand? due,
     AmountBand? amount,
     String? area,
+    PoPresence? poPresence,
+    String? poNumber,
     ActivitySort? sort,
   }) =>
       ActivityFilter(
         due: due ?? this.due,
         amount: amount ?? this.amount,
         area: area ?? this.area,
+        poPresence: poPresence ?? this.poPresence,
+        poNumber: poNumber ?? this.poNumber,
         sort: sort ?? this.sort,
       );
 
@@ -204,8 +261,11 @@ class ActivityFilter {
       other.due == due &&
       other.amount == amount &&
       other.area == area &&
+      other.poPresence == poPresence &&
+      other.poNumber == poNumber &&
       other.sort == sort;
 
   @override
-  int get hashCode => Object.hash(due, amount, area, sort);
+  int get hashCode =>
+      Object.hash(due, amount, area, poPresence, poNumber, sort);
 }

@@ -367,6 +367,7 @@ Future<void> ensureCollectionTables(Database db) async {
       remarks TEXT,
       documentDate TEXT,
       bpCode TEXT,
+      poNumber TEXT,
       postingDate TEXT,
       dueDate TEXT,
       status TEXT,
@@ -377,6 +378,10 @@ Future<void> ensureCollectionTables(Database db) async {
       updatedAt TEXT
     )
   ''');
+  // The customer's P.O. number (SAP "BP Ref. No."), added 2026-09-22. Devices
+  // that created the table before then get it by ALTER; see
+  // docs/application/COLLECTION_ADR_001_PO_NUMBER.md.
+  await _addColumnIfMissing(db, 'a_tblCollectionItems', 'poNumber', 'TEXT');
 
   // Table: a_tblCollectionHistory (engagement history per item)
   await db.execute('''

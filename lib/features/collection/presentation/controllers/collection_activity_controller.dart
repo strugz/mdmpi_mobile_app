@@ -84,6 +84,10 @@ class CollectionActivityController extends GetxController {
   final Map<String, double> _totalDueByClient = {};
   final Map<String, double> _totalCollectedByClient = {};
 
+  /// Distinct customer P.O.s per account, bucket-only like the invoice count.
+  /// Case-insensitive: SAP hands us `ADC-1` and `adc-1` for the same order.
+  final Map<String, int> _poCountByClient = {};
+
   /// Marks the cached aggregates stale. Call after changing item contents in
   /// a way that bypasses the observable lists (nothing does today).
   void invalidateAggregates() => _aggregatesDirty = true;
@@ -107,6 +111,7 @@ class CollectionActivityController extends GetxController {
     _invoiceCountByClient.clear();
     _totalDueByClient.clear();
     _totalCollectedByClient.clear();
+    _poCountByClient.clear();
 
     // Money spans bucket + activity, so it folds over the merged list.
     for (final item in _allItemsCache) {
@@ -117,11 +122,19 @@ class CollectionActivityController extends GetxController {
     }
     // Invoice count is bucket-only and ignores fully-settled invoices,
     // matching the previous getter exactly.
+    final posByClient = <String, Set<String>>{};
     for (final item in bucketItems) {
       if (item.toBeCollected > 0) {
         final id = item.client.id;
         _invoiceCountByClient[id] = (_invoiceCountByClient[id] ?? 0) + 1;
+        if (item.hasPoNumber) {
+          (posByClient[id] ??= <String>{})
+              .add(item.poNumber.trim().toUpperCase());
+        }
       }
+    }
+    for (final e in posByClient.entries) {
+      _poCountByClient[e.key] = e.value.length;
     }
     _cachedSourceLength = bucketItems.length + activityItems.length;
     _aggregatesDirty = false;
@@ -414,6 +427,7 @@ class CollectionActivityController extends GetxController {
     String clientAddress = '',
     String clientContact = '',
     List<String> documentReferences = const [],
+    String? poNumber,
     required double toBeCollected,
     String? bankName,
     String? remarks,
@@ -428,6 +442,7 @@ class CollectionActivityController extends GetxController {
       clientAddress: clientAddress,
       clientContact: clientContact,
       documentReferences: documentReferences,
+      poNumber: poNumber,
       toBeCollected: toBeCollected,
       bankName: bankName,
       remarks: remarks,
@@ -760,6 +775,7 @@ class CollectionActivityController extends GetxController {
       final query = invoiceSearchQuery.value.toLowerCase();
       results = results.where((item) {
         return item.id.toLowerCase().contains(query) ||
+            item.poNumber.toLowerCase().contains(query) ||
             item.documentReferences
                 .any((ref) => ref.toLowerCase().contains(query));
       }).toList();
@@ -791,6 +807,20 @@ class CollectionActivityController extends GetxController {
   int getAccountInvoiceCount(String clientId) {
     _ensureAggregates();
     return _invoiceCountByClient[clientId] ?? 0;
+  }
+
+  /// The account's open bucket invoices, unfiltered: what its card counts.
+  /// The breakdown on the card reads this, so the lines under "3 P.O.s ·
+  /// 7 invoices" are exactly those seven.
+  List<CollectionItemModel> getBucketOpenInvoices(String clientId) => bucketItems
+      .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+      .toList();
+
+  /// How many distinct customer P.O.s the account's open invoices fall under.
+  /// Zero when none of them carries one.
+  int getAccountPoCount(String clientId) {
+    _ensureAggregates();
+    return _poCountByClient[clientId] ?? 0;
   }
 
   // ========================================================================
@@ -863,6 +893,23 @@ class CollectionActivityController extends GetxController {
       .where((item) => item.client.id == clientId && item.toBeCollected > 0)
       .length;
 
+  /// The account's open engaged invoices, unfiltered: what its Activity card
+  /// counts, and what the card's P.O. breakdown lists.
+  List<CollectionItemModel> getActivityOpenInvoices(String clientId) =>
+      activityItems
+          .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+          .toList();
+
+  /// Distinct customer P.O.s across this account's engaged invoices.
+  int getActivityAccountPoCount(String clientId) => activityItems
+      .where((item) =>
+          item.client.id == clientId &&
+          item.toBeCollected > 0 &&
+          item.hasPoNumber)
+      .map((item) => item.poNumber.trim().toUpperCase())
+      .toSet()
+      .length;
+
   /// How many of this account's engaged invoices are past their due date.
   int getActivityAccountOverdueCount(String clientId) => activityItems
       .where((item) =>
@@ -916,6 +963,7 @@ class CollectionActivityController extends GetxController {
       final query = invoiceSearchQuery.value.toLowerCase();
       results = results.where((item) {
         return item.id.toLowerCase().contains(query) ||
+            item.poNumber.toLowerCase().contains(query) ||
             item.documentReferences
                 .any((ref) => ref.toLowerCase().contains(query));
       }).toList();

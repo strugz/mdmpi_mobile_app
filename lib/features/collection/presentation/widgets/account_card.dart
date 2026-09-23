@@ -40,6 +40,8 @@ class AccountCard extends StatelessWidget {
     this.onSelectTap,
     this.totalCollected = 0.0,
     this.overdueCount = 0,
+    this.poCount = 0,
+    this.onPoInvoicesTap,
     this.onClaimTap,
     this.onLongPress,
     this.isSelected = false,
@@ -57,6 +59,16 @@ class AccountCard extends StatelessWidget {
 
   /// How many of its invoices are past due.
   final int overdueCount;
+
+  /// How many distinct customer P.O.s those invoices fall under. Zero hides
+  /// it: an account whose invoices carry no P.O. reads exactly as before.
+  final int poCount;
+
+  /// Given, the count line becomes its own control that opens the account's
+  /// P.O. and invoice page. Separate from [onTap], which on the bucket
+  /// selects the account. It opened inline once, and a five-P.O. account
+  /// grew to fill the screen on the list you pick accounts from.
+  final VoidCallback? onPoInvoicesTap;
 
   final VoidCallback onTap;
 
@@ -243,10 +255,27 @@ class AccountCard extends StatelessWidget {
   /// never truncated: a cut number is a different number, not merely a
   /// shorter one.
   Widget _amountLine(ThemeData theme) => Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // The overdue badge lives here, in the empty left half of the
+          // amount line. On the metadata line it squeezed the count to
+          // "1 P.O. · 1 in…" on a 390pt phone.
+          if (onSelectTap != null)
+            const SizedBox(width: _circleBox + BSizes.sm),
+          // Takes what the amount leaves and gives way first: the badge may
+          // shorten on a narrow window, the amount never does.
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: overdueCount > 0
+                  ? FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: _overdueBadge(theme),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
           // Only on the rows that are the exception. Every other row in this
           // list is an outstanding balance, so labelling each one
           // "outstanding" repeats the column heading down the whole screen.
@@ -275,6 +304,24 @@ class AccountCard extends StatelessWidget {
             ),
           ),
         ],
+      );
+
+  Widget _overdueBadge(ThemeData theme) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          // Tinted, not solid: in these lists almost everything is overdue,
+          // and a wall of filled red badges carries no signal.
+          color: BCollectionColors.danger.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+        ),
+        child: Text(
+          '$overdueCount overdue',
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: BCollectionColors.danger,
+            fontWeight: FontWeight.w700,
+            fontSize: 10,
+          ),
+        ),
       );
 
   /// Tick on the left, in a 28pt box around a 22pt mark.
@@ -368,6 +415,65 @@ class AccountCard extends StatelessWidget {
         ],
       );
 
+  /// "3 P.O.s · 7 invoices", or just the invoices when no P.O. is known.
+  ///
+  /// The P.O. leads because it is the coarser unit: a customer's accounts
+  /// payable releases payment per purchase order, so the collector plans by
+  /// P.O.s and the invoices are what each one contains.
+  String get _countLabel {
+    final invoices = '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}';
+    if (poCount <= 0) return invoices;
+    return '$poCount P.O.${poCount == 1 ? '' : 's'} · $invoices';
+  }
+
+  /// The count line. When the caller offers [onPoInvoicesTap] it reads as a
+  /// link — primary colour and a trailing arrow, like Details beside it — and
+  /// opens the account's P.O. page. Its own target, so it never also ticks
+  /// the account the way a tap on the card body does.
+  Widget _countControl(ThemeData theme) {
+    final interactive = onPoInvoicesTap != null && invoiceCount > 0;
+    final color =
+        interactive ? BCollectionColors.primary : BCollectionColors.inkMuted;
+    final content = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(poCount > 0 ? Iconsax.receipt_item : Iconsax.document_text,
+            size: 13, color: color),
+        const SizedBox(width: BSizes.xs),
+        Flexible(
+          child: Text(
+            _countLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: color, fontWeight: FontWeight.w600),
+          ),
+        ),
+        if (interactive) ...[
+          const SizedBox(width: 2),
+          Icon(Iconsax.arrow_right_3, size: 13, color: color),
+        ],
+      ],
+    );
+    if (!interactive) return content;
+
+    return Semantics(
+      button: true,
+      label: 'View ${_countLabel.replaceAll(' · ', ', ')} for ${client.name}',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onPoInvoicesTap,
+        borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+        child: Padding(
+          // 28pt tall on a 20pt line, same as Details: a thumb target that
+          // does not make the row taller.
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: content,
+        ),
+      ),
+    );
+  }
+
   /// Invoice count, how much of it is late, and the way into the account's
   /// details.
   Widget _meta(ThemeData theme) => Row(
@@ -381,46 +487,9 @@ class AccountCard extends StatelessWidget {
           // there is genuinely no room. As a Flexible beside a Spacer it got
           // half the free space and truncated "1 invoice" at 390pt.
           Expanded(
-            child: Row(
-              children: [
-                const Icon(Iconsax.document_text,
-                    size: 13, color: BCollectionColors.inkMuted),
-                const SizedBox(width: BSizes.xs),
-                Flexible(
-                  child: Text(
-                    '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: BCollectionColors.inkMuted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                if (overdueCount > 0) ...[
-                  const SizedBox(width: BSizes.sm),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      // Tinted, not solid: in these lists almost everything
-                      // is overdue, and a wall of filled red badges carries
-                      // no signal.
-                      color: BCollectionColors.danger.withValues(alpha: 0.12),
-                      borderRadius:
-                          BorderRadius.circular(BSizes.borderRadiusSm),
-                    ),
-                    child: Text(
-                      '$overdueCount overdue',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: BCollectionColors.danger,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _countControl(theme),
             ),
           ),
           // A labelled way into the account. Where the row itself selects,

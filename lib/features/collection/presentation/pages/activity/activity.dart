@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/po/account_po_invoices_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/collection_work_header.dart';
 import 'activity_account_invoices_screen.dart';
@@ -137,6 +138,8 @@ class CollectionActivityScreen extends StatelessWidget {
                           client: client,
                           invoiceCount: controller
                               .getActivityAccountInvoiceCount(client.id),
+                          poCount:
+                              controller.getActivityAccountPoCount(client.id),
                           totalAmount:
                               controller.getActivityAccountTotalDue(client.id),
                           // The engagement's own collected figure. This read
@@ -153,6 +156,12 @@ class CollectionActivityScreen extends StatelessWidget {
                           onInfoTap: () => Get.to(() =>
                               CollectionAccountInformationScreen(
                                   client: client)),
+                          onPoInvoicesTap: () =>
+                              Get.to(() => AccountPoInvoicesScreen(
+                                    client: client,
+                                    invoices: () => controller
+                                        .getActivityOpenInvoices(client.id),
+                                  )),
                         );
                       },
                     ),

@@ -633,6 +633,7 @@ class CollectionRepository extends GetxController {
     String clientContact = '',
     String clientEmail = '',
     List<String> documentReferences = const [],
+    String? poNumber,
     required double toBeCollected,
     String? bankName,
     String? remarks,
@@ -657,6 +658,8 @@ class CollectionRepository extends GetxController {
         'ClientEmail': clientEmail,
         'BpCode': clientCode,
         'DocumentReferences': documentReferences,
+        // Customer P.O.; the backend trims and stores null for blank.
+        'PoNumber': poNumber,
         'BankName': bankName,
         'ToBeCollected': toBeCollected,
         'Remarks': remarks,

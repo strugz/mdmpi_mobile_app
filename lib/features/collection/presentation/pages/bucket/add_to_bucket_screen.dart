@@ -24,6 +24,7 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
   final _clientAddress = TextEditingController();
   final _clientContact = TextEditingController();
   final _documentRefs = TextEditingController();
+  final _poNumber = TextEditingController();
   final _amount = TextEditingController();
   final _bankName = TextEditingController();
   final _dueDate = TextEditingController();
@@ -38,6 +39,7 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
     _clientAddress.dispose();
     _clientContact.dispose();
     _documentRefs.dispose();
+    _poNumber.dispose();
     _amount.dispose();
     _bankName.dispose();
     _dueDate.dispose();
@@ -67,6 +69,7 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
       clientAddress: _clientAddress.text.trim(),
       clientContact: _clientContact.text.trim(),
       documentReferences: refs,
+      poNumber: _poNumber.text.trim().isEmpty ? null : _poNumber.text.trim(),
       toBeCollected: BFormatter.parseAmount(_amount.text),
       bankName: _bankName.text.trim().isEmpty ? null : _bankName.text.trim(),
       remarks: _remarks.text.trim().isEmpty ? null : _remarks.text.trim(),
@@ -100,6 +103,11 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
                 keyboard: TextInputType.phone),
             _field(_documentRefs,
                 'Invoice / Document References (comma-separated)'),
+            // The customer's purchase order. Optional: SAP-imported invoices
+            // carry it automatically; a hand-added one only if the customer
+            // gave it. Same field the bucket cards and the P.O. filter read.
+            _field(_poNumber, 'P.O. Number (customer purchase order)',
+                capitalization: TextCapitalization.characters),
             _field(
               _amount,
               'Amount Due *',
@@ -154,6 +162,7 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
     int maxLines = 1,
     List<TextInputFormatter>? formatters,
     String? Function(String?)? validator,
+    TextCapitalization capitalization = TextCapitalization.none,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: BSizes.spaceBtwInputFields),
@@ -162,6 +171,10 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
         keyboardType: keyboard,
         maxLines: maxLines,
         inputFormatters: formatters,
+        textCapitalization: capitalization,
+        // Codes, not prose: never let autocorrect rewrite a reference.
+        autocorrect: capitalization == TextCapitalization.none,
+        enableSuggestions: capitalization == TextCapitalization.none,
         decoration: InputDecoration(labelText: label),
         validator: validator ??
             (required

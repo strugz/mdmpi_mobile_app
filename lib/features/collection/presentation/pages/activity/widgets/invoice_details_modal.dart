@@ -92,6 +92,10 @@ class InvoiceDetailsModal extends StatelessWidget {
                 _buildInfoTile(
                     context, 'Account Name', item.client.name, Iconsax.user,
                     valueColor: BCollectionColors.primary),
+                // The customer's P.O. (SAP BP Ref. No.); hidden when SAP had none.
+                if (item.hasPoNumber)
+                  _buildInfoTile(context, 'P.O. Number', item.poNumber.trim(),
+                      Iconsax.receipt_item),
               ],
             ),
 

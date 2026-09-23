@@ -13,6 +13,9 @@ import 'widgets/invoice_details_modal.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/po_grouping.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/po_invoice_group_card.dart';
 
 class CollectionActivityAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -29,12 +32,100 @@ class _CollectionActivityAccountInvoicesScreenState
     extends State<CollectionActivityAccountInvoicesScreen> {
   final controller = Get.find<CollectionActivityController>();
 
+  /// P.O. groups opened or closed by hand. The default mirrors the bucket
+  /// side — closed across several P.O.s, open for a single one or under a
+  /// search — plus one rule of this screen's own: while selecting, every
+  /// group is open, because a tick inside a closed group is a tick the
+  /// collector cannot see or undo.
+  final Map<String, bool> _expandedOverrides = {};
+
+  bool _isExpanded(PoGrouping grouping, PoInvoiceGroup group) {
+    if (controller.isActivitySelectionMode.value) return true;
+    final override = _expandedOverrides[group.key];
+    if (override != null) return override;
+    return grouping.groups.length == 1 ||
+        controller.invoiceSearchQuery.value.isNotEmpty;
+  }
+
+  void _toggle(PoGrouping grouping, PoInvoiceGroup group) {
+    if (controller.isActivitySelectionMode.value) return;
+    setState(() {
+      _expandedOverrides[group.key] = !_isExpanded(grouping, group);
+    });
+  }
+
   @override
   void dispose() {
     controller.invoiceSearchQuery.value = ''; // Reset search on leave
     controller.clearInvoiceFilters(); // ...and the filter with it
     controller.exitActivitySelectionMode(); // Exit selection on leave
     super.dispose();
+  }
+
+  /// One invoice card with this screen's behaviour: tap opens the record
+  /// screen or toggles the tick, long-press ticks, the info glyph opens the
+  /// details sheet. Shared by the flat list and the P.O. groups.
+  Widget _invoiceCard(BuildContext context, CollectionItemModel item,
+      {bool showPoNumber = true}) {
+    final isSelected = controller.selectedActivityInvoiceIds.contains(item.id);
+    return InvoiceCard(
+      item: item,
+      showPoNumber: showPoNumber,
+      isSelected: isSelected,
+      isSelectionMode: controller.isActivitySelectionMode.value,
+      onTap: () {
+        if (controller.isActivitySelectionMode.value) {
+          controller.toggleActivityInvoiceSelection(item.id);
+        } else {
+          Get.to(() => ActivityDetailScreen(item: item));
+        }
+      },
+      onLongPress: () => controller.toggleActivityInvoiceSelection(item.id),
+      onInfoTap: () {
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: false,
+          backgroundColor: Colors.transparent,
+          builder: (sheetContext) => Padding(
+            padding: EdgeInsets.only(
+                bottom: MediaQuery.paddingOf(sheetContext).bottom),
+            child: InvoiceDetailsModal(item: item),
+          ),
+        );
+      },
+    );
+  }
+
+  /// One collapsible row per P.O., then the unnamed tail under a rule.
+  Widget _groupedList(BuildContext context, PoGrouping grouping) {
+    final selected = controller.selectedActivityInvoiceIds;
+    final rows = <Widget>[
+      for (final g in grouping.groups)
+        PoInvoiceGroupCard(
+          key: ValueKey('po-${g.key}'),
+          group: g,
+          expanded: _isExpanded(grouping, g),
+          onToggle: () => _toggle(grouping, g),
+          selectedCount: g.invoices.where((i) => selected.contains(i.id)).length,
+          itemBuilder: (item) =>
+              _invoiceCard(context, item, showPoNumber: false),
+        ),
+      if (grouping.ungrouped.isNotEmpty) ...[
+        const PoSectionLabel('No P.O.'),
+        for (final inv in grouping.ungrouped) _invoiceCard(context, inv),
+      ],
+    ];
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(BSizes.defaultSpace),
+      itemCount: rows.length,
+      separatorBuilder: (_, index) =>
+          rows[index] is PoSectionLabel || rows[index + 1] is PoSectionLabel
+              ? const SizedBox.shrink()
+              : const SizedBox(height: BSizes.spaceBtwItems),
+      itemBuilder: (_, index) => rows[index],
+    );
   }
 
   Future<void> _showUnclaimWithReasonDialog() async {
@@ -231,6 +322,7 @@ class _CollectionActivityAccountInvoicesScreenState
           body: Obx(() {
             final invoices =
                 controller.getActivityInvoicesByAccount(widget.client.id);
+            final grouping = PoGrouping.of(invoices);
 
             return Column(
               children: [
@@ -269,51 +361,18 @@ class _CollectionActivityAccountInvoicesScreenState
                 Expanded(
                   child: invoices.isEmpty
                       ? Center(child: _emptyState())
-                      : ListView.separated(
-                          padding: const EdgeInsets.all(BSizes.defaultSpace),
-                          itemCount: invoices.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: BSizes.spaceBtwItems),
-                          itemBuilder: (context, index) {
-                            final item = invoices[index];
-                            final isSelected = controller
-                                .selectedActivityInvoiceIds
-                                .contains(item.id);
-
-                            return InvoiceCard(
-                              item: item,
-                              isSelected: isSelected,
-                              isSelectionMode:
-                                  controller.isActivitySelectionMode.value,
-                              onTap: () {
-                                if (controller.isActivitySelectionMode.value) {
-                                  controller
-                                      .toggleActivityInvoiceSelection(item.id);
-                                } else {
-                                  Get.to(
-                                      () => ActivityDetailScreen(item: item));
-                                }
-                              },
-                              onLongPress: () => controller
-                                  .toggleActivityInvoiceSelection(item.id),
-                              onInfoTap: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  showDragHandle: false,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (sheetContext) => Padding(
-                                    padding: EdgeInsets.only(
-                                        bottom:
-                                            MediaQuery.paddingOf(sheetContext)
-                                                .bottom),
-                                    child: InvoiceDetailsModal(item: item),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
+                      : grouping.hasGroups
+                          ? _groupedList(context, grouping)
+                          // No P.O. on any invoice: the flat list, unchanged.
+                          : ListView.separated(
+                              padding:
+                                  const EdgeInsets.all(BSizes.defaultSpace),
+                              itemCount: invoices.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: BSizes.spaceBtwItems),
+                              itemBuilder: (context, index) =>
+                                  _invoiceCard(context, invoices[index]),
+                            ),
                 ),
               ],
             );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_copy_icon_button.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
@@ -43,9 +44,13 @@ class InvoiceCard extends StatelessWidget {
     this.isSelected = false,
     this.isSelectionMode = false,
     this.showAccountName = false,
+    this.showPoNumber = true,
   });
 
   final CollectionItemModel item;
+
+  /// Off when the card sits under a P.O. group header that already names it.
+  final bool showPoNumber;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
   final VoidCallback? onInfoTap;
@@ -132,6 +137,12 @@ class InvoiceCard extends StatelessWidget {
                   _amountRow(theme, settled),
                   const SizedBox(height: BSizes.xs),
                   _dueRow(theme),
+                  // Only when SAP gave one: a blank "PO —" line on most cards
+                  // would be noise, and the customer's clerk asks by P.O.
+                  if (showPoNumber && item.hasPoNumber) ...[
+                    const SizedBox(height: BSizes.xs),
+                    _poRow(theme),
+                  ],
                 ],
               ),
             ),
@@ -173,14 +184,28 @@ class InvoiceCard extends StatelessWidget {
               // what a deposit is matched back to. It was labelMedium grey —
               // the quietest thing on the card — which is the wrong weight
               // for the one line people look up.
-              Text(
-                '#${item.id}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                ),
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      '#${item.id}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                  // Hidden while selecting: every tap there is a tick.
+                  if (!isSelectionMode)
+                    BCopyIconButton(
+                      value: item.id,
+                      label: 'Invoice',
+                      size: 14,
+                      color: BCollectionColors.inkMuted,
+                    ),
+                ],
               ),
               if (showAccountName)
                 Text(
@@ -271,6 +296,39 @@ class InvoiceCard extends StatelessWidget {
           const Icon(Iconsax.tick_circle5,
               color: BCollectionColors.success, size: 18),
         ],
+      ],
+    );
+  }
+
+  /// The customer's P.O. number, when SAP supplied one.
+  ///
+  /// Several invoices often share a P.O., and it is the number the customer's
+  /// accounts-payable clerk quotes back, so it sits with the dates rather than
+  /// in the details sheet.
+  Widget _poRow(ThemeData theme) {
+    return Row(
+      children: [
+        const Icon(Iconsax.receipt_item,
+            size: 14, color: BCollectionColors.inkMuted),
+        const SizedBox(width: BSizes.xs),
+        Flexible(
+          child: Text(
+            'PO ${item.poNumber.trim()}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: BCollectionColors.inkSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        if (!isSelectionMode)
+          BCopyIconButton(
+            value: item.poNumber.trim(),
+            label: 'P.O.',
+            size: 14,
+            color: BCollectionColors.inkMuted,
+          ),
       ],
     );
   }

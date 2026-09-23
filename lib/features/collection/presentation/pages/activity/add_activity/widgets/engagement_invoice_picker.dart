@@ -105,7 +105,11 @@ class EngagementInvoicePicker extends StatelessWidget {
                           style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w600)),
                       subtitle: Text(
-                        'Posted ${inv.postingDate}  ·  Due ${inv.dueDate}',
+                        // The P.O. leads when present: a customer paying "the
+                        // ADC-CHEM-001 invoices" is picking by it, not by date.
+                        inv.hasPoNumber
+                            ? 'PO ${inv.poNumber.trim()}  ·  Due ${inv.dueDate}'
+                            : 'Posted ${inv.postingDate}  ·  Due ${inv.dueDate}',
                         style: theme.textTheme.bodySmall
                             ?.copyWith(color: BCollectionColors.inkMuted),
                       ),

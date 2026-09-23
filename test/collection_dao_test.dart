@@ -83,6 +83,57 @@ void main() {
       expect(loaded.history.first.checkNumber, '123');
     });
 
+    test('P.O. number round-trips through the DAO and stays blank when absent',
+        () async {
+      await dao.insertCollectionItem(CollectionItemModel(
+        id: 'PO-1',
+        client: ClientModel(id: 'C1', code: 'C1', name: 'Acme', address: '', contact: '', emailAddress: ''),
+        toBeCollected: 100,
+        poNumber: 'ADC-CHEM-2023-001-A',
+      ));
+      await dao.insertCollectionItem(CollectionItemModel(
+        id: 'PO-2',
+        client: ClientModel(id: 'C1', code: 'C1', name: 'Acme', address: '', contact: '', emailAddress: ''),
+        toBeCollected: 200,
+      ));
+
+      final withPo = await dao.getCollectionItemById('PO-1');
+      expect(withPo!.poNumber, 'ADC-CHEM-2023-001-A');
+      expect(withPo.hasPoNumber, isTrue);
+
+      final without = await dao.getCollectionItemById('PO-2');
+      expect(without!.poNumber, '');
+      expect(without.hasPoNumber, isFalse);
+    });
+
+    test('a table created before the P.O. column gains it on the next open',
+        () async {
+      // Simulate a device whose collection table predates 2026-09-22.
+      final old = await openDatabase(inMemoryDatabasePath, version: 1,
+          onCreate: (db, _) async {
+        await db.execute('''
+          CREATE TABLE a_tblCollectionItems (
+            id TEXT PRIMARY KEY, clientId TEXT, clientName TEXT, clientAddress TEXT,
+            documentReferences TEXT, bankName TEXT, toBeCollected REAL DEFAULT 0,
+            totalCollected REAL DEFAULT 0, remarks TEXT, documentDate TEXT, bpCode TEXT,
+            postingDate TEXT, dueDate TEXT, status TEXT, lastOutcome TEXT,
+            assignedAt TEXT, collectorName TEXT, createdAt TEXT, updatedAt TEXT
+          )
+        ''');
+      });
+      try {
+        await ensureCollectionTables(old);
+        final cols = (await old.rawQuery('PRAGMA table_info(a_tblCollectionItems)'))
+            .map((r) => r['name'])
+            .toList();
+        expect(cols, contains('poNumber'));
+        // Re-running is harmless.
+        await ensureCollectionTables(old);
+      } finally {
+        await old.close();
+      }
+    });
+
     test('re-downloading the bucket does not duplicate history rows', () async {
       final item = CollectionItemModel(
         id: 'INV-9',

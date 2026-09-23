@@ -12,6 +12,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/acquiring_overlay.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_toolbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/po/account_po_invoices_screen.dart';
 import 'collection_account_information_screen.dart';
 import 'widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
@@ -229,6 +230,15 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
                                       client: client,
                                       invoiceCount: controller
                                           .getAccountInvoiceCount(client.id),
+                                      poCount: controller
+                                          .getAccountPoCount(client.id),
+                                      onPoInvoicesTap: () =>
+                                          Get.to(() => AccountPoInvoicesScreen(
+                                                client: client,
+                                                invoices: () => controller
+                                                    .getBucketOpenInvoices(
+                                                        client.id),
+                                              )),
                                       totalAmount: controller
                                           .getAccountTotalDue(client.id),
                                       totalCollected: controller
