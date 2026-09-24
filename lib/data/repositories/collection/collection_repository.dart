@@ -125,8 +125,16 @@ class CollectionRepository extends GetxController {
           await dao.deleteAllCollectionItems();
           await dao.insertCollectionItems(ws.items);
           await _replaceAccountLevelData(ws);
+          // Rebuild the archive's copied half now, from the invoices already
+          // in memory, so the month's total is current by the time the
+          // screens hear about the download — not after they have re-read
+          // every invoice and started the rebuild themselves.
+          await _backfill(items: ws.items);
 
           localDataVersion.value++;
+          // The rebuild above is for this version; the listeners' own call
+          // to backfillOwnEngagements has nothing left to do.
+          _archiveBackfilledAt = localDataVersion.value;
           logDebug(
               'CollectionRepository: workspace cached — ${ws.items.length} items, '
               '${ws.advances.length} advances, ${ws.activities.length} activities, '
@@ -877,13 +885,28 @@ class CollectionRepository extends GetxController {
   /// re-import from landing a second copy of work the collector did here. The
   /// cut is by day, so the copy can miss part of the day the archive began;
   /// that day is the one day where both halves could describe the same visit.
+  ///
+  /// A download runs it itself, on the invoices it just parsed and before
+  /// [localDataVersion] announces them; this call then finds the archive
+  /// already current for that version and returns at once.
   Future<void> backfillOwnEngagements() async {
+    if (_archiveBackfilledAt == localDataVersion.value) return;
+    await _backfill();
+  }
+
+  /// The [localDataVersion] the archive's copied half was last rebuilt for.
+  int _archiveBackfilledAt = -1;
+
+  /// [items], when the caller already holds the fresh cache, saves reading
+  /// several thousand invoices back out of SQLite — the slowest step here,
+  /// and it sat between a download finishing and "Collected this Month"
+  /// showing the month's collections.
+  Future<void> _backfill({List<CollectionItemModel>? items}) async {
     try {
       final helper = DatabaseHelper.instance;
       final engDao = await helper.collectionEngagementDao;
 
       final watermark = await _archiveWatermark();
-      final removed = await engDao.clearServerCopied();
 
       final aliases = collectorAliases;
       bool mine(String name) => aliases.contains(name.trim().toLowerCase());
@@ -914,8 +937,8 @@ class CollectionRepository extends GetxController {
         }
       }
 
-      final items = await (await _dao).getCollectionItems();
-      for (final item in items) {
+      final cached = items ?? await (await _dao).getCollectionItems();
+      for (final item in cached) {
         learn(item.client.id, item.client.name);
       }
       final activities = await (await helper.collectionActivityDao).getAll();
@@ -927,7 +950,7 @@ class CollectionRepository extends GetxController {
         learn(a.clientId, a.clientName);
       }
 
-      for (final item in items) {
+      for (final item in cached) {
         for (final h in item.history) {
           if (!mine(h.collectorName)) continue;
           add(_engagementRecord(
@@ -994,11 +1017,14 @@ class CollectionRepository extends GetxController {
         ));
       }
 
-      await _archiveAll(records);
-      // Bumped even when nothing is written, because dropping the old copies
-      // is itself a change the calendar and the month's total must see —
+      // Old copies out and new ones in as one transaction: the records are
+      // all built first, so no reader ever finds the copied half missing.
+      final removed = await engDao.replaceServerCopies(records);
+      _archiveBackfilledAt = localDataVersion.value;
+      // Also when nothing is written, because dropping the old copies is
+      // itself a change the calendar and the month's total must see —
       // otherwise deleted data stays on screen until the next restart.
-      if (records.isEmpty && removed > 0) ownEngagementVersion.value++;
+      if (records.isNotEmpty || removed > 0) ownEngagementVersion.value++;
       logDebug('CollectionRepository: archive refreshed — '
           '${records.length} copied from the server cache, $removed stale '
           'copies dropped, watermark $watermark'

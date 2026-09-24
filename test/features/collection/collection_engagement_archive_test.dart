@@ -193,6 +193,50 @@ void main() {
           reason: 'a refresh may drop the copies and nothing else');
     });
 
+    // A download rebuilds the copies. Deleting them and then writing the new
+    // ones left a moment with none, and "Collected this Month" read ₱0.00
+    // until the rebuild caught up. The swap is one transaction now.
+    test('swaps the copies in one step and keeps the collector\'s own',
+        () async {
+      await dao.upsert(_row('2026-09-17T10:15:00'));
+      await dao.upsert(_row('2026-09-16T09:00:00',
+          itemId: 'INV-2', source: CollectionEngagementRecord.sourceServer));
+
+      final removed = await dao.replaceServerCopies([
+        _row('2026-09-15T09:00:00',
+            itemId: 'INV-3', source: CollectionEngagementRecord.sourceServer),
+        _row('2026-09-14T09:00:00',
+            itemId: 'INV-4', source: CollectionEngagementRecord.sourceServer),
+      ]);
+
+      expect(removed, 1);
+      final left = await dao.getAll('jay');
+      expect(left.map((e) => e.itemId), ['INV-1', 'INV-3', 'INV-4'],
+          reason: 'old copy out, new copies in, own work untouched');
+    });
+
+    test('never shows a reader the copies missing mid-swap', () async {
+      await dao.upsert(_row('2026-09-16T09:00:00',
+          itemId: 'INV-2', source: CollectionEngagementRecord.sourceServer));
+
+      // A read queued while the swap runs waits for the transaction, so it
+      // sees the old copy or the new one — never an empty archive.
+      final swap = dao.replaceServerCopies([
+        _row('2026-09-16T09:00:00',
+            itemId: 'INV-2', source: CollectionEngagementRecord.sourceServer),
+      ]);
+      final during = dao.getAll('jay');
+      await swap;
+      expect((await during).map((e) => e.itemId), ['INV-2']);
+    });
+
+    test('a swap to nothing still reports what it dropped', () async {
+      await dao.upsert(_row('2026-09-16T09:00:00',
+          itemId: 'INV-2', source: CollectionEngagementRecord.sourceServer));
+      expect(await dao.replaceServerCopies(const []), 1);
+      expect(await dao.countAll(), 0);
+    });
+
     test('cannot be used to reach the collector\'s own work', () async {
       await dao.upsert(_row('2026-09-17T10:15:00'));
       await dao.upsert(_row('2026-09-16T09:00:00', itemId: 'INV-2'));
