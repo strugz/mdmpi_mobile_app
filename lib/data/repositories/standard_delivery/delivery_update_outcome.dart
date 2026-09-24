@@ -14,10 +14,14 @@ enum DeliveryUpdateStatus {
 }
 
 class DeliveryUpdateOutcome {
-  const DeliveryUpdateOutcome._(this.status, this.message);
+  const DeliveryUpdateOutcome._(this.status, this.message,
+      {this.sameStatus = false});
 
-  const DeliveryUpdateOutcome.updated([String message = ''])
-      : this._(DeliveryUpdateStatus.updated, message);
+  /// [sameStatus]: the server already held the status that was sent. The
+  /// update was still applied, but nothing moved forward.
+  const DeliveryUpdateOutcome.updated(
+      [String message = '', bool sameStatus = false])
+      : this._(DeliveryUpdateStatus.updated, message, sameStatus: sameStatus);
 
   const DeliveryUpdateOutcome.rejected(String reason)
       : this._(DeliveryUpdateStatus.rejected, reason);
@@ -26,6 +30,9 @@ class DeliveryUpdateOutcome {
       : this._(DeliveryUpdateStatus.failed, reason);
 
   final DeliveryUpdateStatus status;
+
+  /// Only meaningful for [DeliveryUpdateStatus.updated]; see [updated].
+  final bool sameStatus;
 
   /// The server's confirmation, or why the update was not applied.
   final String message;

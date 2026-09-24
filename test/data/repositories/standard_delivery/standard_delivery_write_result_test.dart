@@ -77,8 +77,8 @@ void main() {
     });
 
     test('returns false when the server rejects the update', () async {
-      final client = MockClient(
-          (_) async => http.Response('"Request not found."', 404));
+      final client =
+          MockClient((_) async => http.Response('"Request not found."', 404));
 
       final updated = await StandardDeliveryRepository()
           .updateDelivery(newRequest(), 'JCA', client: client);
@@ -144,6 +144,24 @@ void main() {
           .sendUpdate(newRequest(), 'JCA', client: client);
 
       expect(outcome.status, DeliveryUpdateStatus.updated);
+    });
+
+    test('reads sameStatus from the server reply', () async {
+      Future<DeliveryUpdateOutcome> reply(String body) =>
+          StandardDeliveryRepository().sendUpdate(newRequest(), 'JCA',
+              client: MockClient((_) async => http.Response(body, 200)));
+
+      final same = await reply(
+          '{"message":"Request updated successfully.","sameStatus":true}');
+      final moved = await reply(
+          '{"message":"Request updated successfully.","sameStatus":false}');
+      final olderServer = await reply('"Request updated successfully."');
+
+      expect(same.isUpdated, isTrue);
+      expect(same.sameStatus, isTrue);
+      expect(moved.sameStatus, isFalse);
+      expect(olderServer.isUpdated, isTrue);
+      expect(olderServer.sameStatus, isFalse);
     });
 
     test('other errors are failed, not rejected', () async {

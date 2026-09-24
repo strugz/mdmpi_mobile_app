@@ -120,7 +120,8 @@ class StandardDeliveryRepository extends GetxController {
 
       if (response.statusCode == 200) {
         return message.contains('updated successfully')
-            ? DeliveryUpdateOutcome.updated(message)
+            ? DeliveryUpdateOutcome.updated(
+                message, _sameStatusFrom(response.body))
             : DeliveryUpdateOutcome.failed(message);
       }
 
@@ -136,6 +137,18 @@ class StandardDeliveryRepository extends GetxController {
     } catch (e) {
       logDebug('StandardDeliveryRepository.sendUpdate error: $e');
       return DeliveryUpdateOutcome.failed('An error occurred: $e');
+    }
+  }
+
+  /// Whether the server said the status sent was the one it already held
+  /// (`{"sameStatus": true}`). False for older servers that reply with a bare
+  /// string.
+  static bool _sameStatusFrom(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      return decoded is Map && decoded['sameStatus'] == true;
+    } catch (_) {
+      return false;
     }
   }
 

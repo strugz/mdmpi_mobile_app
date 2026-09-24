@@ -2,6 +2,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/repositories/standard_delivery/delivery_update_outcome.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/upload_candidate_classifier.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
 /// What Settings > Upload Data achieved across the locally saved requests.
@@ -19,7 +20,12 @@ class RequestUploadSummary {
   /// Reasons shown in the snackbar before collapsing into "+N more".
   static const int maxListedReasons = 3;
 
+  /// Accepted requests that moved the status forward on the server.
   int uploaded = 0;
+
+  /// Accepted requests whose status the server already had: nothing new.
+  int sameStatus = 0;
+
   final List<String> skipped = [];
   final List<String> failed = [];
 
@@ -34,27 +40,82 @@ class RequestUploadSummary {
 
   bool get isClean => skipped.isEmpty && failed.isEmpty;
 
+  /// Requests that were sent, whatever came back.
+  int get attempted => uploaded + sameStatus + skipped.length + failed.length;
+
   /// Sends every locally modified request (anything past New Request) through
   /// [send] and tallies the outcomes. One refusal never stops the rest.
+  ///
+  /// [onProgress] is called with (0, total) before the first send and after
+  /// each one, so a progress UI can show "3 of 8".
   static Future<RequestUploadSummary> run(
     Iterable<StandardDeliveryModel> requests,
-    Future<DeliveryUpdateOutcome> Function(StandardDeliveryModel request) send,
-  ) async {
+    Future<DeliveryUpdateOutcome> Function(StandardDeliveryModel request)
+        send, {
+    void Function(int done, int total)? onProgress,
+  }) async {
     final summary = RequestUploadSummary();
-    for (final request in requests) {
-      if (request.status == BTexts.statusNewRequest) continue;
-
+    final pending = requests
+        .where((request) => request.status != BTexts.statusNewRequest)
+        .toList();
+    onProgress?.call(0, pending.length);
+    for (final request in pending) {
       final outcome = await send(request);
       switch (outcome.status) {
         case DeliveryUpdateStatus.updated:
-          summary.uploaded++;
+          if (outcome.sameStatus) {
+            summary.sameStatus++;
+          } else {
+            summary.uploaded++;
+          }
         case DeliveryUpdateStatus.rejected:
           summary.skipped.add(outcome.message);
           summary.skippedIds.add(request.id);
         case DeliveryUpdateStatus.failed:
           summary.failed.add('Request ${request.id}: ${outcome.message}');
       }
+      onProgress?.call(summary.attempted, pending.length);
     }
+    return summary;
+  }
+
+  /// [run], minus the requests whose status the server already holds.
+  ///
+  /// Those are not sent at all (re-sending them changes nothing but can put
+  /// the phone's older crew or trip ticket back); they are counted in
+  /// [sameStatus] instead. If the server's list cannot be fetched, everything
+  /// is sent and the server's own `sameStatus` reply does the counting.
+  static Future<RequestUploadSummary> runSkippingSameStatus(
+    Iterable<StandardDeliveryModel> requests,
+    Future<DeliveryUpdateOutcome> Function(StandardDeliveryModel request)
+        send, {
+    required Future<List<StandardDeliveryModel>> Function() fetchServer,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    var toSend = requests.toList();
+    var alreadySame = 0;
+    try {
+      final serverStatus = {
+        for (final r in await fetchServer()) r.id: r.status,
+      };
+      bool isSameAsServer(StandardDeliveryModel request) {
+        final status = serverStatus[request.id];
+        return status != null &&
+            BUploadCandidateClassifier.sameStatus(status, request.status);
+      }
+
+      final same = toSend
+          .where((r) => r.status != BTexts.statusNewRequest)
+          .where(isSameAsServer)
+          .length;
+      toSend = toSend.where((r) => !isSameAsServer(r)).toList();
+      alreadySame = same;
+    } catch (e) {
+      logDebug(
+          'RequestUploadSummary: server list unavailable, sending all: $e');
+    }
+    final summary = await run(toSend, send, onProgress: onProgress);
+    summary.sameStatus += alreadySame;
     return summary;
   }
 
@@ -87,14 +148,23 @@ class RequestUploadSummary {
   }
 
   String get title {
+    if (attempted == 0) return 'Nothing to upload';
     if (failed.isNotEmpty) return 'Upload incomplete';
     if (skipped.isNotEmpty) return 'Upload finished with skipped requests';
+    if (uploaded == 0) return 'Already up to date';
     return 'Upload complete';
   }
 
   String get message {
+    if (attempted == 0) {
+      return 'This phone has no changes the server is missing.';
+    }
     final lines = <String>[
       uploaded == 1 ? 'Uploaded 1 request.' : 'Uploaded $uploaded requests.',
+      if (sameStatus > 0)
+        sameStatus == 1
+            ? '1 request has the same status as the server.'
+            : '$sameStatus requests have the same status as the server.',
     ];
     if (skipped.isNotEmpty) {
       lines.add('Skipped ${skipped.length} (the server already has newer '

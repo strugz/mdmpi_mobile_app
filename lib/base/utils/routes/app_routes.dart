@@ -21,6 +21,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profil
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/image_outbox_page.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/signature_outbox_page.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/upload_data_page.dart';
 
 import '../../../features/logistics/screens/request.dart';
 import '../../../features/logistics/screens/data_test/local_storage_data_viewer.dart';
@@ -58,6 +59,7 @@ class AppRoutes {
     GetPage(
         name: BRoutes.signatureOutbox, page: () => const SignatureOutboxPage()),
     GetPage(name: BRoutes.imageOutbox, page: () => const ImageOutboxPage()),
+    GetPage(name: BRoutes.uploadData, page: () => const UploadDataPage()),
     // BackLoad receives the StandardDeliveryModel via Get.arguments
     GetPage(
       name: BRoutes.backLoad,

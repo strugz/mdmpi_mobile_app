@@ -4,7 +4,8 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/request_upload_summa
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 
-StandardDeliveryModel _request(String id, String status) => StandardDeliveryModel(
+StandardDeliveryModel _request(String id, String status) =>
+    StandardDeliveryModel(
       id: id,
       clientId: 'client-123',
       shippingMethod: 'Land',
@@ -124,7 +125,8 @@ void main() {
 
       expect(replaced, ['2026090145:New Request', '2026090210:For Delivery']);
       expect(summary.refreshed, 2);
-      expect(summary.message, contains("This phone now has the server's copy of them."));
+      expect(summary.message,
+          contains("This phone now has the server's copy of them."));
     });
 
     test('a skipped request missing from the server is left alone', () async {
@@ -180,5 +182,106 @@ void main() {
 
     expect(summary.title, 'Upload incomplete');
     expect(summary.message, contains('Failed 1 (try again later):'));
+  });
+
+  test('onProgress counts only the requests that are sent', () async {
+    final progress = <(int, int)>[];
+
+    await RequestUploadSummary.run(
+      [
+        _request('0', 'New Request'),
+        _request('1', 'Item Prepared'),
+        _request('2', 'For Delivery'),
+      ],
+      (request) async => const DeliveryUpdateOutcome.updated(),
+      onProgress: (done, total) => progress.add((done, total)),
+    );
+
+    expect(progress, [(0, 2), (1, 2), (2, 2)]);
+  });
+
+  test('nothing to send says so instead of "Uploaded 0 requests"', () async {
+    final summary = await RequestUploadSummary.run(
+      [_request('0', 'New Request')],
+      (request) async => const DeliveryUpdateOutcome.updated(),
+    );
+
+    expect(summary.attempted, 0);
+    expect(summary.title, 'Nothing to upload');
+    expect(summary.message, isNot(contains('Uploaded')));
+  });
+
+  test('same-status replies are counted apart from uploads', () async {
+    final summary = await RequestUploadSummary.run(
+      [
+        _request('1', 'Item Prepared'),
+        _request('2', 'Item Prepared'),
+        _request('3', 'For Delivery'),
+        _request('4', 'Item Prepared'),
+        _request('5', 'Item Prepared'),
+      ],
+      (request) async => request.id == '3'
+          ? const DeliveryUpdateOutcome.updated('ok')
+          : const DeliveryUpdateOutcome.updated('ok', true),
+    );
+
+    expect(summary.uploaded, 1);
+    expect(summary.sameStatus, 4);
+    expect(summary.attempted, 5);
+    expect(summary.title, 'Upload complete');
+    expect(summary.message,
+        'Uploaded 1 request.\n4 requests have the same status as the server.');
+  });
+
+  test('only same-status replies means already up to date', () async {
+    final summary = await RequestUploadSummary.run(
+      [_request('1', 'Item Prepared')],
+      (request) async => const DeliveryUpdateOutcome.updated('ok', true),
+    );
+
+    expect(summary.title, 'Already up to date');
+    expect(summary.message, contains('1 request has the same status'));
+  });
+
+  group('runSkippingSameStatus', () {
+    test('does not send requests the server already has at that status',
+        () async {
+      final sent = <String>[];
+      final summary = await RequestUploadSummary.runSkippingSameStatus(
+        [
+          _request('1', 'Item Prepared'),
+          _request('2', 'For Delivery'),
+          _request('3', 'New Request'),
+        ],
+        (request) async {
+          sent.add(request.id);
+          return const DeliveryUpdateOutcome.updated();
+        },
+        fetchServer: () async => [
+          _request('1', 'item prepared'),
+          _request('2', 'Item Prepared'),
+          _request('3', 'New Request'),
+        ],
+      );
+
+      expect(sent, ['2']);
+      expect(summary.uploaded, 1);
+      expect(summary.sameStatus, 1);
+    });
+
+    test('sends everything when the server list cannot be fetched', () async {
+      final sent = <String>[];
+      final summary = await RequestUploadSummary.runSkippingSameStatus(
+        [_request('1', 'Item Prepared')],
+        (request) async {
+          sent.add(request.id);
+          return const DeliveryUpdateOutcome.updated();
+        },
+        fetchServer: () async => throw Exception('offline'),
+      );
+
+      expect(sent, ['1']);
+      expect(summary.sameStatus, 0);
+    });
   });
 }

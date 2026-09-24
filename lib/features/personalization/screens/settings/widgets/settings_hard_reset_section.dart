@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/list_tiles/settings_menu_tile.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
@@ -134,10 +133,10 @@ class SettingsHardResetSection extends StatelessWidget {
               ?.copyWith(color: scheme.onSurfaceVariant),
         ),
         children: [
-          const BSectionHeading(
+          BSectionHeading(
             title: 'Request Data',
             showActionButton: false,
-            textColor: BColors.primary,
+            textColor: scheme.primary,
           ),
           const SizedBox(height: BSizes.xs),
           _sectionTile(
@@ -219,8 +218,7 @@ class SettingsHardResetSection extends StatelessWidget {
             onRefresh: () => _confirmAndRun(
               context,
               title: 'Hard Reset Stock Receive',
-              message:
-                  'This will reload Stock Receive data from the server.',
+              message: 'This will reload Stock Receive data from the server.',
               action: stockReceiveController.hardResetStockReceives,
             ),
           ),
@@ -229,10 +227,10 @@ class SettingsHardResetSection extends StatelessWidget {
             height: BSizes.spaceBtwItems,
             color: scheme.primary.withValues(alpha: isDark ? 0.18 : 0.12),
           ),
-          const BSectionHeading(
+          BSectionHeading(
             title: 'Reference Data',
             showActionButton: false,
-            textColor: BColors.primary,
+            textColor: scheme.primary,
           ),
           const SizedBox(height: BSizes.xs),
           _sectionTile(
@@ -279,7 +277,3 @@ class SettingsHardResetSection extends StatelessWidget {
     );
   }
 }
-
-
-
-

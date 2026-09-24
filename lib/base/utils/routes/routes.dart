@@ -43,6 +43,7 @@ class BRoutes{
       '/collection/engagement/advanced-payment';
   static const signatureOutbox = '/signature-outbox';
   static const imageOutbox = '/image-outbox';
+  static const uploadData = '/upload-data';
   // Back load routes
   static const backLoad = '/back-load';
 }

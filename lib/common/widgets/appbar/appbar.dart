@@ -25,17 +25,27 @@ class BAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final dark = BHelperFunctions.isDarkMode(context);
-    return Padding(
+    final barTheme = Theme.of(context).appBarTheme;
+    // A department theme with a coloured bar (Collection) sets these; the
+    // base theme leaves them null and keeps the transparent bar it had.
+    final arrowColor =
+        barTheme.foregroundColor ?? (dark ? BColors.white : BColors.dark);
+    // The bar is inset from the screen edges, so the gutters are filled
+    // with the bar colour or a coloured bar would float between two strips.
+    return ColoredBox(
+      color: barTheme.backgroundColor ?? Colors.transparent,
+      child: Padding(
       padding: EdgeInsets.symmetric(horizontal: BSizes.md),
       child: AppBar(
         automaticallyImplyLeading: false,
         leading: showBackArrow
-            ? IconButton(onPressed: () => Get.back(), icon: Icon(Iconsax.arrow_left, color: dark ? BColors.white : BColors.dark))
+            ? IconButton(onPressed: () => Get.back(), icon: Icon(Iconsax.arrow_left, color: arrowColor))
             : leadingIcon != null
                 ? IconButton(onPressed: leadingOnPressed, icon: Icon(leadingIcon))
                 : null,
         title: title,
         actions: actions,
+      ),
       ),
     );
   }

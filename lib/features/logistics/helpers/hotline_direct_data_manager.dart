@@ -669,10 +669,12 @@ class HotlineDirectDataManager {
       final hotlineDirectRequests =
           requests.where((r) => r.formCategoryID == FormCategoryIds.hotlineDirect).toList();
 
-      final summary = await RequestUploadSummary.run(
+      final summary = await RequestUploadSummary.runSkippingSameStatus(
         hotlineDirectRequests,
         (request) =>
             _repository.sendUpdate(request, userCtrl.user.value.initial),
+        fetchServer: () =>
+            _repository.getAllPending(allowLocalFallback: false),
       );
       await summary.refreshSkipped(
         fetchServer: () =>

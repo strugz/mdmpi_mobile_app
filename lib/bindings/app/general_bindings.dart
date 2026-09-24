@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/features/logistics/controllers/upload_data_controller.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
@@ -191,6 +192,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => WebSocketDeliveryController(), fenix: true);
     Get.lazyPut(() => DeliveryLocationController(), fenix: true);
     Get.lazyPut(() => BackLoadController(), fenix: true);
+    // Settings > Upload Data: phone-vs-server comparison and selective upload.
+    Get.lazyPut(() => UploadDataController(), fenix: true);
     // SignupController is kept as a lazily registered singleton so it is
     // instantiated only when the signup UI is requested. This prevents
     // creating Firebase-backed repositories during app startup on platforms

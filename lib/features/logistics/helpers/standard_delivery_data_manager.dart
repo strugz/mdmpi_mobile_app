@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart';
@@ -843,31 +844,45 @@ class StandardDeliveryDataManager {
   /// are skipped and listed with the server's reason instead of overwriting it,
   /// then replaced on the phone with the server's copy so they are not sent
   /// again.
-  Future<void> uploadModifiedRequest() async {
+  ///
+  /// [onProgress] reports (done, total) as requests go up. With
+  /// [showSummary] false nothing is shown here: the caller presents the
+  /// returned summary, or the failure when the upload could not run (the
+  /// Settings upload dialog does both).
+  Future<Result<RequestUploadSummary>> uploadModifiedRequest({
+    void Function(int done, int total)? onProgress,
+    bool showSummary = true,
+  }) async {
     try {
       final requests = await _dbHelper.getRequests();
       final userCtrl = Get.find<UserController>();
-      final summary = await RequestUploadSummary.run(
+      final summary = await RequestUploadSummary.runSkippingSameStatus(
         requests,
         (request) =>
             _repository.sendUpdate(request, userCtrl.user.value.initial),
+        fetchServer: () =>
+            _repository.getAllPending(allowLocalFallback: false),
+        onProgress: onProgress,
       );
       await summary.refreshSkipped(
         fetchServer: () =>
             _repository.getAllPending(allowLocalFallback: false),
         replaceLocal: _dbHelper.replaceRequestWithServerCopy,
       );
-      summary.show();
+      if (showSummary) summary.show();
       if (summary.refreshed > 0 &&
           Get.isRegistered<StandardDeliveryController>()) {
         final controller = Get.find<StandardDeliveryController>();
         await fetchStandardDeliveryRequests(
             controller, controller.useLocalStorage.value);
       }
+      return Result.success(summary);
     } catch (e) {
-      BLoaders.errorSnackBar(
-          title: 'Upload Failed',
-          message: "Could not upload requests: ${e.toString()}");
+      final message = 'Could not upload requests: $e';
+      if (showSummary) {
+        BLoaders.errorSnackBar(title: 'Upload Failed', message: message);
+      }
+      return Result.failure(message);
     }
   }
 
