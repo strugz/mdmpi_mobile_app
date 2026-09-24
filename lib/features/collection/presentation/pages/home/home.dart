@@ -109,7 +109,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                   onActualTap: () => Get.to(
                                                     () =>
                                                         const MonthlySummaryScreen(
-                                                            type: 'Deposit'),
+                                                            type: 'Actual'),
                                                     transition: _pageTransition,
                                                     duration: _pageDuration,
                                                   ),

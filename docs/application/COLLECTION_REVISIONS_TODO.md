@@ -21,7 +21,7 @@
 - [x] 6. Label changes — `S` (done 2026-09-23, mobile only): "Clear Engagement" → "Done Engagement"; Account Details "Total Amount Past Due", "Total # of past invoices", "Current Amount", "Total # of current invoices"; Engagement Details "Current Balance" → "Balance"; Home card "Due Date" → "Past Due" (also the category key in `category_detail_screen.dart`)
 - [x] 7. Engagement Details: hide the Balance tile when it is ₱0 — `S` (done 2026-09-23)
 - [x] 8. Actual Collection % toward the manually set monthly target — `S` (the page already had it; the home card now shows "N% of ₱target" / "Target met"; both floor the percent so 99.6% never reads 100%)
-- [ ] 9. *For Deposit* (Field Engagement) is the collector's activity only; its amount never counts as Actual Collection — `M` (decided 2026-09-24: Actual Collection comes from what the office posts on the web, item 11; mobile stops summing deposits)
+- [x] 9. *For Deposit* (Field Engagement) is the collector's activity only; its amount counts toward neither Actual Collection nor Collected this Month — `M` (decided 2026-09-24: Actual Collection comes from what the office posts on the web, item 11; mobile done 2026-09-24: deposits count toward neither Actual Collection nor Collected this Month; Actual Collection reads ₱0.00 until item 11 posts)
 - [ ] 10. Done Engagement sends an SMS to the collector's Head — `M` (recipient decided 2026-09-24: the Head the user picked, item 13; **open:** message text)
 - [ ] 11. Collection web: screen to post Actual Collection — `L` (new backend table + `/api4` endpoints + migration; web view; mobile reads it through the workspace)
 - [ ] 12. **Plan only:** a separate bottom navigation bar for the Head of Collection — `M` (plan doc, no code)
@@ -43,16 +43,29 @@ collector did.
 (`presentation/controllers/total_collected_controller.dart`). The home card and the
 Actual Collection page (`monthly_summary_screen.dart`, `type: 'Deposit'`) both read it.
 
-**To do (mobile).**
-- `actualCollectionTotal` / `actualEntries` read the office-posted records from item 11
-  instead of deposits. Until that ships, Actual Collection reads ₱0.00 with a note such
-  as "Posted by the office", rather than silently showing deposits.
-- The Actual Collection page lists the posted entries (date, amount, reference, posted by);
-  the "Deposited" wording goes.
-- Deposits stay where activities belong: engagement history, the calendar, the upload
-  outbox. `deposit_form.dart` is unchanged.
-- The month's % toward the target (item 8) is computed against the posted total.
-- Tests: a deposit on its own leaves Actual Collection at zero; a posted record moves it.
+**Done (2026-09-24, mobile).**
+- `TotalCollectedController`: deposits are no longer read. `actualCollectionTotal`,
+  `postedEntries` and `actualEntries` come from `postedActual`, an `RxList<MonthlyEntry>`
+  that item 11's workspace download will fill. Until then it is empty and Actual
+  Collection reads ₱0.00.
+- `MonthlySummaryScreen`: mode `'Deposit'` renamed `'Actual'` (home card link updated);
+  "Deposited" → "Posted"; the empty month reads "No Actual Collection posted for
+  <month>" and says deposits stay in the engagement history.
+- The home card's % toward the target (item 8) now measures the posted total, so it
+  reads 0% until the office posts.
+- **Collected this Month leaves deposits out too** (raised the same day: For Deposit is
+  just a regular activity of the collector). A deposit is archived as an `OFFICE`
+  engagement carrying its amount, and `_collectMonth` added it — the same pesos counted
+  once when collected and again when banked. It now skips `OFFICE` rows with status
+  `Deposit`. Other office activities (CWT Pick-up, Reconciliation) still count as before.
+- Deposits are untouched everywhere else: `deposit_form.dart`, the archive itself,
+  engagement history, the calendar, the upload outbox.
+- Tests (`monthly_summary_test.dart`): deposits alone leave Actual Collection at zero and
+  the page explains why; posted entries set the total, other months are excluded, and the
+  search never moves the total; target progress runs off posted entries.
+
+**Remaining.** Item 11 fills `postedActual`; the page's rows then show whatever the
+posted record carries (reference, posted by).
 
 ---
 

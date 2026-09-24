@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 
@@ -61,6 +62,14 @@ class TotalCollectedController extends GetxController {
 
     for (final e in _activityController.ownEngagements) {
       if (e.amount <= 0) continue;
+      // A For Deposit is the collector taking money to the bank, not money
+      // collected from an account: the same pesos were already counted when
+      // they were collected. It stays in the archive, so the calendar and the
+      // engagement history still show it; it just adds nothing here.
+      if (e.kind == 'OFFICE' &&
+          e.status == CollectionStatusColors.statusDeposit) {
+        continue;
+      }
       final dt = BFormatter.parseLocal(e.engagedAt);
       if (dt == null) continue;
       if (dt.year != month.year || dt.month != month.month) continue;
@@ -77,35 +86,30 @@ class TotalCollectedController extends GetxController {
     return entries;
   }
 
-  /// Every deposit in the selected month, before the search box narrows it.
-  List<MonthlyEntry> get depositEntries => _sortNewestFirst(_collectDeposits());
+  /// Actual Collection as the office posts it, every month (revisions list
+  /// item 11: the Collection web will post it and the workspace download will
+  /// fill this). Empty until then, so Actual Collection reads ₱0.00.
+  ///
+  /// Deposits are not in it, and never were meant to be. A *For Deposit*
+  /// activity records what the collector did; it is not money the company has
+  /// counted. The figure used to be the sum of deposits, so every deposit a
+  /// collector logged moved a number the office owns.
+  final RxList<MonthlyEntry> postedActual = <MonthlyEntry>[].obs;
 
-  /// The same, narrowed by the search box (Actual Collection list).
+  /// The posted Actual Collection in the selected month, before the search
+  /// box narrows it.
+  List<MonthlyEntry> get postedEntries => _sortNewestFirst(_postedInMonth());
+
+  /// The same, narrowed by the search box (the Actual Collection list).
   List<MonthlyEntry> get actualEntries =>
-      _filterAndSortEntries(_collectDeposits());
+      _filterAndSortEntries(_postedInMonth());
 
-  List<MonthlyEntry> _collectDeposits() {
-    final List<MonthlyEntry> entries = [];
-
-    for (final entry in _activityController.globalActivities) {
-      final history = entry['history'];
-      if (entry['type'] == 'Deposit' || history.status == 'Deposit') {
-        final dt = _parseDateSafe(history.date);
-        if (dt != null &&
-            dt.year == selectedMonth.value.year &&
-            dt.month == selectedMonth.value.month) {
-          entries.add(MonthlyEntry(
-            date: dt,
-            amount: history.totalCollected ?? 0.0,
-            accountName: entry['accountName'] ?? 'N/A',
-            invoiceNumber: 'Deposit',
-            collectorName: history.collectorName ?? 'Unknown',
-          ));
-        }
-      }
-    }
-
-    return entries;
+  List<MonthlyEntry> _postedInMonth() {
+    final month = selectedMonth.value;
+    return [
+      for (final e in postedActual)
+        if (e.date.year == month.year && e.date.month == month.month) e,
+    ];
   }
 
   List<MonthlyEntry> _sortNewestFirst(List<MonthlyEntry> entries) =>
@@ -132,17 +136,10 @@ class TotalCollectedController extends GetxController {
   /// deposit total next door ignored the search. Same label, two behaviours.
   double get monthlyTotal => monthEntries.fold(0.0, (p, e) => p + e.amount);
 
-  /// Sum of deposits for the selected month (Actual Collection).
+  /// Actual Collection for the selected month: the posted entries, never the
+  /// collector's deposits. Off the unfiltered list, like [monthlyTotal].
   double get actualCollectionTotal =>
-      depositEntries.fold(0.0, (p, e) => p + e.amount);
-
-  /// Helper to parse a date string safely, in the reader's own timezone.
-  ///
-  /// The `.toLocal()` inside [BFormatter.parseLocal] matters here as much as
-  /// on the calendar: a server stamp carrying a 'Z' parsed to UTC, and a
-  /// collection late on the last day of the month was filed under the next
-  /// one.
-  DateTime? _parseDateSafe(String? s) => BFormatter.parseLocal(s);
+      postedEntries.fold(0.0, (p, e) => p + e.amount);
 
   /// Set the selected month using a DateTime (only year+month used)
   void setSelectedMonth(DateTime dt) {

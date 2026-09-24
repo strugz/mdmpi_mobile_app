@@ -8,7 +8,8 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
-/// The month's ledger: what was collected (or deposited), when, from whom.
+/// The month's ledger: what was collected, or posted as Actual Collection,
+/// when, from whom.
 ///
 /// It read like a form. A bare dropdown for the month, "Total" tucked into
 /// the same row, and every entry printed as `Account: …`, `Invoice: …`,
@@ -24,10 +25,10 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.da
 class MonthlySummaryScreen extends StatelessWidget {
   const MonthlySummaryScreen({super.key, required this.type});
 
-  /// 'Collection' or 'Deposit'
+  /// 'Collection' (Collected this Month) or 'Actual' (Actual Collection)
   final String type;
 
-  bool get _isDeposit => type == 'Deposit';
+  bool get _isActual => type == 'Actual';
 
   /// Month changes are occasional and the whole block below the stepper is
   /// replaced, so a short cross-fade rather than a hard cut.
@@ -39,18 +40,18 @@ class MonthlySummaryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isDeposit ? 'Actual Collection' : 'Collected this Month'),
+        title: Text(_isActual ? 'Actual Collection' : 'Collected this Month'),
       ),
       body: Column(
         children: [
           _MonthHeader(
-              controller: controller, isDeposit: _isDeposit, swap: _swap),
+              controller: controller, isActual: _isActual, swap: _swap),
           Expanded(
             child: Obx(() {
-              final all = _isDeposit
-                  ? controller.depositEntries
+              final all = _isActual
+                  ? controller.postedEntries
                   : controller.monthEntries;
-              final shown = _isDeposit
+              final shown = _isActual
                   ? controller.actualEntries
                   : controller.monthlyEntries;
               final query = controller.searchQuery.value.trim();
@@ -63,14 +64,14 @@ class MonthlySummaryScreen extends StatelessWidget {
                     ? _EmptyMonth(
                         key: const ValueKey('empty'),
                         month: controller.selectedMonth.value,
-                        isDeposit: _isDeposit,
+                        isActual: _isActual,
                       )
                     : Column(
                         key: const ValueKey('list'),
                         children: [
                           _SearchField(
                             controller: controller,
-                            isDeposit: _isDeposit,
+                            isActual: _isActual,
                           ),
                           Expanded(
                             child: shown.isEmpty
@@ -79,7 +80,7 @@ class MonthlySummaryScreen extends StatelessWidget {
                                     entries: shown,
                                     all: all,
                                     query: query,
-                                    isDeposit: _isDeposit,
+                                    isActual: _isActual,
                                     showCollector:
                                         controller.distinctCollectors(all) > 1,
                                   ),
@@ -95,16 +96,17 @@ class MonthlySummaryScreen extends StatelessWidget {
   }
 }
 
-/// ‹ September 2026 › over the month's total and, for deposits, the target.
+/// ‹ September 2026 › over the month's total and, for Actual Collection, the
+/// target.
 class _MonthHeader extends StatelessWidget {
   const _MonthHeader({
     required this.controller,
-    required this.isDeposit,
+    required this.isActual,
     required this.swap,
   });
 
   final TotalCollectedController controller;
-  final bool isDeposit;
+  final bool isActual;
   final Duration swap;
 
   Future<void> _pickMonth(BuildContext context) async {
@@ -136,11 +138,11 @@ class _MonthHeader extends StatelessWidget {
       ),
       child: Obx(() {
         final month = controller.selectedMonth.value;
-        final total = isDeposit
+        final total = isActual
             ? controller.actualCollectionTotal
             : controller.monthlyTotal;
         final entries =
-            isDeposit ? controller.depositEntries : controller.monthEntries;
+            isActual ? controller.postedEntries : controller.monthEntries;
         final target = controller.targetAmount.value;
 
         return Column(
@@ -205,7 +207,7 @@ class _MonthHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isDeposit ? 'Deposited' : 'Collected',
+                      isActual ? 'Posted' : 'Collected',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
@@ -229,7 +231,7 @@ class _MonthHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: BSizes.xs),
-                    if (isDeposit)
+                    if (isActual)
                       _TargetLine(
                         total: total,
                         target: target,
@@ -293,7 +295,7 @@ class _MonthHeader extends StatelessWidget {
   }
 }
 
-/// Deposits against the month's target, or the offer to set one.
+/// Actual Collection against the month's target, or the offer to set one.
 ///
 /// This replaces a floating action button whose only content was a pencil
 /// or a plus — a target belongs next to the figure it is measured against.
@@ -384,10 +386,10 @@ class _TargetLine extends StatelessWidget {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.isDeposit});
+  const _SearchField({required this.controller, required this.isActual});
 
   final TotalCollectedController controller;
-  final bool isDeposit;
+  final bool isActual;
 
   @override
   Widget build(BuildContext context) {
@@ -400,7 +402,7 @@ class _SearchField extends StatelessWidget {
           onChanged: (v) => controller.searchQuery.value = v,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText: isDeposit
+            hintText: isActual
                 ? 'Search by account or collector'
                 : 'Search by account, invoice or collector',
             prefixIcon: const Icon(Iconsax.search_normal, size: 18),
@@ -422,14 +424,14 @@ class _Ledger extends StatelessWidget {
     required this.entries,
     required this.all,
     required this.query,
-    required this.isDeposit,
+    required this.isActual,
     required this.showCollector,
   });
 
   final List<MonthlyEntry> entries;
   final List<MonthlyEntry> all;
   final String query;
-  final bool isDeposit;
+  final bool isActual;
   final bool showCollector;
 
   /// Group by calendar day, keeping the newest-first order of [entries].
@@ -482,7 +484,7 @@ class _Ledger extends StatelessWidget {
           if (i < items.length) {
             return _EntryRow(
               entry: items[i],
-              isDeposit: isDeposit,
+              isActual: isActual,
               showCollector: showCollector,
               last: i == items.length - 1,
             );
@@ -531,13 +533,13 @@ class _DayHeader extends StatelessWidget {
 class _EntryRow extends StatelessWidget {
   const _EntryRow({
     required this.entry,
-    required this.isDeposit,
+    required this.isActual,
     required this.showCollector,
     required this.last,
   });
 
   final MonthlyEntry entry;
-  final bool isDeposit;
+  final bool isActual;
   final bool showCollector;
   final bool last;
 
@@ -545,7 +547,7 @@ class _EntryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final secondary = [
-      if (!isDeposit) '#${entry.invoiceNumber}',
+      if (!isActual) '#${entry.invoiceNumber}',
       if (showCollector) entry.collectorName,
     ].join(' · ');
 
@@ -600,10 +602,10 @@ class _EntryRow extends StatelessWidget {
 }
 
 class _EmptyMonth extends StatelessWidget {
-  const _EmptyMonth({super.key, required this.month, required this.isDeposit});
+  const _EmptyMonth({super.key, required this.month, required this.isActual});
 
   final DateTime month;
-  final bool isDeposit;
+  final bool isActual;
 
   @override
   Widget build(BuildContext context) {
@@ -631,7 +633,9 @@ class _EmptyMonth extends StatelessWidget {
             ),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text(
-              isDeposit ? 'No deposits in $name' : 'Nothing collected in $name',
+              isActual
+                  ? 'No Actual Collection posted for $name'
+                  : 'Nothing collected in $name',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
@@ -640,7 +644,12 @@ class _EmptyMonth extends StatelessWidget {
             ),
             const SizedBox(height: BSizes.xs),
             Text(
-              'Use the arrows above to look at another month.',
+              // Deposits used to fill this page. Say where they went, so a
+              // collector who just logged one does not think it was lost.
+              isActual
+                  ? 'The office posts Actual Collection. Deposits you record '
+                      'stay in your engagement history.'
+                  : 'Use the arrows above to look at another month.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: BCollectionColors.inkMuted),

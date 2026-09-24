@@ -37,6 +37,31 @@ String _onDay(int day, [int hour = 10]) =>
 ClientModel _client(String id, String name) => ClientModel(
     id: id, code: 'c', name: name, address: '', contact: '', emailAddress: '');
 
+/// One Actual Collection entry as the office would post it. [when] is an
+/// [_onDay] string or a [DateTime].
+MonthlyEntry _posted(Object when, double amount, String account) =>
+    MonthlyEntry(
+      date: when is DateTime ? when : _fmt.parse(when as String),
+      amount: amount,
+      accountName: account,
+      invoiceNumber: '',
+      collectorName: 'Office',
+    );
+
+/// Two For Deposit activities this month, as Field Engagement logs them.
+List<Map<String, dynamic>> _deposits() => [
+      {
+        'type': 'Deposit',
+        'accountName': 'Alexis Yu Best Care Pharmacy',
+        'history': _paid(_onDay(15), 20000),
+      },
+      {
+        'type': 'Deposit',
+        'accountName': 'Bicol Medical Center',
+        'history': _paid(_onDay(16), 12000),
+      },
+    ];
+
 CollectionHistoryModel _paid(String date, double amount,
         {String collector = 'Jay'}) =>
     CollectionHistoryModel(
@@ -68,6 +93,24 @@ CollectionEngagementRecord _engagement(
       engagedAt: date,
       engagedOn: date.split(' ').first,
       status: 'Collected',
+      amount: amount,
+      createdAt: date,
+    );
+
+/// A For Deposit as the archive stores it: an OFFICE row with the amount.
+CollectionEngagementRecord _depositEngagement(String date, double amount) =>
+    CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+          kind: 'OFFICE', subjectId: 'A', engagedAt: date),
+      collectorCode: 'jay',
+      collectorName: 'Jay',
+      kind: 'OFFICE',
+      itemId: '',
+      clientId: 'A',
+      clientName: 'Alexis Yu Best Care Pharmacy',
+      engagedAt: date,
+      engagedOn: date.split(' ').first,
+      status: 'Deposit',
       amount: amount,
       createdAt: date,
     );
@@ -137,29 +180,52 @@ void main() {
       expect(s.totals.monthlyTotal, closeTo(46977.31, 0.001));
     });
 
-    test('for deposits agrees with the deposit entries', () {
+    // Revisions item 9: For Deposit records what the collector did. It is not
+    // money the office has counted, and Actual Collection used to be exactly
+    // the sum of deposits.
+    test('for Actual Collection ignores deposits', () {
       final s = _seed();
-      s.activity.globalActivities.addAll([
-        {
-          'type': 'Deposit',
-          'accountName': 'Alexis Yu Best Care Pharmacy',
-          'history': _paid(_onDay(15), 20000),
-        },
-        {
-          'type': 'Deposit',
-          'accountName': 'Bicol Medical Center',
-          'history': _paid(_onDay(16), 12000),
-        },
+      s.activity.globalActivities.addAll(_deposits());
+
+      expect(s.totals.actualCollectionTotal, 0);
+      expect(s.totals.postedEntries, isEmpty);
+    });
+
+    // A For Deposit is archived as an OFFICE engagement carrying its amount,
+    // and the month's total used to add it — counting the same pesos twice,
+    // once when collected and again when taken to the bank.
+    test('for Collected this Month ignores deposits too', () {
+      final s = _seed();
+      s.activity.ownEngagements.addAll([
+        _depositEngagement(_onDay(15), 20000),
+        _depositEngagement(_onDay(16), 12000),
+      ]);
+
+      expect(s.totals.monthlyTotal, closeTo(46977.31, 0.001),
+          reason: 'a deposit is an activity, not a collection');
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          isNot(contains('Deposit')));
+      expect(s.activity.ownEngagements.where((e) => e.status == 'Deposit'),
+          hasLength(2),
+          reason: 'the deposits are still in the archive for the calendar');
+    });
+
+    test('for Actual Collection is what the office posted, not the search', () {
+      final s = _seed();
+      s.totals.postedActual.addAll([
+        _posted(_onDay(15), 20000, 'Alexis Yu Best Care Pharmacy'),
+        _posted(_onDay(16), 12000, 'Bicol Medical Center'),
+        // Another month: posted, but not this one's.
+        _posted(DateTime(2020, 1, 15), 99999, 'Bicol Medical Center'),
       ]);
 
       expect(s.totals.actualCollectionTotal, 32000);
-      expect(s.totals.depositEntries.length, 2);
+      expect(s.totals.postedEntries.length, 2);
 
       s.totals.searchQuery.value = 'bicol';
       expect(s.totals.actualEntries.length, 1);
       expect(s.totals.actualCollectionTotal, 32000,
-          reason:
-              'the deposit total never followed the search, and still must not');
+          reason: 'the total never follows the search, and still must not');
     });
   });
 
@@ -333,15 +399,13 @@ void main() {
           reason: 'nothing to search in an empty month');
     });
 
-    testWidgets('deposits show progress against the target', (tester) async {
+    testWidgets('Actual Collection shows progress against the target',
+        (tester) async {
       final s = _seed();
-      s.activity.globalActivities.add({
-        'type': 'Deposit',
-        'accountName': 'Bicol Medical Center',
-        'history': _paid(_onDay(16), 32000),
-      });
+      s.totals.postedActual
+          .add(_posted(_onDay(16), 32000, 'Bicol Medical Center'));
       s.totals.targetAmount.value = 50000;
-      await pump(tester, type: 'Deposit');
+      await pump(tester, type: 'Actual');
 
       expect(find.text('₱32,000.00'), findsWidgets);
       expect(find.text('64% of ₱50,000.00 target'), findsOneWidget);
@@ -349,12 +413,29 @@ void main() {
       expect(find.byType(FloatingActionButton), findsNothing);
     });
 
-    testWidgets('deposits with no target offer to set one', (tester) async {
+    testWidgets('Actual Collection with no target offers to set one',
+        (tester) async {
       _seed();
-      await pump(tester, type: 'Deposit');
+      await pump(tester, type: 'Actual');
 
       expect(find.text('Set a target'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsNothing);
+    });
+
+    testWidgets('a month of deposits alone posts nothing, and says why',
+        (tester) async {
+      final s = _seed();
+      s.activity.globalActivities.addAll(_deposits());
+      s.totals.targetAmount.value = 50000;
+      await pump(tester, type: 'Actual');
+
+      final month = DateFormat('MMMM').format(s.totals.selectedMonth.value);
+      expect(
+          find.text('No Actual Collection posted for $month'), findsOneWidget);
+      expect(find.textContaining('stay in your engagement history'),
+          findsOneWidget);
+      expect(find.text('0% of ₱50,000.00 target'), findsOneWidget);
+      expect(find.text('Deposited'), findsNothing);
     });
   });
 }
