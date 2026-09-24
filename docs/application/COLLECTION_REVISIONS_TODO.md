@@ -29,6 +29,8 @@
 - [ ] 14. One user directory from CNTMST (key `CNTMNN`) and Firestore `Users` (key `initial`) — `M` (feeds items 10 and 13)
 - [ ] 15. Settings: suggested features for Collection — `S` to pick from (list below; nothing built)
 - [x] 16. Advanced Payment is float: it counts toward Collected this Month only once applied to an invoice, in the month of the date the collector picks — `M` (done 2026-09-24, mobile; see below)
+- [ ] 17. **Tomorrow (2026-09-25):** Apply advance — enter *amount paid* per invoice so an invoice can be partially paid; optional split across invoices — `L` (mobile + backend `AmountApplied` + deploy; **open:** can more than one invoice be partial? one collection date or one per invoice?)
+- [ ] 18. **Tomorrow (2026-09-25):** Apply advance — add a P.O. number field when creating the invoice — `S`
 
 ---
 
@@ -67,6 +69,59 @@ Actual Collection page (`monthly_summary_screen.dart`, `type: 'Deposit'`) both r
 
 **Remaining.** Item 11 fills `postedActual`; the page's rows then show whatever the
 posted record carries (reference, posted by).
+
+---
+
+## 17. Apply advance: amount paid per invoice (partial payment), optional split
+
+**Requirement (raised 2026-09-24).** An invoice created from an advance can be partially
+paid. Example: the invoice is ₱750,000 but only part of it is paid from the advance; the
+rest must stay in the bucket as the invoice's remaining balance. A collector can also split
+one advance across two or more invoices, each following the same rule.
+
+**Current behavior.** The Apply sheet (`category_detail_screen.dart`, `_ApplyAdvanceSheet`)
+prefills *Amount due* with the whole advance, so entering an invoice number and applying
+records it **paid in full**. A partial only happens when the invoice is larger than the
+entire advance. The server (`CollectionInvoiceRepository`, `ASSIGN_ADVANCE`) allocates
+`min(unallocated, invoice remaining)` itself; there is no field for "only this much".
+
+**Proposed.**
+- Per invoice line: *Invoice number*, *Invoice amount* (blank, never prefilled with the
+  advance), *Amount paid from this advance* (suggested as the smaller of the invoice amount
+  and the advance left, editable), *Due date*, *P.O. number* (item 18). **+ Add another
+  invoice** for a split.
+- Paid = invoice amount → paid in full. Paid < invoice amount → partial: the invoice goes
+  to the bucket with `invoice amount − paid` remaining. Whatever the lines leave unused
+  stays as float (already the case since `94b2bb9`).
+- A live summary before Apply ("INV-A partial, ₱450,000 to bucket · ₱450,000 float
+  left"); Apply blocked when the paid amounts exceed the advance or a line pays more than
+  its invoice.
+- Mobile: one `ASSIGN_ADVANCE` per line, same `ExternalRef`; invoice `toBeCollected`,
+  history `totalCollected` and the archive amount all use the paid amount.
+- **Backend (`MDMPI.App`, `/api4`):** `UploadCollectionDto.AmountApplied`; the
+  `ASSIGN_ADVANCE` handler allocates exactly that (capped by the advance's unallocated
+  amount and the invoice's remaining balance). Absent (older app builds) → today's
+  behavior. Needs a deploy.
+- Also: the sheet shows two drag handles (its own plus the theme's) — drop one.
+
+**Open questions.** Can more than one invoice in a split be partial, or only one? One
+collection date for the whole application, or one per invoice?
+
+---
+
+## 18. Apply advance: P.O. number on the new invoice
+
+**Requirement (raised 2026-09-24).** When an advance is applied, the collector fills out
+the P.O. number of the invoice being created.
+
+**Current behavior.** `_ApplyAdvanceSheet` has no P.O. field, so an invoice created from an
+advance carries no P.O. and does not group under one in the bucket (items 1, 5).
+
+**To do.** An optional *P.O. number* field on the sheet (per line once item 17 lands),
+passed through `assignInvoiceToPayment` → `CollectionItemModel.poNumber` and the queued
+`ASSIGN_ADVANCE` (`PoNumber`, which the backend already accepts for *Add to Bucket*;
+confirm the `ASSIGN_ADVANCE` handler stores it). Same field style as *Add to Bucket*'s
+optional P.O.
 
 ---
 
