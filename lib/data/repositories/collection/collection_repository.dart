@@ -1330,8 +1330,12 @@ class CollectionRepository extends GetxController {
     }
   }
 
+  /// Under half a centavo is agreement, not float left over.
+  static const double _floatTolerance = 0.005;
+
   /// Assign an advance to an invoice (creating the invoice locally, as the app
   /// does). The server creates the invoice if new and allocates the advance.
+  /// An advance larger than the invoice keeps its excess as float.
   ///
   /// [appliedAt] is the collection date the collector chose. An advance is
   /// float until applied, and the date decides which month's Collected this
@@ -1351,7 +1355,15 @@ class CollectionRepository extends GetxController {
       await dao.insertCollectionItem(newInvoice);
 
       final advDao = await DatabaseHelper.instance.collectionAdvanceDao;
-      await advDao.markAssigned(advance.externalRef, newInvoice.id);
+      // What the invoice did not need stays float under Advanced Payment, on
+      // the same advance, for the next invoice. The server does the same: it
+      // allocates min(unallocated, balance) and leaves the rest unallocated.
+      final excess = advance.amount - appliedAmount;
+      if (excess > _floatTolerance) {
+        await advDao.keepRemainder(advance.externalRef, excess);
+      } else {
+        await advDao.markAssigned(advance.externalRef, newInvoice.id);
+      }
 
       await _archive(
         kind: 'INVOICE',

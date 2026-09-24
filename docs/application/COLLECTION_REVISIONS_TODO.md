@@ -95,8 +95,27 @@ tapping Assign, carrying the whole advance even when the invoice was due less.
   counts in its chosen month and not the current one; the stamp files under the chosen
   day.
 
-**Open.** When the advance is larger than the invoice, the excess is not carried anywhere
-(unchanged behavior). Should it stay as float for another invoice?
+**Excess stays float (decided and done 2026-09-24).** An advance larger than the invoice
+covers what the invoice is due; the rest stays under Advanced Payment on the **same**
+advance (`CollectionAdvanceDao.keepRemainder`, same `externalRef`), ready for the next
+invoice. The backend already worked this way — one payment, many allocations,
+`ASSIGN_ADVANCE` applies `min(unallocated, invoice balance)` and a download reports the
+remainder as `Unallocated` — so no server change. `assignInvoiceToPayment` returns the
+float left; the Apply sheet says so ("₱250,000.00 stays as float for another invoice") and
+the amount-due field notes that any excess stays as float. Tests: `advance_float_test.dart`
+(excess kept, smaller advance spent, remainder applied to a second invoice) and the DAO
+test in `collection_extras_dao_test.dart`.
+
+**Calendar and badges (2026-09-24).** One rule, `CollectionOutcome.countsAsCollected`,
+now decides what counts as collected everywhere (Collected this Month, the calendar's visit
+totals, the history cards): not an `ADVANCE` / "Advanced Payment", not a "Deposit". A visit
+with a ₱750,000 advance and ₱350,000 applied from it totals ₱350,000.00 (it read
+₱1,100,000.00); the advance keeps its row and amount, in ink rather than green, titled
+"Advance received" instead of "Invoice #AP-…", with no fake invoice or due line. The
+"Advanced Payment" / "Advanced Payment Applied" badges were white on white (unmapped
+statuses fell back to a near-white); they are amber and green, and any unmapped status is
+neutral grey. Tests: `calendar_advance_test.dart`, `collection_status_colors_test.dart`
+(every status at least 3:1 contrast, tinted and solid).
 
 ---
 

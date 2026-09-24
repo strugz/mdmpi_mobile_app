@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
@@ -147,6 +148,33 @@ class ActivityHistoryCard extends StatelessWidget {
   /// history.
   final String? reconciledOn;
 
+  /// An Advanced Payment received: its id is its own AP reference, not an
+  /// invoice number, and its amount is float, not a collection.
+  bool get _isAdvance =>
+      history.status.trim() == CollectionStatusColors.statusAdvance;
+
+  /// Whether the amount is money collected (not float, not a deposit); only
+  /// then is it green. The same rule as Collected this Month.
+  bool get _collected => CollectionOutcome.countsAsCollected(history.status);
+
+  /// "Invoice #…", or "Advance received" for an advance, whose id reads like
+  /// an invoice number and is not one ("Invoice #AP-1790234393266").
+  String get _subjectLabel =>
+      _isAdvance ? 'Advance received' : 'Invoice #${invoiceId ?? item?.id}';
+
+  /// No due line: an account-level entry with no invoice list, or an advance,
+  /// which has no invoice yet — both used to print "Due: N/A".
+  bool get _noDueLine =>
+      _isAdvance || (_isAccountLevel && invoiceCount == null);
+
+  /// What the sheet calls the amount: collected, received as float, or
+  /// deposited.
+  String get _amountLabel => _collected
+      ? 'Amount Collected'
+      : _isAdvance
+          ? 'Amount Received'
+          : 'Amount Deposited';
+
   /// The badge text: the outcome, prefixed when it finished a reconciliation.
   String get _statusLabel => _reconciledOn == null
       ? history.status
@@ -287,7 +315,7 @@ class ActivityHistoryCard extends StatelessWidget {
                       ?.copyWith(color: BCollectionColors.primary),
                 ),
                 if (invoiceId != null || item != null)
-                  Text('Invoice #${invoiceId ?? item?.id}',
+                  Text(_subjectLabel,
                       style: Theme.of(context).textTheme.labelMedium),
                 const SizedBox(height: BSizes.md),
               ],
@@ -355,10 +383,12 @@ class ActivityHistoryCard extends StatelessWidget {
                   if (history.totalCollected > 0)
                     _buildInfoTile(
                         context,
-                        'Amount Collected',
+                        _amountLabel,
                         BFormatter.formatPesoCurrency(history.totalCollected),
                         Iconsax.wallet_money,
-                        valueColor: BCollectionColors.success),
+                        valueColor: _collected
+                            ? BCollectionColors.success
+                            : BCollectionColors.inkSecondary),
                   if (history.bankName != null && history.bankName!.isNotEmpty)
                     _buildInfoTile(
                         context, 'Bank', history.bankName!, Iconsax.bank),
@@ -483,7 +513,7 @@ class ActivityHistoryCard extends StatelessWidget {
                         accountFirst
                             ? (_accountName ?? 'Account Engagement')
                             : (invoiceId != null || item != null
-                                ? 'Invoice #${invoiceId ?? item?.id}'
+                                ? _subjectLabel
                                 : (_accountName ?? 'Account Engagement')),
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -494,7 +524,7 @@ class ActivityHistoryCard extends StatelessWidget {
                       ),
                       if (accountFirst && (invoiceId ?? item?.id) != null)
                         Text(
-                          'Invoice #${invoiceId ?? item?.id}',
+                          _subjectLabel,
                           style:
                               Theme.of(context).textTheme.labelSmall?.copyWith(
                                     color: BCollectionColors.primary,
@@ -539,9 +569,11 @@ class ActivityHistoryCard extends StatelessWidget {
                       const SizedBox(width: BSizes.xs),
                       Flexible(
                         child: Text(
-                          _isAccountLevel
-                              ? _accountScopeLabel
-                              : 'Invoice Date: ${item?.postingDate ?? 'N/A'}',
+                          _isAdvance
+                              ? 'Float, awaiting an invoice'
+                              : _isAccountLevel
+                                  ? _accountScopeLabel
+                                  : 'Invoice Date: ${item?.postingDate ?? 'N/A'}',
                           style:
                               Theme.of(context).textTheme.labelSmall?.copyWith(
                                     color: BCollectionColors.inkMuted,
@@ -556,7 +588,11 @@ class ActivityHistoryCard extends StatelessWidget {
                     Text(
                       BFormatter.formatPesoCurrency(history.totalCollected),
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: BCollectionColors.success,
+                            // Green is money collected; float and deposits
+                            // are shown in ink.
+                            color: _collected
+                                ? BCollectionColors.success
+                                : BCollectionColors.inkSecondary,
                             fontWeight: FontWeight.bold,
                           ),
                     ),
@@ -573,14 +609,14 @@ class ActivityHistoryCard extends StatelessWidget {
                 // "Whole account" above; there is no due date to add and
                 // nothing else worth a second line, so the collector's
                 // name stands alone on the right.
-                alignment: _isAccountLevel && invoiceCount == null
+                alignment: _noDueLine
                     ? WrapAlignment.end
                     : WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 spacing: BSizes.sm,
                 runSpacing: BSizes.xxs,
                 children: [
-                  if (!(_isAccountLevel && invoiceCount == null))
+                  if (!_noDueLine)
                     Wrap(
                       spacing: BSizes.xs,
                       runSpacing: BSizes.xxs,

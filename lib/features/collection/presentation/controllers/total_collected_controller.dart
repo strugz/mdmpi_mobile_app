@@ -1,7 +1,7 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 
@@ -62,20 +62,14 @@ class TotalCollectedController extends GetxController {
 
     for (final e in _activityController.ownEngagements) {
       if (e.amount <= 0) continue;
-      // A For Deposit is the collector taking money to the bank, not money
-      // collected from an account: the same pesos were already counted when
-      // they were collected. It stays in the archive, so the calendar and the
-      // engagement history still show it; it just adds nothing here.
-      if (e.kind == 'OFFICE' &&
-          e.status == CollectionStatusColors.statusDeposit) {
+      // A For Deposit (banking money already counted) and an unapplied
+      // Advanced Payment (float until an invoice takes it; the applied row is
+      // what counts, in the month the collector chose) stay in the archive
+      // for the calendar and the history, and add nothing here. Both used to
+      // count the same pesos twice.
+      if (!CollectionOutcome.countsAsCollected(e.status, kind: e.kind)) {
         continue;
       }
-      // An Advanced Payment is float until the collector applies it to an
-      // invoice. Applying it archives an INVOICE row on the date they chose,
-      // and that row is what counts, in that date's month. The advance itself
-      // stays in Advanced Payment and adds nothing here — it used to count
-      // on the day it was received and again when applied.
-      if (e.kind == 'ADVANCE') continue;
       final dt = BFormatter.parseLocal(e.engagedAt);
       if (dt == null) continue;
       if (dt.year != month.year || dt.month != month.month) continue;

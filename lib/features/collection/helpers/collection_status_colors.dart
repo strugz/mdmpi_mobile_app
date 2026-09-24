@@ -24,6 +24,13 @@ class CollectionStatusColors {
   static const String statusCWTPickup = 'CWT Pick-up';
   static const String statusReconciliation = 'Reconciliation';
 
+  // ─── Advanced Payment ───────────────────────────────────────────────
+  /// Received before an invoice exists: float, awaiting an invoice.
+  static const String statusAdvance = 'Advanced Payment';
+
+  /// An advance put onto an invoice: money collected.
+  static const String statusAdvanceApplied = 'Advanced Payment Applied';
+
   static const List<String> allStatuses = [
     statusCollected,
     statusPartial,
@@ -83,13 +90,22 @@ class CollectionStatusColors {
       case statusReconciliation:
         bg = BCollectionColors.reconcile;
         break;
+      // Float in the home tile's amber; once applied it is a collection.
+      case statusAdvance:
+        bg = BCollectionColors.warning;
+        break;
+      case statusAdvanceApplied:
+        bg = BCollectionColors.success;
+        break;
+      // Anything unmapped is neutral grey, never a near-white. Every badge
+      // uses this colour as its text or icon on a light tint of itself, and
+      // the old default (surfaceMuted) made an unknown status — "Advanced
+      // Payment" on the calendar, for one — white text on white. Grey reads
+      // as a tint and as a solid badge.
       default:
         bg = darkMode
             ? BCollectionColors.inkSecondary
-            : BCollectionColors.surfaceMuted;
-        fg = darkMode
-            ? BCollectionColors.surfaceMuted
-            : BCollectionColors.inkMuted;
+            : BCollectionColors.neutral;
     }
 
     return (bg, fg);
@@ -128,6 +144,10 @@ class CollectionStatusColors {
         return Iconsax.document_text;
       case statusReconciliation:
         return Iconsax.status_up;
+      case statusAdvance:
+        return Iconsax.wallet_money;
+      case statusAdvanceApplied:
+        return Iconsax.receipt_add;
       default:
         return Iconsax.info_circle;
     }

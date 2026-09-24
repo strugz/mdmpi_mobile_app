@@ -17,4 +17,20 @@ class CollectionOutcome {
     if (amount >= balance) return CollectionStatusColors.statusCollected;
     return CollectionStatusColors.statusPartial;
   }
+
+  /// Whether an engagement's amount is money collected from an account.
+  ///
+  /// Two carry an amount without being one: an Advanced Payment is float
+  /// until applied to an invoice (the applied row is the collection), and a
+  /// For Deposit is the collector banking money already counted when it was
+  /// collected. Counting either added the same pesos twice. One rule, so
+  /// Collected this Month, the calendar's visit totals and the history cards
+  /// cannot disagree. [kind] is the archive's (INVOICE / ACCOUNT / OFFICE /
+  /// ADVANCE) when the caller has it; the status alone decides otherwise.
+  static bool countsAsCollected(String status, {String kind = ''}) {
+    if (kind == 'ADVANCE') return false;
+    final s = status.trim();
+    return s != CollectionStatusColors.statusAdvance &&
+        s != CollectionStatusColors.statusDeposit;
+  }
 }

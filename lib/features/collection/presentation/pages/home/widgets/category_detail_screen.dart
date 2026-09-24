@@ -460,7 +460,8 @@ class _NoAdvances extends StatelessWidget {
   }
 }
 
-typedef _ApplyAdvance = Future<void> Function({
+/// Resolves to the float left over for the next invoice (0 when spent).
+typedef _ApplyAdvance = Future<double> Function({
   required String invoiceNumber,
   required double amountDue,
   required String dueDate,
@@ -570,7 +571,7 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
   Future<void> _apply() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final month = DateFormat('MMMM yyyy').format(_collectionDate);
-    await widget.onApply(
+    final left = await widget.onApply(
       invoiceNumber: _invoiceNumber.text.trim(),
       amountDue: BFormatter.parseAmount(_amountDue.text),
       dueDate: _day.format(_due!),
@@ -579,7 +580,11 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
     Get.back();
     BLoaders.successSnackBar(
       title: 'Applied to invoice',
-      message: 'Counts in $month\'s Collected this Month.',
+      message: left > 0
+          ? 'Counts in $month\'s Collected this Month. '
+              '${BFormatter.formatPesoCurrency(left)} stays as float for '
+              'another invoice.'
+          : 'Counts in $month\'s Collected this Month.',
     );
   }
 
@@ -679,10 +684,14 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [ThousandsSeparatorInputFormatter()],
+                  // Less than the advance is fine: the invoice takes what it
+                  // is due and the rest stays float for another invoice.
                   decoration: const InputDecoration(
                     labelText: 'Amount due on the invoice',
                     prefixText: '₱ ',
                     prefixIcon: Icon(Iconsax.money, size: 20),
+                    helperText: 'Any excess stays as float for another invoice',
+                    helperMaxLines: 2,
                   ),
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
@@ -53,8 +54,14 @@ class _CalendarVisitCardState extends State<CalendarVisitCard> {
   CollectionHistoryModel _history(Map<String, dynamic> e) =>
       e['history'] as CollectionHistoryModel;
 
-  double get _total =>
-      widget.entries.fold(0.0, (sum, e) => sum + _history(e).totalCollected);
+  /// What the visit collected. An advance received (float until applied) and
+  /// a deposit (money already counted, taken to the bank) keep their own row
+  /// and amount but add nothing: the visit once read ₱1,100,000.00 for a
+  /// ₱750,000.00 advance and the ₱350,000.00 applied from it.
+  double get _total => widget.entries
+      .where((e) => CollectionOutcome.countsAsCollected(_history(e).status,
+          kind: e['kind'] as String? ?? ''))
+      .fold(0.0, (sum, e) => sum + _history(e).totalCollected);
 
   /// "05:51 AM" when every entry shares a minute, else "05:51 – 06:21 AM".
   String get _when {
@@ -247,6 +254,12 @@ class _InvoiceRow extends StatelessWidget {
     final item = entry['item'] as CollectionItemModel?;
     final count = entry['invoiceCount'] as int?;
     final isOverdue = item?.isOverdue ?? false;
+    final kind = entry['kind'] as String? ?? '';
+    final collected =
+        CollectionOutcome.countsAsCollected(history.status, kind: kind);
+    // An advance's id is its own AP reference, not an invoice number.
+    final isAdvance = kind == 'ADVANCE' ||
+        history.status == CollectionStatusColors.statusAdvance;
 
     final card = ActivityHistoryCard(
       history: history,
@@ -256,7 +269,9 @@ class _InvoiceRow extends StatelessWidget {
       invoiceCount: count,
     );
 
-    final title = invoiceId != null && invoiceId.isNotEmpty
+    final title = isAdvance
+        ? 'Advance received'
+        : invoiceId != null && invoiceId.isNotEmpty
         ? 'Invoice #$invoiceId'
         : count != null
             ? '$count invoice${count == 1 ? '' : 's'}'
@@ -342,7 +357,11 @@ class _InvoiceRow extends StatelessWidget {
               Text(
                 BFormatter.formatPesoCurrency(history.totalCollected),
                 style: theme.textTheme.labelLarge?.copyWith(
-                  color: BCollectionColors.success,
+                  // Green is money collected. Float and deposits are shown,
+                  // not celebrated.
+                  color: collected
+                      ? BCollectionColors.success
+                      : BCollectionColors.inkSecondary,
                   fontWeight: FontWeight.bold,
                 ),
               ),

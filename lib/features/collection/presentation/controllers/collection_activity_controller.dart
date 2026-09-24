@@ -1206,6 +1206,9 @@ class CollectionActivityController extends GetxController {
             ? e.clientName
             : (namesByClient[e.clientId] ?? ''),
         'invoiceId': e.itemId.isEmpty ? null : e.itemId,
+        // The archive's kind, so the calendar can tell an advance's AP
+        // reference from an invoice number and float from a collection.
+        'kind': e.kind,
         'item': itemsById[e.itemId],
         'reconciledOn': merge.reconciledOn[e.localRef],
         // An account-level outcome covers several invoices; the card says
@@ -1549,7 +1552,10 @@ class CollectionActivityController extends GetxController {
   /// lands in; only the day is taken from [collectionDate], with the current
   /// time of day so two applications on one day keep their order and their
   /// archive keys apart.
-  Future<void> assignInvoiceToPayment({
+  ///
+  /// Returns the float left over: an advance larger than the invoice keeps
+  /// the excess under Advanced Payment for the next invoice (0 when spent).
+  Future<double> assignInvoiceToPayment({
     required String paymentId,
     required String invoiceNumber,
     required double amountDue,
@@ -1558,7 +1564,7 @@ class CollectionActivityController extends GetxController {
   }) async {
     final paymentIdx =
         unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
-    if (paymentIdx == -1) return;
+    if (paymentIdx == -1) return 0;
 
     final payment = unassignedAdvancedPayments[paymentIdx];
     final clientId = payment['clientId'] as String;
@@ -1614,11 +1620,21 @@ class CollectionActivityController extends GetxController {
     // Add to bucket (if fully paid it shows in settled, if not it waits for next collection)
     bucketItems.add(newItem);
 
-    // Remove from unassigned (use removeWhere to be robust against id type mismatches or duplicates)
-    unassignedAdvancedPayments.removeWhere((e) => e['id'] == paymentId);
+    // What the invoice did not need stays float, on the same advance, for the
+    // next invoice; the repository keeps the same remainder in SQLite. Spent
+    // in full, the advance leaves the list (removeWhere, robust against id
+    // type mismatches or duplicates).
+    final excess = paidAmount - appliedAmount;
+    if (excess > 0.005) {
+      unassignedAdvancedPayments[paymentIdx] = {...payment, 'amount': excess};
+    } else {
+      unassignedAdvancedPayments.removeWhere((e) => e['id'] == paymentId);
+    }
 
     logDebug(
-        '[CollectionActivityController] Assigned invoice $invoiceNumber to payment. Fully paid: $isFullyPaid');
+        '[CollectionActivityController] Assigned invoice $invoiceNumber to payment. '
+        'Fully paid: $isFullyPaid. Float left: ₱$excess');
+    return excess > 0.005 ? excess : 0;
   }
 
   // ========================================================================
