@@ -16,10 +16,7 @@ class SignatureOutboxPage extends StatelessWidget {
 
     return Scaffold(
       appBar: BAppBar(
-        title: Text(
-          'Signature Outbox',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+        title: Text('Signature Outbox'),
         showBackArrow: true,
         actions: [
           IconButton(
@@ -33,4 +30,3 @@ class SignatureOutboxPage extends StatelessWidget {
     );
   }
 }
-

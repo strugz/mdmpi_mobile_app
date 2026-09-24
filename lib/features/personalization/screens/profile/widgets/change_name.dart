@@ -16,8 +16,7 @@ class ChangeName extends StatelessWidget {
     return Scaffold(
       appBar: BAppBar(
         showBackArrow: true,
-        title: Text('Change Name',
-            style: Theme.of(context).textTheme.headlineSmall),
+        title: Text('Change Name'),
       ),
       body: Padding(
         padding: EdgeInsets.all(BSizes.defaultSpace),

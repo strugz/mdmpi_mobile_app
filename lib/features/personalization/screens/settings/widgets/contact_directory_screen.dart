@@ -87,13 +87,17 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
                               filteredDirectoryOptions =
                                   controller.directoryOptions.toList();
                             } else {
-                              filteredDirectoryOptions = controller.directoryOptions
-                                  .where((item) {
-                                final initial = (item.cntmnn ?? '').toLowerCase();
+                              filteredDirectoryOptions =
+                                  controller.directoryOptions.where((item) {
+                                final initial =
+                                    (item.cntmnn ?? '').toLowerCase();
                                 final dept = (item.cntdpt ?? '').toLowerCase();
                                 final num = (item.cntnum ?? '').toLowerCase();
-                                final name = (item.cntmcn ??'').toLowerCase();
-                                return initial.contains(q) || dept.contains(q) || num.contains(q) || name.contains(q);
+                                final name = (item.cntmcn ?? '').toLowerCase();
+                                return initial.contains(q) ||
+                                    dept.contains(q) ||
+                                    num.contains(q) ||
+                                    name.contains(q);
                               }).toList();
                             }
                           });
@@ -106,12 +110,15 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
                             ? Center(
                                 child: Text(
                                   'No results',
-                                  style: Theme.of(dialogContext).textTheme.bodyMedium,
+                                  style: Theme.of(dialogContext)
+                                      .textTheme
+                                      .bodyMedium,
                                 ),
                               )
                             : ListView.separated(
                                 itemCount: filteredDirectoryOptions.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1),
                                 itemBuilder: (context, i) {
                                   final item = filteredDirectoryOptions[i];
                                   return ListTile(
@@ -125,9 +132,12 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
                                         selectedDirectoryContact = item;
                                       });
 
-                                      _initialController.text = item.cntmnn ?? '';
-                                      _departmentController.text = item.cntdpt ?? '';
-                                      _contactNumberController.text = item.cntnum ?? '';
+                                      _initialController.text =
+                                          item.cntmnn ?? '';
+                                      _departmentController.text =
+                                          item.cntdpt ?? '';
+                                      _contactNumberController.text =
+                                          item.cntnum ?? '';
                                     },
                                   );
                                 },
@@ -242,10 +252,7 @@ class _ContactDirectoryScreenState extends State<ContactDirectoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: BAppBar(
-        title: Text(
-          'Contact Directory',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+        title: Text('Contact Directory'),
         showBackArrow: true,
       ),
       floatingActionButton: FloatingActionButton(
