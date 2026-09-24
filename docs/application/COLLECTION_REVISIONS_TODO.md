@@ -21,8 +21,171 @@
 - [x] 6. Label changes — `S` (done 2026-09-23, mobile only): "Clear Engagement" → "Done Engagement"; Account Details "Total Amount Past Due", "Total # of past invoices", "Current Amount", "Total # of current invoices"; Engagement Details "Current Balance" → "Balance"; Home card "Due Date" → "Past Due" (also the category key in `category_detail_screen.dart`)
 - [x] 7. Engagement Details: hide the Balance tile when it is ₱0 — `S` (done 2026-09-23)
 - [x] 8. Actual Collection % toward the manually set monthly target — `S` (the page already had it; the home card now shows "N% of ₱target" / "Target met"; both floor the percent so 99.6% never reads 100%)
-- [ ] 9. Deposits are tracking-only and must not count toward Actual Collection — **open:** Actual Collection is currently the *sum of deposits* (`TotalCollectedController.actualCollectionTotal`); needs a decision on what it sums instead
-- [ ] 10. Done Engagement sends an SMS to the account's head — **open:** no "head" contact exists on `ClientModel` (only `ACCMPH`), and the SMS templates are Logistics-only; needs the recipient source and message text
+- [ ] 9. *For Deposit* (Field Engagement) is the collector's activity only; its amount never counts as Actual Collection — `M` (decided 2026-09-24: Actual Collection comes from what the office posts on the web, item 11; mobile stops summing deposits)
+- [ ] 10. Done Engagement sends an SMS to the collector's Head — `M` (recipient decided 2026-09-24: the Head the user picked, item 13; **open:** message text)
+- [ ] 11. Collection web: screen to post Actual Collection — `L` (new backend table + `/api4` endpoints + migration; web view; mobile reads it through the workspace)
+- [ ] 12. **Plan only:** a separate bottom navigation bar for the Head of Collection — `M` (plan doc, no code)
+- [ ] 13. The user picks who their Head is — `M` (Settings → *My Head*; stored on the user's Firestore doc)
+- [ ] 14. One user directory from CNTMST (key `CNTMNN`) and Firestore `Users` (key `initial`) — `M` (feeds items 10 and 13)
+- [ ] 15. Settings: suggested features for Collection — `S` to pick from (list below; nothing built)
+
+---
+
+## 9. *For Deposit* is activity only, never Actual Collection
+
+**Requirement (raised 2026-09-24).** The amount entered on a *For Deposit* activity in
+Field Engagement does not count as Actual Collection. *For Deposit* only records what the
+collector did.
+
+**Current behavior.** Actual Collection *is* the deposits:
+`TotalCollectedController.actualCollectionTotal` sums `depositEntries`, built by
+`_collectDeposits()` from `globalActivities` rows of type `Deposit`
+(`presentation/controllers/total_collected_controller.dart`). The home card and the
+Actual Collection page (`monthly_summary_screen.dart`, `type: 'Deposit'`) both read it.
+
+**To do (mobile).**
+- `actualCollectionTotal` / `actualEntries` read the office-posted records from item 11
+  instead of deposits. Until that ships, Actual Collection reads ₱0.00 with a note such
+  as "Posted by the office", rather than silently showing deposits.
+- The Actual Collection page lists the posted entries (date, amount, reference, posted by);
+  the "Deposited" wording goes.
+- Deposits stay where activities belong: engagement history, the calendar, the upload
+  outbox. `deposit_form.dart` is unchanged.
+- The month's % toward the target (item 8) is computed against the posted total.
+- Tests: a deposit on its own leaves Actual Collection at zero; a posted record moves it.
+
+---
+
+## 10. Done Engagement → SMS to the collector's Head
+
+**Decided (2026-09-24).** The SMS goes to the Head the user picked (item 13), at that
+person's phone number from the directory (item 14: `CNTMST.CNTNUM`, or the Firestore
+user's phone).
+
+**Still open.** The message text, and whether it covers one account or batches the day.
+
+**Touch points.**
+- `CollectionActivityController.unclaimAccount` (Done Engagement) → send after the
+  release is saved; never block the release on the SMS.
+- `MessagingController` / `sms_message_template_service.dart` — a Collection template
+  (today every template is a Logistics status). The Messages-app fallback for a refused
+  `SEND_SMS` permission is already in (`5f00a84`).
+- No Head picked → no SMS, and the Done Engagement snackbar says so once, pointing to
+  Settings → *My Head*.
+
+---
+
+## 11. Collection web: post Actual Collection
+
+**Requirement (raised 2026-09-24).** An interface in `mdmpi_collection_web` where the
+office enters Actual Collection. Pairs with item 9: this becomes the only source of the
+figure.
+
+**Proposed shape.**
+- **Backend (`MDMPI.App`, `/api4` — the production-testing backend that already serves
+  every Collection call).** Table `collection_actual_collection`: id, collector code,
+  collection date, amount, reference (OR / deposit slip no.), remarks, posted by, created
+  and updated at. Migration SQL beside
+  `migration_20260922_add_collection_invoice_ponumber.sql`. Endpoints on
+  `CollectionController`: `GET /api4/Collection/actual-collections?month=yyyy-MM&collector=`,
+  `POST`, `PUT /{id}`, `DELETE /{id}`. `CollectionWorkspaceDto` gains the signed-in
+  collector's records for the month, so mobile needs no new call.
+- **Web.** `views/ActualCollectionView.vue` + route + nav entry; `api/collectionApi.js`
+  methods. A month picker and collector filter; a table with a running total and % of each
+  collector's target (targets already exist: `CollectionTargetModel`); add / edit / delete
+  in a dialog; amounts through `utils/money.js`.
+- **Mobile.** `CollectionWorkspaceParser` reads the records; a local table (DAO + test,
+  per the data-layer rule); item 9 totals them.
+
+**Open questions.** One entry per deposit slip or one lump sum per collector per month?
+Who may post and edit (all office staff or one role)? Can an entry be backdated into a
+closed month?
+
+---
+
+## 12. Head of Collection: a separate bottom bar (plan only)
+
+**Requirement (raised 2026-09-24).** Plan, not build, a different bottom navigation for
+the Head of Collection.
+
+**Today.** `NavigationController.screens` (`lib/data/controllers/navigation_controller.dart`)
+picks tabs by department only; Collection gets Home, Field Engagement, Calendar, Profile.
+There is no role below department.
+
+**The plan should settle.**
+- **Who is a Head.** A role field on the Firestore user, the CNTMST hierarchy (`CNTTGP`,
+  already walked by `CntmstDao.getUserAndManagerPhoneNumbers`), or "anyone picked as Head
+  by a collector" (item 13). The last needs no admin step but makes the role depend on
+  other people's settings.
+- **Tabs (draft).** Team (each collector's collected vs target, today's engagements),
+  Engagements feed (Done / Deferred across the team, with the SMS from item 10), Calendar
+  (team view), Reports, Profile. Does the Head also collect, and so keep Field Engagement?
+- **Data.** What the Head's screens need from `/api4` that the collector workspace does
+  not carry (team-wide engagements and totals), and whether it can go offline like the
+  collector's.
+- **Routing.** A third branch in `screens` plus `app_router.dart`; `BRoutes` for any new
+  pages.
+
+Deliverable: `docs/application/COLLECTION_HEAD_NAVIGATION_PLAN.md`.
+
+---
+
+## 13. The user picks their Head
+
+**Requirement (raised 2026-09-24).** Each user chooses who their Head is.
+
+**Proposed.**
+- Settings → *My Head*: a searchable picker over the directory from item 14 (name,
+  department, initial), with a Clear option.
+- Stored on the user's Firestore `Users` doc (`headKey`, plus the name for display) so it
+  follows the user to another phone; cached in `GetStorage` for offline use.
+- `profile.dart:77` shows a hardcoded "Supervisor: MDD"; it reads the chosen Head instead.
+- A default when nothing is chosen: the first manager in the user's CNTMST `CNTTGP`
+  hierarchy, marked "suggested" until confirmed.
+
+---
+
+## 14. One user directory: CNTMST + Firestore `Users`
+
+**Requirement (raised 2026-09-24).** A user is either in CNTMST or in Firestore `Users`.
+Their key is `CNTMNN` in CNTMST and `initial` in Firestore.
+
+**Proposed.**
+- A read-only `UserDirectoryRepository` merging `CntmstDao` rows (`CNTMNN`, name,
+  department `CNTDPT`, phone `CNTNUM`, active `CNTSTS`) and Firestore `Users`
+  (`initial`, name, department, phone). Keys compared trimmed and upper-cased; when a
+  person is in both, Firestore wins for name and phone, and CNTMST supplies anything
+  missing.
+- Returns `Result<List<DirectoryUser>>`; registered in `GeneralBindings` behind the
+  existing `Firebase.apps.isNotEmpty` guard, so Windows falls back to CNTMST only.
+- Tests: merge, duplicate keys differing in case or spacing, inactive CNTMST rows, and
+  Firestore unavailable.
+
+**Open question.** Are `CNTMNN` and `initial` the same code for the same person? The
+merge above assumes so.
+
+---
+
+## 15. Settings: suggested features for Collection
+
+Collection's Settings currently has **Upload Data** and the developer tools
+(`settings.dart`). Candidates, most useful first. None are built; pick which to schedule.
+
+1. **My Head** — item 13.
+2. **Sync status** — last download and upload times, pending uploads, and a link to the
+   upload outbox (today it is reached only from the home screen).
+3. **End-of-day reminder** — a local notification at a chosen time when uploads are still
+   pending.
+4. **Default area** — preselect the bucket's area filter for collectors who work one
+   territory.
+5. **Done Engagement SMS** — on/off, with a preview of the message (item 10).
+6. **Default bank** — prefill the bank on deposits and check payments
+   (`bank_field.dart` already keeps suggestions).
+7. **Monthly target** — the month's target and progress, read-only (set on the web).
+8. **Storage** — local data size, clear cached photos, re-download the bucket.
+9. **Compact lists** — denser account and invoice cards for a collector with a long
+   bucket.
+10. **About** — app version and what's new in this build.
 
 ---
 
