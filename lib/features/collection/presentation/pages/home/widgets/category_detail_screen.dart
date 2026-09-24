@@ -203,7 +203,7 @@ class CategoryDetailScreen extends StatelessWidget {
                 case 'Settled':
                   accounts = controller.settledAccounts;
                   break;
-                case 'Due Date':
+                case 'Past Due':
                   accounts = controller.overdueAccounts;
                   break;
                 case 'Reconciliation':
@@ -232,7 +232,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       invoices =
                           controller.getSettledInvoicesByAccount(client.id);
                       break;
-                    case 'Due Date':
+                    case 'Past Due':
                       invoices =
                           controller.getOverdueInvoicesByAccount(client.id);
                       break;

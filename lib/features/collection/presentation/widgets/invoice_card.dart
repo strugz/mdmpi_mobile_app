@@ -221,10 +221,12 @@ class InvoiceCard extends StatelessWidget {
           ),
         ),
         const SizedBox(width: BSizes.xs),
-        if (status.isNotEmpty) _statusBadge(theme, status),
+        // Flexible: a long outcome ("Reconciliation Refused to Pay") ellipsizes
+        // inside its badge instead of pushing the row past the card's edge.
+        if (status.isNotEmpty) Flexible(child: _statusBadge(theme, status)),
         if (showOutcome) ...[
           const SizedBox(width: BSizes.xs),
-          _statusBadge(theme, lastOutcome),
+          Flexible(child: _statusBadge(theme, lastOutcome)),
         ],
         // Info button normally, selection mark in selection mode. Cross-faded
         // so the swap is one morph rather than a pop.
@@ -282,7 +284,6 @@ class InvoiceCard extends StatelessWidget {
               BFormatter.formatPesoCurrency(amount),
               maxLines: 1,
               style: theme.textTheme.titleLarge?.copyWith(
-                fontSize: 20,
                 height: 1.1,
                 fontWeight: FontWeight.w800,
                 color:
@@ -370,18 +371,26 @@ class InvoiceCard extends StatelessWidget {
           const SizedBox(width: BSizes.xs),
           // Tinted, not a solid red block: every row in these lists is
           // overdue, and a filled badge on all of them is just noise.
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: badgeColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-            ),
-            child: Text(
-              BFormatter.formatDaysOverdue(item.daysPastDue),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: badgeColor,
-                fontWeight: FontWeight.w700,
-                fontSize: 10,
+          // Flexible + scale-down: "1,234 days overdue" beside a long date
+          // ran past the card's edge in an indented P.O. group on a narrow
+          // phone. It shrinks; it is never cut.
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                ),
+                child: Text(
+                  BFormatter.formatDaysOverdue(item.daysPastDue),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: badgeColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ),
@@ -407,7 +416,6 @@ class InvoiceCard extends StatelessWidget {
         style: theme.textTheme.labelSmall?.copyWith(
           color: fg == BCollectionColors.surface ? bg : fg,
           fontWeight: FontWeight.w600,
-          fontSize: 10,
         ),
       ),
     );

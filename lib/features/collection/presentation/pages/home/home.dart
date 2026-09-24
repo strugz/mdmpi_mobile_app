@@ -37,9 +37,9 @@ class CollectionHomeScreen extends StatelessWidget {
   /// buttons and truncating tile labels in this fixed dashboard layout.
   static const double _maxTextScale = 1.15;
 
-  /// Fixed page height for the history carousel. The card lays out to about
-  /// 150px at the default text size and 165px at the 1.15 clamp; the extra
-  /// keeps the bottom divider row clear of the page edge.
+  /// Placeholder height for the history carousel's loading skeleton only.
+  /// The carousel itself sizes to its tallest card: a fixed 172 here once
+  /// clipped a card's footer by 2px when its labels grew a point.
   static const double _historyCardHeight = 172;
 
   static const _pageTransition = Transition.cupertino;
@@ -169,7 +169,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                       .success),
                                                         ),
                                                         CollectionSummaryStat(
-                                                          title: 'Due Date',
+                                                          title: 'Past Due',
                                                           value: controller
                                                               .overdueItems
                                                               .length
@@ -180,7 +180,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   .danger,
                                                           onTap: () =>
                                                               _openCategory(
-                                                                  'Due Date',
+                                                                  'Past Due',
                                                                   BCollectionColors
                                                                       .danger),
                                                         ),
@@ -354,8 +354,9 @@ class CollectionHomeScreen extends StatelessWidget {
 
                                                       return BMirrorCarousel(
                                                         itemCount: cards.length,
-                                                        height:
-                                                            _historyCardHeight,
+                                                        // No height: the carousel
+                                                        // takes its tallest card's,
+                                                        // at whatever font size.
                                                         onSettleTap: (i) =>
                                                             cards[i].showDetail(
                                                                 context),

@@ -68,8 +68,7 @@ class EngagementSummary extends StatelessWidget {
                       child: Text(
                         BFormatter.formatPesoCurrency(done ? collected : due),
                         maxLines: 1,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: 22,
+                        style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                           height: 1.15,
                           color: done
@@ -120,7 +119,7 @@ class EngagementSummary extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall
-                  ?.copyWith(color: BCollectionColors.inkMuted, fontSize: 10),
+                  ?.copyWith(color: BCollectionColors.inkMuted),
             ),
           ],
         ],

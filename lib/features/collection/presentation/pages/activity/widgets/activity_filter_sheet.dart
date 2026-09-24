@@ -372,20 +372,26 @@ class ActiveFilterChips extends StatelessWidget {
   Widget build(BuildContext context) {
     final chips = <Widget>[
       if (filter.due != DueBand.any)
-        _chip(filter.due.label, BCollectionColors.danger,
+        _chip(context, filter.due.label, BCollectionColors.danger,
             () => onChanged(filter.copyWith(due: DueBand.any))),
       if (filter.amount != AmountBand.any)
-        _chip(filter.amount.label, BCollectionColors.primary,
+        _chip(context, filter.amount.label, BCollectionColors.primary,
             () => onChanged(filter.copyWith(amount: AmountBand.any))),
       if (filter.area.isNotEmpty)
-        _chip(BCollectionArea.labelFor(filter.area), BCollectionColors.primary,
+        _chip(
+            context,
+            BCollectionArea.labelFor(filter.area),
+            BCollectionColors.primary,
             () => onChanged(filter.copyWith(area: ''))),
       if (filter.hasPoNumber)
-        _chip('PO ${filter.poNumber.trim()}', BCollectionColors.primary,
+        _chip(
+            context,
+            'PO ${filter.poNumber.trim()}',
+            BCollectionColors.primary,
             () => onChanged(filter.copyWith(poNumber: '')))
       // A typed P.O. already says "has one"; a second chip would repeat it.
       else if (filter.poPresence != PoPresence.any)
-        _chip(filter.poPresence.label, BCollectionColors.primary,
+        _chip(context, filter.poPresence.label, BCollectionColors.primary,
             () => onChanged(filter.copyWith(poPresence: PoPresence.any))),
     ];
     if (chips.isEmpty) return const SizedBox.shrink();
@@ -397,11 +403,14 @@ class ActiveFilterChips extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, Color color, VoidCallback onRemove) {
+  Widget _chip(
+      BuildContext context, String label, Color color, VoidCallback onRemove) {
     return InputChip(
       label: Text(label),
-      labelStyle:
-          TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12),
+      labelStyle: Theme.of(context)
+          .textTheme
+          .labelLarge
+          ?.copyWith(color: color, fontWeight: FontWeight.w600),
       backgroundColor: color.withValues(alpha: 0.10),
       side: BorderSide.none,
       deleteIcon: Icon(Iconsax.close_circle, size: 16, color: color),

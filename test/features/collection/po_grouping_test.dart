@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/po_grouping.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
@@ -192,6 +193,46 @@ void main() {
       ));
       expect(find.text('1 selected'), findsOneWidget);
     });
+
+    // The header once laid the count and both badges in one Row beside the
+    // total and overflowed by 25px on a phone. Any overflow fails the test.
+    for (final scale in [1.0, 1.3]) {
+      testWidgets(
+          'count and badges fit a narrow phone header at text scale $scale',
+          (tester) async {
+        final group = PoGrouping.of([
+          _inv('96776', po: '24684', due: 9716),
+          _inv('96777', po: '24684', due: 1234567.89),
+        ]).groups.single;
+
+        await tester.pumpWidget(MaterialApp(
+          theme: BCollectionTheme.light,
+          home: MediaQuery(
+            data: MediaQueryData(
+                size: const Size(360, 800),
+                textScaler: TextScaler.linear(scale)),
+            child: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 320, // 360pt phone less the list's gutters
+                  child: PoInvoiceGroupCard(
+                    group: group,
+                    expanded: false,
+                    onToggle: () {},
+                    selectedCount: 1,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ));
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('2 invoices'), findsOneWidget);
+        expect(find.text('2 overdue'), findsOneWidget);
+        expect(find.text('1 selected'), findsOneWidget);
+      });
+    }
 
     testWidgets('the caller builds the cards under the header', (tester) async {
       final group = PoGrouping.of([_inv('INV-1', po: 'X-1')]).groups.single;

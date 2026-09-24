@@ -150,7 +150,7 @@ class _CollectionActivityAccountInvoicesScreenState
     controller.unclaimAccount(widget.client.id);
     Get.back();
     BLoaders.successSnackBar(
-      title: 'Engagement cleared',
+      title: 'Engagement done',
       message: '${widget.client.name} is no longer assigned to you.',
     );
   }
@@ -227,7 +227,7 @@ class _CollectionActivityAccountInvoicesScreenState
               child: ElevatedButton.icon(
                 onPressed: _clearEngagement,
                 icon: const Icon(Iconsax.tick_circle, size: 18),
-                label: const Text('Clear Engagement', maxLines: 1),
+                label: const Text('Done Engagement', maxLines: 1),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(0, 48),
                   shape: shape,
@@ -311,7 +311,7 @@ class _CollectionActivityAccountInvoicesScreenState
                                 .length
                         ? 'Deselect All'
                         : 'Select All',
-                    style: const TextStyle(color: BCollectionColors.primary),
+                    style: const TextStyle(color: BCollectionColors.onHeader),
                   ),
                 ),
             ],

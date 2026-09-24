@@ -160,19 +160,30 @@ class _CalendarVisitCardState extends State<CalendarVisitCard> {
                     ],
                   ),
                   const SizedBox(height: BSizes.sm),
-                  Row(
+                  // Wrap: at a large font the day's total moves under the
+                  // count instead of pushing past the card's edge.
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: BSizes.sm,
+                    runSpacing: BSizes.xxs,
                     children: [
-                      const Icon(Iconsax.receipt_item,
-                          size: 14, color: BCollectionColors.inkMuted),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          '$n invoice${n == 1 ? '' : 's'} · $_when',
-                          style: theme.textTheme.labelSmall
-                              ?.copyWith(color: BCollectionColors.inkMuted),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Iconsax.receipt_item,
+                              size: 14, color: BCollectionColors.inkMuted),
+                          const SizedBox(width: BSizes.xs),
+                          Flexible(
+                            child: Text(
+                              '$n invoice${n == 1 ? '' : 's'} · $_when',
+                              style: theme.textTheme.labelSmall
+                                  ?.copyWith(color: BCollectionColors.inkMuted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       if (total > 0)
                         Text(
@@ -275,7 +286,6 @@ class _InvoiceRow extends StatelessWidget {
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: BCollectionColors.primary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: BSizes.xs),
@@ -288,8 +298,7 @@ class _InvoiceRow extends StatelessWidget {
                     runSpacing: BSizes.xs,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      ActivityStatusBadge(
-                          status: history.status, label: label),
+                      ActivityStatusBadge(status: history.status, label: label),
                       Text(
                         BFormatter.formatTimeAmPm(history.date),
                         style: theme.textTheme.labelSmall
@@ -320,7 +329,6 @@ class _InvoiceRow extends StatelessWidget {
                                 item?.daysPastDue ?? 0),
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: BCollectionColors.surface,
-                              fontSize: 8,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

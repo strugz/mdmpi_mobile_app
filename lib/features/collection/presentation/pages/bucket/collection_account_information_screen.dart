@@ -34,7 +34,9 @@ class CollectionAccountInformationScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(BSizes.defaultSpace),
               decoration: const BoxDecoration(
-                color: BCollectionColors.primary,
+                // Continues the navy bar above it, so the account's name and
+                // balance sit in the header rather than a second band of blue.
+                color: BCollectionColors.headerBackground,
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(BSizes.borderRadiusLg * 2),
                   bottomRight: Radius.circular(BSizes.borderRadiusLg * 2),
@@ -95,7 +97,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   /// 2. Past Due Section
                   _buildStatRow(
                     context,
-                    label: 'Total Past Amount Due',
+                    label: 'Total Amount Past Due',
                     value: BFormatter.formatPesoCurrency(stats['totalPastDue']),
                     icon: Iconsax.timer,
                     iconColor: BCollectionColors.danger,
@@ -103,7 +105,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   const SizedBox(height: BSizes.xs),
                   _buildStatRow(
                     context,
-                    label: 'Total # of Past Invoices Due',
+                    label: 'Total # of past invoices',
                     value: stats['pastDueCount'].toString(),
                     icon: Iconsax.document_text,
                     iconColor: BCollectionColors.danger,
@@ -118,7 +120,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   /// 3. Current Due Section
                   _buildStatRow(
                     context,
-                    label: 'Current Amount Due',
+                    label: 'Current Amount',
                     value:
                         BFormatter.formatPesoCurrency(stats['totalCurrentDue']),
                     icon: Iconsax.calendar_tick,
@@ -127,7 +129,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   const SizedBox(height: BSizes.xs),
                   _buildStatRow(
                     context,
-                    label: 'Total # of Current Invoices Due',
+                    label: 'Total # of current invoices',
                     value: stats['currentDueCount'].toString(),
                     icon: Iconsax.document_text,
                     iconColor: BCollectionColors.success,

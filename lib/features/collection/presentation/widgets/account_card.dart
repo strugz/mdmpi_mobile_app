@@ -254,56 +254,73 @@ class AccountCard extends StatelessWidget {
   /// glance. Nothing shares the line, so the figure is never squeezed and
   /// never truncated: a cut number is a different number, not merely a
   /// shorter one.
-  Widget _amountLine(ThemeData theme) => Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // The overdue badge lives here, in the empty left half of the
-          // amount line. On the metadata line it squeezed the count to
-          // "1 P.O. · 1 in…" on a 390pt phone.
-          if (onSelectTap != null)
-            const SizedBox(width: _circleBox + BSizes.sm),
-          // Takes what the amount leaves and gives way first: the badge may
-          // shorten on a narrow window, the amount never does.
-          Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: overdueCount > 0
-                  ? FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: _overdueBadge(theme),
-                    )
-                  : const SizedBox.shrink(),
-            ),
-          ),
-          // Only on the rows that are the exception. Every other row in this
-          // list is an outstanding balance, so labelling each one
-          // "outstanding" repeats the column heading down the whole screen.
-          if (_settled) ...[
-            Text(
-              'collected',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: BCollectionColors.success,
-                fontWeight: FontWeight.w600,
-                fontSize: 10,
+  Widget _amountLine(ThemeData theme) => LayoutBuilder(
+        builder: (context, constraints) => Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // The overdue badge lives here, in the empty left half of the
+            // amount line. On the metadata line it squeezed the count to
+            // "1 P.O. · 1 in…" on a 390pt phone.
+            if (onSelectTap != null)
+              const SizedBox(width: _circleBox + BSizes.sm),
+            // Takes what the amount leaves and gives way first: the badge may
+            // shorten on a narrow window, the amount never does.
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: overdueCount > 0
+                    ? FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: _overdueBadge(theme),
+                      )
+                    : const SizedBox.shrink(),
               ),
             ),
-            const SizedBox(width: BSizes.xs),
-          ],
-          Text(
-            BFormatter.formatPesoCurrency(
-                _settled ? totalCollected : totalAmount),
-            maxLines: 1,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontSize: 17,
-              height: 1.1,
-              fontWeight: FontWeight.w800,
-              color: _settled
-                  ? BCollectionColors.success
-                  : BCollectionColors.primary,
+            // Natural size until the line runs out, then it scales down —
+            // never cut: a truncated amount is a different amount. The badge
+            // on the left gives way first.
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.8),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    // Only on the rows that are the exception. Every other row in this
+                    // list is an outstanding balance, so labelling each one
+                    // "outstanding" repeats the column heading down the whole screen.
+                    if (_settled) ...[
+                      Text(
+                        'collected',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: BCollectionColors.success,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: BSizes.xs),
+                    ],
+                    Text(
+                      BFormatter.formatPesoCurrency(
+                          _settled ? totalCollected : totalAmount),
+                      maxLines: 1,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        height: 1.1,
+                        fontWeight: FontWeight.w800,
+                        color: _settled
+                            ? BCollectionColors.success
+                            : BCollectionColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       );
 
   Widget _overdueBadge(ThemeData theme) => Container(
@@ -319,7 +336,6 @@ class AccountCard extends StatelessWidget {
           style: theme.textTheme.labelSmall?.copyWith(
             color: BCollectionColors.danger,
             fontWeight: FontWeight.w700,
-            fontSize: 10,
           ),
         ),
       );
@@ -409,7 +425,7 @@ class AccountCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall
-                  ?.copyWith(color: BCollectionColors.inkMuted, fontSize: 10),
+                  ?.copyWith(color: BCollectionColors.inkMuted),
             ),
           ],
         ],
@@ -523,7 +539,6 @@ class AccountCard extends StatelessWidget {
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: BCollectionColors.primary,
                           fontWeight: FontWeight.w700,
-                          fontSize: 12,
                         ),
                       ),
                       const SizedBox(width: 2),

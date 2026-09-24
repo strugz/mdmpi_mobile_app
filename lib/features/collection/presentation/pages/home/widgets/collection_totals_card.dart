@@ -40,9 +40,12 @@ class CollectionTotalsCard extends StatelessWidget {
 
       return CollectionTotalsCardView(
         actual: BFormatter.formatPesoCurrency(actual),
-        actualFootnote: target > 0
-            ? 'Target ${BFormatter.formatPesoCurrency(target)}'
-            : 'No target set',
+        // Same wording as the Actual Collection page's target line.
+        actualFootnote: target <= 0
+            ? 'No target set'
+            : actual >= target
+                ? 'Target met'
+                : '${(actual / target * 100).floor()}% of ${BFormatter.formatPesoCurrency(target)}',
         collected: BFormatter.formatPesoCurrency(total),
         onActualTap: onActualTap,
         onCollectedTap: onCollectedTap,
@@ -173,8 +176,7 @@ class _TotalsHalf extends StatelessWidget {
               child: Text(
                 value,
                 maxLines: 1,
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontSize: 22,
+                style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: color,
                   height: 1.15,

@@ -241,147 +241,158 @@ class ActivityHistoryCard extends StatelessWidget {
             BSizes.defaultSpace,
             BSizes.defaultSpace,
             BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// Drag Handle
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: BSizes.md),
-                decoration: BoxDecoration(
-                  color: BCollectionColors.outline.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
+        // Scrolls when it has to: at a large font the tiles outgrew a short
+        // phone and the sheet overflowed at the bottom.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              /// Drag Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: BSizes.md),
+                  decoration: BoxDecoration(
+                    color: BCollectionColors.outline.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Engagement Details',
-                    style: Theme.of(context).textTheme.headlineSmall),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text('Engagement Details',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.headlineSmall),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const Divider(),
+              const SizedBox(height: BSizes.sm),
+
+              if (accountName != null || invoiceId != null || item != null) ...[
+                Text(
+                  accountName ?? item?.client.name ?? 'Unknown Account',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(color: BCollectionColors.primary),
                 ),
+                if (invoiceId != null || item != null)
+                  Text('Invoice #${invoiceId ?? item?.id}',
+                      style: Theme.of(context).textTheme.labelMedium),
+                const SizedBox(height: BSizes.md),
               ],
-            ),
-            const Divider(),
-            const SizedBox(height: BSizes.sm),
 
-            if (accountName != null || invoiceId != null || item != null) ...[
-              Text(
-                accountName ?? item?.client.name ?? 'Unknown Account',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(color: BCollectionColors.primary),
-              ),
-              if (invoiceId != null || item != null)
-                Text('Invoice #${invoiceId ?? item?.id}',
-                    style: Theme.of(context).textTheme.labelMedium),
-              const SizedBox(height: BSizes.md),
-            ],
+              if (item != null) ...[
+                Wrap(
+                  spacing: BSizes.sm,
+                  runSpacing: BSizes.sm,
+                  children: [
+                    _buildInfoTile(
+                        context,
+                        'Total Amount',
+                        BFormatter.formatPesoCurrency(
+                            item!.toBeCollected + item!.totalCollected),
+                        Iconsax.money),
+                    // A settled invoice has nothing left; a ₱0.00 tile is noise.
+                    if (item!.toBeCollected > 0)
+                      _buildInfoTile(
+                          context,
+                          'Balance',
+                          BFormatter.formatPesoCurrency(item!.toBeCollected),
+                          Iconsax.wallet_money,
+                          valueColor: BCollectionColors.primary),
+                    _buildInfoTile(
+                        context, 'Due Date', item!.dueDate, Iconsax.calendar,
+                        valueColor:
+                            item!.isOverdue ? BCollectionColors.danger : null),
+                    if (item!.documentReferences.isNotEmpty)
+                      _buildInfoTile(
+                          context,
+                          'References',
+                          item!.documentReferences.join(', '),
+                          Iconsax.document_text),
+                  ],
+                ),
+                const Divider(height: BSizes.lg),
+              ],
 
-            if (item != null) ...[
               Wrap(
                 spacing: BSizes.sm,
                 runSpacing: BSizes.sm,
                 children: [
                   _buildInfoTile(
                       context,
-                      'Total Amount',
-                      BFormatter.formatPesoCurrency(
-                          item!.toBeCollected + item!.totalCollected),
-                      Iconsax.money),
+                      'Date',
+                      BFormatter.formatDateWithAmPm(history.date),
+                      Iconsax.calendar),
                   _buildInfoTile(
-                      context,
-                      'Current Balance',
-                      BFormatter.formatPesoCurrency(item!.toBeCollected),
-                      Iconsax.wallet_money,
-                      valueColor: BCollectionColors.primary),
+                      context, 'Collector', collectorName, Iconsax.user),
                   _buildInfoTile(
-                      context, 'Due Date', item!.dueDate, Iconsax.calendar,
-                      valueColor:
-                          item!.isOverdue ? BCollectionColors.danger : null),
-                  if (item!.documentReferences.isNotEmpty)
+                    context,
+                    'Status',
+                    _statusLabel,
+                    Iconsax.activity,
+                    isBadge: true,
+                    badgeStatus: history.status,
+                  ),
+                  if (_reconciledOn != null)
                     _buildInfoTile(
                         context,
-                        'References',
-                        item!.documentReferences.join(', '),
-                        Iconsax.document_text),
+                        'Reconciled on',
+                        BFormatter.formatDateWithAmPm(_reconciledOn!),
+                        Iconsax.status_up,
+                        valueColor: BCollectionColors.reconcile),
+                  if (history.totalCollected > 0)
+                    _buildInfoTile(
+                        context,
+                        'Amount Collected',
+                        BFormatter.formatPesoCurrency(history.totalCollected),
+                        Iconsax.wallet_money,
+                        valueColor: BCollectionColors.success),
+                  if (history.bankName != null && history.bankName!.isNotEmpty)
+                    _buildInfoTile(
+                        context, 'Bank', history.bankName!, Iconsax.bank),
+                  if (history.checkNumber != null &&
+                      history.checkNumber!.isNotEmpty)
+                    _buildInfoTile(context, 'Check Number',
+                        history.checkNumber!, Iconsax.card_edit),
+                  if (history.checkDate != null &&
+                      history.checkDate!.isNotEmpty)
+                    _buildInfoTile(context, 'Check Date', history.checkDate!,
+                        Iconsax.calendar_1),
                 ],
               ),
-              const Divider(height: BSizes.lg),
-            ],
 
-            Wrap(
-              spacing: BSizes.sm,
-              runSpacing: BSizes.sm,
-              children: [
-                _buildInfoTile(
-                    context,
-                    'Date',
-                    BFormatter.formatDateWithAmPm(history.date),
-                    Iconsax.calendar),
-                _buildInfoTile(
-                    context, 'Collector', collectorName, Iconsax.user),
-                _buildInfoTile(
-                  context,
-                  'Status',
-                  _statusLabel,
-                  Iconsax.activity,
-                  isBadge: true,
-                  badgeStatus: history.status,
+              const SizedBox(height: BSizes.md),
+              Text('Remarks', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: BSizes.xs),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(BSizes.md),
+                decoration: BoxDecoration(
+                  color: BCollectionColors.background,
+                  borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
                 ),
-                if (_reconciledOn != null)
-                  _buildInfoTile(
-                      context,
-                      'Reconciled on',
-                      BFormatter.formatDateWithAmPm(_reconciledOn!),
-                      Iconsax.status_up,
-                      valueColor: BCollectionColors.reconcile),
-                if (history.totalCollected > 0)
-                  _buildInfoTile(
-                      context,
-                      'Amount Collected',
-                      BFormatter.formatPesoCurrency(history.totalCollected),
-                      Iconsax.wallet_money,
-                      valueColor: BCollectionColors.success),
-                if (history.bankName != null && history.bankName!.isNotEmpty)
-                  _buildInfoTile(
-                      context, 'Bank', history.bankName!, Iconsax.bank),
-                if (history.checkNumber != null &&
-                    history.checkNumber!.isNotEmpty)
-                  _buildInfoTile(context, 'Check Number', history.checkNumber!,
-                      Iconsax.card_edit),
-                if (history.checkDate != null && history.checkDate!.isNotEmpty)
-                  _buildInfoTile(context, 'Check Date', history.checkDate!,
-                      Iconsax.calendar_1),
-              ],
-            ),
-
-            const SizedBox(height: BSizes.md),
-            Text('Remarks', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: BSizes.xs),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(BSizes.md),
-              decoration: BoxDecoration(
-                color: BCollectionColors.background,
-                borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                child: Text(
+                  history.remarks.isEmpty || history.remarks == 'No remarks'
+                      ? 'No additional remarks provided.'
+                      : history.remarks,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
-              child: Text(
-                history.remarks.isEmpty || history.remarks == 'No remarks'
-                    ? 'No additional remarks provided.'
-                    : history.remarks,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            const SizedBox(height: BSizes.spaceBtwSections),
-          ],
+              const SizedBox(height: BSizes.spaceBtwSections),
+            ],
+          ),
         ),
       ),
     );
@@ -424,7 +435,6 @@ class ActivityHistoryCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: valueColor,
-                          fontSize: 12,
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -455,54 +465,56 @@ class ActivityHistoryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               /// Header: Invoice ID and Account Name + Status Badge
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // A Wrap, not a Row: a long outcome ("Reconciliation Refused to
+              // Pay") beside a long name overran the card. The badge now drops
+              // under the title when the line runs out. Wrap rather than a
+              // LayoutBuilder, which the home carousel's IntrinsicHeight
+              // cannot measure.
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: BSizes.sm,
+                runSpacing: BSizes.xs,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        accountFirst
+                            ? (_accountName ?? 'Account Engagement')
+                            : (invoiceId != null || item != null
+                                ? 'Invoice #${invoiceId ?? item?.id}'
+                                : (_accountName ?? 'Account Engagement')),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (accountFirst && (invoiceId ?? item?.id) != null)
                         Text(
-                          accountFirst
-                              ? (_accountName ?? 'Account Engagement')
-                              : (invoiceId != null || item != null
-                                  ? 'Invoice #${invoiceId ?? item?.id}'
-                                  : (_accountName ?? 'Account Engagement')),
+                          'Invoice #${invoiceId ?? item?.id}',
                           style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: BCollectionColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      else if (!accountFirst && item != null)
+                        Text(
+                          item!.client.name,
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: BCollectionColors.primary,
                                     fontWeight: FontWeight.bold,
                                   ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (accountFirst && (invoiceId ?? item?.id) != null)
-                          Text(
-                            'Invoice #${invoiceId ?? item?.id}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: BCollectionColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        else if (!accountFirst && item != null)
-                          Text(
-                            item!.client.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: BCollectionColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
-                    ),
+                    ],
                   ),
                   ActivityStatusBadge(
                       status: history.status, label: _statusLabel),
@@ -511,32 +523,34 @@ class ActivityHistoryCard extends StatelessWidget {
               const SizedBox(height: BSizes.sm),
 
               /// Body Row 1: Posted Date + Amount Collected
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Wrap: at a large font a seven-figure amount moves under the
+              // date instead of pushing past the card's edge.
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: BSizes.sm,
+                runSpacing: BSizes.xxs,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Icon(Iconsax.calendar,
-                            size: 14, color: BCollectionColors.inkMuted),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            _isAccountLevel
-                                ? _accountScopeLabel
-                                : 'Invoice Date: ${item?.postingDate ?? 'N/A'}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: BCollectionColors.inkMuted,
-                                ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Iconsax.calendar,
+                          size: 14, color: BCollectionColors.inkMuted),
+                      const SizedBox(width: BSizes.xs),
+                      Flexible(
+                        child: Text(
+                          _isAccountLevel
+                              ? _accountScopeLabel
+                              : 'Invoice Date: ${item?.postingDate ?? 'N/A'}',
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: BCollectionColors.inkMuted,
+                                  ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   if (history.totalCollected > 0)
                     Text(
@@ -551,81 +565,99 @@ class ActivityHistoryCard extends StatelessWidget {
               const SizedBox(height: BSizes.xs),
 
               /// Body Row 2: Due Date + Overdue Tag + Collector Name
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Wraps at every seam: the date, the overdue badge and the
+              // collector's name each move to the next line rather than
+              // overrun it.
+              Wrap(
+                // An account-level row with no invoice list already says
+                // "Whole account" above; there is no due date to add and
+                // nothing else worth a second line, so the collector's
+                // name stands alone on the right.
+                alignment: _isAccountLevel && invoiceCount == null
+                    ? WrapAlignment.end
+                    : WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: BSizes.sm,
+                runSpacing: BSizes.xxs,
                 children: [
-                  // An account-level row with no invoice list already says
-                  // "Whole account" above; there is no due date to add and
-                  // nothing else worth a second line, so the collector's
-                  // name stands alone on the right.
-                  if (_isAccountLevel && invoiceCount == null)
-                    const Spacer()
-                  else
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Icon(Iconsax.timer,
-                              size: 14,
-                              color: isOverdue
-                                  ? BCollectionColors.danger
-                                  : BCollectionColors.inkMuted),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              _isAccountLevel
-                                  ? 'Whole account'
-                                  : 'Due: ${item?.dueDate ?? 'N/A'}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    color: isOverdue
-                                        ? BCollectionColors.danger
-                                        : BCollectionColors.inkMuted,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isOverdue) ...[
+                  if (!(_isAccountLevel && invoiceCount == null))
+                    Wrap(
+                      spacing: BSizes.xs,
+                      runSpacing: BSizes.xxs,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Iconsax.timer,
+                                size: 14,
+                                color: isOverdue
+                                    ? BCollectionColors.danger
+                                    : BCollectionColors.inkMuted),
                             const SizedBox(width: BSizes.xs),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: BCollectionColors.danger,
-                                borderRadius: BorderRadius.circular(
-                                    BSizes.borderRadiusSm),
-                              ),
+                            Flexible(
                               child: Text(
-                                BFormatter.formatDaysOverdue(daysPast),
+                                _isAccountLevel
+                                    ? 'Whole account'
+                                    : 'Due: ${item?.dueDate ?? 'N/A'}',
                                 style: Theme.of(context)
                                     .textTheme
                                     .labelSmall
                                     ?.copyWith(
-                                      color: BCollectionColors.surface,
-                                      fontSize: 8,
+                                      color: isOverdue
+                                          ? BCollectionColors.danger
+                                          : BCollectionColors.inkMuted,
                                       fontWeight: FontWeight.bold,
                                     ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
-                        ],
-                      ),
+                        ),
+                        if (isOverdue)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: BCollectionColors.danger,
+                              borderRadius:
+                                  BorderRadius.circular(BSizes.borderRadiusSm),
+                            ),
+                            child: Text(
+                              BFormatter.formatDaysOverdue(daysPast),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: BCollectionColors.surface,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ),
+                      ],
                     ),
                   Text(
                     displayCollectorName,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: BCollectionColors.inkMuted, fontSize: 10),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelSmall
+                        ?.copyWith(color: BCollectionColors.inkMuted),
                   ),
                 ],
               ),
               const Divider(height: BSizes.md),
 
               /// Footer: Timestamp and Remarks
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // Wrap: the remark takes the rest of the line, or a line of its
+              // own when the timestamp leaves too little of one.
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: BSizes.sm,
+                runSpacing: BSizes.xxs,
                 children: [
                   Text(
                     // Stored as ISO (2026-09-17T11:45:12.579265); shown as a
@@ -634,25 +666,20 @@ class ActivityHistoryCard extends StatelessWidget {
                     timeOnly
                         ? BFormatter.formatTimeAmPm(history.date)
                         : BFormatter.formatDateWithAmPm(history.date),
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(fontSize: 10),
+                    style: Theme.of(context).textTheme.labelSmall,
                   ),
+                  // No "  |  " separator: when the remark wraps to its own
+                  // line a leading bar reads as a stray character.
                   if (history.remarks.isNotEmpty &&
                       history.remarks != 'No remarks')
-                    Expanded(
-                      child: Text(
-                        '  |  ${history.remarks}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              fontStyle: FontStyle.italic,
-                              fontSize: 10,
-                              color: BCollectionColors.inkSecondary,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.end,
-                      ),
+                    Text(
+                      history.remarks,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            fontStyle: FontStyle.italic,
+                            color: BCollectionColors.inkSecondary,
+                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                 ],
               ),
@@ -669,8 +696,7 @@ class ActivityHistoryCard extends StatelessWidget {
 /// it says, which differs from the status when an outcome finished a
 /// reconciliation ("Reconciliation Collected" in the Collected green).
 class ActivityStatusBadge extends StatelessWidget {
-  const ActivityStatusBadge(
-      {super.key, required this.status, String? label})
+  const ActivityStatusBadge({super.key, required this.status, String? label})
       : label = label ?? status;
 
   final String status;
@@ -689,7 +715,10 @@ class ActivityStatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(color: bg, fontSize: 10, fontWeight: FontWeight.bold),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: bg, fontWeight: FontWeight.bold),
       ),
     );
   }

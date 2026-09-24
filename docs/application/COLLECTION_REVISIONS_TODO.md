@@ -18,6 +18,11 @@
 - [x] 3. Manual *Add to Bucket*: optional P.O. field — `S` (done 2026-09-23, mobile only; the backend already accepted `PoNumber`)
 - [x] 4. Admin web Clients dialog: invoices grouped by P.O. — `M` (done 2026-09-23; needed a new read-only endpoint `GET /api4/Collection/clients/{code}/invoices` — backend deploy required, no migration)
 - [x] 5. Bucket: account cards count P.O.s, account screen folds invoices under collapsible P.O. rows — `M` (done 2026-09-23, mobile only)
+- [x] 6. Label changes — `S` (done 2026-09-23, mobile only): "Clear Engagement" → "Done Engagement"; Account Details "Total Amount Past Due", "Total # of past invoices", "Current Amount", "Total # of current invoices"; Engagement Details "Current Balance" → "Balance"; Home card "Due Date" → "Past Due" (also the category key in `category_detail_screen.dart`)
+- [x] 7. Engagement Details: hide the Balance tile when it is ₱0 — `S` (done 2026-09-23)
+- [x] 8. Actual Collection % toward the manually set monthly target — `S` (the page already had it; the home card now shows "N% of ₱target" / "Target met"; both floor the percent so 99.6% never reads 100%)
+- [ ] 9. Deposits are tracking-only and must not count toward Actual Collection — **open:** Actual Collection is currently the *sum of deposits* (`TotalCollectedController.actualCollectionTotal`); needs a decision on what it sums instead
+- [ ] 10. Done Engagement sends an SMS to the account's head — **open:** no "head" contact exists on `ClientModel` (only `ACCMPH`), and the SMS templates are Logistics-only; needs the recipient source and message text
 
 ---
 

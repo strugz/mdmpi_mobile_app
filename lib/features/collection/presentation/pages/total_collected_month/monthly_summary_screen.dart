@@ -360,7 +360,7 @@ class _TargetLine extends StatelessWidget {
               child: Text(
                 met
                     ? 'Target of ${BFormatter.formatPesoCurrency(target)} met'
-                    : '${(progress * 100).round()}% of ${BFormatter.formatPesoCurrency(target)} target',
+                    : '${(progress * 100).floor()}% of ${BFormatter.formatPesoCurrency(target)} target',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: small?.copyWith(

@@ -57,13 +57,12 @@ class _ActivityFilterChipsState extends State<ActivityFilterChips> {
               widget.onFilterChanged?.call(filters[index]);
             },
             selectedColor: selectedColor,
-            labelStyle: TextStyle(
-              color: isSelected
-                  ? BCollectionColors.surface
-                  : BCollectionColors.inkSecondary,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              fontSize: 13,
-            ),
+            labelStyle: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: isSelected
+                      ? BCollectionColors.surface
+                      : BCollectionColors.inkSecondary,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(BSizes.borderRadiusLg),
             ),

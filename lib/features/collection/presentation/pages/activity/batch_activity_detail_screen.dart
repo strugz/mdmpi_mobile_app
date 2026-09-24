@@ -424,23 +424,26 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
           controller: totalAmountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: [ThousandsSeparatorInputFormatter()],
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
-          decoration: const InputDecoration(
+          // The amount is the point of the form, so it takes the headline
+          // role; the ₱ shares it so the two always match in size.
+          style: theme.textTheme.headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
+          decoration: InputDecoration(
             hintText: '0.00',
             // An icon rather than prefixText, which only paints once the
             // field has focus or content — so it would vanish while empty.
             prefixIcon: Padding(
-              padding: EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
+              padding: const EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
               child: Text(
                 '₱',
-                style: TextStyle(
-                  fontSize: 24,
+                style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color: BCollectionColors.inkMuted,
                 ),
               ),
             ),
-            prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+            prefixIconConstraints:
+                const BoxConstraints(minWidth: 0, minHeight: 0),
           ),
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
@@ -942,8 +945,10 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
         children: [
           Text(
             unset ? 'Set outcome' : status,
-            style:
-                TextStyle(color: bg, fontSize: 10, fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: bg, fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 4),
           Icon(Iconsax.edit, size: 10, color: bg),

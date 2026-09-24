@@ -28,8 +28,13 @@ class InvoiceDetailsModal extends StatelessWidget {
             BSizes.defaultSpace,
             BSizes.defaultSpace,
             BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        // One scrolling list, on the sheet's own controller so dragging and
+        // scrolling hand off. The info grid used to sit fixed above an
+        // Expanded history list; at a large font the fixed part alone was
+        // taller than the sheet and it overflowed at the bottom.
+        child: ListView(
+          controller: scrollController,
+          padding: EdgeInsets.zero,
           children: [
             /// Drag Handle
             Center(
@@ -46,8 +51,12 @@ class InvoiceDetailsModal extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Invoice Details',
-                    style: Theme.of(context).textTheme.headlineSmall),
+                Expanded(
+                  child: Text('Invoice Details',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.headlineSmall),
+                ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
@@ -108,93 +117,87 @@ class InvoiceDetailsModal extends StatelessWidget {
                 style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: BSizes.sm),
 
-            Expanded(
-              child: item.history.isEmpty
-                  ? const Center(
-                      child: Text('No history found for this invoice.'))
-                  : ListView.separated(
-                      controller: scrollController,
-                      itemCount: item.history.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(height: BSizes.md),
-                      itemBuilder: (context, index) {
-                        // Show newest history first
-                        final history = item.history.reversed.toList()[index];
-                        return Container(
-                          padding: const EdgeInsets.all(BSizes.md),
-                          decoration: BoxDecoration(
-                            color: BCollectionColors.background,
-                            borderRadius:
-                                BorderRadius.circular(BSizes.borderRadiusMd),
-                            border: Border.all(
-                                color: BCollectionColors.outline
-                                    .withValues(alpha: 0.5)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(history.date,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .labelLarge
-                                          ?.copyWith(
-                                              fontWeight: FontWeight.bold)),
-                                  _buildStatusBadge(context, history.status),
-                                ],
-                              ),
-                              const SizedBox(height: BSizes.sm),
-                              Wrap(
-                                spacing: BSizes.xs,
-                                runSpacing: BSizes.xs,
-                                children: [
-                                  _buildCompactInfo(context, 'Collector',
-                                      history.collectorName, Iconsax.user),
-                                  if (history.totalCollected > 0)
-                                    _buildCompactInfo(
-                                        context,
-                                        'Collected',
-                                        BFormatter.formatPesoCurrency(
-                                            history.totalCollected),
-                                        Iconsax.wallet_money,
-                                        valueColor: BCollectionColors.success),
-                                  if (history.bankName != null &&
-                                      history.bankName!.isNotEmpty)
-                                    _buildCompactInfo(context, 'Bank',
-                                        history.bankName!, Iconsax.bank),
-                                  if (history.checkNumber != null &&
-                                      history.checkNumber!.isNotEmpty)
-                                    _buildCompactInfo(
-                                        context,
-                                        'Check #',
-                                        history.checkNumber!,
-                                        Iconsax.card_edit),
-                                  if (history.checkDate != null &&
-                                      history.checkDate!.isNotEmpty)
-                                    _buildCompactInfo(context, 'Check Date',
-                                        history.checkDate!, Iconsax.calendar_1),
-                                ],
-                              ),
-                              const SizedBox(height: BSizes.xs),
-                              Text('Remarks:',
-                                  style:
-                                      Theme.of(context).textTheme.labelSmall),
-                              Text(
-                                history.remarks.isEmpty ||
-                                        history.remarks == 'No remarks'
-                                    ? 'No remarks'
-                                    : history.remarks,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-            ),
+            if (item.history.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: BSizes.lg),
+                child:
+                    Center(child: Text('No history found for this invoice.')),
+              )
+            else
+              // Newest first.
+              for (final (index, history) in item.history.reversed.indexed) ...[
+                if (index > 0) const SizedBox(height: BSizes.md),
+                Container(
+                  padding: const EdgeInsets.all(BSizes.md),
+                  decoration: BoxDecoration(
+                    color: BCollectionColors.background,
+                    borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
+                    border: Border.all(
+                        color:
+                            BCollectionColors.outline.withValues(alpha: 0.5)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Wrap: a long status drops under the date
+                      // instead of overrunning the entry.
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: BSizes.sm,
+                        runSpacing: BSizes.xs,
+                        children: [
+                          Text(history.date,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold)),
+                          _buildStatusBadge(context, history.status),
+                        ],
+                      ),
+                      const SizedBox(height: BSizes.sm),
+                      Wrap(
+                        spacing: BSizes.xs,
+                        runSpacing: BSizes.xs,
+                        children: [
+                          _buildCompactInfo(context, 'Collector',
+                              history.collectorName, Iconsax.user),
+                          if (history.totalCollected > 0)
+                            _buildCompactInfo(
+                                context,
+                                'Collected',
+                                BFormatter.formatPesoCurrency(
+                                    history.totalCollected),
+                                Iconsax.wallet_money,
+                                valueColor: BCollectionColors.success),
+                          if (history.bankName != null &&
+                              history.bankName!.isNotEmpty)
+                            _buildCompactInfo(context, 'Bank',
+                                history.bankName!, Iconsax.bank),
+                          if (history.checkNumber != null &&
+                              history.checkNumber!.isNotEmpty)
+                            _buildCompactInfo(context, 'Check #',
+                                history.checkNumber!, Iconsax.card_edit),
+                          if (history.checkDate != null &&
+                              history.checkDate!.isNotEmpty)
+                            _buildCompactInfo(context, 'Check Date',
+                                history.checkDate!, Iconsax.calendar_1),
+                        ],
+                      ),
+                      const SizedBox(height: BSizes.xs),
+                      Text('Remarks:',
+                          style: Theme.of(context).textTheme.labelSmall),
+                      Text(
+                        history.remarks.isEmpty ||
+                                history.remarks == 'No remarks'
+                            ? 'No remarks'
+                            : history.remarks,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             const SizedBox(height: BSizes.md),
           ],
         ),
@@ -238,7 +241,6 @@ class InvoiceDetailsModal extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: valueColor,
-                          fontSize: 12,
                         ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -268,14 +270,21 @@ class InvoiceDetailsModal extends StatelessWidget {
           Icon(icon, size: 12, color: BCollectionColors.inkMuted),
           const SizedBox(width: 4),
           Text('$label: ',
-              style: const TextStyle(
-                  fontSize: 10, color: BCollectionColors.inkMuted)),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: valueColor ?? BCollectionColors.ink,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: BCollectionColors.inkMuted)),
+          // Flexible: a long bank or collector name ends in "…" inside its
+          // chip rather than pushing the chip past the sheet's edge.
+          Flexible(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: valueColor ?? BCollectionColors.ink,
+                  ),
             ),
           ),
         ],
@@ -294,7 +303,10 @@ class InvoiceDetailsModal extends StatelessWidget {
       ),
       child: Text(
         status,
-        style: TextStyle(color: bg, fontSize: 10, fontWeight: FontWeight.bold),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: bg, fontWeight: FontWeight.bold),
       ),
     );
   }

@@ -104,12 +104,19 @@ class _AccountPoInvoicesScreenState extends State<AccountPoInvoicesScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Two lines in the bar: the name takes a title role one step
+              // below the bar's own title so the pair fits the toolbar.
               Text(widget.client.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(color: BCollectionColors.onHeader)),
               Text(
                 '$poCount P.O.${poCount == 1 ? '' : 's'} · $n invoice${n == 1 ? '' : 's'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall
-                    ?.copyWith(color: BCollectionColors.inkMuted),
+                    ?.copyWith(color: BCollectionColors.onHeaderMuted),
               ),
             ],
           ),
@@ -118,23 +125,27 @@ class _AccountPoInvoicesScreenState extends State<AccountPoInvoicesScreen> {
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(BSizes.defaultSpace,
-                    BSizes.sm, BSizes.defaultSpace, 0),
+                padding: const EdgeInsets.fromLTRB(
+                    BSizes.defaultSpace, BSizes.sm, BSizes.defaultSpace, 0),
                 child: _Summary(total: total, overdue: overdue),
               ),
             ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(BSizes.defaultSpace),
-                child: SizedBox(
-                  height: 48,
-                  child: TextField(
+                // No fixed height: a dense field sizes to its text, so it
+                // grows with the system font size instead of clipping it.
+                child: TextField(
                     controller: _search,
                     onChanged: (v) => setState(() => _query = v),
                     autocorrect: false,
                     enableSuggestions: false,
                     textInputAction: TextInputAction.search,
+                    style: theme.textTheme.bodyMedium,
                     decoration: InputDecoration(
+                      isDense: true,
+                      hintStyle: theme.textTheme.bodyMedium
+                          ?.copyWith(color: BCollectionColors.inkMuted),
                       hintText: 'Search P.O. or invoice number',
                       prefixIcon: const Icon(Iconsax.search_normal, size: 20),
                       suffixIcon: _query.isEmpty
@@ -151,10 +162,10 @@ class _AccountPoInvoicesScreenState extends State<AccountPoInvoicesScreen> {
                       border: OutlineInputBorder(
                           borderRadius:
                               BorderRadius.circular(BSizes.borderRadiusMd)),
-                      contentPadding: EdgeInsets.zero,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: BSizes.sm),
                     ),
                   ),
-                ),
               ),
             ),
             if (shown.isEmpty)
@@ -233,29 +244,25 @@ class _Summary extends StatelessWidget {
               Text('To be collected',
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: BCollectionColors.inkMuted)),
-              Text(
-                BFormatter.formatPesoCurrency(total),
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: BCollectionColors.primary,
+              // The one large figure on the page; everything below is
+              // smaller, so this is where the eye lands first. Shrinks
+              // rather than wraps when a big balance meets a narrow phone.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  BFormatter.formatPesoCurrency(total),
+                  maxLines: 1,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: BCollectionColors.primary,
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        if (overdue > 0)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: BCollectionColors.danger.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-            ),
-            child: Text('$overdue overdue',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: BCollectionColors.danger,
-                  fontWeight: FontWeight.w700,
-                )),
-          ),
+        if (overdue > 0) _Badge('$overdue overdue', BCollectionColors.danger),
       ],
     );
   }
@@ -309,12 +316,11 @@ class _PoSection extends StatelessWidget {
             child: InkWell(
               onTap: onToggle,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(BSizes.spaceBtwItemsLight,
-                    BSizes.sm, BSizes.xs, BSizes.sm),
+                padding: const EdgeInsets.fromLTRB(
+                    BSizes.spaceBtwItemsLight, BSizes.sm, BSizes.xs, BSizes.sm),
                 child: Row(
                   children: [
-                    Icon(
-                        named ? Iconsax.receipt_item : Iconsax.document_text,
+                    Icon(named ? Iconsax.receipt_item : Iconsax.document_text,
                         size: 18,
                         color: named
                             ? BCollectionColors.primary
@@ -326,36 +332,59 @@ class _PoSection extends StatelessWidget {
                         children: [
                           // Two lines allowed: P.O.s run to 46 characters and
                           // this is the one place a whole one fits.
-                          Text(title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: named
-                                    ? BCollectionColors.ink
-                                    : BCollectionColors.inkSecondary,
-                              )),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$n invoice${n == 1 ? '' : 's'}${overdue > 0 ? ' · $overdue overdue' : ''}',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                                color: BCollectionColors.inkMuted,
-                                fontWeight: FontWeight.w600),
+                          // The copy glyph sits against the number it copies;
+                          // beside the total it read as "copy the amount".
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Flexible(
+                                child: Text(title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: named
+                                          ? BCollectionColors.ink
+                                          : BCollectionColors.inkSecondary,
+                                    )),
+                              ),
+                              if (named)
+                                BCopyIconButton(
+                                  value: copyValue!,
+                                  label: 'P.O.',
+                                  size: 14,
+                                  dense: true,
+                                  color: BCollectionColors.inkMuted,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: BSizes.xxs),
+                          // Count, then overdue as a badge as on the account
+                          // cards. A Wrap, not a Row: at a large font size the
+                          // badge drops under the count instead of overflowing.
+                          Wrap(
+                            spacing: BSizes.xs,
+                            runSpacing: BSizes.xxs,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                '$n invoice${n == 1 ? '' : 's'}',
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(color: BCollectionColors.inkMuted),
+                              ),
+                              if (overdue > 0)
+                                _Badge('$overdue overdue',
+                                    BCollectionColors.danger),
+                            ],
                           ),
                         ],
                       ),
                     ),
                     Text(BFormatter.formatPesoCurrency(total),
                         style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                           color: BCollectionColors.primary,
                         )),
-                    if (named)
-                      BCopyIconButton(
-                        value: copyValue!,
-                        label: 'P.O.',
-                        color: BCollectionColors.primary,
-                      ),
                     AnimatedRotation(
                       turns: open ? 0.5 : 0,
                       duration: _duration,
@@ -429,7 +458,7 @@ class _InvoiceRow extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w700)),
+                                ?.copyWith(fontWeight: FontWeight.w600)),
                       ),
                       BCopyIconButton(
                         value: item.id,
@@ -441,24 +470,35 @@ class _InvoiceRow extends StatelessWidget {
                   ),
                   Text(
                     hasDue
-                        ? 'Due ${BFormatter.formatDate3(due)}${item.isOverdue ? ' · ${BFormatter.formatDaysOverdue(item.daysPastDue)}' : ''}'
+                        ? 'Due ${BFormatter.formatDate3(due)}'
                         : 'No due date',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: item.isOverdue
-                          ? BCollectionColors.danger
-                          : BCollectionColors.inkMuted,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: BCollectionColors.inkMuted),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: BSizes.sm),
-            Text(BFormatter.formatPesoCurrency(item.toBeCollected),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: BCollectionColors.ink,
-                )),
+            // How late sits under the amount, not after the date: the two
+            // together overran the line and wrapped every overdue row.
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(BFormatter.formatPesoCurrency(item.toBeCollected),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: BCollectionColors.ink,
+                    )),
+                if (hasDue && item.isOverdue)
+                  Text(BFormatter.formatDaysOverdue(item.daysPastDue),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: BCollectionColors.danger,
+                      )),
+              ],
+            ),
             const SizedBox(width: BSizes.xs),
             const Icon(Iconsax.arrow_right_3,
                 size: 14, color: BCollectionColors.inkMuted),
@@ -467,4 +507,28 @@ class _InvoiceRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Tinted status pill, the same as the badges on the account cards.
+class _Badge extends StatelessWidget {
+  const _Badge(this.text, this.color);
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+        ),
+        child: Text(
+          text,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+      );
 }

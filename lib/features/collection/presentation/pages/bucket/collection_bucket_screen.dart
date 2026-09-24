@@ -135,6 +135,10 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
               // "Take the whole area": once the filters have narrowed the
               // list to today's route, this is the second and last tap.
               TextButton(
+                // The theme's text buttons are accent blue, which on the
+                // navy bar is barely there.
+                style: TextButton.styleFrom(
+                    foregroundColor: BCollectionColors.onHeader),
                 onPressed: controller.selectAllVisibleAccounts,
                 child: const Text('Select all'),
               )

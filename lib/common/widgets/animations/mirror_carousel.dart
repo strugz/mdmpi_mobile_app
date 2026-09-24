@@ -23,7 +23,7 @@ class BMirrorCarousel extends StatefulWidget {
     super.key,
     required this.itemCount,
     required this.itemBuilder,
-    required this.height,
+    this.height,
     this.initialPage = 0,
     this.onSettleTap,
     this.dotColor,
@@ -34,8 +34,13 @@ class BMirrorCarousel extends StatefulWidget {
   /// Builds the item for a real index in `0 ..< itemCount`.
   final IndexedWidgetBuilder itemBuilder;
 
-  /// PageView needs a bounded height inside a scroll view.
-  final double height;
+  /// Page height. PageView needs a bounded one inside a scroll view.
+  ///
+  /// Leave it null and the carousel is as tall as its tallest item, measured
+  /// at the page's own width — so it follows the content and the system font
+  /// size instead of a number tuned to one of them. A fixed 172 once clipped
+  /// the home history card's footer by 2px when its labels grew a point.
+  final double? height;
   final int initialPage;
 
   /// Called with the real index when a tap lands while the page is still
@@ -186,6 +191,46 @@ class _BMirrorCarouselState extends State<BMirrorCarousel> {
     );
   }
 
+  /// Bounds the [pageView]: to [BMirrorCarousel.height] when given, else to
+  /// the tallest item.
+  ///
+  /// Every item is laid out once more, invisible and inert, at a page's
+  /// exact width (the viewport fraction less the page's side padding), and
+  /// the Stack takes the tallest of them. The PageView fills that. A Stack
+  /// sizes from its non-positioned children for intrinsic queries too, so
+  /// this also works under the dashboard's IntrinsicHeight, where a
+  /// LayoutBuilder or a post-frame measurement could not.
+  Widget _sized(BuildContext context, Widget pageView) {
+    final fixed = widget.height;
+    if (fixed != null) return SizedBox(height: fixed, child: pageView);
+    return SizedBox(
+      // Full width: the measuring copies are narrower than the viewport, and
+      // the Stack would otherwise shrink to them and take the PageView along.
+      width: double.infinity,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          for (var i = 0; i < widget.itemCount; i++)
+            FractionallySizedBox(
+              widthFactor: BMirrorCarousel.viewportFraction,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                // Sized but never painted, hit or read aloud.
+                child: Visibility(
+                  visible: false,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: widget.itemBuilder(context, i),
+                ),
+              ),
+            ),
+          Positioned.fill(child: pageView),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final real = _real(_current);
@@ -199,9 +244,9 @@ class _BMirrorCarouselState extends State<BMirrorCarousel> {
           onPointerDown: _onPointerDown,
           onPointerUp: _onPointerUp,
           onPointerCancel: _onPointerCancel,
-          child: SizedBox(
-            height: widget.height,
-            child: PageView.builder(
+          child: _sized(
+            context,
+            PageView.builder(
               controller: _controller,
               physics: const _SnappyPagePhysics(),
               clipBehavior: Clip.none,

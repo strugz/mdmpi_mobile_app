@@ -20,6 +20,7 @@ class BCopyIconButton extends StatefulWidget {
     required this.label,
     this.color,
     this.size = 16,
+    this.dense = false,
   });
 
   /// Text put on the clipboard.
@@ -30,6 +31,10 @@ class BCopyIconButton extends StatefulWidget {
 
   final Color? color;
   final double size;
+
+  /// 32 wide by 24 tall instead of 32 square, for sitting inline right after
+  /// the value on a title line without pushing that line taller.
+  final bool dense;
 
   @override
   State<BCopyIconButton> createState() => _BCopyIconButtonState();
@@ -76,7 +81,7 @@ class _BCopyIconButtonState extends State<BCopyIconButton> {
         radius: 18,
         child: SizedBox(
           width: 32,
-          height: 32,
+          height: widget.dense ? 24 : 32,
           child: Center(
             // Scale + fade from 0.6, never from 0: the tick grows out of the
             // glyph it replaces rather than appearing from nowhere.

@@ -80,78 +80,106 @@ class PoInvoiceGroupCard extends StatelessWidget {
                   width: 1.5,
                 ),
               ),
-              child: Row(
-                children: [
-                  const Icon(Iconsax.receipt_item,
-                      size: 18, color: BCollectionColors.primary),
-                  const SizedBox(width: BSizes.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PO ${group.poNumber}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  return Row(
+                    children: [
+                      const Icon(Iconsax.receipt_item,
+                          size: 18, color: BCollectionColors.primary),
+                      const SizedBox(width: BSizes.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                '$count invoice${count == 1 ? '' : 's'}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: BCollectionColors.inkMuted,
-                                  fontWeight: FontWeight.w600,
+                            // The copy glyph sits against the number it copies.
+                            // At the far end, beside the total, it read as
+                            // "copy the amount".
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'PO ${group.poNumber}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      height: 1.2,
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                // Its own target: copying never also opens or
+                                // closes the P.O.
+                                BCopyIconButton(
+                                  value: group.poNumber,
+                                  label: 'P.O.',
+                                  size: 14,
+                                  dense: true,
+                                  color: BCollectionColors.inkMuted,
+                                ),
+                              ],
                             ),
-                            if (overdue > 0) ...[
-                              const SizedBox(width: BSizes.sm),
-                              _badge(theme, '$overdue overdue',
-                                  BCollectionColors.danger),
-                            ],
-                            if (selectedCount > 0) ...[
-                              const SizedBox(width: BSizes.sm),
-                              _badge(theme, '$selectedCount selected',
-                                  BCollectionColors.primary),
-                            ],
+                            const SizedBox(height: BSizes.xxs),
+                            // A Wrap, not a Row: the count and two badges beside
+                            // a wide total overran the header ("1 invoi…", then a
+                            // 25px overflow). Now the badges drop to a second
+                            // line when the width runs out, and the count is
+                            // never cut.
+                            Wrap(
+                              spacing: BSizes.xs,
+                              runSpacing: BSizes.xxs,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Text(
+                                  '$count invoice${count == 1 ? '' : 's'}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: BCollectionColors.inkMuted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (overdue > 0)
+                                  _badge(theme, '$overdue overdue',
+                                      BCollectionColors.danger),
+                                if (selectedCount > 0)
+                                  _badge(theme, '$selectedCount selected',
+                                      BCollectionColors.primary),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: BSizes.sm),
-                  Text(
-                    BFormatter.formatPesoCurrency(group.totalDue),
-                    maxLines: 1,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: BCollectionColors.primary,
-                    ),
-                  ),
-                  // Its own target: copying never also opens or closes the P.O.
-                  BCopyIconButton(
-                    value: group.poNumber,
-                    label: 'P.O.',
-                    color: BCollectionColors.primary,
-                  ),
-                  // Rotates rather than swaps: one glyph turning is one thing
-                  // changing state; two glyphs cross-fading is two things.
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: _duration,
-                    curve: _curve,
-                    child: const Icon(Iconsax.arrow_down_1,
-                        size: 18, color: BCollectionColors.inkMuted),
-                  ),
-                ],
+                      ),
+                      const SizedBox(width: BSizes.sm),
+                      // At its natural size up to 40% of the header, then it
+                      // shrinks: a seven-figure total at a large system font
+                      // pushed the row past the card's edge. Scaled, never cut —
+                      // a truncated amount is a different amount.
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: width * 0.4),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            BFormatter.formatPesoCurrency(group.totalDue),
+                            maxLines: 1,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: BCollectionColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // Rotates rather than swaps: one glyph turning is one thing
+                      // changing state; two glyphs cross-fading is two things.
+                      AnimatedRotation(
+                        turns: expanded ? 0.5 : 0,
+                        duration: _duration,
+                        curve: _curve,
+                        child: const Icon(Iconsax.arrow_down_1,
+                            size: 18, color: BCollectionColors.inkMuted),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -214,7 +242,6 @@ Widget _badge(ThemeData theme, String text, Color color) => Container(
         style: theme.textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w700,
-          fontSize: 10,
         ),
       ),
     );

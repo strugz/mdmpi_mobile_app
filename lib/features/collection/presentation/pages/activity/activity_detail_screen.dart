@@ -393,21 +393,25 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         // digits, one decimal point, grouped as you go so a five-figure
         // balance stays readable.
         inputFormatters: [ThousandsSeparatorInputFormatter()],
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-        decoration: const InputDecoration(
+        // The amount is the point of the form, so it takes the headline
+        // role; the ₱ shares it so the two always match in size.
+        style: Theme.of(context)
+            .textTheme
+            .headlineSmall
+            ?.copyWith(fontWeight: FontWeight.w700),
+        decoration: InputDecoration(
           hintText: '0.00',
           // prefixIcon rather than prefixText: a prefix only paints once the
           // field has focus or content, so the peso sign would vanish exactly
           // when the field is empty and the label matters most.
           prefixIcon: Padding(
-            padding: EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
+            padding: const EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
             child: Text(
               '₱',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: BCollectionColors.inkMuted,
-              ),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: BCollectionColors.inkMuted,
+                  ),
             ),
           ),
           prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
