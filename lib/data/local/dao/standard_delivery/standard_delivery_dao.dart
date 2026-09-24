@@ -150,7 +150,31 @@ class RequestDao {
       return;
     }
 
-    Map<String, dynamic> requestData = {
+    await db.update('a_tblRequest', _updateRow(requestModel), where: 'RequestID = ?', whereArgs: [requestModel.id]);
+
+    // NOTE: media (signature/image) persistence is handled via saveRequestMedia()
+    // which is invoked by the caller (StandardDeliveryDataManager) to centralize upload
+    // and local-save logic. This keeps updateRequest focused on the main row.
+  }
+
+  /// Replace the local row with the server's copy, even when that moves the
+  /// status backwards.
+  ///
+  /// Only for requests the server has just refused (409) during Settings >
+  /// Upload Data: the server has said its copy is the truth. [updateRequest]'s
+  /// regression guard would otherwise keep the stale local copy for good (a
+  /// Backload resets the server to New Request, which always looks like a
+  /// regression from here), and every later upload would be refused again.
+  Future<void> replaceWithServerCopy(StandardDeliveryModel requestModel) async {
+    final parsedId = int.tryParse(requestModel.id) ?? requestModel.id;
+    final updated = await db.update('a_tblRequest', _updateRow(requestModel), where: 'RequestID = ?', whereArgs: [parsedId]);
+    if (updated == 0) {
+      await insertRequest(requestModel);
+    }
+  }
+
+  Map<String, dynamic> _updateRow(StandardDeliveryModel requestModel) {
+    return {
       'RequestClientID': requestModel.clientId,
       'RequestShippingMethod': requestModel.shippingMethod,
       'RequestDeliveryTerms': requestModel.deliveryTerms,
@@ -175,12 +199,6 @@ class RequestDao {
       'ItemCategoryID': requestModel.itemCategoryID,
       'FormCategoryID': requestModel.formCategoryID,
     };
-
-    await db.update('a_tblRequest', requestData, where: 'RequestID = ?', whereArgs: [requestModel.id]);
-
-    // NOTE: media (signature/image) persistence is handled via saveRequestMedia()
-    // which is invoked by the caller (StandardDeliveryDataManager) to centralize upload
-    // and local-save logic. This keeps updateRequest focused on the main row.
   }
 
   Future<bool> isRequestTableNotEmpty() async {

@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
+import 'package:mdmpi_mobile_app/data/repositories/standard_delivery/delivery_update_outcome.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/standard_delivery_mapper.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
@@ -63,8 +64,9 @@ class StandardDeliveryRepository extends GetxController {
   /// WebSocket notifications, the local DB write) on that, so a rejected
   /// update never notifies the recipient about a status the server never
   /// recorded. A 200 carrying an error or unrecognised message counts as a
-  /// failure: it is already surfaced as a warning, and an unconfirmed update
-  /// is not something to text a client about.
+  /// failure: an unconfirmed update is not something to text a client about.
+  /// A 409 (the server refused a finished or out-of-date request) is shown
+  /// with the server's reason.
   ///
   /// Never throws: whatever goes wrong is shown to the user here and comes
   /// back as `false`.
@@ -72,6 +74,34 @@ class StandardDeliveryRepository extends GetxController {
     StandardDeliveryModel requestData,
     String actionBy, {
     bool showSuccessSnackBar = true,
+    http.Client? client,
+  }) async {
+    final outcome = await sendUpdate(requestData, actionBy, client: client);
+    switch (outcome.status) {
+      case DeliveryUpdateStatus.updated:
+        if (showSuccessSnackBar) {
+          BLoaders.successSnackBar(
+              title: 'Information', message: outcome.message);
+        }
+        return true;
+      case DeliveryUpdateStatus.rejected:
+        BLoaders.warningSnackBar(
+            title: 'Not updated', message: outcome.message, duration: 5);
+        return false;
+      case DeliveryUpdateStatus.failed:
+        BLoaders.errorSnackBar(title: 'Error', message: outcome.message);
+        return false;
+    }
+  }
+
+  /// PATCH one request and report how the server answered, without showing
+  /// anything. [updateDelivery] is the interactive wrapper; bulk callers
+  /// (Settings > Upload Data) use this to summarise many results at once.
+  ///
+  /// Never throws.
+  Future<DeliveryUpdateOutcome> sendUpdate(
+    StandardDeliveryModel requestData,
+    String actionBy, {
     http.Client? client,
   }) async {
     try {
@@ -86,29 +116,26 @@ class StandardDeliveryRepository extends GetxController {
               body: jsonEncode(payload))
           .timeout(const Duration(seconds: 60));
 
+      final message = _messageFrom(response.body);
+
       if (response.statusCode == 200) {
-        final message = _messageFrom(response.body);
-
-        if (message.contains('updated successfully')) {
-          if (showSuccessSnackBar) {
-            BLoaders.successSnackBar(title: 'Information', message: message);
-          }
-          return true;
-        }
-
-        BLoaders.warningSnackBar(title: 'Information', message: message);
-        return false;
+        return message.contains('updated successfully')
+            ? DeliveryUpdateOutcome.updated(message)
+            : DeliveryUpdateOutcome.failed(message);
       }
 
-      BLoaders.errorSnackBar(
-          title: 'Error',
-          message:
-              'Failed to update request. Status code: ${response.statusCode}');
-      return false;
+      // The server refused a stale or finished request and says why.
+      if (response.statusCode == 409) {
+        return DeliveryUpdateOutcome.rejected(message.isNotEmpty
+            ? message
+            : 'Request ${requestData.id} was changed on the server.');
+      }
+
+      return DeliveryUpdateOutcome.failed(
+          'Failed to update request. Status code: ${response.statusCode}');
     } catch (e) {
-      logDebug('StandardDeliveryRepository.updateDelivery error: $e');
-      BLoaders.errorSnackBar(title: 'Error', message: 'An error occurred: $e');
-      return false;
+      logDebug('StandardDeliveryRepository.sendUpdate error: $e');
+      return DeliveryUpdateOutcome.failed('An error occurred: $e');
     }
   }
 

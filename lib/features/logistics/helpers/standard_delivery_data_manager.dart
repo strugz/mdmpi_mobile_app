@@ -28,6 +28,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.da
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_upload_summary.dart';
 
 /// Manager for Standard Delivery domain orchestration (save/update flows).
 ///
@@ -838,18 +839,31 @@ class StandardDeliveryDataManager {
   /// not in "New Request" status (i.e., have been modified).
   ///
   /// Use case: Manual sync when connectivity is restored after offline changes.
+  /// Requests the server refuses (already done, or older than what it holds)
+  /// are skipped and listed with the server's reason instead of overwriting it,
+  /// then replaced on the phone with the server's copy so they are not sent
+  /// again.
   Future<void> uploadModifiedRequest() async {
     try {
       final requests = await _dbHelper.getRequests();
       final userCtrl = Get.find<UserController>();
-      for (var request in requests) {
-        if (request.status != BTexts.statusNewRequest) {
-          await _repository.updateDelivery(
-              request, userCtrl.user.value.initial);
-        }
+      final summary = await RequestUploadSummary.run(
+        requests,
+        (request) =>
+            _repository.sendUpdate(request, userCtrl.user.value.initial),
+      );
+      await summary.refreshSkipped(
+        fetchServer: () =>
+            _repository.getAllPending(allowLocalFallback: false),
+        replaceLocal: _dbHelper.replaceRequestWithServerCopy,
+      );
+      summary.show();
+      if (summary.refreshed > 0 &&
+          Get.isRegistered<StandardDeliveryController>()) {
+        final controller = Get.find<StandardDeliveryController>();
+        await fetchStandardDeliveryRequests(
+            controller, controller.useLocalStorage.value);
       }
-      BLoaders.successSnackBar(
-          title: 'Success', message: 'Modified requests uploaded successfully');
     } catch (e) {
       BLoaders.errorSnackBar(
           title: 'Upload Failed',

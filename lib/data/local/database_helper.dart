@@ -415,6 +415,14 @@ class DatabaseHelper {
     return await dao.updateRequest(requestModel: requestModel);
   }
 
+  /// See [RequestDao.replaceWithServerCopy]: bypasses the status-regression
+  /// guard, so only for requests the server has just refused.
+  Future<void> replaceRequestWithServerCopy(
+      StandardDeliveryModel requestModel) async {
+    final dao = await requestDao;
+    return await dao.replaceWithServerCopy(requestModel);
+  }
+
   Future<int> cancelRequestWithRemarks({
     required String requestID,
     required String remarks,

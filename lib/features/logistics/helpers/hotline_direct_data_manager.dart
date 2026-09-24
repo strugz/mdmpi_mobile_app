@@ -27,6 +27,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/notification_model.da
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/request_upload_summary.dart';
 
 /// Manager for Hotline Direct domain orchestration (save/update flows).
 ///
@@ -668,15 +669,23 @@ class HotlineDirectDataManager {
       final hotlineDirectRequests =
           requests.where((r) => r.formCategoryID == FormCategoryIds.hotlineDirect).toList();
 
-      for (var request in hotlineDirectRequests) {
-        if (request.status != BTexts.statusNewRequest) {
-          await _repository.updateDelivery(
-              request, userCtrl.user.value.initial);
-        }
+      final summary = await RequestUploadSummary.run(
+        hotlineDirectRequests,
+        (request) =>
+            _repository.sendUpdate(request, userCtrl.user.value.initial),
+      );
+      await summary.refreshSkipped(
+        fetchServer: () =>
+            _repository.getAllPending(allowLocalFallback: false),
+        replaceLocal: _dbHelper.replaceRequestWithServerCopy,
+      );
+      summary.show();
+      if (summary.refreshed > 0 &&
+          Get.isRegistered<HotlineDirectController>()) {
+        final controller = Get.find<HotlineDirectController>();
+        await fetchHotlineDirectRequests(
+            controller, controller.useLocalStorage.value);
       }
-      BLoaders.successSnackBar(
-          title: 'Success',
-          message: 'Modified Hotline Direct requests uploaded successfully');
     } catch (e) {
       BLoaders.errorSnackBar(
           title: 'Upload Failed',
