@@ -1527,11 +1527,34 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Saved Advanced Payment ${record.externalRef} for $clientId: ₱$amount');
   }
 
+  /// The engagement stamp for a collection the collector dated themselves:
+  /// the day from [day], the time of day from [clock]. ISO, like every other
+  /// archive stamp, so it files under [day] in its month.
+  @visibleForTesting
+  static String collectionStamp(DateTime day, DateTime clock) => DateTime(
+        day.year,
+        day.month,
+        day.day,
+        clock.hour,
+        clock.minute,
+        clock.second,
+        clock.millisecond,
+      ).toIso8601String();
+
+  /// Apply an Advanced Payment to an invoice, as a collection on
+  /// [collectionDate].
+  ///
+  /// The advance is float until this moment and counts toward no month. The
+  /// collector picks the date, and so the month whose Collected this Month it
+  /// lands in; only the day is taken from [collectionDate], with the current
+  /// time of day so two applications on one day keep their order and their
+  /// archive keys apart.
   Future<void> assignInvoiceToPayment({
     required String paymentId,
     required String invoiceNumber,
     required double amountDue,
     required String dueDate,
+    required DateTime collectionDate,
   }) async {
     final paymentIdx =
         unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
@@ -1543,18 +1566,19 @@ class CollectionActivityController extends GetxController {
     final client = masterAccountList.firstWhere((c) => c.id == clientId,
         orElse: () => ClientModel.empty());
 
-    final now = DateTime.now().toIso8601String();
+    final appliedAt = collectionStamp(collectionDate, DateTime.now());
     final collectorLabel = payment['collectorName'] ?? repository.collectorName;
 
     final remainingDue = (amountDue - paidAmount).clamp(0.0, double.infinity);
     final isFullyPaid = remainingDue == 0;
+    final appliedAmount = paidAmount > amountDue ? amountDue : paidAmount;
 
     final historyEntry = CollectionHistoryModel(
-      date: now,
+      date: appliedAt,
       collectorName: collectorLabel,
       status: 'Advanced Payment Applied',
       remarks: 'Applied from advanced payment: ${payment['remarks']}',
-      totalCollected: paidAmount > amountDue ? amountDue : paidAmount,
+      totalCollected: appliedAmount,
     );
 
     final newItem = CollectionItemModel(
@@ -1562,7 +1586,7 @@ class CollectionActivityController extends GetxController {
       client: client,
       bpCode: client.code,
       toBeCollected: remainingDue,
-      totalCollected: paidAmount > amountDue ? amountDue : paidAmount,
+      totalCollected: appliedAmount,
       dueDate: dueDate,
       status: isFullyPaid ? 'Collected' : '',
       history: [historyEntry],
@@ -1576,13 +1600,15 @@ class CollectionActivityController extends GetxController {
         clientId: clientId,
         clientName: client.name,
         amount: paidAmount,
-        date: (payment['date'] ?? now).toString(),
+        date: (payment['date'] ?? appliedAt).toString(),
         remarks: (payment['remarks'] ?? '').toString(),
         collectorName: collectorLabel.toString(),
       ),
       newInvoice: newItem,
       amountDue: amountDue,
       dueDate: dueDate,
+      appliedAt: appliedAt,
+      appliedAmount: appliedAmount,
     );
 
     // Add to bucket (if fully paid it shows in settled, if not it waits for next collection)
@@ -2154,6 +2180,9 @@ class CollectionActivityController extends GetxController {
   Map<String, dynamic> _advanceToMap(CollectionAdvanceRecord r) => {
         'id': r.externalRef,
         'clientId': r.clientId,
+        // Carried so a card can name the account even when it is not in the
+        // downloaded account list, instead of printing "N/A".
+        'clientName': r.clientName,
         'amount': r.amount,
         'remarks': r.remarks,
         'date': r.date,

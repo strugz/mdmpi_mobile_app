@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/theme/theme.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
@@ -115,6 +116,44 @@ CollectionEngagementRecord _depositEngagement(String date, double amount) =>
       createdAt: date,
     );
 
+/// An Advanced Payment as the archive stores it on receipt: an ADVANCE row.
+CollectionEngagementRecord _advanceEngagement(String date, double amount) =>
+    CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+          kind: 'ADVANCE', subjectId: 'AP-1', engagedAt: date),
+      collectorCode: 'jay',
+      collectorName: 'Jay',
+      kind: 'ADVANCE',
+      itemId: 'AP-1',
+      clientId: 'A',
+      clientName: 'Alexis Yu Best Care Pharmacy',
+      engagedAt: date,
+      engagedOn: date.split(' ').first,
+      status: 'Advanced Payment',
+      amount: amount,
+      createdAt: date,
+    );
+
+/// An advance applied to an invoice: the INVOICE row assignAdvance archives,
+/// on the date the collector chose.
+CollectionEngagementRecord _appliedAdvance(String date, double amount,
+        {required String itemId}) =>
+    CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+          kind: 'INVOICE', subjectId: itemId, engagedAt: date),
+      collectorCode: 'jay',
+      collectorName: 'Jay',
+      kind: 'INVOICE',
+      itemId: itemId,
+      clientId: 'A',
+      clientName: 'Alexis Yu Best Care Pharmacy',
+      engagedAt: date,
+      engagedOn: date.split(' ').first,
+      status: 'Advanced Payment Applied',
+      amount: amount,
+      createdAt: date,
+    );
+
 /// Three collections on two days, two accounts, one collector.
 ({_Activity activity, _Totals totals}) _seed({bool twoCollectors = false}) {
   final activity = _Activity();
@@ -208,6 +247,50 @@ void main() {
       expect(s.activity.ownEngagements.where((e) => e.status == 'Deposit'),
           hasLength(2),
           reason: 'the deposits are still in the archive for the calendar');
+    });
+
+    // An Advanced Payment is float. It counts toward no month until the
+    // collector applies it to an invoice, and then in the month of the date
+    // they chose. It used to count when received and again when applied.
+    test('for Collected this Month leaves an unapplied advance out', () {
+      final s = _seed();
+      s.activity.ownEngagements.add(_advanceEngagement(_onDay(10), 50000));
+
+      expect(s.totals.monthlyTotal, closeTo(46977.31, 0.001));
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          isNot(contains('AP-1')));
+    });
+
+    test('for Collected this Month counts an applied advance in its month', () {
+      final s = _seed();
+      final lastMonth = DateTime(_now.year, _now.month - 1, 20);
+      s.activity.ownEngagements.addAll([
+        // Received this month, still float.
+        _advanceEngagement(_onDay(10), 50000),
+        // Applied to an invoice, dated this month by the collector.
+        _appliedAdvance(_onDay(11), 8000, itemId: 'INV-AP-1'),
+        // Applied and dated last month: that month's, not this one's.
+        _appliedAdvance(_fmt.format(lastMonth), 3000, itemId: 'INV-AP-2'),
+      ]);
+
+      expect(s.totals.monthlyTotal, closeTo(46977.31 + 8000, 0.001));
+
+      s.totals.previousMonth();
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          contains('INV-AP-2'));
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          isNot(contains('AP-1')));
+    });
+
+    test('an applied advance is stamped on the chosen day, at the time applied',
+        () {
+      final stamp = CollectionActivityController.collectionStamp(
+        DateTime(2026, 8, 31),
+        DateTime(2026, 9, 24, 14, 5, 9),
+      );
+      expect(stamp, startsWith('2026-08-31T14:05:09'));
+      expect(BFormatter.localDayKey(stamp), '2026-08-31',
+          reason: 'it must file under the chosen day, in the chosen month');
     });
 
     test('for Actual Collection is what the office posted, not the search', () {

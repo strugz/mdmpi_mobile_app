@@ -1332,11 +1332,19 @@ class CollectionRepository extends GetxController {
 
   /// Assign an advance to an invoice (creating the invoice locally, as the app
   /// does). The server creates the invoice if new and allocates the advance.
+  ///
+  /// [appliedAt] is the collection date the collector chose. An advance is
+  /// float until applied, and the date decides which month's Collected this
+  /// Month it lands in, so it — not the moment of tapping Assign — is the
+  /// engagement's stamp, here and on the server. [appliedAmount] is what went
+  /// onto the invoice (never more than it was due), matching its history.
   Future<bool> assignAdvance({
     required CollectionAdvanceRecord advance,
     required CollectionItemModel newInvoice,
     required double amountDue,
     required String dueDate,
+    required String appliedAt,
+    required double appliedAmount,
   }) async {
     try {
       final dao = await _dao;
@@ -1345,25 +1353,21 @@ class CollectionRepository extends GetxController {
       final advDao = await DatabaseHelper.instance.collectionAdvanceDao;
       await advDao.markAssigned(advance.externalRef, newInvoice.id);
 
-      // Hoisted rather than called inline below, so the queued change and the
-      // archive row carry the same stamp.
-      final now = _nowStamp();
-
       await _archive(
         kind: 'INVOICE',
-        engagedAt: now,
+        engagedAt: appliedAt,
         itemId: newInvoice.id,
         clientId: advance.clientId,
         clientName: advance.clientName,
         status: 'Advanced Payment Applied',
         remarks: advance.remarks,
-        amount: advance.amount,
+        amount: appliedAmount,
       );
 
       await _queueChange('ASSIGN_ADVANCE', newInvoice.id, {
         'ClientCode': advance.clientId,
         'ExternalRef': advance.externalRef,
-        'EngagementDate': now,
+        'EngagementDate': appliedAt,
         'AmountDue': amountDue,
         'DueDate': dueDate,
         'Remarks': advance.remarks,

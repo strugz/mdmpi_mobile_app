@@ -70,6 +70,12 @@ class TotalCollectedController extends GetxController {
           e.status == CollectionStatusColors.statusDeposit) {
         continue;
       }
+      // An Advanced Payment is float until the collector applies it to an
+      // invoice. Applying it archives an INVOICE row on the date they chose,
+      // and that row is what counts, in that date's month. The advance itself
+      // stays in Advanced Payment and adds nothing here — it used to count
+      // on the day it was received and again when applied.
+      if (e.kind == 'ADVANCE') continue;
       final dt = BFormatter.parseLocal(e.engagedAt);
       if (dt == null) continue;
       if (dt.year != month.year || dt.month != month.month) continue;

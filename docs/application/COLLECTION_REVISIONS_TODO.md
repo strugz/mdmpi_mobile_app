@@ -28,6 +28,7 @@
 - [ ] 13. The user picks who their Head is — `M` (Settings → *My Head*; stored on the user's Firestore doc)
 - [ ] 14. One user directory from CNTMST (key `CNTMNN`) and Firestore `Users` (key `initial`) — `M` (feeds items 10 and 13)
 - [ ] 15. Settings: suggested features for Collection — `S` to pick from (list below; nothing built)
+- [x] 16. Advanced Payment is float: it counts toward Collected this Month only once applied to an invoice, in the month of the date the collector picks — `M` (done 2026-09-24, mobile; see below)
 
 ---
 
@@ -66,6 +67,36 @@ Actual Collection page (`monthly_summary_screen.dart`, `type: 'Deposit'`) both r
 
 **Remaining.** Item 11 fills `postedActual`; the page's rows then show whatever the
 posted record carries (reference, posted by).
+
+---
+
+## 16. Advanced Payment is float until applied
+
+**Requirement (raised 2026-09-24).** An Advanced Payment is a float amount. It does not add
+to Collected this Month when received; it stays under Advanced Payment. Applying it to an
+invoice, on a date the collector picks, is what puts it in Collected this Month — in that
+date's month.
+
+**Previous behavior.** It counted twice: the `ADVANCE` archive row on the day it was
+received, then an `INVOICE` "Advanced Payment Applied" row stamped at the moment of
+tapping Assign, carrying the whole advance even when the invoice was due less.
+
+**Done (2026-09-24, mobile).**
+- `TotalCollectedController._collectMonth` skips `ADVANCE` rows. The advance still shows
+  under Advanced Payment and in the history.
+- The Assign sheet (`category_detail_screen.dart`) has a **Collection Date**, today by
+  default, never before the day the advance was received, any later date allowed.
+- `assignInvoiceToPayment(collectionDate:)` → `assignAdvance(appliedAt:, appliedAmount:)`:
+  the chosen day (with the current time of day, `collectionStamp`) is the invoice
+  history's date, the archive row's `engagedAt` and the queued `ASSIGN_ADVANCE`
+  `EngagementDate`, so the server files it in the same month. The archived amount is
+  what went onto the invoice (never more than it was due), matching its history.
+- Tests (`monthly_summary_test.dart`): an unapplied advance adds nothing; an applied one
+  counts in its chosen month and not the current one; the stamp files under the chosen
+  day.
+
+**Open.** When the advance is larger than the invoice, the excess is not carried anywhere
+(unchanged behavior). Should it stay as float for another invoice?
 
 ---
 
