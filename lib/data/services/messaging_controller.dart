@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/data/services/sms/sms_message_template_service.
 import 'package:mdmpi_mobile_app/data/services/sms/sms_payload_builder.dart';
 import 'package:mdmpi_mobile_app/data/services/sms/sms_request_payload.dart';
 import 'package:mdmpi_mobile_app/data/services/sms/sms_status_policy.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 sealed class SmsResult {
   const SmsResult();
@@ -36,6 +37,20 @@ class SmsPermissionDenied extends SmsResult {
   final String message;
 
   const SmsPermissionDenied(this.message);
+}
+
+/// The app could not send silently (SMS permission refused by Android), so
+/// the prepared message and recipients were handed to the phone's default
+/// Messages app for the user to tap Send there. No permission is needed for
+/// that route, which is why it survives Play Protect / permanent denials.
+class SmsHandedOffToMessagingApp extends SmsResult {
+  final String message;
+  final int recipientCount;
+
+  const SmsHandedOffToMessagingApp(
+    this.message, {
+    required this.recipientCount,
+  });
 }
 
 class SmsLikelyNetworkIssue extends SmsResult {
@@ -87,6 +102,8 @@ class MessagingController extends GetxController {
     required void Function(SendStatus status) statusListener,
   })? _smsSender;
   final Future<String?> Function()? _networkIssueChecker;
+  final Future<bool> Function(List<String> recipients, String message)?
+      _messagingAppLauncher;
   final void Function(String text, String animation)? _openLoadingDialog;
   final void Function()? _closeLoadingDialog;
   final Future<void> Function()? _openSuccessDialog;
@@ -113,6 +130,8 @@ class MessagingController extends GetxController {
       required void Function(SendStatus status) statusListener,
     })? smsSender,
     Future<String?> Function()? networkIssueChecker,
+    Future<bool> Function(List<String> recipients, String message)?
+        messagingAppLauncher,
     void Function(String text, String animation)? openLoadingDialog,
     void Function()? closeLoadingDialog,
     Future<void> Function()? openSuccessDialog,
@@ -131,6 +150,7 @@ class MessagingController extends GetxController {
         _smsPermissionRequester = smsPermissionRequester,
         _smsSender = smsSender,
         _networkIssueChecker = networkIssueChecker,
+        _messagingAppLauncher = messagingAppLauncher,
         _openLoadingDialog = openLoadingDialog,
         _closeLoadingDialog = closeLoadingDialog,
         _openSuccessDialog = openSuccessDialog;
@@ -182,15 +202,35 @@ class MessagingController extends GetxController {
         );
       }
 
+      final String message = _createMessage(status, smsPayload);
+
       bool? permissionsGranted = await _requestSmsPermissions();
 
       if (permissionsGranted != true) {
+        // Android refused SEND_SMS (user tapped "Don't allow" twice, an OEM
+        // policy, or Play Protect). Fall back to the phone's Messages app,
+        // which needs no permission; the user taps Send there.
+        if (_requiresSmsForStatus(status) && message.isNotEmpty) {
+          final handedOff = await _handOffToMessagingApp(
+            recipients: normalizedRecipients,
+            message: message,
+          );
+          if (handedOff) {
+            return _storeSmsResult(
+              SmsHandedOffToMessagingApp(
+                'SMS permission is blocked on this phone, so the message was '
+                'opened in your Messages app. Tap Send there to notify '
+                '${normalizedRecipients.length} recipient(s).',
+                recipientCount: normalizedRecipients.length,
+              ),
+            );
+          }
+        }
         return _storeSmsResult(
           const SmsPermissionDenied('SMS permission denied'),
         );
       }
 
-      final String message = _createMessage(status, smsPayload);
       if (message.isEmpty) {
         return _storeSmsResult(
           SmsSendError('No message content for status: $status'),
@@ -280,6 +320,35 @@ class MessagingController extends GetxController {
     }
 
     return _telephonyInstance.requestSmsPermissions;
+  }
+
+  Future<bool> _handOffToMessagingApp({
+    required List<String> recipients,
+    required String message,
+  }) async {
+    try {
+      if (_messagingAppLauncher != null) {
+        return await _messagingAppLauncher(recipients, message);
+      }
+      return await launchUrl(
+        buildMessagingAppUri(recipients, message),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      logDebug('Failed to hand SMS off to the Messages app: $e');
+      return false;
+    }
+  }
+
+  /// `smsto:` URI understood by every Android Messages app. Multiple
+  /// recipients are separated by `;` (Android convention); the body goes in
+  /// the query so the compose screen opens pre-filled.
+  static Uri buildMessagingAppUri(List<String> recipients, String message) {
+    return Uri(
+      scheme: 'smsto',
+      path: recipients.join(';'),
+      queryParameters: <String, String>{'body': message},
+    );
   }
 
   String _createMessage(String status, SmsRequestPayload payload) {
@@ -585,6 +654,9 @@ class MessagingController extends GetxController {
         break;
       case SmsPermissionDenied():
         logDebug('📨 SMS permission denied: ${result.message}');
+        break;
+      case SmsHandedOffToMessagingApp():
+        logDebug('📨 SMS handed off to Messages app: ${result.message}');
         break;
       case SmsSendError():
         logDebug('📨 SMS send error: ${result.error}');
