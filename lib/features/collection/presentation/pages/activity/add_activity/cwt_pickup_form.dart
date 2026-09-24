@@ -5,6 +5,8 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 class CWTPickupFormScreen extends StatefulWidget {
   const CWTPickupFormScreen({super.key});
@@ -14,9 +16,31 @@ class CWTPickupFormScreen extends StatefulWidget {
 }
 
 class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
+  /// Shows the chosen client's name; the field itself is read-only.
   final accountNameController = TextEditingController();
   final remarksController = TextEditingController();
   final formKey = GlobalKey<FormState>();
+
+  /// The existing client picked from the registry. The account used to be
+  /// typed freehand, and a name spelled differently from the registry saved
+  /// with no client id.
+  ClientModel? _client;
+
+  Future<void> _pickClient() async {
+    final controller = CollectionActivityController.instance;
+    final picked = await ClientPickerSheet.show(
+      context,
+      search: controller.searchClientRegistry,
+      searchKnown: controller.searchKnownAccounts,
+      selected: _client,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _client = picked;
+      accountNameController.text = picked.name;
+    });
+    formKey.currentState?.validate();
+  }
 
   @override
   void dispose() {
@@ -31,7 +55,8 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
     final controller = CollectionActivityController.instance;
     controller.saveGlobalActivity(
       type: 'CWT Pick-up',
-      accountName: accountNameController.text,
+      clientId: _client!.id,
+      accountName: _client!.name,
       remarks: remarksController.text,
     );
 
@@ -58,17 +83,21 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Tap to search the existing clients; nothing is typed here.
                 TextFormField(
+                  key: const ValueKey('cwt-account'),
                   controller: accountNameController,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  readOnly: true,
+                  onTap: _pickClient,
+                  decoration: InputDecoration(
                     labelText: 'Account',
-                    prefixIcon: Icon(Iconsax.user),
+                    hintText: 'Choose an existing client',
+                    prefixIcon: const Icon(Iconsax.user),
+                    suffixIcon: const Icon(Iconsax.arrow_down_1, size: 18),
+                    helperText: _client?.code,
                   ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Account name is required'
-                      : null,
+                  validator: (_) =>
+                      _client == null ? 'Choose the account' : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 TextFormField(

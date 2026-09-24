@@ -20,17 +20,25 @@ class CollectionOutcome {
 
   /// Whether an engagement's amount is money collected from an account.
   ///
-  /// Two carry an amount without being one: an Advanced Payment is float
-  /// until applied to an invoice (the applied row is the collection), and a
-  /// For Deposit is the collector banking money already counted when it was
-  /// collected. Counting either added the same pesos twice. One rule, so
-  /// Collected this Month, the calendar's visit totals and the history cards
-  /// cannot disagree. [kind] is the archive's (INVOICE / ACCOUNT / OFFICE /
-  /// ADVANCE) when the caller has it; the status alone decides otherwise.
+  /// Four activities are not collections, whatever amount they carry: an
+  /// Advanced Payment is float until applied to an invoice (the applied row
+  /// is the collection); a For Deposit banks money already counted when it
+  /// was collected; a CWT Pick-up collects a tax certificate; a
+  /// Reconciliation reviews a disputed balance. They are the collector's
+  /// activities, shown in the history and the calendar, and add nothing to a
+  /// money total. One rule, so Collected this Month, the calendar's visit
+  /// totals and the history cards cannot disagree. [kind] is the archive's
+  /// (INVOICE / ACCOUNT / OFFICE / ADVANCE) when the caller has it; the status
+  /// alone decides otherwise.
   static bool countsAsCollected(String status, {String kind = ''}) {
     if (kind == 'ADVANCE') return false;
-    final s = status.trim();
-    return s != CollectionStatusColors.statusAdvance &&
-        s != CollectionStatusColors.statusDeposit;
+    return !_activitiesOnly.contains(status.trim());
   }
+
+  static const Set<String> _activitiesOnly = {
+    CollectionStatusColors.statusAdvance,
+    CollectionStatusColors.statusDeposit,
+    CollectionStatusColors.statusCWTPickup,
+    CollectionStatusColors.statusReconciliation,
+  };
 }

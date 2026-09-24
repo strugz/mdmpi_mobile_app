@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
@@ -2081,6 +2082,28 @@ class CollectionActivityController extends GetxController {
       logDebug('[CollectionActivityController] saveBatchActivity error: $e');
       errorMessage.value = 'Failed to save batch activity: $e';
     }
+  }
+
+  /// Existing clients in the registry (a_tblcollectionclient) matching
+  /// [term] by code or name. Online; see [searchKnownAccounts] for offline.
+  Future<Result<List<ClientModel>>> searchClientRegistry(String term) =>
+      repository.searchClientRegistry(term);
+
+  /// The accounts already on this phone (from the downloaded bucket) matching
+  /// [term] — the client picker's fallback when the registry is unreachable.
+  List<ClientModel> searchKnownAccounts(String term) {
+    final q = term.trim().toLowerCase();
+    final seen = <String>{};
+    final matches = [
+      for (final c in masterAccountList)
+        if (!c.isEmpty &&
+            seen.add(c.id) &&
+            (q.isEmpty ||
+                c.name.toLowerCase().contains(q) ||
+                c.code.toLowerCase().contains(q)))
+          c,
+    ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return matches.take(25).toList();
   }
 
   Future<void> saveGlobalActivity({

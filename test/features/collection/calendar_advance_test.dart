@@ -68,6 +68,12 @@ void main() {
     test('float and deposits do not', () {
       expect(CollectionOutcome.countsAsCollected('Advanced Payment'), isFalse);
       expect(CollectionOutcome.countsAsCollected('Deposit'), isFalse);
+      // Activities of the collector, not collections.
+      expect(CollectionOutcome.countsAsCollected('CWT Pick-up'), isFalse);
+      expect(CollectionOutcome.countsAsCollected('Reconciliation'), isFalse);
+      expect(CollectionOutcome.countsAsCollected('Reconciliation Collected'),
+          isTrue,
+          reason: 'a collection that finished a reconciliation is money in');
       expect(CollectionOutcome.countsAsCollected('Collected', kind: 'ADVANCE'),
           isFalse,
           reason: 'an ADVANCE row is float whatever its status says');
