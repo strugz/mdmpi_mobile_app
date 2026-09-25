@@ -29,8 +29,52 @@
 - [ ] 14. One user directory from CNTMST (key `CNTMNN`) and Firestore `Users` (key `initial`) — `M` (feeds items 10 and 13)
 - [ ] 15. Settings: suggested features for Collection — `S` to pick from (list below; nothing built)
 - [x] 16. Advanced Payment is float: it counts toward Collected this Month only once applied to an invoice, in the month of the date the collector picks — `M` (done 2026-09-24, mobile; see below)
-- [ ] 17. **Tomorrow (2026-09-25):** Apply advance — enter *amount paid* per invoice so an invoice can be partially paid; optional split across invoices — `L` (mobile + backend `AmountApplied` + deploy; **open:** can more than one invoice be partial? one collection date or one per invoice?)
-- [ ] 18. **Tomorrow (2026-09-25):** Apply advance — add a P.O. number field when creating the invoice — `S`
+- [x] 17. Apply advance: partial payment of an invoice — (decided 2026-09-25: the current design stands; an advance smaller than the invoice pays it partially, the collector enters the due date and the collection date, the rest stays in the bucket. No *amount paid* field, no split, no backend change)
+- [x] 18. Apply advance — add a P.O. number field when creating the invoice — `S` (done 2026-09-25, mobile + backend; **open:** deploy the backend, which until then drops the P.O. on upload)
+- [x] 19. Engagement History: a From–To date filter (today by default) and a status filter naming every status, Advance Payment included — `M` (done 2026-09-25, mobile only; see below)
+
+---
+
+## 19. Engagement History: date filter and status filter
+
+**Requirement (raised 2026-09-25).** Engagement History shows the current day by default,
+with a From–To date filter for other days and ranges, and a status filter covering every status: Advance
+Payment, Partial Payment, CWT Pick-up and the rest.
+
+**Previous behavior.** `RecentActivitiesScreen` and the home preview listed
+`allRecentHistory`: every entry the phone had cached, all days, built from the bucket
+cache (so an advance received never appeared, and a settled invoice took its entry with
+it). Ten raw-status chips and no Advance chip.
+
+**Done (2026-09-25, mobile).**
+- `CollectionActivityController.engagementsBetween(from, to)` / `engagementsOn(day)` /
+  `todayEngagements`: the entries from the archive (`activitiesByDate`), the calendar's source.
+- `helpers/engagement_history_filter.dart`: `EngagementStatus` — Collected, Partial
+  Payment, Advance Payment, Advance Applied, Deposit, CWT Pick-up, Reconciliation, Follow
+  Up, Pre-Collection, Customer Unavailable, Refused to Pay, Others. Every stored status
+  maps to one; an unknown one reads as Others; a reconciliation an outcome finished is
+  also listed under Reconciliation. Search over account, invoice and P.O. The day's total
+  uses `CollectionOutcome.countsAsCollected`.
+- `recent_activities_screen.dart`: a search beside a filter button
+  (`CollectionSearchFilterBar`, as on the bucket), one quiet line "Sep 19 – 25, 2026 · N
+  engagements · ₱X collected", and the list. No date bar on the page. Over more than one
+  day the list has a heading per day ("Today", "Yesterday", "Tuesday, Sep 23").
+- `pages/home/widgets/engagement_filter_sheet.dart` (`EngagementFilterSheet`), one sheet
+  for both filters:
+  - **Date:** *From* and *To* fields (date pickers, no future days; a From after To moves
+    To with it and the other way round, so the range is never empty), with presets Today,
+    Yesterday, Last 7 days, This month (the preset matching the fields shows selected).
+  - **Status:** the twelve statuses in three groups (Payments, Office activities, Visits
+    without payment), each with the count for the range in the draft; several can be
+    picked.
+  - The apply button counts ("Show 3 engagements") and is off when nothing would show;
+    Reset returns to today, every status.
+- `EngagementFilterChips` under the search: the range when it is not just today (removing
+  it goes back to today) and each picked status, all removable. Statuses hold when the day
+  changes.
+- Empty states for a day with nothing and for no match (Clear filters).
+- Home preview: today's entries only, "No engagements yet today".
+- Tests: `test/features/collection/engagement_history_test.dart` (16).
 
 ---
 
@@ -72,40 +116,27 @@ posted record carries (reference, posted by).
 
 ---
 
-## 17. Apply advance: amount paid per invoice (partial payment), optional split
+## 17. Apply advance: partial payment of an invoice
 
 **Requirement (raised 2026-09-24).** An invoice created from an advance can be partially
-paid. Example: the invoice is ₱750,000 but only part of it is paid from the advance; the
-rest must stay in the bucket as the invoice's remaining balance. A collector can also split
-one advance across two or more invoices, each following the same rule.
+paid; the rest stays in the bucket as the invoice's remaining balance.
 
-**Current behavior.** The Apply sheet (`category_detail_screen.dart`, `_ApplyAdvanceSheet`)
-prefills *Amount due* with the whole advance, so entering an invoice number and applying
-records it **paid in full**. A partial only happens when the invoice is larger than the
-entire advance. The server (`CollectionInvoiceRepository`, `ASSIGN_ADVANCE`) allocates
-`min(unallocated, invoice remaining)` itself; there is no field for "only this much".
+**Decided (2026-09-25): the current design stands.** The Apply sheet
+(`category_detail_screen.dart`, `_ApplyAdvanceSheet`) already does this. The collector
+enters the invoice number, the invoice's amount due, its due date and the collection date
+of the amount paid. An advance smaller than the invoice (₱750,000 on a ₱1,000,000 invoice)
+is spent in full and the invoice goes to the bucket with ₱250,000 remaining; an advance
+larger than the invoice keeps the excess as float (item 16). The server allocates
+`min(unallocated, invoice remaining)`, which matches. Test: `advance_float_test.dart`
+("an advance smaller than the invoice is spent and leaves the list").
 
-**Proposed.**
-- Per invoice line: *Invoice number*, *Invoice amount* (blank, never prefilled with the
-  advance), *Amount paid from this advance* (suggested as the smaller of the invoice amount
-  and the advance left, editable), *Due date*, *P.O. number* (item 18). **+ Add another
-  invoice** for a split.
-- Paid = invoice amount → paid in full. Paid < invoice amount → partial: the invoice goes
-  to the bucket with `invoice amount − paid` remaining. Whatever the lines leave unused
-  stays as float (already the case since `94b2bb9`).
-- A live summary before Apply ("INV-A partial, ₱450,000 to bucket · ₱450,000 float
-  left"); Apply blocked when the paid amounts exceed the advance or a line pays more than
-  its invoice.
-- Mobile: one `ASSIGN_ADVANCE` per line, same `ExternalRef`; invoice `toBeCollected`,
-  history `totalCollected` and the archive amount all use the paid amount.
-- **Backend (`MDMPI.App`, `/api4`):** `UploadCollectionDto.AmountApplied`; the
-  `ASSIGN_ADVANCE` handler allocates exactly that (capped by the advance's unallocated
-  amount and the invoice's remaining balance). Absent (older app builds) → today's
-  behavior. Needs a deploy.
-- Also: the sheet shows two drag handles (its own plus the theme's) — drop one.
+Not built, by decision: an *amount paid* field, splitting one advance across invoices in
+one step, and the backend `AmountApplied` field.
 
-**Open questions.** Can more than one invoice in a split be partial, or only one? One
-collection date for the whole application, or one per invoice?
+**Follow-up (done 2026-09-25).** *Amount due* starts blank instead of prefilled with the
+advance: left prefilled on a larger invoice, it recorded the invoice paid in full and
+nothing reached the bucket. Its helper says what happens either way. The sheet's own drag
+handle is gone; the theme's remains. Tests: `category_detail_advance_test.dart`.
 
 ---
 
@@ -117,11 +148,24 @@ the P.O. number of the invoice being created.
 **Current behavior.** `_ApplyAdvanceSheet` has no P.O. field, so an invoice created from an
 advance carries no P.O. and does not group under one in the bucket (items 1, 5).
 
-**To do.** An optional *P.O. number* field on the sheet (per line once item 17 lands),
-passed through `assignInvoiceToPayment` → `CollectionItemModel.poNumber` and the queued
-`ASSIGN_ADVANCE` (`PoNumber`, which the backend already accepts for *Add to Bucket*;
-confirm the `ASSIGN_ADVANCE` handler stores it). Same field style as *Add to Bucket*'s
-optional P.O.
+**Done (2026-09-25).**
+- Mobile: an optional *P.O. number (optional)* field on `_ApplyAdvanceSheet` (key
+  `advance-po-number`, characters capitalization, no autocorrect), passed through
+  `assignInvoiceToPayment(poNumber:)` → `CollectionItemModel.poNumber`, and queued on
+  `ASSIGN_ADVANCE` as `PoNumber` (blank → `null`). The new invoice groups under its P.O. in
+  the bucket at once.
+- Backend (`MDMPI.App`): the handler did **not** store it (`CollectionChangeDto` had no
+  `PoNumber`, so System.Text.Json dropped it). `CollectionChangeDto.PoNumber` added; a new
+  invoice takes `NormalizePoNumber(change.PoNumber)`; an existing invoice with a blank P.O.
+  gets it filled, a stored one is never overwritten (the import backfill rule). No
+  migration. Test `AssignAdvance_StoresPoNumber_FillsBlank_NeverOverwrites`; collection
+  invoice repository tests 26/26.
+- Tests (mobile): `advance_float_test.dart` (P.O. reaches the invoice and the repository;
+  none typed → none), `category_detail_advance_test.dart` (the field reaches
+  `assignInvoiceToPayment`).
+
+**Deployment.** Deploy the backend. Until then the phone shows the P.O. but the server
+drops it, and the next download loses it.
 
 ---
 

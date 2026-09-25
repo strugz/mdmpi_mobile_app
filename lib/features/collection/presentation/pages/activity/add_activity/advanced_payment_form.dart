@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 class AdvancedPaymentFormScreen extends StatefulWidget {
@@ -40,6 +41,7 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
     final controller = CollectionActivityController.instance;
     controller.saveAdvancedPayment(
       clientId: selectedAccount!.id,
+      clientName: selectedAccount!.name,
       amount: BFormatter.parseAmount(amountController.text),
       remarks: remarksController.text,
     );
@@ -52,7 +54,6 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = CollectionActivityController.instance;
-    final accounts = controller.masterAccountList;
 
     return Scaffold(
       appBar: const BAppBar(
@@ -70,25 +71,16 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DropdownButtonFormField<ClientModel>(
-                  // The button sizes itself to the widest client name unless told
-                  // to fill the row, and long pharmacy names overflowed by hundreds
-                  // of pixels. Expanded, the name ellipsises inside the field.
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Account',
-                    prefixIcon: Icon(Iconsax.user),
-                  ),
+                // Account: an existing client, searched in the registry. An
+                // advance often comes before any invoice exists, so the
+                // bucket's accounts were never the whole list.
+                ClientPickerField(
+                  key: const ValueKey('advance-account'),
                   value: selectedAccount,
-                  items: accounts.map((a) {
-                    return DropdownMenuItem(
-                      value: a,
-                      child: Text(a.name, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                  onChanged: (v) => setState(() => selectedAccount = v),
-                  validator: (value) =>
-                      value == null ? 'Account is required' : null,
+                  search: controller.searchClientRegistry,
+                  searchKnown: controller.searchKnownAccounts,
+                  onChanged: (client) =>
+                      setState(() => selectedAccount = client),
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 TextFormField(

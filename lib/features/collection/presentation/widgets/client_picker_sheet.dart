@@ -46,6 +46,8 @@ class ClientPickerSheet extends StatefulWidget {
         // Sized by its content up to most of the screen, and lifted by the
         // keyboard: the search box is focused the moment it opens.
         isScrollControlled: true,
+        // The theme already draws a handle; the sheet drew a second one.
+        showDragHandle: false,
         backgroundColor: BCollectionColors.surface,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(
@@ -63,8 +65,15 @@ class ClientPickerSheet extends StatefulWidget {
 }
 
 class _ClientPickerSheetState extends State<ClientPickerSheet> {
-  /// Long enough that a typed word is one request, short enough to feel live.
-  static const Duration _debounce = Duration(milliseconds: 300);
+  /// The search reads the phone's copy of the registry, so a short pause is
+  /// enough to skip the keystrokes in between.
+  static const Duration _debounce = Duration(milliseconds: 150);
+
+  /// Progress shows only for a search that takes longer than this: a local
+  /// search answers first, and a hairline flashing on every keystroke is
+  /// noise.
+  static const Duration _progressDelay = Duration(milliseconds: 150);
+  Timer? _progressTimer;
 
   final _query = TextEditingController();
   Timer? _timer;
@@ -74,7 +83,11 @@ class _ClientPickerSheetState extends State<ClientPickerSheet> {
   int _request = 0;
 
   List<ClientModel> _results = const [];
-  bool _loading = true;
+  bool _loading = false;
+
+  /// Set once the first answer is in, so "no clients" is never said before
+  /// the list has had a chance to arrive.
+  bool _answered = false;
   bool _offline = false;
 
   @override
@@ -86,6 +99,7 @@ class _ClientPickerSheetState extends State<ClientPickerSheet> {
   @override
   void dispose() {
     _timer?.cancel();
+    _progressTimer?.cancel();
     _query.dispose();
     super.dispose();
   }
@@ -98,11 +112,16 @@ class _ClientPickerSheetState extends State<ClientPickerSheet> {
 
   Future<void> _run(String term) async {
     final id = ++_request;
-    setState(() => _loading = true);
+    _progressTimer?.cancel();
+    _progressTimer = Timer(_progressDelay, () {
+      if (mounted && id == _request) setState(() => _loading = true);
+    });
     final result = await widget.search(term);
     if (!mounted || id != _request) return;
+    _progressTimer?.cancel();
     setState(() {
       _loading = false;
+      _answered = true;
       if (result.isSuccess) {
         _offline = false;
         _results = result.value;
@@ -122,17 +141,21 @@ class _ClientPickerSheetState extends State<ClientPickerSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final term = _query.text.trim();
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.8;
+    // One height from the first frame, so the sheet does not open as a
+    // sliver and then jump as results arrive. The keyboard takes its share
+    // first, and the list gets what is left.
+    final screen = MediaQuery.sizeOf(context).height;
+    final keyboard = BDevicesUtils.keyboardInset(context);
+    final height = ((screen - keyboard) * 0.9).clamp(0.0, screen * 0.75);
 
     // Outermost: the navigation bar, once. Inside: the keyboard, once.
     return SafeArea(
       top: false,
       child: Padding(
         padding: EdgeInsets.only(bottom: BDevicesUtils.keyboardInset(context)),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SizedBox(
+          height: height,
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
@@ -219,9 +242,11 @@ class _ClientPickerSheetState extends State<ClientPickerSheet> {
                     ],
                   ),
                 ),
-              Flexible(
-                child: _results.isEmpty && !_loading
-                    ? _Empty(term: term, offline: _offline)
+              Expanded(
+                child: _results.isEmpty
+                    ? (_answered
+                        ? _Empty(term: term, offline: _offline)
+                        : const SizedBox.shrink())
                     : ListView.separated(
                         shrinkWrap: true,
                         keyboardDismissBehavior:
@@ -330,6 +355,84 @@ class _Empty extends StatelessWidget {
           textAlign: TextAlign.center,
           style: theme.textTheme.bodyMedium
               ?.copyWith(color: BCollectionColors.inkMuted)),
+    );
+  }
+}
+
+/// The Account field of the activity forms: shows the chosen client (name,
+/// with its code under it) and opens [ClientPickerSheet] when tapped.
+///
+/// A real [FormField], so the form's validate() covers it like any other
+/// field. Nothing is typed here; the account is always an existing client.
+/// It replaced a dropdown of the bucket's accounts on Deposit, Reconciliation
+/// and Advanced Payment, and a free-text box on CWT Pick-up.
+class ClientPickerField extends StatelessWidget {
+  const ClientPickerField({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.search,
+    required this.searchKnown,
+    this.label = 'Account',
+    this.requiredMessage = 'Choose the account',
+  });
+
+  final ClientModel? value;
+  final ValueChanged<ClientModel> onChanged;
+  final ClientRegistrySearch search;
+  final KnownAccountSearch searchKnown;
+  final String label;
+  final String requiredMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return FormField<ClientModel>(
+      initialValue: value,
+      validator: (v) => v == null ? requiredMessage : null,
+      builder: (state) {
+        Future<void> pick() async {
+          final picked = await ClientPickerSheet.show(
+            context,
+            search: search,
+            searchKnown: searchKnown,
+            selected: state.value,
+          );
+          if (picked == null) return;
+          state.didChange(picked);
+          onChanged(picked);
+          if (state.hasError) state.validate();
+        }
+
+        final chosen = state.value;
+        return Semantics(
+          button: true,
+          label: chosen == null ? label : '$label, ${chosen.name}',
+          child: InkWell(
+            onTap: pick,
+            borderRadius: BorderRadius.circular(12),
+            child: InputDecorator(
+              isEmpty: chosen == null,
+              decoration: InputDecoration(
+                labelText: label,
+                hintText: 'Choose an existing client',
+                prefixIcon: const Icon(Iconsax.user),
+                suffixIcon: const Icon(Iconsax.arrow_down_1, size: 18),
+                helperText: chosen?.code,
+                errorText: state.errorText,
+              ),
+              child: chosen == null
+                  ? null
+                  : Text(
+                      chosen.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge,
+                    ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

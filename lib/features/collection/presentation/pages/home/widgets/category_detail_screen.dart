@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
@@ -221,6 +220,7 @@ class CategoryDetailScreen extends StatelessWidget {
           required double amountDue,
           required String dueDate,
           required DateTime collectionDate,
+          String? poNumber,
         }) =>
             controller.assignInvoiceToPayment(
           paymentId: payment['id'],
@@ -228,6 +228,7 @@ class CategoryDetailScreen extends StatelessWidget {
           amountDue: amountDue,
           dueDate: dueDate,
           collectionDate: collectionDate,
+          poNumber: poNumber,
         ),
       ),
       // Scroll-controlled so five fields and the keyboard fit on a short
@@ -466,6 +467,7 @@ typedef _ApplyAdvance = Future<double> Function({
   required double amountDue,
   required String dueDate,
   required DateTime collectionDate,
+  String? poNumber,
 });
 
 /// Apply an Advanced Payment to an invoice.
@@ -477,6 +479,12 @@ typedef _ApplyAdvance = Future<double> Function({
 /// keyboard inset once inside it. The amount due was prefilled as "750000.0";
 /// it is money now, like every other amount field. The actions are one
 /// full-width bar with the primary action wider, as on Field Engagement.
+///
+/// The amount due starts blank: prefilled with the advance, a collector who
+/// left it on a larger invoice recorded it paid in full and nothing reached the
+/// bucket. The P.O. is optional, so the new invoice groups under its P.O. like
+/// an imported one. The drag handle is the theme's (`showDragHandle`); the
+/// sheet's own second bar is gone.
 class _ApplyAdvanceSheet extends StatefulWidget {
   const _ApplyAdvanceSheet({
     required this.payment,
@@ -498,7 +506,8 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
 
   final _formKey = GlobalKey<FormState>();
   final _invoiceNumber = TextEditingController();
-  late final TextEditingController _amountDue;
+  final _amountDue = TextEditingController();
+  final _poNumber = TextEditingController();
   final _dueDate = TextEditingController();
   late final TextEditingController _collectionDateText;
 
@@ -511,12 +520,6 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
   @override
   void initState() {
     super.initState();
-    _amountDue = TextEditingController(
-        text: _amount > 0
-            ? BFormatter.formatPesoCurrency(_amount, includeSymbol: false)
-                .trim()
-            : '');
-
     // The advance is float until applied; this date decides which month's
     // Collected this Month it lands in. Today by default, never before the
     // day the money was received.
@@ -535,6 +538,7 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
   void dispose() {
     _invoiceNumber.dispose();
     _amountDue.dispose();
+    _poNumber.dispose();
     _dueDate.dispose();
     _collectionDateText.dispose();
     super.dispose();
@@ -576,6 +580,7 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
       amountDue: BFormatter.parseAmount(_amountDue.text),
       dueDate: _day.format(_due!),
       collectionDate: _collectionDate,
+      poNumber: _poNumber.text.trim().isEmpty ? null : _poNumber.text.trim(),
     );
     Get.back();
     BLoaders.successSnackBar(
@@ -593,181 +598,186 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
     final theme = Theme.of(context);
     final month = DateFormat('MMMM yyyy').format(_collectionDate);
 
-    // Outermost: the navigation bar, once. Inside: the keyboard, once — the
-    // system already drops the bar's padding while the keyboard is up.
+    // The navigation bar, once, at the outermost edge. The keyboard is not
+    // padded here: Get.bottomSheet's route already lifts the sheet by
+    // viewInsets, and padding it again squeezed the form into a strip above
+    // an empty, keyboard-high gap.
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: EdgeInsets.only(bottom: BDevicesUtils.keyboardInset(context)),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(BSizes.defaultSpace, BSizes.sm,
-              BSizes.defaultSpace, BSizes.defaultSpace),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: BSizes.md),
-                    decoration: BoxDecoration(
-                      color: BCollectionColors.outline,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(BSizes.defaultSpace, BSizes.sm,
+            BSizes.defaultSpace, BSizes.defaultSpace),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Apply to invoice',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              if (widget.accountName.isNotEmpty) ...[
+                const SizedBox(height: BSizes.xxs),
+                Text(widget.accountName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: BCollectionColors.inkSecondary)),
+              ],
+              const SizedBox(height: BSizes.spaceBtwItemsLight),
+              // What is being applied, set apart from the fields that say
+              // where it goes.
+              Container(
+                padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
+                decoration: BoxDecoration(
+                  color: BCollectionColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
                 ),
-                Text('Apply to invoice',
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                if (widget.accountName.isNotEmpty) ...[
-                  const SizedBox(height: BSizes.xxs),
-                  Text(widget.accountName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: BCollectionColors.inkSecondary)),
-                ],
-                const SizedBox(height: BSizes.spaceBtwItemsLight),
-                // What is being applied, set apart from the fields that say
-                // where it goes.
-                Container(
-                  padding: const EdgeInsets.all(BSizes.spaceBtwItemsLight),
-                  decoration: BoxDecoration(
-                    color: BCollectionColors.surfaceMuted,
-                    borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Advance',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: BCollectionColors.inkMuted,
-                              fontWeight: FontWeight.w600)),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          BFormatter.formatPesoCurrency(_amount),
-                          maxLines: 1,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: BCollectionColors.ink),
-                        ),
-                      ),
-                      Text(_receivedLabel(widget.payment['date']),
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: BCollectionColors.inkMuted)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: BSizes.spaceBtwItems),
-                TextFormField(
-                  key: const ValueKey('advance-invoice-number'),
-                  controller: _invoiceNumber,
-                  textInputAction: TextInputAction.next,
-                  autocorrect: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Invoice number',
-                    prefixIcon: Icon(Iconsax.receipt_item, size: 20),
-                  ),
-                  validator: (v) => (v ?? '').trim().isEmpty
-                      ? 'Enter the invoice number'
-                      : null,
-                ),
-                const SizedBox(height: BSizes.spaceBtwInputFields),
-                TextFormField(
-                  key: const ValueKey('advance-amount-due'),
-                  controller: _amountDue,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [ThousandsSeparatorInputFormatter()],
-                  // Less than the advance is fine: the invoice takes what it
-                  // is due and the rest stays float for another invoice.
-                  decoration: const InputDecoration(
-                    labelText: 'Amount due on the invoice',
-                    prefixText: '₱ ',
-                    prefixIcon: Icon(Iconsax.money, size: 20),
-                    helperText: 'Any excess stays as float for another invoice',
-                    helperMaxLines: 2,
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Enter the amount due';
-                    }
-                    if (BFormatter.parseAmount(v) <= 0) {
-                      return 'Enter an amount greater than zero';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: BSizes.spaceBtwInputFields),
-                TextFormField(
-                  key: const ValueKey('advance-due-date'),
-                  controller: _dueDate,
-                  readOnly: true,
-                  onTap: _pickDue,
-                  decoration: const InputDecoration(
-                    labelText: 'Due date',
-                    hintText: 'Choose a date',
-                    prefixIcon: Icon(Iconsax.calendar_1, size: 20),
-                  ),
-                  validator: (_) => _due == null ? 'Choose the due date' : null,
-                ),
-                const SizedBox(height: BSizes.spaceBtwInputFields),
-                TextFormField(
-                  key: const ValueKey('advance-collection-date'),
-                  controller: _collectionDateText,
-                  readOnly: true,
-                  onTap: _pickCollection,
-                  decoration: InputDecoration(
-                    labelText: 'Collection date',
-                    prefixIcon: const Icon(Iconsax.calendar_tick, size: 20),
-                    helperText: "Counts in $month's Collected this Month",
-                    helperMaxLines: 2,
-                  ),
-                ),
-                const SizedBox(height: BSizes.spaceBtwSections),
-                // One bar, the primary action wider — the Done / Defer layout
-                // Field Engagement uses. Heights come from padding, not a
-                // fixed box, so the labels always fit.
-                Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: Get.back,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: BSizes.sm + 4),
-                          shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(BSizes.borderRadiusMd)),
-                        ),
-                        child: const Text('Cancel', maxLines: 1),
+                    Text('Advance',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: BCollectionColors.inkMuted,
+                            fontWeight: FontWeight.w600)),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        BFormatter.formatPesoCurrency(_amount),
+                        maxLines: 1,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: BCollectionColors.ink),
                       ),
                     ),
-                    const SizedBox(width: BSizes.spaceBtwItemsLight),
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton.icon(
-                        onPressed: _apply,
-                        icon: const Icon(Iconsax.tick_circle, size: 18),
-                        label: const Text('Apply', maxLines: 1),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: BSizes.sm + 4),
-                          shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(BSizes.borderRadiusMd)),
-                        ),
-                      ),
-                    ),
+                    Text(_receivedLabel(widget.payment['date']),
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: BCollectionColors.inkMuted)),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
+              TextFormField(
+                key: const ValueKey('advance-invoice-number'),
+                controller: _invoiceNumber,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Invoice number',
+                  prefixIcon: Icon(Iconsax.receipt_item, size: 20),
+                ),
+                validator: (v) => (v ?? '').trim().isEmpty
+                    ? 'Enter the invoice number'
+                    : null,
+              ),
+              const SizedBox(height: BSizes.spaceBtwInputFields),
+              TextFormField(
+                key: const ValueKey('advance-amount-due'),
+                controller: _amountDue,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+                // The invoice's full amount, never the advance. Larger than
+                // the advance: partly paid, the balance stays in the bucket.
+                // Smaller: the rest stays float for another invoice.
+                decoration: const InputDecoration(
+                  labelText: 'Amount due on the invoice',
+                  hintText: "The invoice's full amount",
+                  prefixText: '₱ ',
+                  prefixIcon: Icon(Iconsax.money, size: 20),
+                  helperText: 'More than the advance: the balance stays in '
+                      'the bucket. Less: the rest stays as float.',
+                  helperMaxLines: 3,
+                ),
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Enter the amount due';
+                  }
+                  if (BFormatter.parseAmount(v) <= 0) {
+                    return 'Enter an amount greater than zero';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: BSizes.spaceBtwInputFields),
+              // Optional, like Add to Bucket's: a reference, not prose.
+              TextFormField(
+                key: const ValueKey('advance-po-number'),
+                controller: _poNumber,
+                textInputAction: TextInputAction.done,
+                textCapitalization: TextCapitalization.characters,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  labelText: 'P.O. number (optional)',
+                  prefixIcon: Icon(Iconsax.document_text, size: 20),
+                ),
+              ),
+              const SizedBox(height: BSizes.spaceBtwInputFields),
+              TextFormField(
+                key: const ValueKey('advance-due-date'),
+                controller: _dueDate,
+                readOnly: true,
+                onTap: _pickDue,
+                decoration: const InputDecoration(
+                  labelText: 'Due date',
+                  hintText: 'Choose a date',
+                  prefixIcon: Icon(Iconsax.calendar_1, size: 20),
+                ),
+                validator: (_) => _due == null ? 'Choose the due date' : null,
+              ),
+              const SizedBox(height: BSizes.spaceBtwInputFields),
+              TextFormField(
+                key: const ValueKey('advance-collection-date'),
+                controller: _collectionDateText,
+                readOnly: true,
+                onTap: _pickCollection,
+                decoration: InputDecoration(
+                  labelText: 'Collection date',
+                  prefixIcon: const Icon(Iconsax.calendar_tick, size: 20),
+                  helperText: "Counts in $month's Collected this Month",
+                  helperMaxLines: 2,
+                ),
+              ),
+              const SizedBox(height: BSizes.spaceBtwSections),
+              // One bar, the primary action wider — the Done / Defer layout
+              // Field Engagement uses. Heights come from padding, not a
+              // fixed box, so the labels always fit.
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: Get.back,
+                      style: OutlinedButton.styleFrom(
+                        padding:
+                            const EdgeInsets.symmetric(vertical: BSizes.sm + 4),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(BSizes.borderRadiusMd)),
+                      ),
+                      child: const Text('Cancel', maxLines: 1),
+                    ),
+                  ),
+                  const SizedBox(width: BSizes.spaceBtwItemsLight),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: _apply,
+                      icon: const Icon(Iconsax.tick_circle, size: 18),
+                      label: const Text('Apply', maxLines: 1),
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                            const EdgeInsets.symmetric(vertical: BSizes.sm + 4),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(BSizes.borderRadiusMd)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),

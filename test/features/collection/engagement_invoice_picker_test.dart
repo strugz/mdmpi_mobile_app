@@ -39,7 +39,7 @@ void main() {
       onToggle: (_, __) {},
     )));
 
-    expect(find.text('No open invoices for this account.'), findsOneWidget);
+    expect(find.text('No open invoices for this account on this phone.'), findsOneWidget);
     expect(find.byType(CheckboxListTile), findsNothing);
     expect(find.text('Pick at least one'), findsOneWidget);
   });

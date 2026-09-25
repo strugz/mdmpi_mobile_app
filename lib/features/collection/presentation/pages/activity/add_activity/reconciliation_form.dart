@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/widgets/engagement_invoice_picker.dart';
 
@@ -57,7 +58,6 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = CollectionActivityController.instance;
-    final accounts = controller.masterAccountList;
 
     return Scaffold(
       appBar: const BAppBar(
@@ -75,30 +75,16 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DropdownButtonFormField<ClientModel>(
-                  // The button sizes itself to the widest client name unless told
-                  // to fill the row, and long pharmacy names overflowed by hundreds
-                  // of pixels. Expanded, the name ellipsises inside the field.
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Account',
-                    prefixIcon: Icon(Iconsax.user),
-                  ),
+                // Account: an existing client, searched in the registry.
+                ClientPickerField(
+                  key: const ValueKey('reconciliation-account'),
                   value: selectedAccount,
-                  items: accounts.map((a) {
-                    return DropdownMenuItem(
-                      value: a,
-                      child: Text(a.name, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                  onChanged: (v) {
-                    setState(() {
-                      selectedAccount = v;
-                      selectedInvoiceIds.clear();
-                    });
-                  },
-                  validator: (value) =>
-                      value == null ? 'Account is required' : null,
+                  search: controller.searchClientRegistry,
+                  searchKnown: controller.searchKnownAccounts,
+                  onChanged: (client) => setState(() {
+                    selectedAccount = client;
+                    selectedInvoiceIds.clear();
+                  }),
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 // The checklist unfolds under the account rather than

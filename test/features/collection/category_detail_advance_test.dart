@@ -13,8 +13,24 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/wid
 /// a narrow phone at a larger font.
 
 class _Activity extends CollectionActivityController {
+  final applied = <({String? poNumber, double amountDue})>[];
+
   @override
+  // ignore: must_call_super
   void onInit() {}
+
+  @override
+  Future<double> assignInvoiceToPayment({
+    required String paymentId,
+    required String invoiceNumber,
+    required double amountDue,
+    required String dueDate,
+    required DateTime collectionDate,
+    String? poNumber,
+  }) async {
+    applied.add((poNumber: poNumber, amountDue: amountDue));
+    return 0;
+  }
 }
 
 Map<String, dynamic> _advance({
@@ -146,14 +162,35 @@ void main() {
       expect(find.text('Assign'), findsNothing);
     });
 
-    testWidgets('prefills the amount as money and names the month',
+    testWidgets('sits on the keyboard, with no gap above it', (tester) async {
+      await openSheet(tester);
+
+      // The keyboard comes up: 300pt, and the system drops the bar's padding.
+      const keyboard = 300.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: keyboard);
+      tester.view.padding = FakeViewPadding.zero;
+      await tester.pumpAndSettle();
+
+      final form = tester.getRect(find
+          .ancestor(
+              of: find.byKey(const ValueKey('advance-invoice-number')),
+              matching: find.byType(SingleChildScrollView))
+          .first);
+      expect(form.bottom, closeTo(800 - keyboard, 1),
+          reason: 'padded for the keyboard twice, the form ended a keyboard '
+              'height above it');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('leaves the amount blank and names the month',
         (tester) async {
       await openSheet(tester);
 
       final amount = tester.widget<TextFormField>(
           find.byKey(const ValueKey('advance-amount-due')));
-      expect(amount.controller!.text, '750,000.00',
-          reason: 'it was prefilled as "750000.0"');
+      expect(amount.controller!.text, isEmpty,
+          reason: 'prefilled with the advance, a larger invoice was recorded '
+              'paid in full and nothing reached the bucket');
 
       final month = DateFormat('MMMM yyyy').format(DateTime.now());
       expect(
@@ -167,11 +204,47 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Enter the invoice number'), findsOneWidget);
+      expect(find.text('Enter the amount due'), findsOneWidget);
       expect(find.text('Choose the due date'), findsOneWidget);
       expect(
           Get.find<CollectionActivityController>().unassignedAdvancedPayments,
           hasLength(1),
           reason: 'nothing was applied');
+    });
+
+    testWidgets('has an optional P.O. field that reaches the invoice',
+        (tester) async {
+      await openSheet(tester);
+      final activity = Get.find<CollectionActivityController>() as _Activity;
+
+      await tester.enterText(
+          find.byKey(const ValueKey('advance-invoice-number')), 'SI-1');
+      await tester.enterText(
+          find.byKey(const ValueKey('advance-amount-due')), '1000000');
+      await tester.enterText(
+          find.byKey(const ValueKey('advance-po-number')), '23-122');
+      await tester.tap(find.byKey(const ValueKey('advance-due-date')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(button('Apply'));
+      await tester.tap(button('Apply'));
+      await tester.pumpAndSettle();
+
+      expect(activity.applied.single.poNumber, '23-122');
+      expect(activity.applied.single.amountDue, 1000000);
+
+      // Let the success snackbar run out.
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
+
+    testWidgets("shows one drag handle, the theme's", (tester) async {
+      await openSheet(tester);
+
+      final ownBar = find.byWidgetPredicate((w) =>
+          w is Container &&
+          w.constraints == const BoxConstraints.tightFor(width: 40, height: 4));
+      expect(ownBar, findsNothing, reason: 'it drew a second handle');
     });
   });
 

@@ -285,9 +285,11 @@ class CollectionHomeScreen extends StatelessWidget {
                                                     ),
 
                                                     Obx(() {
+                                                      // Today only, like Show All;
+                                                      // earlier days are on the calendar.
                                                       final recentItems =
                                                           controller
-                                                              .allRecentHistory;
+                                                              .todayEngagements;
 
                                                       if (recentItems.isEmpty) {
                                                         return Padding(
@@ -311,7 +313,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   height: BSizes
                                                                       .sm),
                                                               Text(
-                                                                'No engagement history yet',
+                                                                'No engagements yet today',
                                                                 style: Theme.of(
                                                                         context)
                                                                     .textTheme
@@ -347,6 +349,13 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                 ?.toString(),
                                                             item: e['item']
                                                                 as CollectionItemModel?,
+                                                            reconciledOn:
+                                                                e['reconciledOn']
+                                                                    as String?,
+                                                            invoiceCount:
+                                                                e['invoiceCount']
+                                                                    as int?,
+                                                            timeOnly: true,
                                                             margin:
                                                                 EdgeInsets.zero,
                                                           ),

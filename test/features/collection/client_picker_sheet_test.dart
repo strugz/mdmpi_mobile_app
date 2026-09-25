@@ -6,7 +6,11 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/advanced_payment_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/deposit_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/reconciliation_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
@@ -78,6 +82,22 @@ Future<ClientModel?> _open(
 
 class _Activity extends CollectionActivityController {
   final saved = <({String? clientId, String accountName})>[];
+  final advances = <({String clientId, String? clientName})>[];
+  final reconciled = <({String clientId, List<String> invoices})>[];
+
+  @override
+  Future<void> saveAdvancedPayment({
+    required String clientId,
+    required double amount,
+    required String remarks,
+    String? clientName,
+  }) async =>
+      advances.add((clientId: clientId, clientName: clientName));
+
+  @override
+  Future<void> markInvoicesForReconciliation(
+          String clientId, List<String> invoiceIds, String remarks) async =>
+      reconciled.add((clientId: clientId, invoices: [...invoiceIds]));
 
   @override
   // ignore: must_call_super
@@ -224,10 +244,103 @@ void main() {
 
     testWidgets('the account field cannot be typed into', (tester) async {
       await pumpForm(tester);
-      final field = tester.widget<TextField>(find.descendant(
-          of: find.byKey(const ValueKey('cwt-account')),
-          matching: find.byType(TextField)));
-      expect(field.readOnly, isTrue);
+      expect(
+          find.descendant(
+              of: find.byKey(const ValueKey('cwt-account')),
+              matching: find.byType(EditableText)),
+          findsNothing,
+          reason: 'the account is always an existing client, never typed');
+    });
+  });
+
+  group('the other forms pick their account the same way', () {
+    Future<_Activity> pump(WidgetTester tester, Widget form) async {
+      final activity = _Activity();
+      Get.put<CollectionActivityController>(activity);
+      // Antipolo has an open invoice on the phone; the others do not.
+      activity.bucketItems.add(CollectionItemModel(
+        id: 'INV-1',
+        client: _registry.first,
+        toBeCollected: 5000,
+      ));
+      await tester.pumpWidget(
+          GetMaterialApp(theme: BCollectionTheme.light, home: form));
+      await tester.pumpAndSettle();
+      return activity;
+    }
+
+    Future<void> pick(WidgetTester tester, Key field, String name) async {
+      await tester.tap(find.byKey(field));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(name).last);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> drainSnackbar(WidgetTester tester) async {
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Advanced Payment: any registry client, saved with its name',
+        (tester) async {
+      final activity = await pump(tester, const AdvancedPaymentFormScreen());
+
+      // Accuteqs has nothing in the bucket: the old dropdown never listed it.
+      await pick(tester, const ValueKey('advance-account'),
+          'Accuteqs Diagnostics Corp.');
+      expect(find.text('C-300'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField).first, '1000');
+      await tester.tap(find.text('Record advanced payment'));
+      await tester.pumpAndSettle();
+
+      expect(activity.advances.single.clientId, 'C-300');
+      expect(activity.advances.single.clientName, 'Accuteqs Diagnostics Corp.',
+          reason: 'not its code, which the bucket lookup would have given');
+      await drainSnackbar(tester);
+    });
+
+    testWidgets('Deposit: the chosen account lists its invoices on the phone',
+        (tester) async {
+      await pump(tester, const DepositFormScreen());
+
+      await pick(tester, const ValueKey('deposit-account'),
+          'Antipolo Doctors Hospital');
+      expect(find.text('INV-1'), findsOneWidget);
+    });
+
+    testWidgets('Deposit: a client with none on the phone says so',
+        (tester) async {
+      await pump(tester, const DepositFormScreen());
+
+      await pick(
+          tester, const ValueKey('deposit-account'), "5'R's Medical Supply");
+      expect(find.text('No open invoices for this account on this phone.'),
+          findsOneWidget);
+    });
+
+    testWidgets('Reconciliation: picks the account and its invoices',
+        (tester) async {
+      final activity = await pump(tester, const ReconciliationFormScreen());
+
+      await pick(tester, const ValueKey('reconciliation-account'),
+          'Antipolo Doctors Hospital');
+      await tester.tap(find.text('INV-1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Record reconciliation'));
+      await tester.pumpAndSettle();
+
+      expect(activity.reconciled.single.clientId, 'C-100');
+      expect(activity.reconciled.single.invoices, ['INV-1']);
+      await drainSnackbar(tester);
+    });
+
+    testWidgets('each form asks for the account before saving', (tester) async {
+      final activity = await pump(tester, const AdvancedPaymentFormScreen());
+      await tester.tap(find.text('Record advanced payment'));
+      await tester.pumpAndSettle();
+      expect(find.text('Choose the account'), findsOneWidget);
+      expect(activity.advances, isEmpty);
     });
   });
 }

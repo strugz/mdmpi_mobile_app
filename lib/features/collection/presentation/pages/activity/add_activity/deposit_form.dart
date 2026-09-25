@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
@@ -82,31 +83,16 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Account Selection
-                DropdownButtonFormField<ClientModel>(
-                  // The button sizes itself to the widest client name unless told
-                  // to fill the row, and long pharmacy names overflowed by hundreds
-                  // of pixels. Expanded, the name ellipsises inside the field.
-                  isExpanded: true,
+                // Account: an existing client, searched in the registry.
+                ClientPickerField(
+                  key: const ValueKey('deposit-account'),
                   value: selectedClient,
-                  decoration: const InputDecoration(
-                    labelText: 'Account',
-                    prefixIcon: Icon(Iconsax.user),
-                  ),
-                  items: controller.masterAccountList.map((client) {
-                    return DropdownMenuItem(
-                      value: client,
-                      child: Text(client.name, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      selectedClient = val;
-                      selectedInvoiceIds.clear();
-                    });
-                  },
-                  validator: (value) =>
-                      value == null ? 'Account is required' : null,
+                  search: controller.searchClientRegistry,
+                  searchKnown: controller.searchKnownAccounts,
+                  onChanged: (client) => setState(() {
+                    selectedClient = client;
+                    selectedInvoiceIds.clear();
+                  }),
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
 

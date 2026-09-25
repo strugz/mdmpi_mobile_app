@@ -11,7 +11,11 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 /// way. It used to leave the list entirely, losing the excess on the phone.
 
 class _Repo extends CollectionRepository {
-  final calls = <({CollectionAdvanceRecord advance, double applied})>[];
+  final calls = <({
+    CollectionAdvanceRecord advance,
+    double applied,
+    CollectionItemModel invoice,
+  })>[];
 
   @override
   Future<bool> assignAdvance({
@@ -22,7 +26,7 @@ class _Repo extends CollectionRepository {
     required String appliedAt,
     required double appliedAmount,
   }) async {
-    calls.add((advance: advance, applied: appliedAmount));
+    calls.add((advance: advance, applied: appliedAmount, invoice: newInvoice));
     return true;
   }
 }
@@ -56,13 +60,15 @@ class _Activity extends CollectionActivityController {
   return (activity: activity, repo: repo);
 }
 
-Future<double> _apply(_Activity a, String invoice, double due) =>
+Future<double> _apply(_Activity a, String invoice, double due,
+        {String? poNumber}) =>
     a.assignInvoiceToPayment(
       paymentId: 'AP-1',
       invoiceNumber: invoice,
       amountDue: due,
       dueDate: '2026-10-30',
       collectionDate: DateTime(2026, 9, 24),
+      poNumber: poNumber,
     );
 
 void main() {
@@ -109,5 +115,51 @@ void main() {
     expect(s.repo.calls.last.advance.amount, 250000,
         reason: 'the second invoice draws on the remainder only');
     expect(s.activity.unassignedAdvancedPayments, isEmpty);
+  });
+
+  test('the invoice made from an advance carries its P.O.', () async {
+    final s = _seed(750000);
+
+    await _apply(s.activity, 'SI-1', 1000000, poNumber: ' 23-122 ');
+
+    final invoice = s.activity.bucketItems.single;
+    expect(invoice.poNumber, '23-122');
+    expect(invoice.hasPoNumber, isTrue,
+        reason: 'so it groups under its P.O. in the bucket');
+    expect(s.repo.calls.single.invoice.poNumber, '23-122',
+        reason: 'the repository queues it with ASSIGN_ADVANCE');
+    expect(invoice.toBeCollected, 250000,
+        reason: 'a partly paid invoice keeps its balance in the bucket');
+  });
+
+  test('no P.O. typed leaves the invoice without one', () async {
+    final s = _seed(750000);
+
+    await _apply(s.activity, 'SI-1', 500000);
+
+    expect(s.activity.bucketItems.single.hasPoNumber, isFalse);
+  });
+
+  test('the home card stops counting an advance once it is applied',
+      () async {
+    final s = _seed(750000);
+    expect(s.activity.advancedPaymentsCount, 1);
+
+    // Applied to a larger invoice: partly paid, the balance stays in the
+    // bucket as an ordinary invoice, not as an advance.
+    await _apply(s.activity, 'SI-1', 1000000);
+
+    expect(s.activity.bucketItems.single.toBeCollected, 250000);
+    expect(s.activity.advancedPaymentsCount, 0,
+        reason: 'the card read 1 over a page that listed none');
+  });
+
+  test('an advance with float left still counts', () async {
+    final s = _seed(750000);
+
+    await _apply(s.activity, 'SI-1', 500000);
+
+    expect(s.activity.advancedPaymentsCount, 1,
+        reason: '₱250,000 still waits for an invoice');
   });
 }

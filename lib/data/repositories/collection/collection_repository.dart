@@ -23,7 +23,6 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_workspac
 import 'package:mdmpi_mobile_app/features/collection/mappers/collection_mapper.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
-import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 /// Summary of an "Upload All" attempt.
@@ -53,10 +52,6 @@ class CollectionRepository extends GetxController {
   static const String _uploadPath = '/api4/Collection/upload';
   static const String _invoicesPath = '/api4/Collection/invoices';
   static const String _workspacePath = '/api4/Collection/workspace';
-
-  /// The client registry (a_tblcollectionclient), searched by code or name.
-  /// `/api4`: served by MDMPI.App like every other Collection call.
-  static const String _clientsPath = '/api4/Collection/clients';
 
   /// Bumped every time the local cache is replaced from the server, so
   /// controllers can reload the lists they keep in memory.
@@ -111,57 +106,6 @@ class CollectionRepository extends GetxController {
   /// history + targets (Stage C3).
   Uri _workspaceUri() => BApiEnvironment.api4Uri(_workspacePath)
       .replace(queryParameters: {'collector': collectorCode});
-
-  /// Search the existing clients in the registry (a_tblcollectionclient) by
-  /// code or name, first [limit] matches in name order.
-  ///
-  /// Every client SAP has imported, not only those with an invoice in this
-  /// collector's bucket — a CWT pick-up is often at an account with nothing
-  /// open. Online only: a failure (offline, timeout, server error) comes back
-  /// as a [Result.failure], and the picker falls back to the accounts already
-  /// on the phone.
-  Future<Result<List<ClientModel>>> searchClientRegistry(String term,
-      {int limit = 25}) async {
-    try {
-      final uri = BApiEnvironment.api4Uri(_clientsPath, {
-        if (term.trim().isNotEmpty) 'search': term.trim(),
-        'page': '1',
-        'pageSize': '$limit',
-      });
-      final response = await http.get(uri).timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) {
-        return Result.failure('Client search failed (${response.statusCode})');
-      }
-      final decoded = jsonDecode(response.body);
-      final items = decoded is Map ? decoded['Items'] : null;
-      if (items is! List) return Result.success(const []);
-      return Result.success([
-        for (final m in items.whereType<Map>())
-          if ((m['ClientCode']?.toString() ?? '').trim().isNotEmpty)
-            _registryClient(Map<String, dynamic>.from(m)),
-      ]);
-    } catch (e) {
-      logDebug('CollectionRepository.searchClientRegistry error: $e');
-      return Result.failure('Client search is unavailable offline');
-    }
-  }
-
-  /// A registry row as the app's client. In this app a Collection client's
-  /// id and code are both the registry's ClientCode (the workspace sends it
-  /// as ACCMID and ACCMSC alike), so a picked client uploads like any other.
-  static ClientModel _registryClient(Map<String, dynamic> m) {
-    String s(String k) => (m[k]?.toString() ?? '').trim();
-    final code = s('ClientCode');
-    final name = s('ClientName');
-    return ClientModel(
-      id: code,
-      code: code,
-      name: name.isEmpty ? code : name,
-      address: s('ClientAddress'),
-      contact: s('ClientContact'),
-      emailAddress: s('ClientEmail'),
-    );
-  }
 
   /// Download the collector's workspace and replace the local cache with it.
   ///
@@ -1438,6 +1382,8 @@ class CollectionRepository extends GetxController {
         'EngagementDate': appliedAt,
         'AmountDue': amountDue,
         'DueDate': dueDate,
+        // Blank goes as null, like Add to Bucket; the server trims it too.
+        'PoNumber': newInvoice.hasPoNumber ? newInvoice.poNumber.trim() : null,
         'Remarks': advance.remarks,
       });
 

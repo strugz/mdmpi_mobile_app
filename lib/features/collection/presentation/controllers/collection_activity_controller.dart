@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
@@ -16,6 +17,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dar
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation_fold.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/invoice_filter.dart';
 
@@ -336,12 +338,18 @@ class CollectionActivityController extends GetxController {
     // Reference data for the check fields. Independent of the bucket, and
     // nothing waits on it.
     loadBanks();
+    // The client registry for the account picker: refreshed behind the
+    // collector when the cached copy is missing or a day old.
+    loadClientRegistry();
     // A server download replaces the local cache; mirror it in memory. Local
     // read only (no network), so this cannot loop back into a sync.
     ever(repository.localDataVersion, (_) async {
       _loadPersistedExtras();
       final items = await repository.getLocalCollectionItems();
       _setItems(items);
+      // A download is when the collector expects fresh data: the client
+      // list comes along, behind them.
+      loadClientRegistry(force: true);
     });
     // One wire for all seven save paths, rather than a re-read at each of
     // them: the repository bumps this whenever it archives an engagement, so
@@ -813,9 +821,10 @@ class CollectionActivityController extends GetxController {
   /// The account's open bucket invoices, unfiltered: what its card counts.
   /// The breakdown on the card reads this, so the lines under "3 P.O.s ·
   /// 7 invoices" are exactly those seven.
-  List<CollectionItemModel> getBucketOpenInvoices(String clientId) => bucketItems
-      .where((item) => item.client.id == clientId && item.toBeCollected > 0)
-      .toList();
+  List<CollectionItemModel> getBucketOpenInvoices(String clientId) =>
+      bucketItems
+          .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+          .toList();
 
   /// How many distinct customer P.O.s the account's open invoices fall under.
   /// Zero when none of them carries one.
@@ -1136,6 +1145,30 @@ class CollectionActivityController extends GetxController {
     return _byDateCache;
   }
 
+  /// One day's engagements, newest first: what Engagement History shows.
+  ///
+  /// From the archive, like the calendar, so advances received, deposits and
+  /// CWT pick-ups are in it and a settled invoice does not take its entry
+  /// with it.
+  List<Map<String, dynamic>> engagementsOn(DateTime day) =>
+      activitiesByDate[DateTime(day.year, day.month, day.day)] ?? const [];
+
+  /// Engagements from [from] to [to], both days included, newest first.
+  List<Map<String, dynamic>> engagementsBetween(DateTime from, DateTime to) {
+    final first = DateTime(from.year, from.month, from.day);
+    final last = DateTime(to.year, to.month, to.day);
+    final days = activitiesByDate.keys
+        .where((d) => !d.isBefore(first) && !d.isAfter(last))
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    // Each day's list is already newest first.
+    return [for (final d in days) ...activitiesByDate[d]!];
+  }
+
+  /// Today's engagements: the home preview, and History's default day.
+  List<Map<String, dynamic>> get todayEngagements =>
+      engagementsOn(DateTime.now());
+
   void _rebuildByDate() {
     final grouped = <DateTime, List<Map<String, dynamic>>>{};
     final itemsById = {for (final i in allItems) i.id: i};
@@ -1429,25 +1462,11 @@ class CollectionActivityController extends GetxController {
     return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
   }
 
-  /// Number of assigned advanced payments (invoices created from advanced payments)
-  int get assignedAdvancedPaymentCount {
-    final fromBucket = bucketItems
-        .where((item) =>
-            item.toBeCollected > 0 &&
-            item.history.any((h) => h.status == 'Advanced Payment Applied'))
-        .map((i) => i.id);
-    final fromActivity = activityItems
-        .where((item) =>
-            item.toBeCollected > 0 &&
-            item.history.any((h) => h.status == 'Advanced Payment Applied'))
-        .map((i) => i.id);
-    final assignedIds = {...fromBucket, ...fromActivity};
-    return assignedIds.length;
-  }
-
-  /// Total advanced payments: assigned (invoices created and still unpaid) + unassigned payments
-  int get advancedPaymentsCount =>
-      assignedAdvancedPaymentCount + unassignedAdvancedPayments.length;
+  /// Advances still waiting for an invoice: what the Advanced Payment page
+  /// lists. An invoice made from an advance and only partly paid is an
+  /// ordinary bucket invoice from then on; counting it here kept the home
+  /// card at 1 over a page that said none were waiting.
+  int get advancedPaymentsCount => unassignedAdvancedPayments.length;
 
   /// Returns reconciliation invoices for a specific account
   List<CollectionItemModel> getReconciliationInvoicesByAccount(
@@ -1509,15 +1528,21 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Marked ${invoiceIds.length} invoices for Reconciliation');
   }
 
+  /// [clientName] from the client picker, which searches the whole registry:
+  /// a client with nothing in the bucket is not in [masterAccountList], and
+  /// looking the name up there saved the client code as its name.
   Future<void> saveAdvancedPayment({
     required String clientId,
     required double amount,
     required String remarks,
+    String? clientName,
   }) async {
     // Persisted + queued (ADVANCED_PAYMENT) so it survives a restart and uploads.
     final record = await repository.saveAdvance(
       clientId: clientId,
-      clientName: _clientNameFor(clientId),
+      clientName: (clientName != null && clientName.trim().isNotEmpty)
+          ? clientName.trim()
+          : _clientNameFor(clientId),
       amount: amount,
       remarks: remarks,
     );
@@ -1556,12 +1581,16 @@ class CollectionActivityController extends GetxController {
   ///
   /// Returns the float left over: an advance larger than the invoice keeps
   /// the excess under Advanced Payment for the next invoice (0 when spent).
+  ///
+  /// [poNumber] is the customer's P.O. for the new invoice, optional; blank
+  /// is stored as none, so the invoice groups under a P.O. only when it has one.
   Future<double> assignInvoiceToPayment({
     required String paymentId,
     required String invoiceNumber,
     required double amountDue,
     required String dueDate,
     required DateTime collectionDate,
+    String? poNumber,
   }) async {
     final paymentIdx =
         unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
@@ -1595,6 +1624,7 @@ class CollectionActivityController extends GetxController {
       toBeCollected: remainingDue,
       totalCollected: appliedAmount,
       dueDate: dueDate,
+      poNumber: poNumber?.trim() ?? '',
       status: isFullyPaid ? 'Collected' : '',
       history: [historyEntry],
     );
@@ -2085,9 +2115,66 @@ class CollectionActivityController extends GetxController {
   }
 
   /// Existing clients in the registry (a_tblcollectionclient) matching
-  /// [term] by code or name. Online; see [searchKnownAccounts] for offline.
-  Future<Result<List<ClientModel>>> searchClientRegistry(String term) =>
-      repository.searchClientRegistry(term);
+  /// [term] by code or name.
+  ///
+  /// Reads the copy cached on the phone, so the picker answers at once and
+  /// without signal. Only while nothing is cached yet (a first run, before
+  /// the refresh lands) does it ask the server; a failure there sends the
+  /// picker to [searchKnownAccounts].
+  Future<Result<List<ClientModel>>> searchClientRegistry(String term) async {
+    if (!Get.isRegistered<ClientRegistryRepository>()) {
+      return Result.failure('Client list unavailable');
+    }
+    final registry = Get.find<ClientRegistryRepository>();
+    if (await registry.cachedCount() > 0) {
+      return Result.success(await registry.searchCached(term));
+    }
+    return registry.searchOnline(term);
+  }
+
+  /// How long a cached client list is trusted before a background refresh.
+  static const Duration _clientRegistryMaxAge = Duration(hours: 12);
+  static const String _clientRegistryStampKey =
+      'collection.clientRegistryRefreshedAt';
+  bool _refreshingClientRegistry = false;
+
+  /// Keep the cached client registry current, behind the collector.
+  ///
+  /// Refreshes when [force]d (after a bucket download), when nothing is
+  /// cached, or when the copy is older than [_clientRegistryMaxAge]. Never
+  /// blocks anything; a failure leaves the cached copy in place.
+  Future<void> loadClientRegistry({bool force = false}) async {
+    if (!Get.isRegistered<ClientRegistryRepository>()) return;
+    if (_refreshingClientRegistry) return;
+    final registry = Get.find<ClientRegistryRepository>();
+    final box = _storageOrNull();
+    final stamp =
+        DateTime.tryParse(box?.read<String>(_clientRegistryStampKey) ?? '');
+    final stale = stamp == null ||
+        DateTime.now().difference(stamp) > _clientRegistryMaxAge;
+    if (!force && !stale && await registry.cachedCount() > 0) return;
+
+    _refreshingClientRegistry = true;
+    try {
+      final result = await registry.refresh();
+      if (result.isSuccess && result.value > 0) {
+        await box?.write(
+            _clientRegistryStampKey, DateTime.now().toIso8601String());
+      }
+    } finally {
+      _refreshingClientRegistry = false;
+    }
+  }
+
+  /// GetStorage, or null where it was never initialised (tests, a failed
+  /// start): the registry then simply refreshes more often.
+  GetStorage? _storageOrNull() {
+    try {
+      return GetStorage();
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// The accounts already on this phone (from the downloaded bucket) matching
   /// [term] — the client picker's fallback when the registry is unreachable.

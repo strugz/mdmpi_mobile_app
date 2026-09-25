@@ -16,8 +16,6 @@ class CWTPickupFormScreen extends StatefulWidget {
 }
 
 class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
-  /// Shows the chosen client's name; the field itself is read-only.
-  final accountNameController = TextEditingController();
   final remarksController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
@@ -26,25 +24,8 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
   /// with no client id.
   ClientModel? _client;
 
-  Future<void> _pickClient() async {
-    final controller = CollectionActivityController.instance;
-    final picked = await ClientPickerSheet.show(
-      context,
-      search: controller.searchClientRegistry,
-      searchKnown: controller.searchKnownAccounts,
-      selected: _client,
-    );
-    if (picked == null || !mounted) return;
-    setState(() {
-      _client = picked;
-      accountNameController.text = picked.name;
-    });
-    formKey.currentState?.validate();
-  }
-
   @override
   void dispose() {
-    accountNameController.dispose();
     remarksController.dispose();
     super.dispose();
   }
@@ -84,20 +65,14 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Tap to search the existing clients; nothing is typed here.
-                TextFormField(
+                ClientPickerField(
                   key: const ValueKey('cwt-account'),
-                  controller: accountNameController,
-                  readOnly: true,
-                  onTap: _pickClient,
-                  decoration: InputDecoration(
-                    labelText: 'Account',
-                    hintText: 'Choose an existing client',
-                    prefixIcon: const Icon(Iconsax.user),
-                    suffixIcon: const Icon(Iconsax.arrow_down_1, size: 18),
-                    helperText: _client?.code,
-                  ),
-                  validator: (_) =>
-                      _client == null ? 'Choose the account' : null,
+                  value: _client,
+                  search: CollectionActivityController
+                      .instance.searchClientRegistry,
+                  searchKnown:
+                      CollectionActivityController.instance.searchKnownAccounts,
+                  onChanged: (client) => setState(() => _client = client),
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 TextFormField(

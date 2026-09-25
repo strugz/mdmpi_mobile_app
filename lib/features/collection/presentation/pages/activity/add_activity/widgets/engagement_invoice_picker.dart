@@ -43,9 +43,7 @@ class EngagementInvoicePicker extends StatelessWidget {
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 150),
               child: Text(
-                count == 0
-                    ? 'Pick at least one'
-                    : '$count selected',
+                count == 0 ? 'Pick at least one' : '$count selected',
                 key: ValueKey(count == 0),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: count == 0
@@ -76,7 +74,9 @@ class EngagementInvoicePicker extends StatelessWidget {
                       const SizedBox(width: BSizes.sm),
                       Expanded(
                         child: Text(
-                          'No open invoices for this account.',
+                          // The account comes from the whole client registry
+                          // now; its invoices only from the downloaded bucket.
+                          'No open invoices for this account on this phone.',
                           style: theme.textTheme.bodySmall
                               ?.copyWith(color: BCollectionColors.inkMuted),
                         ),
@@ -99,11 +99,11 @@ class EngagementInvoicePicker extends StatelessWidget {
                       dense: true,
                       controlAffinity: ListTileControlAffinity.leading,
                       activeColor: BCollectionColors.primary,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: BSizes.sm),
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: BSizes.sm),
                       title: Text(inv.id,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600)),
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600)),
                       subtitle: Text(
                         // The P.O. leads when present: a customer paying "the
                         // ADC-CHEM-001 invoices" is picking by it, not by date.

@@ -430,6 +430,27 @@ Future<void> ensureCollectionTables(Database db) async {
 
   // --- Stage C2: concepts that previously lived only in memory -------------
 
+  // Table: a_tblCollectionClient (the client registry, cached)
+  //
+  // A copy of the server's a_tblcollectionclient, for the activity forms'
+  // account picker. Cached like the bank list, and for the same reason: the
+  // picker used to ask the server on every keystroke, sat empty while it
+  // waited, and had nothing to offer without signal. Replaced wholesale on
+  // each refresh; the picker reads only this.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionClient (
+      clientCode TEXT PRIMARY KEY,
+      clientName TEXT,
+      clientAddress TEXT,
+      clientContact TEXT,
+      clientEmail TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_client_name
+      ON a_tblCollectionClient (clientName COLLATE NOCASE)
+  ''');
+
   // Table: a_tblCollectionActivity (Deposit / CWT Pick-up / Reconciliation)
   await db.execute('''
     CREATE TABLE IF NOT EXISTS a_tblCollectionActivity (
