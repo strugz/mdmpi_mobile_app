@@ -9,7 +9,6 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/advanced_payment_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/deposit_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/reconciliation_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -298,25 +297,6 @@ void main() {
       expect(activity.advances.single.clientName, 'Accuteqs Diagnostics Corp.',
           reason: 'not its code, which the bucket lookup would have given');
       await drainSnackbar(tester);
-    });
-
-    testWidgets('Deposit: the chosen account lists its invoices on the phone',
-        (tester) async {
-      await pump(tester, const DepositFormScreen());
-
-      await pick(tester, const ValueKey('deposit-account'),
-          'Antipolo Doctors Hospital');
-      expect(find.text('INV-1'), findsOneWidget);
-    });
-
-    testWidgets('Deposit: a client with none on the phone says so',
-        (tester) async {
-      await pump(tester, const DepositFormScreen());
-
-      await pick(
-          tester, const ValueKey('deposit-account'), "5'R's Medical Supply");
-      expect(find.text('No open invoices for this account on this phone.'),
-          findsOneWidget);
     });
 
     testWidgets('Reconciliation: picks the account and its invoices',

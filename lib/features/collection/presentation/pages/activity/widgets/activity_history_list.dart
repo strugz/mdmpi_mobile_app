@@ -130,9 +130,30 @@ class ActivityHistoryCard extends StatelessWidget {
   /// does not have: "3 invoices" when the row lists them, "Whole account"
   /// when it does not. Never "Invoice Date: N/A" — a deferral has no invoice
   /// date, and saying so twice told the reader nothing.
-  String get _accountScopeLabel => invoiceCount != null
-      ? '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}'
-      : 'Whole account';
+  String get _accountScopeLabel {
+    if (invoiceCount != null) {
+      return '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}';
+    }
+    // A deposit is the collector's activity, recorded against no account:
+    // the check number is what identifies it.
+    if (_isDeposit && _accountName == null) {
+      final check = (history.checkNumber ?? '').trim();
+      return check.isEmpty ? 'Collector activity' : 'Check #$check';
+    }
+    return 'Whole account';
+  }
+
+  /// A For Deposit entry.
+  bool get _isDeposit =>
+      history.status.trim() == CollectionStatusColors.statusDeposit;
+
+  /// The headline when the entry names no account. A deposit names its bank
+  /// ("Bank deposit · BPI") rather than reading "Account Engagement".
+  String get _noAccountHeadline {
+    if (!_isDeposit) return 'Account Engagement';
+    final bank = (history.bankName ?? '').trim();
+    return bank.isEmpty ? 'Bank deposit' : 'Bank deposit · $bank';
+  }
 
   /// When this invoice was put into reconciliation before this engagement,
   /// or null if it never was.
@@ -511,10 +532,10 @@ class ActivityHistoryCard extends StatelessWidget {
                     children: [
                       Text(
                         accountFirst
-                            ? (_accountName ?? 'Account Engagement')
+                            ? (_accountName ?? _noAccountHeadline)
                             : (invoiceId != null || item != null
                                 ? _subjectLabel
-                                : (_accountName ?? 'Account Engagement')),
+                                : (_accountName ?? _noAccountHeadline)),
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,

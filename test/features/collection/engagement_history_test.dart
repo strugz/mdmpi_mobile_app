@@ -478,6 +478,33 @@ void main() {
           reason: 'the field empties with the filter');
     });
 
+    testWidgets('a deposit with no account names its bank and check',
+        (tester) async {
+      final at = _at(9);
+      await pump(tester, [
+        CollectionEngagementRecord(
+          localRef: CollectionEngagementRecord.buildLocalRef(
+              kind: 'OFFICE', subjectId: 'DEP-1', engagedAt: at),
+          collectorCode: 'jay',
+          collectorName: 'Jay Bryan Abaoag',
+          kind: 'OFFICE',
+          itemId: '',
+          engagedAt: at,
+          engagedOn: BFormatter.localDayKey(at)!,
+          status: 'Deposit',
+          amount: 2500000,
+          bankName: 'BPI',
+          checkNumber: '1254897',
+          createdAt: at,
+        ),
+      ]);
+
+      expect(find.text('Bank deposit · BPI'), findsOneWidget);
+      expect(find.text('Check #1254897'), findsOneWidget);
+      expect(find.text('Account Engagement'), findsNothing);
+      expect(find.text('Whole account'), findsNothing);
+    });
+
     testWidgets('fits a narrow phone at a large font', (tester) async {
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(360, 780);
