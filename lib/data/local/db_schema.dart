@@ -410,9 +410,16 @@ Future<void> ensureCollectionTables(Database db) async {
       itemId TEXT,
       createdAt TEXT NOT NULL,
       retryCount INTEGER DEFAULT 0,
-      lastRetryAt TEXT
+      lastRetryAt TEXT,
+      lastError TEXT
     )
   ''');
+  // The server's rejection reason, so the outbox can say WHY a row is stuck
+  // instead of only counting the attempts. Added 2026-09-25, after the table
+  // shipped: installs that already have the queue get it by ALTER on the next
+  // cold start (onOpen), like poNumber above. A hot reload keeps the database
+  // open, so the column does not appear until the app is relaunched.
+  await _addColumnIfMissing(db, 'a_tblCollectionPending', 'lastError', 'TEXT');
 
   // Table: a_tblCollectionBank (the company bank list, cached)
   //

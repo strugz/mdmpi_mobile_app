@@ -629,15 +629,16 @@ class CollectionRepository extends GetxController {
         ? (decoded['Rejected'] as List)
         : const [];
 
-    // Build a set of rejected (operation|itemId) keys and reason strings.
-    final rejectedKeys = <String>{};
+    // Map each rejected (operation|itemId) to the server's reason, so the
+    // outbox can show why the row is stuck rather than only that it is.
+    final rejectedKeys = <String, String>{};
     final rejectedReasons = <String>[];
     for (final r in rejectedList) {
       if (r is Map) {
         final op = (r['Operation'] ?? '').toString();
         final itemId = (r['ItemId'] ?? '').toString();
         final reason = (r['Reason'] ?? 'Rejected').toString();
-        rejectedKeys.add('$op|$itemId');
+        rejectedKeys['$op|$itemId'] = reason;
         rejectedReasons.add('$itemId: $reason');
       }
     }
@@ -646,9 +647,13 @@ class CollectionRepository extends GetxController {
     int accepted = 0;
     for (final p in pending) {
       final key = '${p.operation}|${p.itemId}';
-      if (rejectedKeys.contains(key)) {
+      final reason = rejectedKeys[key];
+      if (reason != null) {
         await pendingDao.updatePendingChange(
-          p.copyWith(retryCount: p.retryCount + 1, lastRetryAt: now),
+          p.copyWith(
+              retryCount: p.retryCount + 1,
+              lastRetryAt: now,
+              lastError: reason),
         );
       } else {
         await pendingDao.removePendingChange(p.id!);
