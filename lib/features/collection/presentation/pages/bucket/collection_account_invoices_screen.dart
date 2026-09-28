@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -69,11 +70,13 @@ class _CollectionAccountInvoicesScreenState
               onPressed: () {
                 controller.claimAccount(widget.client.id);
                 Get.back();
-                BLoaders.successSnackBar(
-                  title: 'Account Claimed',
-                  message:
-                      'All invoices for ${widget.client.name} have been moved to Activity.',
-                );
+                if (!CollectionSmsService.smsFollows()) {
+                  BLoaders.successSnackBar(
+                    title: 'Account Claimed',
+                    message:
+                        'All invoices for ${widget.client.name} have been moved to Activity.',
+                  );
+                }
               },
               icon: const Icon(Iconsax.tick_circle),
               label: const Text('Claim Account'),

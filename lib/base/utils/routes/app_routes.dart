@@ -27,6 +27,7 @@ import '../../../features/logistics/screens/request.dart';
 import '../../../features/logistics/screens/data_test/local_storage_data_viewer.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/upload/collection_upload_outbox_screen.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/my_head_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/add_to_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/advanced_payment_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
@@ -70,6 +71,7 @@ class AppRoutes {
     ),
     GetPage(name: BRoutes.totalCollected, page: () => const MonthlySummaryScreen(type: 'Collection')),
     GetPage(name: BRoutes.collectionUploadOutbox, page: () => const CollectionUploadOutboxScreen()),
+    GetPage(name: BRoutes.myHead, page: () => const MyHeadScreen()),
     GetPage(name: BRoutes.addToBucket, page: () => const AddToBucketScreen()),
     // Engagement forms take no arguments; they read the account and invoice
     // selection from CollectionActivityController.

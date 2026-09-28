@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -345,11 +346,17 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     );
 
     Get.back();
-    BLoaders.successSnackBar(
-      title: 'Saved',
-      message:
-          'Recorded ${BFormatter.formatPesoCurrency(_targetTotal)} across ${widget.items.length} invoices.',
-    );
+    // One Collected or Partial row means the batch SMS goes out, and the
+    // sending view and "Message Sent!" confirm the save.
+    final smsFollows = finalStatuses.values
+        .any((s) => CollectionSmsService.smsFollows(status: s));
+    if (!smsFollows) {
+      BLoaders.successSnackBar(
+        title: 'Saved',
+        message:
+            'Recorded ${BFormatter.formatPesoCurrency(_targetTotal)} across ${widget.items.length} invoices.',
+      );
+    }
   }
 
   @override

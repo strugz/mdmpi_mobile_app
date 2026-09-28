@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
@@ -1697,6 +1698,21 @@ class CollectionActivityController extends GetxController {
         clientId: clientId, releasedInvoices: released);
     logDebug(
         '[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
+
+    // SMS trigger 4, Clear Engagement. After the release is saved, never
+    // blocking it.
+    // ignore: unawaited_futures
+    notifyEngagementCleared(clientName: invoices.first.client.name);
+  }
+
+  /// Send the Clear Engagement notice to the Head and the Collection
+  /// contacts. No snackbar here: while an SMS goes out, the sending view and
+  /// "Message Sent!" are the feedback (the service says when nobody is set).
+  Future<CollectionSmsOutcome?> notifyEngagementCleared(
+      {required String clientName}) async {
+    if (!Get.isRegistered<CollectionSmsService>()) return null;
+    return Get.find<CollectionSmsService>()
+        .notifyEngagementCleared(clientName: clientName);
   }
 
   Future<void> unclaimWithReason(
@@ -1729,6 +1745,12 @@ class CollectionActivityController extends GetxController {
       reason: reason,
       remarks: remarks,
     );
+
+    // SMS trigger 3, Defer Account: the reason and the collector's remarks.
+    _notifySms((sms) => sms.notifyAccountDeferred(
+          clientName: invoices.first.client.name,
+          remarks: remarks.trim().isEmpty ? reason : '$reason - $remarks',
+        ));
 
     final now = DateTime.now().toIso8601String();
     final collectorLabel = repository.collectorName;
@@ -2241,6 +2263,34 @@ class CollectionActivityController extends GetxController {
 
     globalActivities.refresh();
     logDebug('[CollectionActivityController] Global activity saved: $type');
+
+    // SMS triggers 5 and 6.
+    final kind = type.trim().toLowerCase();
+    if (kind == 'deposit') {
+      _notifySms((sms) => sms.notifyDepositAdded(
+            bankName: bankName ?? '',
+            amount: totalCollected,
+            checkNumber: checkNumber,
+            remarks: remarks,
+          ));
+    } else if (kind == 'cwt pick-up' || kind == 'cwt pickup') {
+      _notifySms((sms) => sms.notifyCwtPickup(
+            clientName: accountName,
+            remarks: remarks,
+          ));
+    }
+  }
+
+  /// Fire a Collection SMS, guarded so it is a no-op when the service is
+  /// not registered (unit tests, Windows) and never throws into the caller.
+  void _notifySms(
+      Future<dynamic> Function(CollectionSmsService sms) action) {
+    if (!Get.isRegistered<CollectionSmsService>()) return;
+    // ignore: unawaited_futures
+    action(Get.find<CollectionSmsService>()).catchError((Object e) {
+      logDebug('[CollectionActivityController] SMS error: $e');
+      return null;
+    });
   }
 
   // ========================================================================

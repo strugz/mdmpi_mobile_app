@@ -17,9 +17,31 @@ class CntmstDao {
     await db.delete('CNTMST');
   }
 
+  /// Every CNTMST row with a code (CNTMNN), active or not: the user directory
+  /// decides what to keep.
+  Future<List<CNTMSTModel>> getAll() async {
+    final maps = await db.query('CNTMST',
+        where: 'CNTMNN IS NOT NULL AND TRIM(CNTMNN) != ?', whereArgs: ['']);
+    return maps.map((m) => CNTMSTModel.fromJson(m)).toList();
+  }
+
   Future<List<CNTMSTModel>> getRequesters() async {
     final List<Map<String, dynamic>> maps = await db.query('CNTMST', orderBy: 'CNTDPT', where: 'CNTMNN IS NOT NULL AND CNTMNN != ? AND CNTDPT IS NOT ? AND CNTSTS IS NOT ?', whereArgs: ['', 'COLLECTOR', '0']);
     return maps.map((m) => CNTMSTModel.fromJson(m)).toList();
+  }
+
+  /// The row for one code (`CNTMNN`, compared trimmed and case-insensitive),
+  /// or null.
+  Future<CNTMSTModel?> getByCode(String cntmnn) async {
+    final code = cntmnn.trim();
+    if (code.isEmpty) return null;
+    final maps = await db.query(
+      'CNTMST',
+      where: 'UPPER(TRIM(CNTMNN)) = ?',
+      whereArgs: [code.toUpperCase()],
+      limit: 1,
+    );
+    return maps.isEmpty ? null : CNTMSTModel.fromJson(maps.first);
   }
 
   /// Return user's phone and their managers' phone numbers based on CNTTGP hierarchy

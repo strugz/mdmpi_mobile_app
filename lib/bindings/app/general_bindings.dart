@@ -87,6 +87,8 @@ import '../../features/collection/helpers/sync_manager.dart';
 import '../../features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/my_head_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.dart';
 
 class GeneralBindings extends Bindings {
@@ -249,6 +251,18 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionRepository(), fenix: true);
     Get.lazyPut(() => BankRepository(), fenix: true);
     Get.lazyPut(() => ClientRegistryRepository(), fenix: true);
+    // CNTMST always; Firestore Users too when Firebase is up (not on a desktop
+    // without FlutterFire). Resolved at load time, so UserRepository need not exist yet.
+    Get.lazyPut(
+        () => UserDirectoryRepository(
+              firestoreUsers: Firebase.apps.isNotEmpty
+                  ? () => UserRepository.instance.fetchAllUsers()
+                  : null,
+            ),
+        fenix: true);
+    // Settings → My Head (item 13): reads the directory above and saves through
+    // UserController, so it needs neither registered until the screen opens.
+    Get.lazyPut(() => MyHeadController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
 

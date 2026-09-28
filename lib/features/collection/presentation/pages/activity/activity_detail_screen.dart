@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -203,7 +204,11 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     );
 
     Get.back();
-    BLoaders.successSnackBar(title: 'Saved', message: 'Engagement updated');
+    // With an SMS to follow, the sending view and "Message Sent!" confirm it.
+    if (!CollectionSmsService.smsFollows(
+        status: finalStatus.isEmpty ? 'Others' : finalStatus)) {
+      BLoaders.successSnackBar(title: 'Saved', message: 'Engagement updated');
+    }
   }
 
   @override

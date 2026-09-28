@@ -283,6 +283,7 @@ class CollectionRepository extends GetxController {
       // Update local DB first (optimistic): mark the item claimed by this
       // collector. Server-side first-wins is resolved later at Upload All.
       final name = collectorName;
+      final claimed = <CollectionItemModel>[];
       for (final id in ids) {
         final item = await dao.getCollectionItemById(id);
         if (item != null) {
@@ -293,7 +294,27 @@ class CollectionRepository extends GetxController {
           );
           await dao.updateCollectionItem(updated);
           await _queueChange('CLAIM', id, {'EngagementDate': now});
+          claimed.add(updated);
         }
+      }
+
+      // SMS trigger 1, Acquiring Account: one message for the whole acquire,
+      // each account with its counts and balance.
+      final byClient = <String, List<CollectionItemModel>>{};
+      for (final item in claimed) {
+        byClient.putIfAbsent(item.client.id, () => []).add(item);
+      }
+      final accounts = [
+        for (final group in byClient.values)
+          SmsAccountLine(
+            clientName: group.first.client.name,
+            poNumbers: group.map((i) => i.poNumber).toSet(),
+            invoiceIds: group.map((i) => i.id),
+            amount: group.fold<double>(0, (sum, i) => sum + i.toBeCollected),
+          ),
+      ];
+      if (accounts.isNotEmpty) {
+        unawaited(_notifySms((sms) => sms.notifyAcquiringAccounts(accounts)));
       }
 
       _showSuccess('Items claimed successfully', silent: silent);
@@ -388,14 +409,15 @@ class CollectionRepository extends GetxController {
       });
 
       // Notify the collection head (Android, over cellular — works offline).
-      unawaited(_notifySms((sms) => sms.notifyEngagement(
+      // SMS trigger 2, Saving Engagement: Collected or Partial only.
+      unawaited(_notifySms((sms) => sms.notifyEngagementSaved(
             clientName: item.client.name,
-            amountCollected: newlyCollected,
-            outcome: status,
-            collectorName: collectorName,
-            documentReference: item.documentReferences.isNotEmpty
-                ? item.documentReferences.first
-                : '',
+            poNumbers: [item.poNumber],
+            invoices: [SmsInvoiceLine(id: item.id, amount: newlyCollected)],
+            status: status,
+            bankName: bankName,
+            checkNumber: checkNumber,
+            checkDate: checkDate,
           )));
 
       _showSuccess('Activity saved successfully', silent: silent);
@@ -426,8 +448,11 @@ class CollectionRepository extends GetxController {
       final name = collectorName;
 
       String batchClientName = '';
-      double batchTotal = 0;
       int batchCount = 0;
+      // For SMS trigger 2: every invoice with its amount; Partial if any is.
+      final smsLines = <SmsInvoiceLine>[];
+      final smsPos = <String>{};
+      String? smsStatus;
 
       // Gathered through the loop and committed once. The batch shares one
       // `now`, and the itemId differs per row, so the keys still differ.
@@ -439,8 +464,14 @@ class CollectionRepository extends GetxController {
 
         final manualAmount = amounts[id] ?? 0.0;
         if (batchClientName.isEmpty) batchClientName = item.client.name;
-        batchTotal += manualAmount;
         batchCount++;
+        smsLines.add(SmsInvoiceLine(id: item.id, amount: manualAmount));
+        smsPos.add(item.poNumber);
+        if (smsStatus != 'Partial') {
+          smsStatus =
+              CollectionSmsService.collectionStatusWord(statuses[id] ?? '') ??
+                  smsStatus;
+        }
         final itemRemarks = remarks[id] ?? 'Batch Recording';
         final itemStatus = statuses[id] ?? '';
 
@@ -503,14 +534,17 @@ class CollectionRepository extends GetxController {
 
       await _archiveAll(archived);
 
-      // One summary SMS to the collection head for the batch.
-      if (batchCount > 0) {
-        unawaited(_notifySms((sms) => sms.notifyBatch(
+      // SMS trigger 2, Saving Engagement: one message for the batch.
+      if (batchCount > 0 && smsStatus != null) {
+        final status = smsStatus;
+        unawaited(_notifySms((sms) => sms.notifyEngagementSaved(
               clientName: batchClientName,
-              invoiceCount: batchCount,
-              totalAmount:
-                  totalAmountReceived > 0 ? totalAmountReceived : batchTotal,
-              collectorName: name,
+              poNumbers: smsPos,
+              invoices: smsLines,
+              status: status,
+              bankName: bankName,
+              checkNumber: checkNumber,
+              checkDate: checkDate,
             )));
       }
 

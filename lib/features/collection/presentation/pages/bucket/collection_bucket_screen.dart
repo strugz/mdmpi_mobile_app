@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -89,6 +90,8 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
   Future<void> _acquireSelected(CollectionActivityController controller) async {
     final summary = controller.selectionSummary;
     await controller.claimSelectedAccounts();
+    // The Acquiring Account SMS follows; its sending view confirms the move.
+    if (CollectionSmsService.smsFollows()) return;
     BLoaders.successSnackBar(
       title: 'Accounts Acquired',
       message:

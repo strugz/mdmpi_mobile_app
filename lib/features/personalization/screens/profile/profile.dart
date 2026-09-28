@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/shimmer.dart';
@@ -73,8 +74,16 @@ class ProfileScreen extends StatelessWidget {
                     onPressed: () {}),
                 BProfileMenu(
                     title: 'Department', value: 'IMS', onPressed: () {}),
+                // The Head the user chose in Settings → My Head (Collection
+                // TODO item 13); '—' until one is chosen.
                 BProfileMenu(
-                    title: 'Supervisor', value: 'MDD', onPressed: () {}),
+                    title: 'Head',
+                    value: controller.user.value.headName.trim().isNotEmpty
+                        ? controller.user.value.headName
+                        : (controller.user.value.headKey.trim().isNotEmpty
+                            ? controller.user.value.headKey
+                            : '—'),
+                    onPressed: () => Get.toNamed(BRoutes.myHead)),
                 BProfileMenu(title: 'Manager', value: 'AJS', onPressed: () {}),
                 const SizedBox(height: BSizes.spaceBtwItems / 2),
                 const Divider(),

@@ -187,6 +187,9 @@ class _CollectionSettings extends StatelessWidget {
           onTap: () => Get.toNamed(BRoutes.collectionUploadOutbox),
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
+        const BSectionHeading(title: 'My Team', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const _MyHeadTile(),
         const _ContactDirectoryTile(),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),
@@ -194,6 +197,36 @@ class _CollectionSettings extends StatelessWidget {
         const _LocalStorageViewerTile(),
       ],
     );
+  }
+}
+
+/// Collection TODO item 13: who receives the Done Engagement notices.
+class _MyHeadTile extends StatelessWidget {
+  const _MyHeadTile();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<UserController>()) {
+      return BSettingsMenuTile(
+        icon: Iconsax.user_tick,
+        title: 'My Head',
+        subTitle: 'Choose who receives your Done Engagement notices',
+        onTap: () => Get.toNamed(BRoutes.myHead),
+      );
+    }
+    final user = Get.find<UserController>().user;
+    return Obx(() {
+      final name = user.value.headName.trim();
+      final key = user.value.headKey.trim();
+      return BSettingsMenuTile(
+        icon: Iconsax.user_tick,
+        title: 'My Head',
+        subTitle: key.isEmpty
+            ? 'Not set · choose who receives your Done Engagement notices'
+            : (name.isEmpty ? key : '$name ($key)'),
+        onTap: () => Get.toNamed(BRoutes.myHead),
+      );
+    });
   }
 }
 

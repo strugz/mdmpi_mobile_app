@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -42,8 +43,10 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
     );
 
     Get.back(); // Close form first
-    BLoaders.successSnackBar(
-        title: 'Success', message: 'CWT Pick-up activity recorded.');
+    if (!CollectionSmsService.smsFollows()) {
+      BLoaders.successSnackBar(
+          title: 'Success', message: 'CWT Pick-up activity recorded.');
+    }
   }
 
   @override

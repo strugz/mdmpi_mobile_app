@@ -95,6 +95,22 @@ class UserController extends GetxController {
     super.dispose();
   }
 
+  /// Save the Head this user chose (Collection TODO item 13): on the user's
+  /// Firestore doc when Firebase is up, so it follows them to another phone,
+  /// and always on the cached user, so it works offline and on a desktop
+  /// without FlutterFire. Both '' clears the choice. Throws the repository's
+  /// message when Firestore refuses, leaving the cached value untouched.
+  Future<void> setHead({required String key, required String name}) async {
+    final repo = userRepository;
+    if (repo != null) {
+      await repo.updateSingleField({'HeadKey': key, 'HeadName': name});
+    }
+    user.value.headKey = key;
+    user.value.headName = name;
+    user.refresh();
+    _cacheCurrentUser();
+  }
+
   /// Fetch user record
   Future<void> fetchUserRecord() async {
     try {

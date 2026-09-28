@@ -16,6 +16,12 @@ class UserModel {
   String role;
   bool status;
 
+  /// The Head this user chose (Collection TODO item 13): the directory code
+  /// (`CNTMNN` / `initial`) and the name as it was when chosen, for display
+  /// offline. Both '' when none is chosen.
+  String headKey;
+  String headName;
+
   /// Constructor for UserModel
   UserModel(
       {required this.id,
@@ -28,7 +34,9 @@ class UserModel {
       this.initial = '',
       this.department = '',
       this.role = '',
-      this.status = false});
+      this.status = false,
+      this.headKey = '',
+      this.headName = ''});
 
   /// Helper function to get the full name.
   String get fullName => '$firstName $lastName';
@@ -83,7 +91,9 @@ class UserModel {
       'Initial': initial,
       'Department': department,
       'Role': role,
-      'Status': status
+      'Status': status,
+      'HeadKey': headKey,
+      'HeadName': headName,
     };
   }
 
@@ -137,7 +147,9 @@ class UserModel {
           initial: data['Initial'] ?? '',
           department: data['Department'] ?? '',
           role: data['Role'] ?? '',
-          status: false);
+          status: false,
+          headKey: data['HeadKey'] ?? '',
+          headName: data['HeadName'] ?? '');
     } else {
       return UserModel.empty();
     }
@@ -158,6 +170,8 @@ class UserModel {
       department: json['Department'] ?? '',
       role: json['Role'] ?? '',
       status: false,
+      headKey: json['HeadKey'] ?? '',
+      headName: json['HeadName'] ?? '',
     );
   }
 }
