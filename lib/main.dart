@@ -81,7 +81,8 @@ Future<void> main() async {
     },
   );
 
-  logDebug('initPlatform completed; firebase initialized: ${firebaseApp != null}');
+  logDebug(
+      'initPlatform completed; firebase initialized: ${firebaseApp != null}');
 
   // If Firebase wasn't initialized (e.g., running on Windows/macOS/Linux
   // without FlutterFire configuration), remove the native splash so the
@@ -156,7 +157,8 @@ Future<void> main() async {
       mdmpiAppDir = Directory('/storage/emulated/0/MDMPIAPP');
     } else {
       final appDoc = await getApplicationDocumentsDirectory();
-      mdmpiAppDir = Directory('${appDoc.path}${Platform.pathSeparator}MDMPIAPP');
+      mdmpiAppDir =
+          Directory('${appDoc.path}${Platform.pathSeparator}MDMPIAPP');
     }
 
     if (!mdmpiAppDir.existsSync()) {
