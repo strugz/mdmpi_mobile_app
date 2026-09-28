@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
@@ -28,15 +29,34 @@ class TotalCollectedController extends GetxController {
   void onInit() {
     super.onInit();
     reloadTarget();
-    ever(selectedMonth, (_) => reloadTarget());
-    // A server download may replace the stored targets.
-    ever(CollectionRepository.instance.localDataVersion, (_) => reloadTarget());
+    reloadActual();
+    ever(selectedMonth, (_) {
+      reloadTarget();
+      reloadActual();
+    });
+    // A server download may replace the stored targets and the posted
+    // Actual Collection.
+    ever(CollectionRepository.instance.localDataVersion, (_) {
+      reloadTarget();
+      reloadActual();
+    });
   }
 
   /// Targets used to live only in memory; now read from SQLite per month.
   Future<void> reloadTarget() async {
     final stored = await CollectionRepository.instance.getTarget(_yearMonth);
     targetAmount.value = stored ?? 0.0;
+  }
+
+  /// Reads the selected month's posted Actual Collection from SQLite (the
+  /// workspace download keeps it there).
+  Future<void> reloadActual() async {
+    final yearMonth = _yearMonth;
+    final records =
+        await CollectionRepository.instance.getActualCollections(yearMonth);
+    // The month moved on while this was reading; its own load will land.
+    if (yearMonth != _yearMonth) return;
+    postedActual.assignAll(records.map(MonthlyEntry.fromActual).nonNulls);
   }
 
   /// Every collection in the selected month, before the search box narrows
@@ -86,9 +106,10 @@ class TotalCollectedController extends GetxController {
     return entries;
   }
 
-  /// Actual Collection as the office posts it, every month (revisions list
-  /// item 11: the Collection web will post it and the workspace download will
-  /// fill this). Empty until then, so Actual Collection reads ₱0.00.
+  /// Actual Collection as the office posts it on the Collection web, one
+  /// entry per deposit slip / OR reference (revisions list item 11). The
+  /// workspace download stores it and [reloadActual] fills this for the
+  /// selected month.
   ///
   /// Deposits are not in it, and never were meant to be. A *For Deposit*
   /// activity records what the collector did; it is not money the company has
@@ -124,6 +145,8 @@ class TotalCollectedController extends GetxController {
       return e.accountName.toLowerCase().contains(q) ||
           e.invoiceNumber.toLowerCase().contains(q) ||
           e.collectorName.toLowerCase().contains(q) ||
+          e.referenceNo.toLowerCase().contains(q) ||
+          e.remarks.toLowerCase().contains(q) ||
           NumberFormat('#,##0.00').format(e.amount).contains(q);
     }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -183,19 +206,6 @@ class TotalCollectedController extends GetxController {
   /// when there is more than one.
   int distinctCollectors(List<MonthlyEntry> entries) =>
       entries.map((e) => e.collectorName.trim().toLowerCase()).toSet().length;
-
-  /// Set target amount for the month
-  void setTargetAmount(double value) {
-    targetAmount.value = value;
-    // Persist + queue SET_TARGET for the selected month.
-    CollectionRepository.instance.setTarget(_yearMonth, value);
-  }
-
-  /// Clear target amount
-  void clearTargetAmount() {
-    targetAmount.value = 0.0;
-    CollectionRepository.instance.setTarget(_yearMonth, 0.0);
-  }
 }
 
 /// Internal DTO representing a flattened monthly collection entry
@@ -206,11 +216,40 @@ class MonthlyEntry {
   final String invoiceNumber;
   final String collectorName;
 
+  /// The deposit slip / OR reference of a posted Actual Collection entry.
+  final String referenceNo;
+  final String remarks;
+
+  /// Who in the office posted an Actual Collection entry.
+  final String postedBy;
+
   MonthlyEntry({
     required this.date,
     required this.amount,
     required this.accountName,
     required this.invoiceNumber,
     required this.collectorName,
+    this.referenceNo = '',
+    this.remarks = '',
+    this.postedBy = '',
   });
+
+  /// A posted Actual Collection entry, dated its collection day. Null when
+  /// the stored date does not parse.
+  static MonthlyEntry? fromActual(CollectionActualRecord r) {
+    final date = DateTime.tryParse(r.collectionDate);
+    if (date == null) return null;
+    return MonthlyEntry(
+      date: DateTime(date.year, date.month, date.day),
+      amount: r.amount,
+      // The team's figure, posted against a deposit slip / OR: no account, no
+      // collector.
+      accountName: '',
+      invoiceNumber: '',
+      collectorName: '',
+      referenceNo: r.referenceNo,
+      remarks: r.remarks,
+      postedBy: r.postedBy,
+    );
+  }
 }

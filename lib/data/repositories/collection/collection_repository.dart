@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_da
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_activity_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_account_history_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
@@ -138,7 +139,8 @@ class CollectionRepository extends GetxController {
           logDebug(
               'CollectionRepository: workspace cached — ${ws.items.length} items, '
               '${ws.advances.length} advances, ${ws.activities.length} activities, '
-              '${ws.accountHistory.length} history, ${ws.targets.length} targets');
+              '${ws.accountHistory.length} history, ${ws.targets.length} targets, '
+              '${ws.hasActualCollections ? ws.actualCollections.length : 'no'} actual');
           return ws.items;
         }
       } else {
@@ -169,6 +171,12 @@ class CollectionRepository extends GetxController {
     await (await helper.collectionAccountHistoryDao)
         .replaceAll(ws.accountHistory);
     await (await helper.collectionTargetDao).replaceAll(ws.targets);
+    // Actual Collection is the office's list and wins outright, empty or not
+    // — but only when this server sent one. An older server leaves the key
+    // out, and that is not the office deleting every entry.
+    if (ws.hasActualCollections) {
+      await (await helper.collectionActualDao).replaceAll(ws.actualCollections);
+    }
   }
 
   /// Parse an API item list into domain models via the DTO + mapper layer.
@@ -1435,20 +1443,10 @@ class CollectionRepository extends GetxController {
     }
   }
 
-  /// Persist the monthly target (yyyy-MM) and queue it for upload.
-  Future<void> setTarget(String yearMonth, double amount) async {
-    try {
-      final tDao = await DatabaseHelper.instance.collectionTargetDao;
-      await tDao.set(yearMonth, amount);
-      await _queueChange('SET_TARGET', yearMonth, {
-        'YearMonth': yearMonth,
-        'TargetAmount': amount,
-      });
-    } catch (e) {
-      logDebug('CollectionRepository.setTarget error: $e');
-    }
-  }
-
+  /// The month's target (yyyy-MM), as the office set it on the admin web.
+  ///
+  /// Read-only on the phone: only the CollectionPoster role sets targets, and
+  /// each download replaces the local copy with the server's.
   Future<double?> getTarget(String yearMonth) async {
     try {
       final tDao = await DatabaseHelper.instance.collectionTargetDao;
@@ -1456,6 +1454,19 @@ class CollectionRepository extends GetxController {
     } catch (e) {
       logDebug('CollectionRepository.getTarget error: $e');
       return null;
+    }
+  }
+
+  /// The Actual Collection the office posted in [yearMonth] (yyyy-MM), newest
+  /// first, as the last workspace download left it. Empty on any error.
+  Future<List<CollectionActualRecord>> getActualCollections(
+      String yearMonth) async {
+    try {
+      return await (await DatabaseHelper.instance.collectionActualDao)
+          .forMonth(yearMonth);
+    } catch (e) {
+      logDebug('CollectionRepository.getActualCollections error: $e');
+      return const [];
     }
   }
 

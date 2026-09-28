@@ -35,6 +35,7 @@ import 'dao/collection/collection_activity_dao.dart';
 import 'dao/collection/collection_advance_dao.dart';
 import 'dao/collection/collection_account_history_dao.dart';
 import 'dao/collection/collection_target_dao.dart';
+import 'dao/collection/collection_actual_dao.dart';
 import 'dao/collection/collection_engagement_dao.dart';
 import 'db_schema.dart';
 
@@ -70,6 +71,7 @@ class DatabaseHelper {
   CollectionAdvanceDao? _collectionAdvanceDao;
   CollectionAccountHistoryDao? _collectionAccountHistoryDao;
   CollectionTargetDao? _collectionTargetDao;
+  CollectionActualDao? _collectionActualDao;
   CollectionEngagementDao? _collectionEngagementDao;
 
   Future<Database> get database async {
@@ -379,6 +381,13 @@ class DatabaseHelper {
     final db = await database;
     _collectionTargetDao = CollectionTargetDao(db);
     return _collectionTargetDao!;
+  }
+
+  Future<CollectionActualDao> get collectionActualDao async {
+    if (_collectionActualDao != null) return _collectionActualDao!;
+    final db = await database;
+    _collectionActualDao = CollectionActualDao(db);
+    return _collectionActualDao!;
   }
 
   Future<CollectionEngagementDao> get collectionEngagementDao async {

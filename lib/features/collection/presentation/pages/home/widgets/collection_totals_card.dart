@@ -94,7 +94,7 @@ class CollectionTotalsCardView extends StatelessWidget {
               child: _TotalsHalf(
                 icon: Iconsax.bank,
                 color: CollectionTotalsCard._actualColor,
-                label: 'Actual Collection',
+                label: 'Actual Collection · Team',
                 value: actual,
                 footnote: actualFootnote,
                 onTap: onActualTap,

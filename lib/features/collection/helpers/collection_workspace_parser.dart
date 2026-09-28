@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_account_history_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_activity_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/dtos/collection_item_dto.dart';
@@ -18,12 +19,23 @@ class CollectionWorkspace {
   /// yyyy-MM -> target amount
   final Map<String, double> targets;
 
+  /// Actual Collection the office posted for this collector (revisions list
+  /// item 11), last 12 months.
+  final List<CollectionActualRecord> actualCollections;
+
+  /// Whether the server sent `ActualCollections` at all. An older server
+  /// leaves it out, and that must not read as "the office posted nothing":
+  /// only a list that was sent (even an empty one) replaces the local copy.
+  final bool hasActualCollections;
+
   const CollectionWorkspace({
     required this.items,
     required this.advances,
     required this.activities,
     required this.accountHistory,
     required this.targets,
+    this.actualCollections = const [],
+    this.hasActualCollections = false,
   });
 }
 
@@ -56,6 +68,13 @@ class CollectionWorkspaceParser {
         for (final t in _list(json, 'Targets').map(_map))
           _str(t, 'YearMonth'): _num(t, 'TargetAmount'),
       }..removeWhere((k, _) => k.isEmpty),
+      actualCollections: _list(json, 'ActualCollections')
+          .whereType<Map>()
+          .map(_map)
+          .map(_actual)
+          .whereType<CollectionActualRecord>()
+          .toList(),
+      hasActualCollections: _pick(json, 'ActualCollections') is List,
     );
   }
 
@@ -103,6 +122,29 @@ class CollectionWorkspaceParser {
         collectorName: _str(m, 'CollectorCode'),
         localRef: 'SRV-ACT-${_str(m, 'ActivityId')}',
       );
+
+  /// Null for a row that cannot be kept: no usable id (it is the primary key)
+  /// or no yyyy-MM-dd date (the month it belongs to).
+  static CollectionActualRecord? _actual(Map<String, dynamic> m) {
+    final id = int.tryParse(_str(m, 'ActualId').trim()) ??
+        double.tryParse(_str(m, 'ActualId').trim())?.toInt();
+    if (id == null || id <= 0) return null;
+    final raw = _str(m, 'CollectionDate').trim();
+    // The date is yyyy-MM-dd; tolerate a server that sends a full timestamp.
+    final date = raw.length >= 10 ? raw.substring(0, 10) : '';
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(date)) return null;
+    return CollectionActualRecord(
+      actualId: id,
+      collectionDate: date,
+      amount: _num(m, 'Amount'),
+      referenceNo: _str(m, 'ReferenceNo').trim(),
+      remarks: _str(m, 'Remarks').trim(),
+      postedBy: _str(m, 'PostedBy'),
+      createdAt: _str(m, 'CreatedAt'),
+      updatedAt: _strOrNull(m, 'UpdatedAt'),
+      updatedBy: _strOrNull(m, 'UpdatedBy'),
+    );
+  }
 
   static CollectionAccountHistoryRecord _history(Map<String, dynamic> m) =>
       CollectionAccountHistoryRecord(

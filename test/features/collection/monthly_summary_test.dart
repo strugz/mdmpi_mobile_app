@@ -11,6 +11,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/to
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 
 /// The month's ledger. What these protect: the headline total is the month's
 /// total and not the search result's; the month cannot be stepped into the
@@ -28,6 +30,33 @@ class _Totals extends TotalCollectedController {
   @override
   Future<void> reloadTarget() async {}
 }
+
+/// The posted Actual Collection as the workspace download left it, by month.
+class _Repo extends CollectionRepository {
+  final Map<String, List<CollectionActualRecord>> byMonth = {};
+  final asked = <String>[];
+
+  @override
+  Future<List<CollectionActualRecord>> getActualCollections(
+      String yearMonth) async {
+    asked.add(yearMonth);
+    return byMonth[yearMonth] ?? const [];
+  }
+
+  @override
+  Future<double?> getTarget(String yearMonth) async => null;
+}
+
+CollectionActualRecord _actual(int id, DateTime day, double amount,
+        {String ref = '', String remarks = '', String postedBy = 'Ana'}) =>
+    CollectionActualRecord(
+      actualId: id,
+      collectionDate: DateFormat('yyyy-MM-dd').format(day),
+      amount: amount,
+      referenceNo: ref,
+      remarks: remarks,
+      postedBy: postedBy,
+    );
 
 final _now = DateTime.now();
 final _fmt = DateFormat('yyyy-MM-dd HH:mm');
@@ -312,6 +341,92 @@ void main() {
     });
   });
 
+  // Revisions item 11: the office posts Actual Collection on the Collection
+  // web; the workspace download stores it and the controller reads it back.
+  group('posted Actual Collection', () {
+    final ym = DateFormat('yyyy-MM');
+    final head = TotalCollectedController.thisMonth();
+    final prev = DateTime(head.year, head.month - 1, 1);
+
+    Future<void> settle() async {
+      for (var i = 0; i < 5; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    ({_Repo repo, TotalCollectedController totals}) seedReal() {
+      final activity = _Activity();
+      Get.put<CollectionActivityController>(activity);
+      final repo = _Repo()
+        ..byMonth[ym.format(head)] = [
+          _actual(1, DateTime(head.year, head.month, 3), 15000,
+              ref: 'OR 12345', remarks: 'BDO deposit slip'),
+          _actual(2, DateTime(head.year, head.month, 9), 5000, ref: '88812'),
+        ]
+        ..byMonth[ym.format(prev)] = [
+          _actual(3, DateTime(prev.year, prev.month, 20), 7000, ref: 'OR 7'),
+        ];
+      Get.put<CollectionRepository>(repo);
+      // The real onInit: it is what wires the loads.
+      final totals = Get.put(TotalCollectedController());
+      return (repo: repo, totals: totals);
+    }
+
+    test('fills from the repository for the selected month', () async {
+      final s = seedReal();
+      await settle();
+
+      expect(s.repo.asked, contains(ym.format(head)));
+      expect(s.totals.actualCollectionTotal, 20000);
+      expect(s.totals.postedEntries.map((e) => e.referenceNo),
+          ['88812', 'OR 12345'],
+          reason: 'newest first');
+      expect(s.totals.postedEntries.last.remarks, 'BDO deposit slip');
+      expect(s.totals.postedEntries.last.postedBy, 'Ana');
+    });
+
+    test('follows the selected month', () async {
+      final s = seedReal();
+      await settle();
+
+      s.totals.previousMonth();
+      await settle();
+      expect(s.repo.asked.last, ym.format(prev));
+      expect(s.totals.postedEntries.single.referenceNo, 'OR 7');
+      expect(s.totals.actualCollectionTotal, 7000);
+    });
+
+    test('refreshes when a download replaces the local data', () async {
+      final s = seedReal();
+      await settle();
+      expect(s.totals.actualCollectionTotal, 20000);
+
+      // The office corrected an entry and posted another.
+      s.repo.byMonth[ym.format(head)] = [
+        _actual(1, DateTime(head.year, head.month, 3), 14000, ref: 'OR 12345'),
+        _actual(4, DateTime(head.year, head.month, 10), 1000, ref: 'OR 999'),
+      ];
+      CollectionRepository.instance.localDataVersion.value++;
+      await settle();
+
+      expect(s.totals.actualCollectionTotal, 15000);
+      expect(s.totals.postedEntries.map((e) => e.referenceNo),
+          ['OR 999', 'OR 12345']);
+    });
+
+    test('the search matches reference and remarks', () async {
+      final s = seedReal();
+      await settle();
+
+      s.totals.searchQuery.value = '12345';
+      expect(s.totals.actualEntries.single.referenceNo, 'OR 12345');
+      s.totals.searchQuery.value = 'bdo';
+      expect(s.totals.actualEntries.single.referenceNo, 'OR 12345');
+      expect(s.totals.actualCollectionTotal, 20000,
+          reason: 'the total never follows the search');
+    });
+  });
+
   group('stepping through months', () {
     test('cannot go past the current month', () {
       final s = _seed();
@@ -491,18 +606,52 @@ void main() {
       await pump(tester, type: 'Actual');
 
       expect(find.text('₱32,000.00'), findsWidgets);
-      expect(find.text('64% of ₱50,000.00 target'), findsOneWidget);
+      expect(find.text('64% of ₱50,000.00 team target'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing);
     });
 
-    testWidgets('Actual Collection with no target offers to set one',
+    testWidgets('an Actual Collection row leads with its reference',
         (tester) async {
-      _seed();
+      final s = _seed();
+      s.totals.postedActual.addAll([
+        MonthlyEntry.fromActual(_actual(
+            1, DateTime(_now.year, _now.month, 3), 15000,
+            ref: 'OR 12345', remarks: 'BDO deposit slip'))!,
+        MonthlyEntry.fromActual(_actual(
+            2, DateTime(_now.year, _now.month, 4), 5000,
+            ref: '88812', postedBy: ''))!,
+      ]);
       await pump(tester, type: 'Actual');
 
-      expect(find.text('Set a target'), findsOneWidget);
+      expect(find.text('OR 12345'), findsOneWidget);
+      expect(find.text('Ref. 88812'), findsOneWidget,
+          reason: 'a bare number is labelled');
+      expect(find.text('BDO deposit slip'), findsOneWidget);
+      expect(find.text('Posted by Ana'), findsOneWidget);
+      expect(find.text('₱15,000.00'), findsOneWidget);
+      expect(find.text('₱20,000.00'), findsOneWidget, reason: 'the headline');
+
+      await tester.enterText(find.byType(TextField), 'bdo');
+      await tester.pumpAndSettle();
+      expect(find.text('OR 12345'), findsOneWidget);
+      expect(find.text('Ref. 88812'), findsNothing);
+    });
+
+    testWidgets('the target is read-only: the office sets it', (tester) async {
+      final s = _seed();
+      await pump(tester, type: 'Actual');
+
+      expect(find.text('No team target set yet · the office sets it'),
+          findsOneWidget);
+      expect(find.text('Set a target'), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsNothing);
+
+      s.totals.targetAmount.value = 50000;
+      await tester.pumpAndSettle();
+      expect(find.text('0% of ₱50,000.00 team target'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Edit'), findsNothing,
+          reason: 'a collector cannot change their own target');
     });
 
     testWidgets('a month of deposits alone posts nothing, and says why',
@@ -517,7 +666,7 @@ void main() {
           find.text('No Actual Collection posted for $month'), findsOneWidget);
       expect(find.textContaining('stay in your engagement history'),
           findsOneWidget);
-      expect(find.text('0% of ₱50,000.00 target'), findsOneWidget);
+      expect(find.text('0% of ₱50,000.00 team target'), findsOneWidget);
       expect(find.text('Deposited'), findsNothing);
     });
   });

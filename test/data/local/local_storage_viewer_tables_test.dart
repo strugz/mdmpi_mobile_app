@@ -57,6 +57,26 @@ void main() {
         ]));
   });
 
+  // Actual Collection as the office posted it: when the Actual Collection
+  // page reads wrong, this is the table to read.
+  test('lists the posted Actual Collection', () async {
+    expect(await listUserTables(db), contains('a_tblCollectionActual'));
+    final columns =
+        (await db.rawQuery('PRAGMA table_info(a_tblCollectionActual)'))
+            .map((c) => c['name'])
+            .toList();
+    expect(
+        columns,
+        containsAll(<String>[
+          'actualId',
+          'collectionDate',
+          'amount',
+          'referenceNo',
+          'remarks',
+          'postedBy',
+        ]));
+  });
+
   test('picks up a table added after the list was first read', () async {
     final before = await listUserTables(db);
     await db.execute('CREATE TABLE a_tblSomethingNew (id INTEGER PRIMARY KEY)');

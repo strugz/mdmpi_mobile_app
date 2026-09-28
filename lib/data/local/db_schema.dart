@@ -510,6 +510,31 @@ Future<void> ensureCollectionTables(Database db) async {
     )
   ''');
 
+  // Table: a_tblCollectionActual (Actual Collection as the office posts it)
+  //
+  // One row per deposit slip / OR reference, posted on the Collection web and
+  // sent back in the workspace download (revisions list item 11): the team's
+  // figure, the same list for every collector. A cache of
+  // the server's list: replaced wholesale whenever a download carries it, and
+  // left alone when an older server does not. Read by collectionDate month.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionActual (
+      actualId INTEGER PRIMARY KEY,
+      collectionDate TEXT,
+      amount REAL DEFAULT 0,
+      referenceNo TEXT,
+      remarks TEXT,
+      postedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      updatedBy TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_actual_date
+      ON a_tblCollectionActual (collectionDate)
+  ''');
+
   // Table: a_tblCollectionEngagement (the collector's own field-work archive)
   //
   // Every other collection table is a cache of what the server currently says,

@@ -207,7 +207,7 @@ class _MonthHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isActual ? 'Posted' : 'Collected',
+                      isActual ? 'Team · posted by the office' : 'Collected',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
@@ -232,11 +232,7 @@ class _MonthHeader extends StatelessWidget {
                     ),
                     const SizedBox(height: BSizes.xs),
                     if (isActual)
-                      _TargetLine(
-                        total: total,
-                        target: target,
-                        onEdit: () => _editTarget(context),
-                      )
+                      _TargetLine(total: total, target: target)
                     else
                       Text(
                         _countLine(entries),
@@ -260,76 +256,34 @@ class _MonthHeader extends StatelessWidget {
     return '${entries.length} collection${entries.length == 1 ? '' : 's'} · '
         '$accounts account${accounts == 1 ? '' : 's'}';
   }
-
-  void _editTarget(BuildContext context) {
-    final tc = TextEditingController(
-      text: controller.targetAmount.value > 0
-          ? BFormatter.formatPesoCurrency(controller.targetAmount.value,
-                  includeSymbol: false)
-              .trim()
-          : '',
-    );
-
-    Get.dialog(AlertDialog(
-      title: Text(controller.targetAmount.value > 0
-          ? 'Edit target'
-          : 'Set a target for ${DateFormat('MMMM').format(controller.selectedMonth.value)}'),
-      content: TextField(
-        controller: tc,
-        autofocus: true,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [ThousandsSeparatorInputFormatter()],
-        decoration: const InputDecoration(prefixText: '₱ ', hintText: '0.00'),
-      ),
-      actions: [
-        TextButton(onPressed: Get.back, child: const Text('Cancel')),
-        ElevatedButton(
-          onPressed: () {
-            controller.setTargetAmount(BFormatter.parseAmount(tc.text));
-            Get.back();
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    ));
-  }
 }
 
-/// Actual Collection against the month's target, or the offer to set one.
+/// Actual Collection against the month's target.
 ///
-/// This replaces a floating action button whose only content was a pencil
-/// or a plus — a target belongs next to the figure it is measured against.
+/// Read-only: the office sets targets on the admin web (the CollectionPoster
+/// role), and they arrive with the next download. A collector could set their
+/// own before, which made the target whatever they typed.
 class _TargetLine extends StatelessWidget {
-  const _TargetLine({
-    required this.total,
-    required this.target,
-    required this.onEdit,
-  });
+  const _TargetLine({required this.total, required this.target});
 
   final double total;
   final double target;
-  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final small =
         theme.textTheme.bodySmall?.copyWith(color: BCollectionColors.inkMuted);
-    final buttonStyle = TextButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
-      minimumSize: const Size(0, 32),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-
     if (target <= 0) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          onPressed: onEdit,
-          style: buttonStyle,
-          icon: const Icon(Iconsax.flag, size: 16),
-          label: const Text('Set a target'),
-        ),
+      return Row(
+        children: [
+          const Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
+          const SizedBox(width: BSizes.xs),
+          Expanded(
+            child: Text('No team target set yet · the office sets it',
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: small),
+          ),
+        ],
       );
     }
 
@@ -356,29 +310,16 @@ class _TargetLine extends StatelessWidget {
           ),
         ),
         const SizedBox(height: BSizes.xs),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                met
-                    ? 'Target of ${BFormatter.formatPesoCurrency(target)} met'
-                    : '${(progress * 100).floor()}% of ${BFormatter.formatPesoCurrency(target)} target',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: small?.copyWith(
-                  color: met
-                      ? BCollectionColors.success
-                      : BCollectionColors.inkMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: onEdit,
-              style: buttonStyle,
-              child: const Text('Edit'),
-            ),
-          ],
+        Text(
+          met
+              ? 'Team target of ${BFormatter.formatPesoCurrency(target)} met'
+              : '${(progress * 100).floor()}% of ${BFormatter.formatPesoCurrency(target)} team target',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: small?.copyWith(
+            color: met ? BCollectionColors.success : BCollectionColors.inkMuted,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -403,7 +344,7 @@ class _SearchField extends StatelessWidget {
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             hintText: isActual
-                ? 'Search by account or collector'
+                ? 'Search by reference or remarks'
                 : 'Search by account, invoice or collector',
             prefixIcon: const Icon(Iconsax.search_normal, size: 18),
             isDense: true,
@@ -530,6 +471,10 @@ class _DayHeader extends StatelessWidget {
 
 /// One collection: account, invoice, amount. The amount sits right so the
 /// column reads top to bottom like a statement.
+///
+/// A posted Actual Collection entry has no account: it is one deposit slip /
+/// OR, so its reference leads, the office's remarks sit quietly under it, and
+/// who posted it closes the row in small print.
 class _EntryRow extends StatelessWidget {
   const _EntryRow({
     required this.entry,
@@ -543,13 +488,22 @@ class _EntryRow extends StatelessWidget {
   final bool showCollector;
   final bool last;
 
+  /// "OR 12345" reads as it was typed; a bare number is labelled "Ref.".
+  static String referenceLabel(String referenceNo) {
+    final ref = referenceNo.trim();
+    if (ref.isEmpty) return 'No reference';
+    return RegExp(r'^[A-Za-z]').hasMatch(ref) ? ref : 'Ref. $ref';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final secondary = [
       if (!isActual) '#${entry.invoiceNumber}',
+      if (isActual && entry.remarks.trim().isNotEmpty) entry.remarks.trim(),
       if (showCollector) entry.collectorName,
     ].join(' · ');
+    final postedBy = isActual ? entry.postedBy.trim() : '';
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: BSizes.spaceBtwItemsLight),
@@ -568,7 +522,9 @@ class _EntryRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.accountName,
+                  isActual
+                      ? referenceLabel(entry.referenceNo)
+                      : entry.accountName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium
@@ -581,6 +537,16 @@ class _EntryRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall
+                        ?.copyWith(color: BCollectionColors.inkMuted),
+                  ),
+                ],
+                if (postedBy.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Posted by $postedBy',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
                         ?.copyWith(color: BCollectionColors.inkMuted),
                   ),
                 ],
@@ -647,8 +613,8 @@ class _EmptyMonth extends StatelessWidget {
               // Deposits used to fill this page. Say where they went, so a
               // collector who just logged one does not think it was lost.
               isActual
-                  ? 'The office posts Actual Collection. Deposits you record '
-                      'stay in your engagement history.'
+                  ? "The office posts the team's Actual Collection. Deposits "
+                      'you record stay in your engagement history.'
                   : 'Use the arrows above to look at another month.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
