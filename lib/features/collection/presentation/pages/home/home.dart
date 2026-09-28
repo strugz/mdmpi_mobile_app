@@ -127,7 +127,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                 Obx(() =>
                                                     CollectionBucketButton(
                                                       itemCount: controller
-                                                          .bucketItems.length,
+                                                          .regularBucketItemCount,
                                                       onTap: () => Get.to(
                                                         () =>
                                                             const CollectionBucketScreen(),

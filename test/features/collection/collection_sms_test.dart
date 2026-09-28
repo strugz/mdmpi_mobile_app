@@ -75,6 +75,39 @@ void main() {
       );
     });
 
+    test('1. an account taken on for reconciliation says so', () {
+      expect(
+        CollectionSmsService.acquiringAccounts(const [
+          SmsAccountLine(
+              clientName: 'Amka Trading',
+              poNumbers: ['1', '2', '3', '4', '5'],
+              invoiceIds: ['a', 'b', 'c', 'd', 'e'],
+              amount: 118139.87,
+              reconciliation: true),
+        ]),
+        'Now handling Amka Trading for reconciliation. POs 1, 2, 3, 4, 5. '
+        'Invoices a, b, c, d, e. PHP 118,139.87.',
+      );
+      expect(
+        CollectionSmsService.acquiringAccounts(const [
+          SmsAccountLine(
+              clientName: 'Amka Trading',
+              poNumbers: ['1'],
+              invoiceIds: ['a'],
+              amount: 100,
+              reconciliation: true),
+          SmsAccountLine(
+              clientName: 'Metro Globe',
+              poNumbers: ['2'],
+              invoiceIds: ['b'],
+              amount: 50),
+        ]),
+        'Now handling 2 accounts: Amka Trading (reconciliation: POs 1; '
+        'invoices a; PHP 100.00); Metro Globe (1 PO, 1 invoice, PHP 50.00). '
+        'Total PHP 150.00.',
+      );
+    });
+
     test('1. several accounts acquired together make one message', () {
       expect(
         CollectionSmsService.acquiringAccounts(const [

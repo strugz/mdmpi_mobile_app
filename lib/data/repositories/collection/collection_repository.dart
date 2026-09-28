@@ -292,11 +292,18 @@ class CollectionRepository extends GetxController {
       // collector. Server-side first-wins is resolved later at Upload All.
       final name = collectorName;
       final claimed = <CollectionItemModel>[];
+      // Accounts taken on for reconciliation, which the SMS names as such.
+      final reconClients = <String>{};
       for (final id in ids) {
         final item = await dao.getCollectionItemById(id);
         if (item != null) {
+          // A Reconciliation invoice stays one once claimed, as the
+          // controller keeps it in memory; clearing it here lost the mark on
+          // the next reload.
+          final isRecon = item.status == 'Reconciliation';
+          if (isRecon) reconClients.add(item.client.id);
           final updated = item.copyWith(
-            status: '',
+            status: isRecon ? 'Reconciliation' : '',
             assignedAt: now,
             collectorName: name,
           );
@@ -319,6 +326,7 @@ class CollectionRepository extends GetxController {
             poNumbers: group.map((i) => i.poNumber).toSet(),
             invoiceIds: group.map((i) => i.id),
             amount: group.fold<double>(0, (sum, i) => sum + i.toBeCollected),
+            reconciliation: reconClients.contains(group.first.client.id),
           ),
       ];
       if (accounts.isNotEmpty) {

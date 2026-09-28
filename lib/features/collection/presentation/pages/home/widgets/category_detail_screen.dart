@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
@@ -193,9 +194,12 @@ class CategoryDetailScreen extends StatelessWidget {
                         invoices.fold(0.0, (sum, i) => sum + i.totalCollected),
                     onTap: () =>
                         _showAccountInvoices(context, client, invoices),
-                    onInfoTap: () {},
+                    // The account's page, as Details opens it from the
+                    // bucket.
+                    onInfoTap: () => Get.to(() =>
+                        CollectionAccountInformationScreen(client: client)),
                     onClaimTap: title == 'Reconciliation'
-                        ? () => controller.claimAccount(client.id)
+                        ? () => controller.claimReconciliation(client.id)
                         : null,
                   );
                 },

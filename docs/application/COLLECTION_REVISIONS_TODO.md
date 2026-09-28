@@ -94,7 +94,7 @@ the collector's initials:
 
 | # | Trigger | Message |
 | --- | --- | --- |
-| 1 | Acquiring Account | `Now handling [Client]. 5 POs, 6 invoices, PHP [balance]. - MAR`; several accounts acquired together: one text, `Now handling 3 accounts: [Client] (5 POs, 6 invoices, PHP [balance]); … Total PHP [sum]. - MAR` |
+| 1 | Acquiring Account | `Now handling [Client]. 5 POs, 6 invoices, PHP [balance]. - MAR` (reconciliation lists every number: `Now handling [Client] for reconciliation. POs [POs]. Invoices [Invoices]. PHP [balance]. - MAR`); several accounts acquired together: one text, `Now handling 3 accounts: [Client] (5 POs, 6 invoices, PHP [balance]); … Total PHP [sum]. - MAR` |
 | 2 | Saving Engagement | `Collected PHP [total] from [Client]. Invoice [Invoice] (PO [PO]). Check [Bank] [No.], dated [Date]. - MAR` (Partial: `Partial payment of PHP [total] from …`; several invoices list each amount; the check part only when paid by check) |
 | 3 | Defer Account | `Postponed [Client]. Reason: [Remarks]. - MAR` |
 | 4 | Clear Engagement | `Done with [Client]. - MAR` |

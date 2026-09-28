@@ -70,6 +70,7 @@ class SmsAccountLine {
     required this.poNumbers,
     required this.invoiceIds,
     this.amount,
+    this.reconciliation = false,
   });
 
   final String clientName;
@@ -78,6 +79,10 @@ class SmsAccountLine {
 
   /// The balance taken on; left out of the message when null.
   final double? amount;
+
+  /// Taken on for reconciliation (its invoices were marked Reconciliation),
+  /// not for collection. The message says so.
+  final bool reconciliation;
 }
 
 typedef HeadContactResolver = Future<HeadContact?> Function();
@@ -249,6 +254,8 @@ class CollectionSmsService extends GetxController {
   // tells the Head. The collector's initials are added by [send].
 
   /// 1. "Now handling [Client]. 5 POs, 6 invoices, PHP 95,198.18."
+  /// Reconciliation lists every number: "Now handling [Client] for
+  /// reconciliation. POs A, B. Invoices X, Y. PHP 118,139.87."
   /// Counts, not the numbers themselves: an account can carry dozens of
   /// invoices. [amount] is the balance taken on; left out when null.
   static String acquiringAccount({
@@ -256,7 +263,21 @@ class CollectionSmsService extends GetxController {
     required Iterable<String> poNumbers,
     required Iterable<String> invoiceIds,
     double? amount,
+    bool reconciliation = false,
   }) {
+    if (reconciliation) {
+      // Reconciliation names every PO and invoice: the Head checks them
+      // one by one against the office's records.
+      final parts = [
+        _labelled('PO', 'POs', poNumbers),
+        _labelled('Invoice', 'Invoices', invoiceIds),
+        if (amount != null) _peso(amount),
+      ].where((s) => s.isNotEmpty).map(_end);
+      return [
+        'Now handling ${clientName.trim()} for reconciliation.',
+        ...parts,
+      ].join(' ');
+    }
     final details = [
       _count(_items(poNumbers).length, 'PO', 'POs'),
       _count(_items(invoiceIds).length, 'invoice', 'invoices'),
@@ -276,15 +297,26 @@ class CollectionSmsService extends GetxController {
           clientName: a.clientName,
           poNumbers: a.poNumbers,
           invoiceIds: a.invoiceIds,
-          amount: a.amount);
+          amount: a.amount,
+          reconciliation: a.reconciliation);
     }
     final lines = accounts.map((a) {
+      final name = a.clientName.trim();
+      if (a.reconciliation) {
+        // Every PO and invoice, as for one account; ';' between the lists
+        // because the numbers themselves are separated by ','.
+        final parts = [
+          _labelled('POs', 'POs', a.poNumbers),
+          _labelled('invoices', 'invoices', a.invoiceIds),
+          if (a.amount != null) _peso(a.amount!),
+        ].where((s) => s.isNotEmpty).join('; ');
+        return '$name (reconciliation${parts.isEmpty ? '' : ': $parts'})';
+      }
       final details = [
         _count(_items(a.poNumbers).length, 'PO', 'POs'),
         _count(_items(a.invoiceIds).length, 'invoice', 'invoices'),
         if (a.amount != null) _peso(a.amount!),
       ].where((s) => s.isNotEmpty).join(', ');
-      final name = a.clientName.trim();
       return details.isEmpty ? name : '$name ($details)';
     }).join('; ');
     final amounts = accounts.map((a) => a.amount).whereType<double>();
