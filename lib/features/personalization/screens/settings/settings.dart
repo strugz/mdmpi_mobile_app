@@ -16,6 +16,8 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widge
 
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/default_area_sheet.dart';
 
 import '../../../../data/repositories/authentication/authentication_repository.dart';
 
@@ -191,12 +193,51 @@ class _CollectionSettings extends StatelessWidget {
         const SizedBox(height: BSizes.spaceBtwItems),
         const _MyHeadTile(),
         const _ContactDirectoryTile(),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const BSectionHeading(title: 'Preferences', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const _DefaultAreaTile(),
+        BSettingsMenuTile(
+          icon: Iconsax.folder_2,
+          title: 'Storage',
+          subTitle: 'Local data size, cached pictures, re-download the bucket',
+          onTap: () => Get.toNamed(BRoutes.collectionStorage),
+        ),
+        BSettingsMenuTile(
+          icon: Iconsax.info_circle,
+          title: 'About',
+          subTitle: 'App version and what\'s new',
+          onTap: () => Get.toNamed(BRoutes.about),
+        ),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _LocalStorageViewerTile(),
       ],
     );
+  }
+}
+
+/// Collection TODO item 15: the territory the bucket opens on.
+class _DefaultAreaTile extends StatelessWidget {
+  const _DefaultAreaTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Get.find<CollectionSettingsController>();
+    return Obx(() => BSettingsMenuTile(
+          icon: Iconsax.location,
+          title: 'Default area',
+          subTitle: settings.defaultArea.value.isEmpty
+              ? 'All areas · the bucket opens unfiltered'
+              : 'The bucket opens on ${settings.defaultAreaLabel}',
+          onTap: () async {
+            final code = await DefaultAreaSheet.show(context,
+                selected: settings.defaultArea.value);
+            if (code == null) return;
+            await settings.setDefaultArea(code);
+          },
+        ));
   }
 }
 

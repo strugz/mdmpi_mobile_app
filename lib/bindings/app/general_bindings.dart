@@ -91,6 +91,7 @@ import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repositor
 import 'package:mdmpi_mobile_app/features/personalization/controller/my_head_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.dart';
 
 class GeneralBindings extends Bindings {
@@ -268,6 +269,8 @@ class GeneralBindings extends Bindings {
     // The Head's Team Activity tab (item 21): online only, no local cache.
     Get.lazyPut(() => TeamActivityRepository(), fenix: true);
     Get.lazyPut(() => TeamActivityController(), fenix: true);
+    // Settings → Default area (item 15): GetStorage-backed, no repository.
+    Get.lazyPut(() => CollectionSettingsController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
 

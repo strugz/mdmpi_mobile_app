@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
@@ -333,6 +334,14 @@ class CollectionActivityController extends GetxController {
     // Any change to either list invalidates the cached per-client aggregates.
     // Registered before the first load so nothing can serve a stale map.
     startAggregateTracking();
+    // Settings → Default area (TODO item 15): a collector who works one
+    // territory has the bucket open on it. Filter by Area still changes it
+    // for the day; nothing is written back.
+    final storage = _storageOrNull();
+    if (storage != null) {
+      selectedArea.value =
+          CollectionSettingsController.readDefaultArea(storage.read);
+    }
     // Load data
     loadBucket();
     _loadPersistedExtras();
