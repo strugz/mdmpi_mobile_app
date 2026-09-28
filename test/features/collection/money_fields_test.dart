@@ -255,7 +255,9 @@ void main() {
       await tester.enterText(_amount('2'), '400');
       await tester.pumpAndSettle();
 
-      expect(_textOf(tester, _total()), '1,000');
+      // Grouped while typed; the centavos are added once focus moved on to
+      // the allocation rows, the same as on the Collection web.
+      expect(_textOf(tester, _total()), '1,000.00');
       expect(find.text('Fully allocated'), findsOneWidget);
     });
   });

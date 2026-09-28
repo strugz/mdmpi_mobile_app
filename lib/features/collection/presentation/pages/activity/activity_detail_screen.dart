@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/reveal_scroll.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
 
 /// Record a collection against one invoice.
 ///
@@ -391,35 +392,38 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     return '${BFormatter.formatDaysOverdue(widget.item.daysPastDue).toLowerCase()} ($date)';
   }
 
-  Widget _amountField() => TextField(
+  Widget _amountField() => BAmountBlurPad(
         controller: totalCollectedController,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        // The same typing rules as every other money field in Collection:
-        // digits, one decimal point, grouped as you go so a five-figure
-        // balance stays readable.
-        inputFormatters: [ThousandsSeparatorInputFormatter()],
-        // The amount is the point of the form, so it takes the headline
-        // role; the ₱ shares it so the two always match in size.
-        style: Theme.of(context)
-            .textTheme
-            .headlineSmall
-            ?.copyWith(fontWeight: FontWeight.w700),
-        decoration: InputDecoration(
-          hintText: '0.00',
-          // prefixIcon rather than prefixText: a prefix only paints once the
-          // field has focus or content, so the peso sign would vanish exactly
-          // when the field is empty and the label matters most.
-          prefixIcon: Padding(
-            padding: const EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
-            child: Text(
-              '₱',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: BCollectionColors.inkMuted,
-                  ),
+        child: TextField(
+          controller: totalCollectedController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          // The same typing rules as every other money field in Collection:
+          // digits, one decimal point, grouped as you go so a five-figure
+          // balance stays readable.
+          inputFormatters: [ThousandsSeparatorInputFormatter()],
+          // The amount is the point of the form, so it takes the headline
+          // role; the ₱ shares it so the two always match in size.
+          style: Theme.of(context)
+              .textTheme
+              .headlineSmall
+              ?.copyWith(fontWeight: FontWeight.w700),
+          decoration: InputDecoration(
+            hintText: '0.00',
+            // prefixIcon rather than prefixText: a prefix only paints once the
+            // field has focus or content, so the peso sign would vanish exactly
+            // when the field is empty and the label matters most.
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
+              child: Text(
+                '₱',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: BCollectionColors.inkMuted,
+                    ),
+              ),
             ),
+            prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
           ),
-          prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
         ),
       );
 
@@ -529,7 +533,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
         const SizedBox(height: BSizes.spaceBtwInputFields),
         TextField(
           controller: checkNumberController,
-          keyboardType: TextInputType.number,
+          keyboardType: BCheckNumberInput.keyboardType,
+          inputFormatters: BCheckNumberInput.formatters,
           decoration: const InputDecoration(
             hintText: 'Check number',
             prefixIcon: Icon(Iconsax.card_edit),

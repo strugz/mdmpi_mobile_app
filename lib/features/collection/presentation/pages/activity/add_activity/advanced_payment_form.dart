@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
 
 class AdvancedPaymentFormScreen extends StatefulWidget {
   const AdvancedPaymentFormScreen({super.key});
@@ -83,28 +84,32 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                       setState(() => selectedAccount = client),
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
-                TextFormField(
+                BAmountBlurPad(
                   controller: amountController,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [ThousandsSeparatorInputFormatter()],
-                  decoration: const InputDecoration(
-                    labelText: 'Amount Paid',
-                    prefixIcon: Icon(Iconsax.money_send),
-                    prefixText: '₱ ',
+                  child: TextFormField(
+                    controller: amountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [ThousandsSeparatorInputFormatter()],
+                    decoration: const InputDecoration(
+                      labelText: 'Amount Paid',
+                      hintText: '0.00',
+                      prefixIcon: Icon(Iconsax.money_send),
+                      prefixText: '₱ ',
+                    ),
+                    // "Not empty" was the whole check, so a zero or an
+                    // unparseable amount sailed through and was recorded as
+                    // ₱0.00 against the account.
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Amount is required';
+                      }
+                      if (BFormatter.parseAmount(value) <= 0) {
+                        return 'Enter an amount greater than zero';
+                      }
+                      return null;
+                    },
                   ),
-                  // "Not empty" was the whole check, so a zero or an
-                  // unparseable amount sailed through and was recorded as
-                  // ₱0.00 against the account.
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Amount is required';
-                    }
-                    if (BFormatter.parseAmount(value) <= 0) {
-                      return 'Enter an amount greater than zero';
-                    }
-                    return null;
-                  },
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 TextFormField(

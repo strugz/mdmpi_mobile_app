@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
 
 /// Supervisor "Add to Bucket": create a collection invoice, saved to the server
 /// (DB first) and added to the shared bucket.
@@ -108,19 +109,22 @@ class _AddToBucketScreenState extends State<AddToBucketScreen> {
             // gave it. Same field the bucket cards and the P.O. filter read.
             _field(_poNumber, 'P.O. Number (customer purchase order)',
                 capitalization: TextCapitalization.characters),
-            _field(
-              _amount,
-              'Amount Due *',
-              required: true,
-              keyboard: const TextInputType.numberWithOptions(decimal: true),
-              formatters: [ThousandsSeparatorInputFormatter()],
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Required';
-                if (BFormatter.parseAmount(v) <= 0) {
-                  return 'Enter an amount greater than zero';
-                }
-                return null;
-              },
+            BAmountBlurPad(
+              controller: _amount,
+              child: _field(
+                _amount,
+                'Amount Due *',
+                required: true,
+                keyboard: const TextInputType.numberWithOptions(decimal: true),
+                formatters: [ThousandsSeparatorInputFormatter()],
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (BFormatter.parseAmount(v) <= 0) {
+                    return 'Enter an amount greater than zero';
+                  }
+                  return null;
+                },
+              ),
             ),
             Padding(
               padding:

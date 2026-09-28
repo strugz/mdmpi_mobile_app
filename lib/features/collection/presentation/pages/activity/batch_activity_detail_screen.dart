@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/reveal_scroll.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/bank_field.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
 
 /// Record one payment against several invoices at once.
 ///
@@ -426,31 +427,34 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
               ?.copyWith(color: BCollectionColors.inkMuted),
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
-        TextField(
-          key: const ValueKey('batch-total'),
+        BAmountBlurPad(
           controller: totalAmountController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: [ThousandsSeparatorInputFormatter()],
-          // The amount is the point of the form, so it takes the headline
-          // role; the ₱ shares it so the two always match in size.
-          style: theme.textTheme.headlineSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
-          decoration: InputDecoration(
+          child: TextField(
+            key: const ValueKey('batch-total'),
+            controller: totalAmountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
+            // The amount is the point of the form, so it takes the headline
+            // role; the ₱ shares it so the two always match in size.
+            style: theme.textTheme.headlineSmall
+                ?.copyWith(fontWeight: FontWeight.w700),
+            decoration: InputDecoration(
             hintText: '0.00',
-            // An icon rather than prefixText, which only paints once the
-            // field has focus or content — so it would vanish while empty.
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
-              child: Text(
-                '₱',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: BCollectionColors.inkMuted,
+              // An icon rather than prefixText, which only paints once the
+              // field has focus or content — so it would vanish while empty.
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: BSizes.md, right: BSizes.sm),
+                child: Text(
+                  '₱',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: BCollectionColors.inkMuted,
+                  ),
                 ),
               ),
+              prefixIconConstraints:
+                  const BoxConstraints(minWidth: 0, minHeight: 0),
             ),
-            prefixIconConstraints:
-                const BoxConstraints(minWidth: 0, minHeight: 0),
           ),
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
@@ -561,16 +565,20 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: TextField(
-                  key: ValueKey('batch-amount-${item.id}'),
+                child: BAmountBlurPad(
                   controller: _amountControllerFor(item),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [ThousandsSeparatorInputFormatter()],
-                  decoration: const InputDecoration(
-                    labelText: 'Applied',
-                    prefixText: '₱ ',
-                    isDense: true,
+                  child: TextField(
+                    key: ValueKey('batch-amount-${item.id}'),
+                    controller: _amountControllerFor(item),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [ThousandsSeparatorInputFormatter()],
+                    decoration: const InputDecoration(
+                      labelText: 'Applied',
+                      hintText: '0.00',
+                      prefixText: '₱ ',
+                      isDense: true,
+                    ),
                   ),
                 ),
               ),
@@ -716,6 +724,8 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
             Expanded(
               child: TextField(
                 controller: checkNumberController,
+                keyboardType: BCheckNumberInput.keyboardType,
+                inputFormatters: BCheckNumberInput.formatters,
                 decoration: const InputDecoration(
                   labelText: 'Check number',
                   prefixIcon: Icon(Iconsax.card_edit),

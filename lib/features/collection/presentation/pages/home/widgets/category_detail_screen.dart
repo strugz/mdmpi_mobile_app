@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
   const CategoryDetailScreen({
@@ -672,33 +673,36 @@ class _ApplyAdvanceSheetState extends State<_ApplyAdvanceSheet> {
                     : null,
               ),
               const SizedBox(height: BSizes.spaceBtwInputFields),
-              TextFormField(
-                key: const ValueKey('advance-amount-due'),
+              BAmountBlurPad(
                 controller: _amountDue,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-                // The invoice's full amount, never the advance. Larger than
-                // the advance: partly paid, the balance stays in the bucket.
-                // Smaller: the rest stays float for another invoice.
-                decoration: const InputDecoration(
-                  labelText: 'Amount due on the invoice',
-                  hintText: "The invoice's full amount",
-                  prefixText: '₱ ',
-                  prefixIcon: Icon(Iconsax.money, size: 20),
-                  helperText: 'More than the advance: the balance stays in '
-                      'the bucket. Less: the rest stays as float.',
-                  helperMaxLines: 3,
+                child: TextFormField(
+                  key: const ValueKey('advance-amount-due'),
+                  controller: _amountDue,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
+                  // The invoice's full amount, never the advance. Larger than
+                  // the advance: partly paid, the balance stays in the bucket.
+                  // Smaller: the rest stays float for another invoice.
+                  decoration: const InputDecoration(
+                    labelText: 'Amount due on the invoice',
+                    hintText: "The invoice's full amount",
+                    prefixText: '₱ ',
+                    prefixIcon: Icon(Iconsax.money, size: 20),
+                    helperText: 'More than the advance: the balance stays in '
+                        'the bucket. Less: the rest stays as float.',
+                    helperMaxLines: 3,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Enter the amount due';
+                    }
+                    if (BFormatter.parseAmount(v) <= 0) {
+                      return 'Enter an amount greater than zero';
+                    }
+                    return null;
+                  },
                 ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Enter the amount due';
-                  }
-                  if (BFormatter.parseAmount(v) <= 0) {
-                    return 'Enter an amount greater than zero';
-                  }
-                  return null;
-                },
               ),
               const SizedBox(height: BSizes.spaceBtwInputFields),
               // Optional, like Add to Bucket's: a reference, not prose.
