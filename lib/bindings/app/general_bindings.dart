@@ -89,6 +89,8 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.da
 import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/my_head_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.dart';
 
 class GeneralBindings extends Bindings {
@@ -263,6 +265,9 @@ class GeneralBindings extends Bindings {
     // Settings → My Head (item 13): reads the directory above and saves through
     // UserController, so it needs neither registered until the screen opens.
     Get.lazyPut(() => MyHeadController(), fenix: true);
+    // The Head's Team Activity tab (item 21): online only, no local cache.
+    Get.lazyPut(() => TeamActivityRepository(), fenix: true);
+    Get.lazyPut(() => TeamActivityController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
 

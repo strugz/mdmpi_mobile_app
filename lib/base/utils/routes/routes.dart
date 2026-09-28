@@ -34,6 +34,7 @@ class BRoutes{
   static const totalCollected = '/collection/total-collected';
   static const collectionUploadOutbox = '/collection/upload-outbox';
   static const myHead = '/settings/my-head';
+  static const teamActivity = '/collection/team-activity';
   static const addToBucket = '/collection/add-to-bucket';
   // Collection - engagement forms (opened from the activity type sheet)
   static const collectionDepositForm = '/collection/engagement/deposit';

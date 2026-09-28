@@ -182,6 +182,10 @@ class BTexts {
   /// Release/Courier/Provincial.
   static const String roleHd = "HD";
 
+  /// Head of Collection (Collection TODO item 21): gets the Team Activity tab
+  /// on top of the collector's own tabs. Set on the web like any other role.
+  static const String roleCollectionHead = "CollectionHead";
+
   // Labels
   // Index-aligned with FormCategoryType.values — append only.
   static List<String> requestFormLabels = [
