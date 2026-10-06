@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -12,163 +11,290 @@ import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/local_storage_data_viewer.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/contact_directory_screen.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/settings_department_theme.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/settings_hard_reset_section.dart';
 
+import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/default_area_sheet.dart';
+
 import '../../../../data/repositories/authentication/authentication_repository.dart';
-import '../../../logistics/controllers/standard_delivery_controller.dart';
-import '../../controller/realtime_location_saver_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final requestController = Get.find<StandardDeliveryController>();
-    final realtimeLocationSaverController =
-        Get.find<RealtimeLocationSaverController>();
-    return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            ///  -- Header
-            BPrimaryHeaderContainer(
-              child: Column(
-                children: [
-                  /// AppBar
-                  BAppBar(
-                    title: Text(
-                      'Account',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineMedium!
-                          .apply(color: Colors.white),
-                    ),
-                  ),
-
-                  /// User Profile Card
-                  BUserProfileTile(
-                      onPressed: () => Get.to(() => ProfileScreen())),
-                  const SizedBox(height: BSizes.spaceBtwSections),
-                ],
-              ),
-            ),
-
-            ///  -- Body
-            Padding(
-              padding: EdgeInsets.all(BSizes.defaultSpace),
-              child: Column(
-                children: [
-                  /// -- Account Settings
-                  BSectionHeading(
-                      title: 'Data Settings', showActionButton: false),
-                  const SizedBox(height: BSizes.spaceBtwItems),
-                  BSettingsMenuTile(
-                    icon: Iconsax.document_upload,
-                    title: 'Upload Data',
-                    subTitle: 'Upload Data to your Cloud Server',
-                    onTap: () {
-                      // Show a confirmation dialog
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Confirm Data Upload'),
-                            content: const Text(
-                                'Are you sure you want to upload data to the cloud server?'),
-                            actions: <Widget>[
-                              TextButton(
-                                child: const Text('Cancel'),
-                                onPressed: () {
-                                  Navigator.of(context)
-                                      .pop(); // Close the dialog
-                                },
-                              ),
-                              TextButton(
-                                child: const Text('Upload'),
-                                onPressed: () {
-                                  requestController.dataManager
-                                      .uploadModifiedRequest();
-                                  Navigator.of(context)
-                                      .pop(); // Close the dialog
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  ),
-                  const SettingsHardResetSection(),
-                  Obx(
-                    () => BSettingsMenuTile(
-                      icon: Iconsax.location,
-                      title: 'Realtime Location Saver',
-                      subTitle:
-                          'Save latest location locally; delivery tracking handles live sharing',
-                      trailing: Switch(
-                        value: realtimeLocationSaverController.isEnabled.value,
-                        onChanged: realtimeLocationSaverController.toggle,
+    return SettingsDepartmentTheme(
+      child: Scaffold(
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              ///  -- Header
+              BPrimaryHeaderContainer(
+                child: Column(
+                  children: [
+                    /// AppBar
+                    BAppBar(
+                      title: Text(
+                        'Account',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium!
+                            .apply(color: Colors.white),
                       ),
-                      onTap: () {
-                        realtimeLocationSaverController.toggle(
-                          !realtimeLocationSaverController.isEnabled.value,
-                        );
-                      },
                     ),
-                  ),
 
-                  const SizedBox(height: BSizes.spaceBtwItems),
-                  BSettingsMenuTile(
-                    icon: Iconsax.call,
-                    title: 'Contact Directory',
-                    subTitle: 'View and manage local contacts',
-                    onTap: () => Get.to(() => ContactDirectoryScreen()),
-                  ),
-
-                  const BSectionHeading(
-                      title: 'Developer Tools', showActionButton: false),
-                  const SizedBox(height: BSizes.spaceBtwItems),
-                  BSettingsMenuTile(
-                    icon: Iconsax.data,
-                    title: 'Local Storage Viewer',
-                    subTitle: 'View and manage local database tables',
-                    onTap: () {
-                      Get.to(() => const LocalStorageDataViewer());
-                    },
-                  ),
-                  BSettingsMenuTile(
-                    icon: Iconsax.pen_add,
-                    title: 'Signature Outbox',
-                    subTitle:
-                        'Review pending or failed receiver signature uploads',
-                    onTap: () => Get.toNamed(BRoutes.signatureOutbox),
-                  ),
-                  BSettingsMenuTile(
-                    icon: Iconsax.gallery,
-                    title: 'Image Outbox',
-                    subTitle: 'Review pending or failed proof image uploads',
-                    onTap: () => Get.toNamed(BRoutes.imageOutbox),
-                  ),
-
-                  /// --  Logout Button
-                  const SizedBox(height: BSizes.spaceBtwSections),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                        onPressed: () async {
-                          await AuthenticationRepository.instance.logout();
-                        },
-                        child: const Text('Logout')),
-                  ),
-                  const SizedBox(
-                    height: BSizes.spaceBtwSections * 2.5,
-                  )
-                ],
+                    /// User Profile Card
+                    BUserProfileTile(
+                        onPressed: () => Get.to(() => ProfileScreen())),
+                    const SizedBox(height: BSizes.spaceBtwSections),
+                  ],
+                ),
               ),
-            )
-          ],
+
+              ///  -- Body
+              Padding(
+                padding: EdgeInsets.all(BSizes.defaultSpace),
+                child: Column(
+                  children: [
+                    /// Department-specific items; the shared ones (Contact
+                    /// Directory, Local Storage Viewer) appear for everyone.
+                    _DepartmentAware(
+                      logistics: const _LogisticsSettings(),
+                      collection: const _CollectionSettings(),
+                    ),
+
+                    /// --  Logout Button
+                    const SizedBox(height: BSizes.spaceBtwSections),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                          onPressed: () async {
+                            await AuthenticationRepository.instance.logout();
+                          },
+                          child: const Text('Logout')),
+                    ),
+                    const SizedBox(
+                      height: BSizes.spaceBtwSections * 2.5,
+                    )
+                  ],
+                ),
+              )
+            ],
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Shows [collection] to Collection users and [logistics] to everyone else,
+/// matching [SettingsDepartmentTheme] and the bottom navigation.
+class _DepartmentAware extends StatelessWidget {
+  const _DepartmentAware({required this.logistics, required this.collection});
+
+  final Widget logistics;
+  final Widget collection;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<UserController>()) return logistics;
+    final user = Get.find<UserController>().user;
+    return Obx(
+      () => SettingsDepartmentTheme.isCollection(user.value.department)
+          ? collection
+          : logistics,
+    );
+  }
+}
+
+/// Logistics: request uploads and hard resets, the location saver the
+/// Air / Sea forms read, and the proof signature/image outboxes.
+class _LogisticsSettings extends StatelessWidget {
+  const _LogisticsSettings();
+
+  @override
+  Widget build(BuildContext context) {
+    final realtimeLocationSaverController =
+        Get.find<RealtimeLocationSaverController>();
+    return Column(
+      children: [
+        BSectionHeading(title: 'Data Settings', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        BSettingsMenuTile(
+          icon: Iconsax.document_upload,
+          title: 'Upload Data',
+          subTitle: 'Upload Data to your Cloud Server',
+          onTap: () => Get.toNamed(BRoutes.uploadData),
+        ),
+        const SettingsHardResetSection(),
+        Obx(
+          () => BSettingsMenuTile(
+            icon: Iconsax.location,
+            title: 'Realtime Location Saver',
+            subTitle:
+                'Save latest location locally; delivery tracking handles live sharing',
+            trailing: Switch(
+              value: realtimeLocationSaverController.isEnabled.value,
+              onChanged: realtimeLocationSaverController.toggle,
+            ),
+            onTap: () {
+              realtimeLocationSaverController.toggle(
+                !realtimeLocationSaverController.isEnabled.value,
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const _ContactDirectoryTile(),
+        const BSectionHeading(
+            title: 'Developer Tools', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const _LocalStorageViewerTile(),
+        BSettingsMenuTile(
+          icon: Iconsax.pen_add,
+          title: 'Signature Outbox',
+          subTitle: 'Review pending or failed receiver signature uploads',
+          onTap: () => Get.toNamed(BRoutes.signatureOutbox),
+        ),
+        BSettingsMenuTile(
+          icon: Iconsax.gallery,
+          title: 'Image Outbox',
+          subTitle: 'Review pending or failed proof image uploads',
+          onTap: () => Get.toNamed(BRoutes.imageOutbox),
+        ),
+      ],
+    );
+  }
+}
+
+/// Collection: its own upload queue in place of the Logistics request upload.
+/// The hard resets, location saver and proof outboxes only hold Logistics
+/// data, so they are left out.
+class _CollectionSettings extends StatelessWidget {
+  const _CollectionSettings();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        BSectionHeading(title: 'Data Settings', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        BSettingsMenuTile(
+          icon: Iconsax.document_upload,
+          title: 'Upload Data',
+          subTitle: 'Review and upload your queued collections',
+          onTap: () => Get.toNamed(BRoutes.collectionUploadOutbox),
+        ),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const BSectionHeading(title: 'My Team', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const _MyHeadTile(),
+        const _ContactDirectoryTile(),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const BSectionHeading(title: 'Preferences', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const _DefaultAreaTile(),
+        BSettingsMenuTile(
+          icon: Iconsax.folder_2,
+          title: 'Storage',
+          subTitle: 'Local data size, cached pictures, re-download the bucket',
+          onTap: () => Get.toNamed(BRoutes.collectionStorage),
+        ),
+        BSettingsMenuTile(
+          icon: Iconsax.info_circle,
+          title: 'About',
+          subTitle: 'App version and what\'s new',
+          onTap: () => Get.toNamed(BRoutes.about),
+        ),
+        const BSectionHeading(
+            title: 'Developer Tools', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const _LocalStorageViewerTile(),
+      ],
+    );
+  }
+}
+
+/// Collection TODO item 15: the territory the bucket opens on.
+class _DefaultAreaTile extends StatelessWidget {
+  const _DefaultAreaTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Get.find<CollectionSettingsController>();
+    return Obx(() => BSettingsMenuTile(
+          icon: Iconsax.location,
+          title: 'Default area',
+          subTitle: settings.defaultArea.value.isEmpty
+              ? 'All areas · the bucket opens unfiltered'
+              : 'The bucket opens on ${settings.defaultAreaLabel}',
+          onTap: () async {
+            final code = await DefaultAreaSheet.show(context,
+                selected: settings.defaultArea.value);
+            if (code == null) return;
+            await settings.setDefaultArea(code);
+          },
+        ));
+  }
+}
+
+/// Collection TODO item 13: who receives the Done Engagement notices.
+class _MyHeadTile extends StatelessWidget {
+  const _MyHeadTile();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!Get.isRegistered<UserController>()) {
+      return BSettingsMenuTile(
+        icon: Iconsax.user_tick,
+        title: 'My Head',
+        subTitle: 'Choose who receives your Done Engagement notices',
+        onTap: () => Get.toNamed(BRoutes.myHead),
+      );
+    }
+    final user = Get.find<UserController>().user;
+    return Obx(() {
+      final name = user.value.headName.trim();
+      final key = user.value.headKey.trim();
+      return BSettingsMenuTile(
+        icon: Iconsax.user_tick,
+        title: 'My Head',
+        subTitle: key.isEmpty
+            ? 'Not set · choose who receives your Done Engagement notices'
+            : (name.isEmpty ? key : '$name ($key)'),
+        onTap: () => Get.toNamed(BRoutes.myHead),
+      );
+    });
+  }
+}
+
+class _ContactDirectoryTile extends StatelessWidget {
+  const _ContactDirectoryTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return BSettingsMenuTile(
+      icon: Iconsax.call,
+      title: 'Contact Directory',
+      subTitle: 'View and manage local contacts',
+      onTap: () => Get.to(() => ContactDirectoryScreen()),
+    );
+  }
+}
+
+class _LocalStorageViewerTile extends StatelessWidget {
+  const _LocalStorageViewerTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return BSettingsMenuTile(
+      icon: Iconsax.data,
+      title: 'Local Storage Viewer',
+      subTitle: 'View and manage local database tables',
+      onTap: () => Get.to(() => const LocalStorageDataViewer()),
     );
   }
 }

@@ -21,7 +21,7 @@ Stage E is split so each part ships alone:
 | Part | Scope | This plan |
 |---|---|---|
 | **E1** | Client enrichment screen (web) + client API (backend) | **yes** |
-| E2 | Deposits and monthly-target reporting on the web | later |
+| E2 | Deposits and monthly-target reporting on the web | E2a implemented — `COLLECTION_STAGE_E2_PLAN.md` |
 | E3 | "Released" history entry for Clear Engagement | needs a process-flow decision first |
 
 ## 2. Rules the screen must respect

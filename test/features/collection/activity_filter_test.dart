@@ -27,6 +27,7 @@ CollectionItemModel _item({
   double due = 10000,
   int overdueDays = 0,
   String? lastOutcome,
+  String poNumber = '',
   List<CollectionHistoryModel> history = const [],
 }) =>
     CollectionItemModel(
@@ -42,6 +43,7 @@ CollectionItemModel _item({
       toBeCollected: due,
       dueDate: _daysAgo(overdueDays),
       lastOutcome: lastOutcome,
+      poNumber: poNumber,
       history: history,
     );
 
@@ -93,6 +95,51 @@ void main() {
   test('sort alone is not an active filter', () {
     expect(const ActivityFilter(sort: ActivitySort.name).isActive, isFalse);
     expect(const ActivityFilter(due: DueBand.overdue).activeCount, 1);
+  });
+
+  group('P.O. number lookup', () {
+    test('matches any part of the P.O., ignoring case', () {
+      const f = ActivityFilter(poNumber: 'chem-2023');
+      expect(f.matches(_item(poNumber: 'ADC-CHEM-2023-001-A')), isTrue);
+      expect(f.matches(_item(poNumber: 'ADC-HEMA-2023-052')), isFalse);
+      expect(f.matches(_item()), isFalse, reason: 'no P.O. cannot match');
+    });
+
+    test('whitespace alone is not a lookup', () {
+      const blank = ActivityFilter(poNumber: '   ');
+      expect(blank.hasPoNumber, isFalse);
+      expect(blank.isActive, isFalse);
+      expect(blank.matches(_item()), isTrue);
+    });
+
+    test('counts as one filter group and equality sees it', () {
+      const f = ActivityFilter(poNumber: '2026-0262');
+      expect(f.isActive, isTrue);
+      expect(f.activeCount, 1);
+      expect(f, isNot(equals(ActivityFilter.none)));
+      expect(f.copyWith(poNumber: ''), ActivityFilter.none);
+    });
+
+    test('Has P.O. / No P.O. split the bucket by presence', () {
+      final withPo = _item(id: 'a', poNumber: '23-122');
+      final without = _item(id: 'b');
+
+      const has = ActivityFilter(poPresence: PoPresence.has);
+      expect(has.matches(withPo), isTrue);
+      expect(has.matches(without), isFalse);
+
+      const none = ActivityFilter(poPresence: PoPresence.none);
+      expect(none.matches(withPo), isFalse);
+      expect(none.matches(without), isTrue);
+      expect(none.isActive, isTrue);
+      expect(none.activeCount, 1);
+    });
+
+    test('presence and typed text are one group in the badge count', () {
+      const both =
+          ActivityFilter(poPresence: PoPresence.has, poNumber: 'ADC');
+      expect(both.activeCount, 1);
+    });
   });
 
   group('sheet', () {
@@ -494,6 +541,174 @@ void main() {
     final b = _item(id: '2', name: 'Alpha', overdueDays: 1);
     final sorted = [a, b]..sort(spec.compare);
     expect(sorted.first.client.name, 'Alpha');
+  });
+
+  group('sheet P.O. field', () {
+    Widget host(void Function(ActivityFilter?) onResult,
+        {required int Function(ActivityFilter) count}) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => Center(
+              child: ElevatedButton(
+                onPressed: () async => onResult(await ActivityFilterSheet.show(
+                    context,
+                    initial: ActivityFilter.none,
+                    count: count)),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('typing a P.O. drives the live count and is applied',
+        (tester) async {
+      ActivityFilter? result;
+      await tester.pumpWidget(host((r) => result = r,
+          count: (f) => f.hasPoNumber ? 2 : 12));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final field = find.widgetWithText(TextField, 'Any part of the P.O. number');
+      await tester.ensureVisible(field);
+      await tester.enterText(field, '2026-0262');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Show 2 accounts'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Show 2 accounts'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show 2 accounts'));
+      await tester.pumpAndSettle();
+
+      expect(result?.poNumber, '2026-0262');
+      expect(result?.activeCount, 1);
+    });
+
+    testWidgets('No P.O. clears the typed number and disables the field',
+        (tester) async {
+      ActivityFilter? result;
+      await tester.pumpWidget(host((r) => result = r, count: (_) => 4));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final field = find.widgetWithText(TextField, 'Any part of the P.O. number');
+      await tester.ensureVisible(field);
+      await tester.enterText(field, 'ADC');
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('No P.O.'));
+      await tester.tap(find.text('No P.O.'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+      expect(tester.widget<TextField>(field).enabled, isFalse);
+
+      await tester.ensureVisible(find.text('Show 4 accounts'));
+      await tester.tap(find.text('Show 4 accounts'));
+      await tester.pumpAndSettle();
+      expect(result?.poPresence, PoPresence.none);
+      expect(result?.poNumber, isEmpty);
+    });
+
+    testWidgets('typing while No P.O. is on flips it back to Any',
+        (tester) async {
+      ActivityFilter? result;
+      await tester.pumpWidget(host((r) => result = r, count: (_) => 4));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('No P.O.'));
+      await tester.tap(find.text('No P.O.'));
+      await tester.pumpAndSettle();
+      // Back to Any so the field is usable again, then type.
+      await tester.tap(find.widgetWithText(BQuickFillChip, 'Any').at(2));
+      await tester.pumpAndSettle();
+
+      final field = find.widgetWithText(TextField, 'Any part of the P.O. number');
+      await tester.ensureVisible(field);
+      await tester.enterText(field, '23-122');
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Show 4 accounts'));
+      await tester.tap(find.text('Show 4 accounts'));
+      await tester.pumpAndSettle();
+      expect(result?.poPresence, PoPresence.any);
+      expect(result?.poNumber, '23-122');
+    });
+
+    testWidgets('Reset empties the field, not just the draft', (tester) async {
+      await tester.pumpWidget(host((_) {}, count: (_) => 5));
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      final field = find.widgetWithText(TextField, 'Any part of the P.O. number');
+      await tester.ensureVisible(field);
+      await tester.enterText(field, 'ADC');
+      await tester.pumpAndSettle();
+      expect(find.text('Reset'), findsOneWidget);
+
+      // Focusing the field scrolled the header away; Reset lives up there.
+      await tester.ensureVisible(find.text('Reset'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Reset'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(field).controller!.text, isEmpty);
+      expect(find.text('Reset'), findsNothing);
+    });
+  });
+
+  testWidgets('No P.O. shows as a removable chip', (tester) async {
+    var filter = const ActivityFilter(poPresence: PoPresence.none);
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) => ActiveFilterChips(
+            filter: filter,
+            onChanged: (f) => setState(() => filter = f),
+          ),
+        ),
+      ),
+    ));
+
+    expect(find.text('No P.O.'), findsOneWidget);
+    await tester.tap(find.byTooltip('Remove No P.O.'));
+    await tester.pumpAndSettle();
+    expect(filter.isActive, isFalse);
+  });
+
+  testWidgets('a typed P.O. hides the redundant Has P.O. chip', (tester) async {
+    const filter =
+        ActivityFilter(poPresence: PoPresence.has, poNumber: '23-122');
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: ActiveFilterChips(filter: filter, onChanged: (_) {})),
+    ));
+    expect(find.text('PO 23-122'), findsOneWidget);
+    expect(find.text('Has P.O.'), findsNothing);
+  });
+
+  testWidgets('an applied P.O. shows as a removable chip', (tester) async {
+    var filter = const ActivityFilter(poNumber: '23-122');
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: StatefulBuilder(
+          builder: (context, setState) => ActiveFilterChips(
+            filter: filter,
+            onChanged: (f) => setState(() => filter = f),
+          ),
+        ),
+      ),
+    ));
+
+    expect(find.text('PO 23-122'), findsOneWidget);
+    await tester.tap(find.byTooltip('Remove PO 23-122'));
+    await tester.pumpAndSettle();
+
+    expect(filter.hasPoNumber, isFalse);
+    expect(find.text('PO 23-122'), findsNothing);
   });
 
   testWidgets('active chips remove one filter at a time', (tester) async {

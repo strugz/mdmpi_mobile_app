@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/theme/theme.dart';
 
@@ -83,11 +84,23 @@ class BCollectionTheme {
       primaryColor: BCollectionColors.primary,
       scaffoldBackgroundColor: BCollectionColors.background,
       dividerColor: BCollectionColors.outline,
-      // Keep the app bar transparent, as the base theme has it. Flutter
-      // derives the status bar icon colour from the app bar background, and
-      // an off-white one turned the clock and icons dark on the navy header.
+      textTheme: _textTheme(base.textTheme),
+      // Every bar is the header navy, so a pushed page reads as part of the
+      // same module as the tab it came from instead of dropping to a bare
+      // grey page. The status bar is pinned light: Flutter would derive it
+      // from the background anyway, but an off-white bar once turned the
+      // clock and icons dark on the navy header, so it is stated outright.
       appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: BCollectionColors.headerBackground,
+        foregroundColor: BCollectionColors.onHeader,
         surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+        iconTheme: const IconThemeData(
+            color: BCollectionColors.onHeader, size: 24),
+        actionsIconTheme: const IconThemeData(
+            color: BCollectionColors.onHeader, size: 24),
+        titleTextStyle: base.appBarTheme.titleTextStyle
+            ?.copyWith(color: BCollectionColors.onHeader),
       ),
       cardTheme: base.cardTheme.copyWith(
         color: BCollectionColors.surface,
@@ -152,6 +165,22 @@ class BCollectionTheme {
           const ProgressIndicatorThemeData(color: BCollectionColors.primary),
     );
   }
+
+  /// Collection's type ramp — the one place its text sizes are decided.
+  ///
+  /// The base scale is flat (every title 16, every body 14), so screens kept
+  /// hand-tuning `fontSize` per widget, and each tweak fought the last. Here
+  /// each role is a real step below the one above it; widgets pick a role
+  /// and never a number, so the system font size scales all of it together.
+  /// Body text stays at 14 — shrinking it made every list feel cramped.
+  /// Only sizes change; weights and colours stay the base theme's.
+  static TextTheme _textTheme(TextTheme base) => base.copyWith(
+        titleLarge: base.titleLarge?.copyWith(fontSize: 18),
+        titleMedium: base.titleMedium?.copyWith(fontSize: 16),
+        titleSmall: base.titleSmall?.copyWith(fontSize: 14),
+        bodySmall: base.bodySmall?.copyWith(fontSize: 12),
+        labelSmall: base.labelSmall?.copyWith(fontSize: 11),
+      );
 
   /// Switch the session theme to match the department. Idempotent; call it
   /// whenever the department becomes known (cold start, login, refresh).

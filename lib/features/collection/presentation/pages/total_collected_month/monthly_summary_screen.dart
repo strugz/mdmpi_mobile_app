@@ -8,7 +8,8 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
-/// The month's ledger: what was collected (or deposited), when, from whom.
+/// The month's ledger: what was collected, or posted as Actual Collection,
+/// when, from whom.
 ///
 /// It read like a form. A bare dropdown for the month, "Total" tucked into
 /// the same row, and every entry printed as `Account: …`, `Invoice: …`,
@@ -24,10 +25,10 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.da
 class MonthlySummaryScreen extends StatelessWidget {
   const MonthlySummaryScreen({super.key, required this.type});
 
-  /// 'Collection' or 'Deposit'
+  /// 'Collection' (Collected this Month) or 'Actual' (Actual Collection)
   final String type;
 
-  bool get _isDeposit => type == 'Deposit';
+  bool get _isActual => type == 'Actual';
 
   /// Month changes are occasional and the whole block below the stepper is
   /// replaced, so a short cross-fade rather than a hard cut.
@@ -39,18 +40,18 @@ class MonthlySummaryScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isDeposit ? 'Actual Collection' : 'Collected this Month'),
+        title: Text(_isActual ? 'Actual Collection' : 'Collected this Month'),
       ),
       body: Column(
         children: [
           _MonthHeader(
-              controller: controller, isDeposit: _isDeposit, swap: _swap),
+              controller: controller, isActual: _isActual, swap: _swap),
           Expanded(
             child: Obx(() {
-              final all = _isDeposit
-                  ? controller.depositEntries
+              final all = _isActual
+                  ? controller.postedEntries
                   : controller.monthEntries;
-              final shown = _isDeposit
+              final shown = _isActual
                   ? controller.actualEntries
                   : controller.monthlyEntries;
               final query = controller.searchQuery.value.trim();
@@ -63,14 +64,14 @@ class MonthlySummaryScreen extends StatelessWidget {
                     ? _EmptyMonth(
                         key: const ValueKey('empty'),
                         month: controller.selectedMonth.value,
-                        isDeposit: _isDeposit,
+                        isActual: _isActual,
                       )
                     : Column(
                         key: const ValueKey('list'),
                         children: [
                           _SearchField(
                             controller: controller,
-                            isDeposit: _isDeposit,
+                            isActual: _isActual,
                           ),
                           Expanded(
                             child: shown.isEmpty
@@ -79,7 +80,7 @@ class MonthlySummaryScreen extends StatelessWidget {
                                     entries: shown,
                                     all: all,
                                     query: query,
-                                    isDeposit: _isDeposit,
+                                    isActual: _isActual,
                                     showCollector:
                                         controller.distinctCollectors(all) > 1,
                                   ),
@@ -95,16 +96,17 @@ class MonthlySummaryScreen extends StatelessWidget {
   }
 }
 
-/// ‹ September 2026 › over the month's total and, for deposits, the target.
+/// ‹ September 2026 › over the month's total and, for Actual Collection, the
+/// target.
 class _MonthHeader extends StatelessWidget {
   const _MonthHeader({
     required this.controller,
-    required this.isDeposit,
+    required this.isActual,
     required this.swap,
   });
 
   final TotalCollectedController controller;
-  final bool isDeposit;
+  final bool isActual;
   final Duration swap;
 
   Future<void> _pickMonth(BuildContext context) async {
@@ -136,11 +138,11 @@ class _MonthHeader extends StatelessWidget {
       ),
       child: Obx(() {
         final month = controller.selectedMonth.value;
-        final total = isDeposit
+        final total = isActual
             ? controller.actualCollectionTotal
             : controller.monthlyTotal;
         final entries =
-            isDeposit ? controller.depositEntries : controller.monthEntries;
+            isActual ? controller.postedEntries : controller.monthEntries;
         final target = controller.targetAmount.value;
 
         return Column(
@@ -205,7 +207,7 @@ class _MonthHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isDeposit ? 'Deposited' : 'Collected',
+                      isActual ? 'Team · posted by the office' : 'Collected',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
@@ -229,12 +231,8 @@ class _MonthHeader extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: BSizes.xs),
-                    if (isDeposit)
-                      _TargetLine(
-                        total: total,
-                        target: target,
-                        onEdit: () => _editTarget(context),
-                      )
+                    if (isActual)
+                      _TargetLine(total: total, target: target)
                     else
                       Text(
                         _countLine(entries),
@@ -258,76 +256,34 @@ class _MonthHeader extends StatelessWidget {
     return '${entries.length} collection${entries.length == 1 ? '' : 's'} · '
         '$accounts account${accounts == 1 ? '' : 's'}';
   }
-
-  void _editTarget(BuildContext context) {
-    final tc = TextEditingController(
-      text: controller.targetAmount.value > 0
-          ? BFormatter.formatPesoCurrency(controller.targetAmount.value,
-                  includeSymbol: false)
-              .trim()
-          : '',
-    );
-
-    Get.dialog(AlertDialog(
-      title: Text(controller.targetAmount.value > 0
-          ? 'Edit target'
-          : 'Set a target for ${DateFormat('MMMM').format(controller.selectedMonth.value)}'),
-      content: TextField(
-        controller: tc,
-        autofocus: true,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [ThousandsSeparatorInputFormatter()],
-        decoration: const InputDecoration(prefixText: '₱ ', hintText: '0.00'),
-      ),
-      actions: [
-        TextButton(onPressed: Get.back, child: const Text('Cancel')),
-        ElevatedButton(
-          onPressed: () {
-            controller.setTargetAmount(BFormatter.parseAmount(tc.text));
-            Get.back();
-          },
-          child: const Text('Save'),
-        ),
-      ],
-    ));
-  }
 }
 
-/// Deposits against the month's target, or the offer to set one.
+/// Actual Collection against the month's target.
 ///
-/// This replaces a floating action button whose only content was a pencil
-/// or a plus — a target belongs next to the figure it is measured against.
+/// Read-only: the office sets targets on the admin web (the CollectionPoster
+/// role), and they arrive with the next download. A collector could set their
+/// own before, which made the target whatever they typed.
 class _TargetLine extends StatelessWidget {
-  const _TargetLine({
-    required this.total,
-    required this.target,
-    required this.onEdit,
-  });
+  const _TargetLine({required this.total, required this.target});
 
   final double total;
   final double target;
-  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final small =
         theme.textTheme.bodySmall?.copyWith(color: BCollectionColors.inkMuted);
-    final buttonStyle = TextButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
-      minimumSize: const Size(0, 32),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-
     if (target <= 0) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: TextButton.icon(
-          onPressed: onEdit,
-          style: buttonStyle,
-          icon: const Icon(Iconsax.flag, size: 16),
-          label: const Text('Set a target'),
-        ),
+      return Row(
+        children: [
+          const Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
+          const SizedBox(width: BSizes.xs),
+          Expanded(
+            child: Text('No team target set yet · the office sets it',
+                maxLines: 2, overflow: TextOverflow.ellipsis, style: small),
+          ),
+        ],
       );
     }
 
@@ -354,29 +310,16 @@ class _TargetLine extends StatelessWidget {
           ),
         ),
         const SizedBox(height: BSizes.xs),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                met
-                    ? 'Target of ${BFormatter.formatPesoCurrency(target)} met'
-                    : '${(progress * 100).round()}% of ${BFormatter.formatPesoCurrency(target)} target',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: small?.copyWith(
-                  color: met
-                      ? BCollectionColors.success
-                      : BCollectionColors.inkMuted,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: onEdit,
-              style: buttonStyle,
-              child: const Text('Edit'),
-            ),
-          ],
+        Text(
+          met
+              ? 'Team target of ${BFormatter.formatPesoCurrency(target)} met'
+              : '${(progress * 100).floor()}% of ${BFormatter.formatPesoCurrency(target)} team target',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: small?.copyWith(
+            color: met ? BCollectionColors.success : BCollectionColors.inkMuted,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -384,10 +327,10 @@ class _TargetLine extends StatelessWidget {
 }
 
 class _SearchField extends StatelessWidget {
-  const _SearchField({required this.controller, required this.isDeposit});
+  const _SearchField({required this.controller, required this.isActual});
 
   final TotalCollectedController controller;
-  final bool isDeposit;
+  final bool isActual;
 
   @override
   Widget build(BuildContext context) {
@@ -400,8 +343,8 @@ class _SearchField extends StatelessWidget {
           onChanged: (v) => controller.searchQuery.value = v,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
-            hintText: isDeposit
-                ? 'Search by account or collector'
+            hintText: isActual
+                ? 'Search by reference or remarks'
                 : 'Search by account, invoice or collector',
             prefixIcon: const Icon(Iconsax.search_normal, size: 18),
             isDense: true,
@@ -422,14 +365,14 @@ class _Ledger extends StatelessWidget {
     required this.entries,
     required this.all,
     required this.query,
-    required this.isDeposit,
+    required this.isActual,
     required this.showCollector,
   });
 
   final List<MonthlyEntry> entries;
   final List<MonthlyEntry> all;
   final String query;
-  final bool isDeposit;
+  final bool isActual;
   final bool showCollector;
 
   /// Group by calendar day, keeping the newest-first order of [entries].
@@ -482,7 +425,7 @@ class _Ledger extends StatelessWidget {
           if (i < items.length) {
             return _EntryRow(
               entry: items[i],
-              isDeposit: isDeposit,
+              isActual: isActual,
               showCollector: showCollector,
               last: i == items.length - 1,
             );
@@ -528,26 +471,39 @@ class _DayHeader extends StatelessWidget {
 
 /// One collection: account, invoice, amount. The amount sits right so the
 /// column reads top to bottom like a statement.
+///
+/// A posted Actual Collection entry has no account: it is one deposit slip /
+/// OR, so its reference leads, the office's remarks sit quietly under it, and
+/// who posted it closes the row in small print.
 class _EntryRow extends StatelessWidget {
   const _EntryRow({
     required this.entry,
-    required this.isDeposit,
+    required this.isActual,
     required this.showCollector,
     required this.last,
   });
 
   final MonthlyEntry entry;
-  final bool isDeposit;
+  final bool isActual;
   final bool showCollector;
   final bool last;
+
+  /// "OR 12345" reads as it was typed; a bare number is labelled "Ref.".
+  static String referenceLabel(String referenceNo) {
+    final ref = referenceNo.trim();
+    if (ref.isEmpty) return 'No reference';
+    return RegExp(r'^[A-Za-z]').hasMatch(ref) ? ref : 'Ref. $ref';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final secondary = [
-      if (!isDeposit) '#${entry.invoiceNumber}',
+      if (!isActual) '#${entry.invoiceNumber}',
+      if (isActual && entry.remarks.trim().isNotEmpty) entry.remarks.trim(),
       if (showCollector) entry.collectorName,
     ].join(' · ');
+    final postedBy = isActual ? entry.postedBy.trim() : '';
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: BSizes.spaceBtwItemsLight),
@@ -566,7 +522,9 @@ class _EntryRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry.accountName,
+                  isActual
+                      ? referenceLabel(entry.referenceNo)
+                      : entry.accountName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium
@@ -579,6 +537,16 @@ class _EntryRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall
+                        ?.copyWith(color: BCollectionColors.inkMuted),
+                  ),
+                ],
+                if (postedBy.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    'Posted by $postedBy',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
                         ?.copyWith(color: BCollectionColors.inkMuted),
                   ),
                 ],
@@ -600,10 +568,10 @@ class _EntryRow extends StatelessWidget {
 }
 
 class _EmptyMonth extends StatelessWidget {
-  const _EmptyMonth({super.key, required this.month, required this.isDeposit});
+  const _EmptyMonth({super.key, required this.month, required this.isActual});
 
   final DateTime month;
-  final bool isDeposit;
+  final bool isActual;
 
   @override
   Widget build(BuildContext context) {
@@ -631,7 +599,9 @@ class _EmptyMonth extends StatelessWidget {
             ),
             const SizedBox(height: BSizes.spaceBtwItems),
             Text(
-              isDeposit ? 'No deposits in $name' : 'Nothing collected in $name',
+              isActual
+                  ? 'No Actual Collection posted for $name'
+                  : 'Nothing collected in $name',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
@@ -640,7 +610,12 @@ class _EmptyMonth extends StatelessWidget {
             ),
             const SizedBox(height: BSizes.xs),
             Text(
-              'Use the arrows above to look at another month.',
+              // Deposits used to fill this page. Say where they went, so a
+              // collector who just logged one does not think it was lost.
+              isActual
+                  ? "The office posts the team's Actual Collection. Deposits "
+                      'you record stay in your engagement history.'
+                  : 'Use the arrows above to look at another month.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: BCollectionColors.inkMuted),

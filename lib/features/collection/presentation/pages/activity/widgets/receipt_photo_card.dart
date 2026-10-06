@@ -54,16 +54,17 @@ class ReceiptPhotoCard extends StatelessWidget {
                             color: BCollectionColors.outline,
                             style: BorderStyle.solid),
                       ),
-                      child: const Column(
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Iconsax.camera,
+                          const Icon(Iconsax.camera,
                               color: BCollectionColors.inkMuted),
-                          SizedBox(height: BSizes.xs),
+                          const SizedBox(height: BSizes.xs),
                           Text('Add Photo',
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  color: BCollectionColors.inkMuted)),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(color: BCollectionColors.inkMuted)),
                         ],
                       ),
                     ),

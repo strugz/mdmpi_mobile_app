@@ -183,6 +183,12 @@ class PullOutRequestCard extends StatelessWidget {
           message: result.message,
         );
         return;
+      case SmsHandedOffToMessagingApp():
+        BLoaders.warningSnackBar(
+          title: 'Finish sending in Messages',
+          message: result.message,
+        );
+        return;
       case SmsLikelyNetworkIssue():
         throw Exception(result.message);
       case SmsPermissionDenied():

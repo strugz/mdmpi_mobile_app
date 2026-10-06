@@ -169,7 +169,6 @@ class _AreaChip extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: accent,
-                      fontSize: 13,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                     ),
                   ),

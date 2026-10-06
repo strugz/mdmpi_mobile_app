@@ -56,6 +56,7 @@ docs/
 | Module | Domain | Status | Link |
 |---|---|---|---|
 | Post-Demo Revisions TO DO | Logistics / Cross-module | Complete (12/12) | [POST_DEMO_REVISIONS_TODO.md](POST_DEMO_REVISIONS_TODO.md) |
+| Collection Revisions TO DO | Collection (mobile, backend, admin web) | Code complete (4/4); P.O. migration + deploys open | [application/COLLECTION_REVISIONS_TODO.md](application/COLLECTION_REVISIONS_TODO.md) |
 | Codex to Claude Code transition | Tooling | Historical (2026-08) | [CODEX_TO_CLAUDE_TRANSITION.md](CODEX_TO_CLAUDE_TRANSITION.md) |
 | WebSocket disconnect handling | Cross-cutting | Active | [WEBSOCKET_DISCONNECT_HANDLING.md](WEBSOCKET_DISCONNECT_HANDLING.md) |
 | Data persistence flow (API <-> SQLite) | Cross-cutting | Active | [DATA_PERSISTENCE_FLOW.md](DATA_PERSISTENCE_FLOW.md) |

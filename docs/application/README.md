@@ -13,6 +13,8 @@ This folder contains practical Logistics Department documentation for the MDMPI 
 | Logistics Developers | [Developer Guide](DEVELOPER_GUIDE.md) | You maintain or extend Logistics request modules, data flows, and support tooling. |
 | ISO / QMS Documentation (Logistics) | [Logistics Process Flow and System Narrative (.docx)](LOGISTICS_PROCESS_FLOW_AND_NARRATIVE.docx) | You need the Logistics process flow and user narrative in Word format for the quality management system. |
 | ISO / QMS Documentation (Collection) | [Collection Process Flow and System Narrative (.docx)](COLLECTION_PROCESS_FLOW_AND_NARRATIVE.docx) | You need the Collection process flow and user narrative in Word format for the quality management system. |
+| Collection Developers | [ADR-001: P.O. Number from SAP `BP Ref. No.`](COLLECTION_ADR_001_PO_NUMBER.md) | You are adding the P.O. number to the SAP import, backend, admin web, and mobile bucket. |
+| Collection Developers | [Collection Revisions TO DO](COLLECTION_REVISIONS_TODO.md) | You need the Collection change log with per-item touch points and the deployment steps still open. |
 
 ## Logistics Scope
 

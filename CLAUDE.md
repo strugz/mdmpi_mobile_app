@@ -79,9 +79,18 @@ Local Storage Data Viewer (`/local-storage-viewer`) and Signature Outbox
 ## Claude Code specifics (deltas from AGENTS.md)
 
 AGENTS.md references Codex-style `run_subagent` with agents named `Plan` and
-`Search`. In Claude Code, use the **Agent tool**: `Plan` for implementation planning
-and `Explore` (or `general-purpose`) for repository discovery. Everything else in
-AGENTS.md applies as written.
+`Search`. In Claude Code, use the **Agent tool**: the project agents `feature-planner`
+and `repo-search` (`.claude/agents/`) are the equivalents; built-in `Plan` / `Explore`
+also work. Everything else in AGENTS.md applies as written.
+
+Modular config lives in `.claude/` (see `.claude/README.md`):
+
+- `rules/` — path-scoped conventions, auto-loaded when matching files are touched
+  (GetX/DI, data layer, API boundary, UI insets, routes, platform bootstrap, tests, docs).
+- `agents/` — `repo-search`, `feature-planner`, `convention-reviewer`, `flutter-verifier`,
+  `db-schema-auditor`, `release-scribe` (all read-only).
+- `commands/` — `/check`, `/review`, `/new-feature`, `/new-route`, `/qa`, `/bump-version`,
+  `/build-apk`, `/release-notes`, `/print-audit`, `/db`. None of them commit or push.
 
 ## Docs map
 

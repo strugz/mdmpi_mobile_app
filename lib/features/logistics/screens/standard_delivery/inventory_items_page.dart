@@ -13,8 +13,9 @@ class InventoryItemsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final invCtrl = Get.find<InventoryItemController>();
 
-    // Trigger load if needed
-    if (!invCtrl.isLoading.value && invCtrl.items.isEmpty) {
+    // The controller is shared across requests: load whenever its items belong
+    // to a different request, not only when the list is empty.
+    if (invCtrl.currentRequestId.value != requestId) {
       Future.microtask(() => invCtrl.loadItems(requestId));
     }
 
@@ -23,7 +24,8 @@ class InventoryItemsPage extends StatelessWidget {
         title: const Text('Items'),
       ),
       body: Obx(() {
-        if (invCtrl.isLoading.value) {
+        if (invCtrl.isLoading.value ||
+            invCtrl.currentRequestId.value != requestId) {
           return const Center(child: CircularProgressIndicator());
         }
 

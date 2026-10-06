@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -12,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/acquiring_overlay.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/widgets/bucket_toolbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/po/account_po_invoices_screen.dart';
 import 'collection_account_information_screen.dart';
 import 'widgets/collection_search_filter_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
@@ -88,6 +90,8 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
   Future<void> _acquireSelected(CollectionActivityController controller) async {
     final summary = controller.selectionSummary;
     await controller.claimSelectedAccounts();
+    // The Acquiring Account SMS follows; its sending view confirms the move.
+    if (CollectionSmsService.smsFollows()) return;
     BLoaders.successSnackBar(
       title: 'Accounts Acquired',
       message:
@@ -134,6 +138,10 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
               // "Take the whole area": once the filters have narrowed the
               // list to today's route, this is the second and last tap.
               TextButton(
+                // The theme's text buttons are accent blue, which on the
+                // navy bar is barely there.
+                style: TextButton.styleFrom(
+                    foregroundColor: BCollectionColors.onHeader),
                 onPressed: controller.selectAllVisibleAccounts,
                 child: const Text('Select all'),
               )
@@ -229,6 +237,15 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
                                       client: client,
                                       invoiceCount: controller
                                           .getAccountInvoiceCount(client.id),
+                                      poCount: controller
+                                          .getAccountPoCount(client.id),
+                                      onPoInvoicesTap: () =>
+                                          Get.to(() => AccountPoInvoicesScreen(
+                                                client: client,
+                                                invoices: () => controller
+                                                    .getBucketOpenInvoices(
+                                                        client.id),
+                                              )),
                                       totalAmount: controller
                                           .getAccountTotalDue(client.id),
                                       totalCollected: controller

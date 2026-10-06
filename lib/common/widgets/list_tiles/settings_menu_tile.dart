@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
-
 
 class BSettingsMenuTile extends StatelessWidget {
   const BSettingsMenuTile(
@@ -8,18 +6,21 @@ class BSettingsMenuTile extends StatelessWidget {
       required this.icon,
       required this.title,
       required this.subTitle,
-      this.onTap, this.trailing});
+      this.onTap,
+      this.trailing});
 
   final IconData icon;
   final String title, subTitle;
   final Widget? trailing;
   final VoidCallback? onTap;
 
-
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, size: 28, color: BColors.primary),
+      // The theme's accent, so the icons follow the department theme
+      // Settings wears (Collection navy-blue, Logistics blue).
+      leading:
+          Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
       title: Text(title, style: Theme.of(context).textTheme.titleMedium),
       subtitle: Text(subTitle, style: Theme.of(context).textTheme.labelMedium),
       trailing: trailing,

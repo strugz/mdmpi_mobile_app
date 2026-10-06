@@ -4,6 +4,8 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/activity.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar/calendar.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_roles.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/team/team_activity_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/home.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/home.dart';
@@ -53,6 +55,17 @@ class NavigationController extends GetxController {
       final dept = userController.user.value.department.toLowerCase();
 
       if (dept == 'collection') {
+        // The Head of Collection also collects: same four tabs, plus Team
+        // Activity (TODO item 21) before Settings.
+        if (BCollectionRoles.isHead(userController.user.value)) {
+          return const [
+            CollectionHomeScreen(),
+            CollectionActivityScreen(),
+            CollectionCalendarScreen(),
+            TeamActivityScreen(),
+            SettingsScreen()
+          ];
+        }
         return const [
           CollectionHomeScreen(),
           CollectionActivityScreen(),
@@ -79,6 +92,15 @@ class NavigationController extends GetxController {
       final dept = userController.user.value.department.toLowerCase();
 
       if (dept == 'collection') {
+        if (BCollectionRoles.isHead(userController.user.value)) {
+          return const [
+            Icon(Iconsax.home, size: 30),
+            Icon(Iconsax.activity, size: 30),
+            Icon(Iconsax.calendar, size: 30),
+            Icon(Iconsax.people, size: 30),
+            Icon(Iconsax.user, size: 30)
+          ];
+        }
         return const [
           Icon(Iconsax.home, size: 30),
           Icon(Iconsax.activity, size: 30),

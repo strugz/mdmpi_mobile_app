@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -5,6 +6,8 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 class CWTPickupFormScreen extends StatefulWidget {
   const CWTPickupFormScreen({super.key});
@@ -14,13 +17,16 @@ class CWTPickupFormScreen extends StatefulWidget {
 }
 
 class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
-  final accountNameController = TextEditingController();
   final remarksController = TextEditingController();
   final formKey = GlobalKey<FormState>();
 
+  /// The existing client picked from the registry. The account used to be
+  /// typed freehand, and a name spelled differently from the registry saved
+  /// with no client id.
+  ClientModel? _client;
+
   @override
   void dispose() {
-    accountNameController.dispose();
     remarksController.dispose();
     super.dispose();
   }
@@ -31,13 +37,16 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
     final controller = CollectionActivityController.instance;
     controller.saveGlobalActivity(
       type: 'CWT Pick-up',
-      accountName: accountNameController.text,
+      clientId: _client!.id,
+      accountName: _client!.name,
       remarks: remarksController.text,
     );
 
     Get.back(); // Close form first
-    BLoaders.successSnackBar(
-        title: 'Success', message: 'CWT Pick-up activity recorded.');
+    if (!CollectionSmsService.smsFollows()) {
+      BLoaders.successSnackBar(
+          title: 'Success', message: 'CWT Pick-up activity recorded.');
+    }
   }
 
   @override
@@ -47,37 +56,43 @@ class _CWTPickupFormScreenState extends State<CWTPickupFormScreen> {
           const BAppBar(title: Text('Record CWT Pick-up'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(BSizes.defaultSpace),
+          padding: EdgeInsets.fromLTRB(
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace,
+            BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Form(
             key: formKey,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextFormField(
-                  controller: accountNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Account Name',
-                    prefixIcon: Icon(Iconsax.user),
-                  ),
-                  validator: (value) => value == null || value.isEmpty
-                      ? 'Account name is required'
-                      : null,
+                // Tap to search the existing clients; nothing is typed here.
+                ClientPickerField(
+                  key: const ValueKey('cwt-account'),
+                  value: _client,
+                  search: CollectionActivityController
+                      .instance.searchClientRegistry,
+                  searchKnown:
+                      CollectionActivityController.instance.searchKnownAccounts,
+                  onChanged: (client) => setState(() => _client = client),
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
                 TextFormField(
                   controller: remarksController,
                   maxLines: 4,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: 'Remarks',
+                    labelText: 'Remarks (optional)',
                     prefixIcon: Icon(Iconsax.edit),
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    child: const Text('Save Activity'),
-                  ),
+                ElevatedButton(
+                  onPressed: _save,
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48)),
+                  child: const Text('Record CWT pick-up'),
                 ),
               ],
             ),

@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
 
 /// Money fields are the one place in this app where a parsing slip is
 /// invisible and permanent: a bare `double.tryParse('1,000') ?? 0` records
@@ -108,6 +110,88 @@ void main() {
           reason: 'typed $keystrokes, displayed $displayed',
         );
       }
+    });
+  });
+
+  group('the same rules as the Collection web', () {
+    final f = ThousandsSeparatorInputFormatter();
+
+    TextEditingValue edit(String text, int caret) => f.formatEditUpdate(
+        TextEditingValue.empty,
+        TextEditingValue(
+            text: text, selection: TextSelection.collapsed(offset: caret)));
+
+    test('format matches the web, case for case', () {
+      const cases = {
+        '7200000': '7,200,000',
+        '72000000.5': '72,000,000.5',
+        '1,234.567': '1,234.56',
+        '.5': '0.5',
+        '00012': '12',
+        '1.2.3': '1.23',
+        'abc': '',
+        '₱ 1234': '1,234',
+        '0': '0',
+      };
+      cases.forEach((input, output) => expect(
+          ThousandsSeparatorInputFormatter.format(input), output,
+          reason: input));
+    });
+
+    test('finalize adds the centavos when the field is left', () {
+      expect(ThousandsSeparatorInputFormatter.finalize('7,200,000'),
+          '7,200,000.00');
+      expect(ThousandsSeparatorInputFormatter.finalize('1.5'), '1.50');
+      expect(ThousandsSeparatorInputFormatter.finalize(''), '');
+    });
+
+    test('a digit typed in the middle keeps the caret after it', () {
+      // "7,200,000" with a 5 typed after the 7: "75,200,000" → "75,200,000".
+      final v = edit('75,200,000', 2);
+      expect(v.text, '75,200,000');
+      expect(v.selection.baseOffset, 2, reason: 'right after the 5');
+
+      // "1,000" with a 2 typed after the 1: "12,000" regroups to "12,000".
+      final w = edit('12,000', 2);
+      expect(w.text, '12,000');
+      expect(w.selection.baseOffset, 2);
+
+      // "999" + a 9 at the front regroups to "9,999"; the caret stays after
+      // the new 9, not after the comma the regroup added.
+      final x = edit('9999', 1);
+      expect(x.text, '9,999');
+      expect(x.selection.baseOffset, 1);
+    });
+
+    testWidgets('BAmountBlurPad writes .00 when focus leaves', (tester) async {
+      final amount = TextEditingController();
+      final other = TextEditingController();
+      addTearDown(amount.dispose);
+      addTearDown(other.dispose);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Column(children: [
+            BAmountBlurPad(
+              controller: amount,
+              child: TextField(
+                key: const ValueKey('amount'),
+                controller: amount,
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+              ),
+            ),
+            TextField(key: const ValueKey('other'), controller: other),
+          ]),
+        ),
+      ));
+
+      await tester.enterText(find.byKey(const ValueKey('amount')), '7200000');
+      await tester.pump();
+      expect(amount.text, '7,200,000', reason: 'grouped while typing');
+
+      await tester.tap(find.byKey(const ValueKey('other')));
+      await tester.pump();
+      expect(amount.text, '7,200,000.00');
+      expect(BFormatter.parseAmount(amount.text), 7200000);
     });
   });
 }

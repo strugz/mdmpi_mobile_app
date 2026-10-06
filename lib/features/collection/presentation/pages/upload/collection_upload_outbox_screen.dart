@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_upload_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
@@ -136,10 +137,7 @@ class _PendingList extends StatelessWidget {
                         : BCollectionColors.primary,
                   ),
                   title: Text(_operationLabel(change.operation)),
-                  subtitle: Text(
-                    'Invoice: ${change.itemId ?? '—'}'
-                    '${rejected ? '\nRejected — attempts: ${change.retryCount}' : ''}',
-                  ),
+                  subtitle: Text(_subtitle(change, rejected)),
                   isThreeLine: rejected,
                   trailing: IconButton(
                     tooltip: 'Discard',
@@ -255,6 +253,22 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
+}
+
+/// "Invoice: INV-1" for bucket work, "Ref: ACT-…" for an activity (a deposit,
+/// CWT pick-up, reconciliation), then the attempt count and the server's own
+/// reason — "ClientCode is required" tells the collector (and support) what
+/// to do; "attempts: 5" on its own does not.
+String _subtitle(PendingChange change, bool rejected) {
+  final id = change.itemId ?? '—';
+  final label = id.startsWith('ACT-') ? 'Ref' : 'Invoice';
+  final buffer = StringBuffer('$label: $id');
+  if (rejected) {
+    buffer.write('\nRejected — attempts: ${change.retryCount}');
+    final reason = change.lastError?.trim();
+    if (reason != null && reason.isNotEmpty) buffer.write('\n$reason');
+  }
+  return buffer.toString();
 }
 
 String _operationLabel(String operation) {

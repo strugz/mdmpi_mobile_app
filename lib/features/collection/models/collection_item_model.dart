@@ -13,6 +13,12 @@ class CollectionItemModel {
   final String remarks;
   final String documentDate;
   final String bpCode;
+
+  /// The customer's purchase-order number (SAP "BP Ref. No."). Empty when SAP
+  /// had none or the invoice predates the field. One P.O. is often billed as
+  /// several invoices, so it is how a customer groups what they owe; it is a
+  /// label scoped to the account, not a key.
+  final String poNumber;
   final String postingDate;
   final String dueDate;
 
@@ -36,6 +42,7 @@ class CollectionItemModel {
     this.remarks = 'No remarks',
     this.documentDate = 'N/A',
     this.bpCode = 'N/A',
+    this.poNumber = '',
     this.postingDate = 'N/A',
     this.dueDate = 'N/A',
     // Default to empty / unknown status — 'Pending' and 'On-going' are removed.
@@ -61,6 +68,7 @@ class CollectionItemModel {
     String? remarks,
     String? documentDate,
     String? bpCode,
+    String? poNumber,
     String? postingDate,
     String? dueDate,
     String? status,
@@ -79,6 +87,7 @@ class CollectionItemModel {
       remarks: remarks ?? this.remarks,
       documentDate: documentDate ?? this.documentDate,
       bpCode: bpCode ?? this.bpCode,
+      poNumber: poNumber ?? this.poNumber,
       postingDate: postingDate ?? this.postingDate,
       dueDate: dueDate ?? this.dueDate,
       status: status ?? this.status,
@@ -115,6 +124,7 @@ class CollectionItemModel {
       remarks: (json['Remarks'] ?? 'No remarks').toString(),
       documentDate: (json['DocumentDate'] ?? 'N/A').toString(),
       bpCode: (json['BPCode'] ?? json['CustomerCode'] ?? 'N/A').toString(),
+      poNumber: (json['PONumber'] ?? '').toString().trim(),
       postingDate: (json['PostingDate'] ?? 'N/A').toString(),
       dueDate: (json['DueDate'] ?? 'N/A').toString(),
       status: (json['Status'] ?? json['CoreStatus'] ?? '').toString(),
@@ -139,6 +149,7 @@ class CollectionItemModel {
       'Remarks': remarks,
       'DocumentDate': documentDate,
       'BPCode': bpCode,
+      'PONumber': poNumber,
       'PostingDate': postingDate,
       'DueDate': dueDate,
       'Status': status,
@@ -148,6 +159,9 @@ class CollectionItemModel {
       'History': history.map((e) => e.toJson()).toList(),
     };
   }
+
+  /// True when SAP gave this invoice a customer P.O. number worth showing.
+  bool get hasPoNumber => poNumber.trim().isNotEmpty;
 
   /// Number of days past the due date. Positive when overdue, zero when due today
   /// or when parsing fails.
