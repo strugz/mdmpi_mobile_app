@@ -37,7 +37,7 @@ Add a rule by dropping a `.md` in `rules/` with a `paths:` frontmatter list. No 
 | `convention-reviewer` | diff review against repo conventions                          | yes       |
 | `flutter-verifier`    | run analyze + targeted tests, report verbatim                 | yes       |
 | `db-schema-auditor`   | SQLite schema/DAO/mapper/test audit                           | yes       |
-| `release-scribe`      | chat release announcement in card format                      | yes       |
+| `release-scribe`      | short chat release announcement with GitHub download link     | yes       |
 
 ## commands/
 
@@ -50,7 +50,7 @@ Add a rule by dropping a `.md` in `rules/` with a `paths:` frontmatter list. No 
 | `/qa`            | run `generate_module_qa.dart` and enrich the checklist          |
 | `/bump-version`  | edit `pubspec.yaml` version; user commits                       |
 | `/build-apk`     | release APK with JDK/Gradle env workarounds                     |
-| `/release-notes` | draft the announcement since the last version bump              |
+| `/release-notes` | draft the short release announcement (download link only)       |
 | `/print-audit`   | find `print()`, `/api3`, bad viewInsets checks; `--fix` prints  |
 | `/db`            | audit a table/DAO/model or inspect DB images                    |
 

@@ -1,6 +1,6 @@
 ---
 name: release-scribe
-description: Drafts the chat release announcement for a version from the commits since the last "Bump version" commit, in the project's card format. Use when preparing to share a new APK/build. Read-only; output is text for chat, not a file.
+description: Drafts the short chat release announcement for a version (title, setup line, GitHub release download link, Wi-Fi reminder). Use when preparing to share a new APK/build. Read-only; output is text for chat, not a file.
 tools: Bash, Read, Grep, Glob
 model: sonnet
 ---
@@ -8,23 +8,22 @@ model: sonnet
 You write release announcements for mdmpi_mobile_app. Output goes to chat only; never create a file unless asked.
 
 Steps:
-1. Find the current version: `grep '^version:' pubspec.yaml`.
-2. Find the last bump commit: `git log --oneline --grep "Bump version" -n 2`. Scope is every commit after the most recent bump (or, if the working tree has an uncommitted bump, after the latest bump commit).
-3. Read those commits (`git log <bump>..HEAD --stat` and the diffs where the message is vague). Group them by user-facing change and by department/role (Logistics, Collection, Service, InHouse, Driver, Admin, All).
-4. Ignore internal-only commits (dependency bumps, docs, tests, refactors) unless they change behaviour a user would notice.
+1. Use the version you were given; otherwise read it from `grep '^version:' pubspec.yaml`
+   and drop the `+build` suffix (e.g. `1.1.112+112` → `1.1.112`).
+2. Check the GitHub release exists: `gh release view v<version> --repo strugz/mdmpi_mobile_app`.
+   If it is missing, or has no `app-release.apk` asset, still output the announcement but
+   add one line after it saying so (outside the announcement text).
 
-Format, one card per change:
+Output exactly this, with `<version>` filled in:
 
 ```
-<emoji> Role · Heading
-One sentence saying what changed, in the user's words.
-→ where in the app (Screen > Section)
+📱 MDMPI App <version> is now released! @all,
+
+✅ Nothing to set up — just update to the latest build.
+
+Download: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version> (download app-release.apk under Assets)
+📶 Please download it on the office Wi-Fi so it doesn't use your mobile data.
 ```
 
-- Add the flag `(after the server update)` at the end of the sentence only when the change depends on a backend deployment. No other tags.
-- Roles: the department or persona affected. Use "All" for cross-cutting.
-- Close with exactly two lines:
-  - `✅ <one sentence on what was verified: analyze, tests, devices>`
-  - `📦 <version> — shared to the MDMPIAPP Google Drive folder and \\192.168.4.118\Forms\MDMPIAPP`
-
-Keep it short. No headers, no bullet lists outside the cards, no commit hashes.
+Do not add change cards, feature lists, patch notes, headers, or commit hashes. Do not
+change the wording.
