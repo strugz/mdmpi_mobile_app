@@ -1,0 +1,220 @@
+{
+  "about": "Reconciliation Tracker sample cases (docs/application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md). One per path through the flow. Read by the phone's recon_fixture_test.dart and, from Stage 2, by the backend's rules tests, so both evaluate every case alike. Times are Philippine wall-clock time, as the phone stamps them; 'now' is a real instant.",
+  "settings": { "noResponseDays": 7 },
+  "now": "2026-09-28T10:00:00+08:00",
+  "cases": [
+    {
+      "name": "SOA sent, no word back for two weeks",
+      "case": { "caseId": "RC-MAR-1", "clientCode": "NCR-310", "clientName": "Amka Trading", "collectorCode": "MAR", "dateOpened": "2026-09-14T09:00:00" },
+      "invoices": [
+        { "invoiceNo": "700009771", "amount": 21048.87 },
+        { "invoiceNo": "700009347", "amount": 6570.80 },
+        { "invoiceNo": "113387", "amount": 11000.00 }
+      ],
+      "activities": [
+        { "activityId": "RA-MAR-1", "dateTime": "2026-09-14T09:30:00", "type": "SOA_SENT", "nextAction": "Follow up the SOA", "nextActionDueDate": "2026-09-21" }
+      ],
+      "expected": {
+        "status": "WAITING_FOR_ACCOUNT",
+        "nextActor": "ACCOUNT",
+        "invoices": { "700009771": "OPEN", "700009347": "OPEN", "113387": "OPEN" },
+        "flags": ["NO_RESPONSE", "NEXT_ACTION_OVERDUE"],
+        "warnings": 0,
+        "soaAmount": 38619.67
+      }
+    },
+    {
+      "name": "Documents asked and sent, two invoices claimed paid, proof requested",
+      "case": { "caseId": "RC-JCA-2", "clientCode": "NLN-205", "clientName": "Accuteqs Diagnostics Corp.", "collectorCode": "JCA", "dateOpened": "2026-09-15T08:00:00" },
+      "invoices": [
+        { "invoiceNo": "240008696", "amount": 15047.91 },
+        { "invoiceNo": "240008691", "amount": 12339.50 },
+        { "invoiceNo": "240006226", "amount": 85740.00 }
+      ],
+      "activities": [
+        { "activityId": "RA-JCA-20", "dateTime": "2026-09-15T08:30:00", "type": "SOA_SENT" },
+        { "activityId": "RA-JCA-21", "dateTime": "2026-09-16T14:00:00", "type": "DOCUMENT_REQUESTED", "remarks": "Asked for delivery receipts" },
+        { "activityId": "RA-JCA-22", "dateTime": "2026-09-17T10:00:00", "type": "DOCUMENT_PROVIDED", "remarks": "DR copies emailed" },
+        { "activityId": "RA-JCA-23", "dateTime": "2026-09-21T11:00:00", "type": "PAID_CLAIM", "invoiceNos": ["240008696", "240008691"] },
+        { "activityId": "RA-JCA-24", "dateTime": "2026-09-22T09:00:00", "type": "PROOF_REQUESTED", "nextAction": "Wait for the deposit slips", "nextActionDueDate": "2026-09-29" }
+      ],
+      "expected": {
+        "status": "WAITING_FOR_ACCOUNT",
+        "nextActor": "ACCOUNT",
+        "invoices": { "240008696": "CLAIMED_PAID", "240008691": "CLAIMED_PAID", "240006226": "OPEN" },
+        "flags": ["CLAIMED_PAID_NO_PROOF"],
+        "warnings": 0
+      }
+    },
+    {
+      "name": "Proof of payment received, waiting to be checked",
+      "case": { "caseId": "RC-JCA-3", "clientCode": "NLN-115", "clientName": "Accusure Medical Enterprises", "collectorCode": "JCA", "dateOpened": "2026-09-20T09:00:00" },
+      "invoices": [
+        { "invoiceNo": "700013391", "amount": 24281.25 },
+        { "invoiceNo": "700013392", "amount": 121208.04 }
+      ],
+      "activities": [
+        { "activityId": "RA-JCA-30", "dateTime": "2026-09-20T09:15:00", "type": "SOA_SENT" },
+        { "activityId": "RA-JCA-31", "dateTime": "2026-09-23T10:00:00", "type": "PAID_CLAIM", "invoiceNos": ["700013392"] },
+        { "activityId": "RA-JCA-32", "dateTime": "2026-09-23T10:05:00", "type": "PROOF_REQUESTED" },
+        { "activityId": "RA-JCA-33", "dateTime": "2026-09-26T15:00:00", "type": "PROOF_PROVIDED", "remarks": "BDO check 4588255 dated 09-28-2026" }
+      ],
+      "expected": {
+        "status": "UNDER_VALIDATION",
+        "nextActor": "COLLECTOR",
+        "invoices": { "700013391": "OPEN", "700013392": "CLAIMED_PAID" },
+        "flags": [],
+        "warnings": 0
+      }
+    },
+    {
+      "name": "Proof invalid; the account is asked again and the next action is overdue",
+      "case": { "caseId": "RC-MAR-4", "clientCode": "NLN-101", "clientName": "Alexis Yu Best Care Pharmacy", "collectorCode": "MAR", "dateOpened": "2026-09-05T09:00:00" },
+      "invoices": [
+        { "invoiceNo": "109448", "amount": 18000.00 },
+        { "invoiceNo": "109028", "amount": 22500.00 },
+        { "invoiceNo": "98425", "amount": 54698.18 }
+      ],
+      "activities": [
+        { "activityId": "RA-MAR-40", "dateTime": "2026-09-05T09:30:00", "type": "SOA_SENT" },
+        { "activityId": "RA-MAR-41", "dateTime": "2026-09-10T13:00:00", "type": "PAID_CLAIM", "invoiceNos": ["109448", "109028"] },
+        { "activityId": "RA-MAR-42", "dateTime": "2026-09-12T16:00:00", "type": "PROOF_PROVIDED" },
+        { "activityId": "RA-MAR-43", "dateTime": "2026-09-15T10:00:00", "type": "PROOF_VALIDATED", "invoiceNos": ["109448"], "validationResult": "VALID" },
+        { "activityId": "RA-MAR-44", "dateTime": "2026-09-15T10:05:00", "type": "PROOF_VALIDATED", "invoiceNos": ["109028"], "validationResult": "INVALID", "remarks": "Deposit slip is for another account", "nextAction": "Get the correct deposit slip", "nextActionDueDate": "2026-09-25" }
+      ],
+      "expected": {
+        "status": "WAITING_FOR_ACCOUNT",
+        "nextActor": "ACCOUNT",
+        "invoices": { "109448": "VALIDATED_PAID", "109028": "PROOF_INVALID", "98425": "OPEN" },
+        "flags": ["NO_RESPONSE", "NEXT_ACTION_OVERDUE"],
+        "warnings": 0,
+        "amountValidatedPaid": 18000.00,
+        "amountUnderReconciliation": 77198.18
+      }
+    },
+    {
+      "name": "Completed: one invoice validated, the other paid outside the case",
+      "case": { "caseId": "RC-JCA-5", "clientCode": "NCR-150", "clientName": "Ace Diagnostics Corp.", "collectorCode": "JCA", "dateOpened": "2026-09-08T09:00:00" },
+      "invoices": [
+        { "invoiceNo": "270000090", "amount": 20000.00 },
+        { "invoiceNo": "270000091", "amount": 5000.00, "currentBalance": 0, "clearedAt": "2026-09-19T14:00:00" }
+      ],
+      "activities": [
+        { "activityId": "RA-JCA-50", "dateTime": "2026-09-08T09:10:00", "type": "SOA_SENT" },
+        { "activityId": "RA-JCA-51", "dateTime": "2026-09-09T10:00:00", "type": "PAID_CLAIM", "invoiceNos": ["270000090"] },
+        { "activityId": "RA-JCA-52", "dateTime": "2026-09-10T10:00:00", "type": "PROOF_PROVIDED", "remarks": "Bank transfer ref 88213" },
+        { "activityId": "RA-JCA-53", "dateTime": "2026-09-11T10:00:00", "type": "PROOF_VALIDATED", "validationResult": "VALID" }
+      ],
+      "expected": {
+        "status": "COMPLETED",
+        "nextActor": null,
+        "invoices": { "270000090": "VALIDATED_PAID", "270000091": "CLEARED" },
+        "flags": [],
+        "warnings": 0,
+        "dateClosed": "2026-09-19T14:00:00"
+      }
+    },
+    {
+      "name": "Escalated to the Head; a note logged afterwards is kept but not applied",
+      "case": { "caseId": "RC-MAR-6", "clientCode": "NCR-205", "clientName": "Abbott Laboratories", "collectorCode": "MAR", "dateOpened": "2026-08-20T09:00:00" },
+      "invoices": [
+        { "invoiceNo": "270000031", "amount": 112000.00 }
+      ],
+      "activities": [
+        { "activityId": "RA-MAR-60", "dateTime": "2026-08-20T09:30:00", "type": "SOA_SENT" },
+        { "activityId": "RA-MAR-61", "dateTime": "2026-08-25T11:00:00", "type": "PAID_CLAIM", "invoiceNos": ["270000031"] },
+        { "activityId": "RA-MAR-62", "dateTime": "2026-08-26T09:00:00", "type": "PROOF_REQUESTED" },
+        { "activityId": "RA-MAR-63", "dateTime": "2026-09-18T09:00:00", "type": "CASE_ESCALATED", "remarks": "No proof after three follow-ups" },
+        { "activityId": "RA-MAR-64", "dateTime": "2026-09-19T09:00:00", "type": "NOTE", "remarks": "Client called" }
+      ],
+      "expected": {
+        "status": "ESCALATED",
+        "nextActor": null,
+        "invoices": { "270000031": "CLAIMED_PAID" },
+        "flags": [],
+        "warnings": 1,
+        "dateClosed": "2026-09-18T09:00:00"
+      }
+    },
+    {
+      "name": "Ended not completed: the account disputes the invoice",
+      "case": { "caseId": "RC-JCA-7", "clientCode": "NLN-330", "clientName": "Metro Globe", "collectorCode": "JCA", "dateOpened": "2026-09-01T09:00:00" },
+      "invoices": [
+        { "invoiceNo": "700011347", "amount": 6001.00 }
+      ],
+      "activities": [
+        { "activityId": "RA-JCA-70", "dateTime": "2026-09-01T09:30:00", "type": "SOA_SENT" },
+        { "activityId": "RA-JCA-71", "dateTime": "2026-09-03T15:00:00", "type": "DOCUMENT_REQUESTED", "remarks": "Wants the signed contract" },
+        { "activityId": "RA-JCA-72", "dateTime": "2026-09-24T10:00:00", "type": "CASE_NOT_COMPLETED", "remarks": "Contract under legal review" }
+      ],
+      "expected": {
+        "status": "NOT_COMPLETED",
+        "nextActor": null,
+        "invoices": { "700011347": "OPEN" },
+        "flags": [],
+        "warnings": 0,
+        "dateClosed": "2026-09-24T10:00:00"
+      }
+    },
+    {
+      "name": "A payment collected, the account released and acquired again: the turn and the flags do not move",
+      "case": {
+        "caseId": "RC-JCA-8",
+        "clientCode": "RAD-022",
+        "clientName": "Allied Care Experts (ACE) Medical Center - Bohol, Inc.",
+        "collectorCode": "MAR",
+        "dateOpened": "2026-09-20T09:00:00"
+      },
+      "invoices": [
+        {
+          "invoiceNo": "700004812",
+          "amount": 526995.0,
+          "currentBalance": 276995.0
+        }
+      ],
+      "activities": [
+        {
+          "activityId": "RA-JCA-80",
+          "dateTime": "2026-09-20T10:00:00",
+          "type": "SOA_SENT",
+          "nextAction": "Follow up the SOA",
+          "nextActionDueDate": "2026-09-24"
+        },
+        {
+          "activityId": "RA-JCA-81",
+          "dateTime": "2026-09-26T14:00:00",
+          "type": "PAYMENT_RECORDED",
+          "invoiceNos": [
+            "700004812"
+          ],
+          "amount": 250000.0,
+          "remarks": "Partially Collected"
+        },
+        {
+          "activityId": "RA-JCA-82",
+          "dateTime": "2026-09-26T16:00:00",
+          "type": "CASE_RELEASED",
+          "remarks": "Done Engagement"
+        },
+        {
+          "activityId": "RA-MAR-83",
+          "dateTime": "2026-09-27T09:00:00",
+          "type": "CASE_ACQUIRED"
+        }
+      ],
+      "expected": {
+        "status": "WAITING_FOR_ACCOUNT",
+        "nextActor": "ACCOUNT",
+        "invoices": {
+          "700004812": "OPEN"
+        },
+        "flags": [
+          "NO_RESPONSE",
+          "NEXT_ACTION_OVERDUE"
+        ],
+        "warnings": 0,
+        "amountUnderReconciliation": 276995.0
+      }
+    }
+  ]
+}
