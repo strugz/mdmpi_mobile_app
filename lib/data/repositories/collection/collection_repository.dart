@@ -177,6 +177,13 @@ class CollectionRepository extends GetxController {
     if (ws.hasActualCollections) {
       await (await helper.collectionActualDao).replaceAll(ws.actualCollections);
     }
+    // Reconciliation cases: the server's copies, keeping any step this device
+    // logged that has not been uploaded. Only when this server sent them.
+    if (ws.hasReconCases) {
+      final now = DateTime.now();
+      await (await helper.reconCaseDao).replaceServerCopies(
+          ws.reconCases, (b) => b.evaluate(now: now));
+    }
   }
 
   /// Parse an API item list into domain models via the DTO + mapper layer.
@@ -591,6 +598,12 @@ class CollectionRepository extends GetxController {
   /// [fields] carries the operation-specific values using the backend
   /// CollectionChangeDto names; Operation/ItemId/CollectorName are added here so
   /// the stored payload is exactly one element of UploadCollectionDto.Changes.
+  /// [_queueChange] for the other Collection repositories (the Reconciliation
+  /// Tracker), so every change goes through one outbox in one order.
+  Future<void> queueChange(
+          String operation, String itemId, Map<String, dynamic> fields) =>
+      _queueChange(operation, itemId, fields);
+
   Future<void> _queueChange(
       String operation, String itemId, Map<String, dynamic> fields) async {
     final change = <String, dynamic>{

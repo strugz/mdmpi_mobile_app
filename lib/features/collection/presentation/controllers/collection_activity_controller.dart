@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/reconciliation_repository.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
@@ -17,6 +18,7 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation_fold.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
@@ -1472,11 +1474,20 @@ class CollectionActivityController extends GetxController {
     }).toList();
   }
 
-  /// Returns accounts that have reconciliation invoices
+  /// Invoices whose reconciliation case has ended: they cannot be acquired
+  /// from Reconciliation (a closed case takes no more steps).
+  Set<String> endedReconInvoiceIds() =>
+      Get.isRegistered<ReconciliationController>()
+          ? ReconciliationController.instance.endedCaseInvoiceIds
+          : const {};
+
+  /// Accounts with reconciliation invoices waiting to be acquired: in the
+  /// bucket, and not in a case that has ended.
   List<ClientModel> get reconciliationAccounts {
-    // Only show accounts that have reconciliation invoices currently in the bucket
+    final ended = endedReconInvoiceIds();
+    final inBucket = bucketItems.map((b) => b.id).toSet();
     final clientIds = reconciliationItems
-        .where((item) => bucketItems.any((b) => b.id == item.id))
+        .where((item) => inBucket.contains(item.id) && !ended.contains(item.id))
         .map((e) => e.client.id)
         .toSet();
     return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
@@ -1725,10 +1736,32 @@ class CollectionActivityController extends GetxController {
     logDebug(
         '[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
 
+    // The account's reconciliation case is released with it.
+    await _recon(
+        (r) => r.releaseCasesFor(clientId, remarks: 'Done Engagement'));
+
     // SMS trigger 4, Clear Engagement. After the release is saved, never
     // blocking it.
     // ignore: unawaited_futures
     notifyEngagementCleared(clientName: invoices.first.client.name);
+  }
+
+  /// Runs [action] on the Reconciliation Tracker when it is registered (it is
+  /// not in some tests); its failure is logged and never undoes the
+  /// collection work that triggered it.
+  Future<void> _recon(
+      Future<Result<Object?>> Function(ReconciliationRepository r)
+          action) async {
+    if (!Get.isRegistered<ReconciliationRepository>()) return;
+    try {
+      final result = await action(ReconciliationRepository.instance);
+      if (result.isFailure) {
+        logDebug(
+            '[CollectionActivityController] reconciliation: ${result.error}');
+      }
+    } catch (e) {
+      logDebug('[CollectionActivityController] reconciliation error: $e');
+    }
   }
 
   /// Send the Clear Engagement notice to the Head and the Collection
@@ -1772,6 +1805,10 @@ class CollectionActivityController extends GetxController {
       remarks: remarks,
     );
 
+    // The account's reconciliation case is released with it.
+    final why = remarks.trim().isEmpty ? reason : '$reason - ${remarks.trim()}';
+    await _recon((r) => r.releaseCasesFor(clientId, remarks: why));
+
     // SMS trigger 3, Defer Account: the reason and the collector's remarks.
     _notifySms((sms) => sms.notifyAccountDeferred(
           clientName: invoices.first.client.name,
@@ -1810,17 +1847,23 @@ class CollectionActivityController extends GetxController {
   }
 
   /// Acquire an account from Home → Reconciliation: only its invoices marked
-  /// for reconciliation that are still in the bucket.
-  void claimReconciliation(String clientId) {
+  /// for reconciliation that are still in the bucket, never ones whose case
+  /// has ended.
+  Future<void> claimReconciliation(String clientId) async {
+    final ended = endedReconInvoiceIds();
     final ids = bucketItems
         .where((item) =>
             item.client.id == clientId &&
             item.toBeCollected > 0 &&
-            isReconciliation(item))
+            isReconciliation(item) &&
+            !ended.contains(item.id))
         .map((e) => e.id)
         .toList();
     if (ids.isEmpty) return;
-    claimItemsByIds(ids);
+    // The claim first, so the server sees the account held before the case
+    // is taken over (both go out in the same upload, in this order).
+    await claimItemsByIds(ids);
+    await _recon((r) => r.acquireCasesFor(clientId));
     logDebug(
         '[CollectionActivityController] Account $clientId claimed (${ids.length} reconciliation invoices)');
   }
@@ -2029,6 +2072,14 @@ class CollectionActivityController extends GetxController {
         purposeOfVisit: purposeOfVisit,
         silent: true,
       );
+      // A collection on an invoice in a reconciliation case goes on its
+      // timeline.
+      await _recon((r) => r.recordPayment(
+          invoiceId: id,
+          amount: newlyCollected,
+          outcome: status,
+          bankName: bankName,
+          checkNumber: checkNumber));
 
       logDebug(
           '[CollectionActivityController] Activity $id saved. Move to bucket: $isFullyPaid');
@@ -2148,6 +2199,14 @@ class CollectionActivityController extends GetxController {
         purposeOfVisit: purposeOfVisit,
         silent: true,
       );
+      for (final id in ids) {
+        await _recon((r) => r.recordPayment(
+            invoiceId: id,
+            amount: amounts[id] ?? 0,
+            outcome: statuses[id] ?? '',
+            bankName: bankName,
+            checkNumber: checkNumber));
+      }
 
       exitActivitySelectionMode();
       logDebug(

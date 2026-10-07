@@ -45,6 +45,11 @@ class BRoutes{
       '/collection/engagement/reconciliation';
   static const collectionAdvancedPaymentForm =
       '/collection/engagement/advanced-payment';
+  // Collection - Reconciliation Tracker: the collector's cases, and one case
+  // (argument: the case id).
+  static const reconciliationCases = '/collection/reconciliation';
+  static const reconciliationCase = '/collection/reconciliation/case';
+  static const reconciliationReports = '/collection/reconciliation/reports';
   static const signatureOutbox = '/signature-outbox';
   static const imageOutbox = '/image-outbox';
   static const uploadData = '/upload-data';

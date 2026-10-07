@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_dao.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
+import 'package:mdmpi_mobile_app/data/services/outbox/recon_attachment_sync_service.dart';
 
 /// Manages syncing of pending collection changes to the server.
 ///
@@ -106,6 +107,11 @@ class SyncManager extends GetxController {
     try {
       final result = await CollectionRepository.instance.uploadAll();
       await _updatePendingStatus();
+      // The upload is what puts reconciliation cases on the server; their
+      // photos can follow now instead of waiting for the next app resume.
+      if (Get.isRegistered<ReconAttachmentSyncService>()) {
+        unawaited(ReconAttachmentSyncService.instance.flushNow());
+      }
 
       if (hasPendingChanges.value) {
         syncStatus.value = 'failed';

@@ -93,6 +93,9 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repo
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.dart';
+import 'package:mdmpi_mobile_app/data/services/outbox/recon_attachment_sync_service.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/reconciliation_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -273,10 +276,31 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionSettingsController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
+    // Reconciliation Tracker: queues through CollectionRepository and
+    // SyncManager (above). SQLite + /api4 only, so outside the Firebase guard.
+    Get.lazyPut(
+        () => ReconciliationRepository(
+              // The phone's live balances, so a payment recorded here shows
+              // on its case before the next upload and download.
+              liveBalances: () => Get.isRegistered<CollectionActivityController>()
+                  ? {
+                      for (final i
+                          in CollectionActivityController.instance.allItems)
+                        i.id: i.toBeCollected,
+                    }
+                  : const {},
+            ),
+        fenix: true);
+    Get.lazyPut(
+        () => ReconciliationController(
+            repository: Get.find<ReconciliationRepository>()),
+        fenix: true);
 
     // Eager, not lazy: it must be alive to hear connectivity and lifecycle
     // events, otherwise nothing drains the proof outboxes automatically.
     // Registered last so NetworkManager and ImageRepository already exist.
     Get.put(ProofOutboxSyncService(), permanent: true);
+    // The same for reconciliation photos (proof of payment, documents).
+    Get.put(ReconAttachmentSyncService(), permanent: true);
   }
 }

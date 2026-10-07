@@ -36,6 +36,9 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/deposit_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/reconciliation_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/recon_case_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/recon_dashboard_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/recon_reports_screen.dart';
 
 class AppRoutes {
   static final pages = [
@@ -84,6 +87,9 @@ class AppRoutes {
     GetPage(name: BRoutes.collectionDepositForm, page: () => const DepositFormScreen()),
     GetPage(name: BRoutes.collectionCwtPickupForm, page: () => const CWTPickupFormScreen()),
     GetPage(name: BRoutes.collectionReconciliationForm, page: () => const ReconciliationFormScreen()),
+    GetPage(name: BRoutes.reconciliationCases, page: () => const ReconDashboardScreen()),
+    GetPage(name: BRoutes.reconciliationReports, page: () => const ReconReportsScreen()),
+    GetPage(name: BRoutes.reconciliationCase, page: () => ReconCaseScreen(caseId: Get.arguments as String? ?? '')),
     GetPage(name: BRoutes.collectionAdvancedPaymentForm, page: () => const AdvancedPaymentFormScreen()),
   ];
 

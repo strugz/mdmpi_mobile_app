@@ -609,6 +609,98 @@ Future<void> ensureCollectionTables(Database db) async {
     CREATE INDEX IF NOT EXISTS idx_collection_engagement_client
       ON a_tblCollectionEngagement (collectorCode, clientId)
   ''');
+
+  await ensureReconciliationTables(db);
+}
+
+/// The Reconciliation Tracker's tables
+/// (docs/application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md): cases, the
+/// invoices fixed when each opened, the activity log, and its photos.
+///
+/// Like the engagement archive these hold work that exists nowhere else until
+/// it is uploaded, so they are kept out of the destructive rebuild and never
+/// truncated by a download. `source` says where a row came from: 'LOCAL' is a
+/// case or step this device made (never rewritten until the server returns it),
+/// 'SERVER' is the server's copy, replaced by each download that carries cases.
+///
+/// The case's status columns are a cache: the truth is the log, read by
+/// evaluateReconCase. Dates are Manila wall-clock text, as everywhere in
+/// Collection.
+Future<void> ensureReconciliationTables(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconCase (
+      caseId         TEXT PRIMARY KEY,
+      clientCode     TEXT NOT NULL,
+      clientName     TEXT NOT NULL DEFAULT '',
+      collectorCode  TEXT NOT NULL,
+      collectorName  TEXT NOT NULL DEFAULT '',
+      dateOpened     TEXT NOT NULL,
+      caseStatus     TEXT NOT NULL DEFAULT 'WAITING_FOR_COLLECTOR',
+      nextActor      TEXT,
+      lastActivityAt TEXT,
+      dateClosed     TEXT,
+      soaDate        TEXT,
+      soaAmount      REAL,
+      source         TEXT NOT NULL DEFAULT 'LOCAL',
+      updatedAt      TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_recon_case_client
+      ON a_tblCollectionReconCase (clientCode)
+  ''');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconCaseInvoice (
+      caseId         TEXT NOT NULL,
+      invoiceNo      TEXT NOT NULL,
+      amount         REAL NOT NULL DEFAULT 0,
+      currentBalance REAL,
+      clearedAt      TEXT,
+      PRIMARY KEY (caseId, invoiceNo)
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconActivity (
+      activityId        TEXT PRIMARY KEY,
+      caseId            TEXT NOT NULL,
+      dateTime          TEXT NOT NULL,
+      type              TEXT NOT NULL,
+      invoiceNos        TEXT NOT NULL DEFAULT '',
+      remarks           TEXT NOT NULL DEFAULT '',
+      amount            REAL,
+      validationResult  TEXT,
+      nextAction        TEXT NOT NULL DEFAULT '',
+      nextActionDueDate TEXT,
+      attachmentIds     TEXT NOT NULL DEFAULT '',
+      recordedBy        TEXT NOT NULL DEFAULT '',
+      source            TEXT NOT NULL DEFAULT 'LOCAL',
+      createdAt         TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_recon_activity_case
+      ON a_tblCollectionReconActivity (caseId, dateTime)
+  ''');
+  // The photo itself is a file in the app's documents folder; the row says
+  // where, and whether it has reached the server (status Pending / Uploaded /
+  // Failed). A base64 column would copy every photo into the database.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconAttachment (
+      attachmentId TEXT PRIMARY KEY,
+      caseId       TEXT NOT NULL,
+      activityId   TEXT NOT NULL,
+      filePath     TEXT NOT NULL,
+      contentType  TEXT NOT NULL DEFAULT 'image/jpeg',
+      status       TEXT NOT NULL DEFAULT 'Pending',
+      retryCount   INTEGER NOT NULL DEFAULT 0,
+      lastError    TEXT,
+      createdAt    TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_recon_attachment_status
+      ON a_tblCollectionReconAttachment (status)
+  ''');
 }
 
 /// Every table this app made, newest schema included, in name order.

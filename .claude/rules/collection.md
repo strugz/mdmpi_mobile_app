@@ -13,6 +13,8 @@ paths:
 - Active planning docs: `docs/application/COLLECTION_STAGE_E_PLAN.md` and
   `COLLECTION_STAGE_E2_PLAN.md`. Read the current stage plan before changing activity, calendar,
   or engagement flows, and tick items there as they land.
+- Reconciliation Tracker: `docs/application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md`. Its pure
+  rules live in `models/reconciliation/` and `helpers/reconciliation/` (not `domain/`).
 - Activity forms (`presentation/pages/activity/add_activity/*_form.dart`) share
   `activity_type_modal.dart` and `engagement_invoice_picker.dart`; extend those rather than
   duplicating pickers per form.

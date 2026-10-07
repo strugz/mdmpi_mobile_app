@@ -10,6 +10,10 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
 class _Stub extends CollectionActivityController {
   final claimed = <String>[];
+  Set<String> ended = {};
+
+  @override
+  Set<String> endedReconInvoiceIds() => ended;
 
   @override
   // ignore: must_call_super
@@ -95,5 +99,16 @@ void main() {
     final c = _seeded();
     c.claimReconciliation(_amka.id);
     expect(c.claimed, ['r1']);
+  });
+
+  test('an invoice whose case has ended cannot be acquired', () async {
+    final c = _seeded()..ended = {'r2'};
+    expect(c.reconciliationAccounts.map((a) => a.name), ['Amka Trading'],
+        reason: 'its only marked invoice is in a closed case');
+    await c.claimReconciliation(_only.id);
+    expect(c.claimed, isEmpty);
+    expect(c.getReconciliationInvoicesByAccount(_only.id).map((i) => i.id),
+        ['r2'],
+        reason: 'still marked; the closed case keeps its history');
   });
 }

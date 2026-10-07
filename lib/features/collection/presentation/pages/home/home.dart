@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/mirror_carousel.dart';
@@ -196,10 +197,11 @@ class CollectionHomeScreen extends StatelessWidget {
                                                           color:
                                                               BCollectionColors
                                                                   .reconcile,
-                                                          onTap: () => _openCategory(
-                                                              'Reconciliation',
-                                                              BCollectionColors
-                                                                  .reconcile),
+                                                          // The Tracker's cases; accounts waiting
+                                                          // to be acquired are linked from there.
+                                                          onTap: () => Get.toNamed(
+                                                              BRoutes
+                                                                  .reconciliationCases),
                                                         ),
                                                         CollectionSummaryStat(
                                                           title:
