@@ -2,35 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/app_build_info.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/whats_new.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
-/// The running build: name, version, build number.
-class AppBuildInfo {
-  const AppBuildInfo(
-      {required this.appName, required this.version, required this.build});
-
-  final String appName;
-  final String version;
-  final String build;
-
-  /// "1.1.110 (110)", or just the version when the build number repeats it.
-  String get label =>
-      build.isEmpty || build == version ? version : '$version ($build)';
-}
-
-typedef BuildInfoLoader = Future<AppBuildInfo> Function();
+export 'package:mdmpi_mobile_app/base/utils/app_build_info.dart'
+    show AppBuildInfo, BuildInfoLoader;
 
 /// Backs Settings → About (Collection TODO item 15).
 class AboutController extends GetxController {
-  AboutController({BuildInfoLoader? load}) : _load = load ?? _fromPackageInfo;
+  AboutController({BuildInfoLoader? load})
+      : _load = load ?? BAppBuildInfo.current,
+        // Already read during the splash: no "Reading version…" frame.
+        _seed = load == null ? BAppBuildInfo.cached : null;
 
   final BuildInfoLoader _load;
+  final AppBuildInfo? _seed;
 
   final info = Rxn<AppBuildInfo>();
   final isLoading = true.obs;
@@ -38,6 +29,11 @@ class AboutController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    if (_seed != null) {
+      info.value = _seed;
+      isLoading.value = false;
+      return;
+    }
     _read();
   }
 
@@ -46,7 +42,7 @@ class AboutController extends GetxController {
       info.value = await _load();
     } catch (e) {
       logDebug('AboutController: package info unavailable: $e');
-      info.value = const AppBuildInfo(appName: 'MDMPI App', version: '', build: '');
+      info.value = AppBuildInfo.unknown;
     } finally {
       isLoading.value = false;
     }
@@ -54,12 +50,6 @@ class AboutController extends GetxController {
 
   WhatsNewGroup? get whatsNew =>
       BWhatsNew.forVersion(info.value?.version ?? '');
-
-  static Future<AppBuildInfo> _fromPackageInfo() async {
-    final p = await PackageInfo.fromPlatform();
-    return AppBuildInfo(
-        appName: p.appName, version: p.version, build: p.buildNumber);
-  }
 }
 
 class AboutScreen extends StatelessWidget {
