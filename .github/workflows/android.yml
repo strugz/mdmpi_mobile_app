@@ -58,10 +58,19 @@ jobs:
           echo "AI_PROMPT=${{ secrets.AI_PROMPT }}" >> .env
           echo "USE_GOOGLE_GENERATIVE=${{ secrets.USE_GOOGLE_GENERATIVE }}" >> .env
 
+      # 6b. Fail fast if the Google Maps key is missing (otherwise the APK ships a blank map)
+      - name: Check Maps API Key
+        run: |
+          if [ -z "${{ secrets.API_KEY }}" ]; then
+            echo "::error::API_KEY secret is not set; the Google Map would render blank."
+            exit 1
+          fi
+
       # 7. Build Signed Release APK
       - name: Build Signed Release APK
         run: flutter build apk --release
         env:
+          MAPS_API_KEY: ${{ secrets.API_KEY }} # Google Maps SDK key = .env API_KEY (blank map without it)
           KEYSTORE_FILE: ${{ secrets.KEYSTORE_FILE }} # Corrected relative path from root
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}

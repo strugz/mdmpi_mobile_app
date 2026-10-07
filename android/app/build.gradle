@@ -50,7 +50,9 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
-        manifestPlaceholders = [mapsApiKey: localProperties.getProperty('MAPS_API_KEY', '')]
+        // local.properties for local builds; MAPS_API_KEY env var for CI (GitHub Actions),
+        // where local.properties has no key. An empty key renders a blank map.
+        manifestPlaceholders = [mapsApiKey: localProperties.getProperty('MAPS_API_KEY', System.getenv('MAPS_API_KEY') ?: '')]
     }
 
     signingConfigs {
