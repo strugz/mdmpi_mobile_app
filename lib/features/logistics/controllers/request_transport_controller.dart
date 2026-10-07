@@ -11,7 +11,6 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_co
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_maps_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/hotline_direct_controller.dart';
@@ -42,7 +41,6 @@ class RequestTransportController extends GetxController {
   final imageProofPath = Rx<String?>("");
 
   final addressTextController = TextEditingController();
-  final suggestions = RxList([]);
 
   /// Variables for Animated Container
   final searchBarHeight = RxDouble(0.0); // Height of the search bar
@@ -73,7 +71,6 @@ class RequestTransportController extends GetxController {
 
   /// Service dependencies
   late final IMapsService _mapsService;
-  late final IPlacesService _placesService;
   late final ILocationTrackingService _locationTrackingService;
   late final ILocationAlternativeService _locationAlternativeService;
 
@@ -91,7 +88,6 @@ class RequestTransportController extends GetxController {
     super.onInit();
     // Initialize services from GetX DI
     _mapsService = Get.find<IMapsService>();
-    _placesService = Get.find<IPlacesService>();
     _locationTrackingService = Get.find<ILocationTrackingService>();
     _locationAlternativeService = Get.find<ILocationAlternativeService>();
 
@@ -171,21 +167,6 @@ class RequestTransportController extends GetxController {
         riderTrackingController.stopTracking();
       }
     });
-  }
-
-  /// -- Google Place Autocomplete API
-  Future<void> getSuggestions(String input) async {
-    if (input.isEmpty) {
-      suggestions.clear();
-      return;
-    }
-
-    try {
-      final result = await _placesService.getSuggestions(input);
-      suggestions.value = result;
-    } catch (e) {
-      suggestions.clear();
-    }
   }
 
   Future<void> getRoute(LatLng location, LatLng destination) async {

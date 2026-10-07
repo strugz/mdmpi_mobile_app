@@ -18,7 +18,6 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_s
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_maps_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_notification_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_extractor.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
@@ -29,7 +28,6 @@ import 'package:mdmpi_mobile_app/common/services/implementations/location_tracki
 import 'package:mdmpi_mobile_app/common/services/implementations/maps_service.dart';
 import 'package:mdmpi_mobile_app/common/services/implementations/notification_service.dart';
 import 'package:mdmpi_mobile_app/common/services/implementations/permission_service.dart';
-import 'package:mdmpi_mobile_app/common/services/implementations/places_service.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:firebase_core/firebase_core.dart' show Firebase;
@@ -245,7 +243,6 @@ class GeneralBindings extends Bindings {
     Get.lazyPut<ILocationAlternativeService>(() => LocationAlternativeService(),
         fenix: true);
     Get.lazyPut<IMapsService>(() => MapsService(), fenix: true);
-    Get.lazyPut<IPlacesService>(() => PlacesService(), fenix: true);
     Get.lazyPut<ILocationTrackingService>(() => LocationTrackingService(),
         fenix: true);
 

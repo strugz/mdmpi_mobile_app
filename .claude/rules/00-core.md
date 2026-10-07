@@ -9,7 +9,7 @@
   unless analyze/test also fail.
 - Never `git commit` or `git push` unless explicitly told to. Finish, verify, report, wait.
 - Never commit or stage `.env`, keystores (`*.jks`, `*.keystore`, `key.properties`),
-  or spreadsheets. `places_service.dart` has a legacy hardcoded key; do not copy that pattern.
+  or spreadsheets. Never hardcode API keys in source; read them from `.env`.
 - No `print()` in `lib/`. Use `logDebug()` from `lib/base/utils/logger.dart` or `BloggerHelper`.
   Expected exceptions: `bin/*.dart`, `tool/*.dart`.
 - Files snake_case, classes PascalCase, utility classes `B`-prefixed (`BRoutes`, `BFormatter`).

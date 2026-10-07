@@ -101,7 +101,7 @@ Important Logistics DI details:
 - `BackLoadRepository` is REST/local DB based and registered outside the Firebase guard.
 - Firestore-backed repositories stay inside the Firebase guard.
 - `UserController` is permanent and is consumed by Logistics flows for user/request metadata.
-- Delivery-location integrations are DI-managed: `ILocationAlternativeService`, `IMapsService`, `IPlacesService`, and `ILocationTrackingService`.
+- Delivery-location integrations are DI-managed: `ILocationAlternativeService`, `IMapsService`, and `ILocationTrackingService`.
 - `ITextExtractor` is registered centrally and used by camera/text-recognition flows.
 - Developer/debug pages such as outboxes may instantiate controllers in-widget when intentionally isolated.
 

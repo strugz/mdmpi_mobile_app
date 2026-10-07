@@ -69,7 +69,7 @@ under `lib/features/<domain>/` (controllers, screens, helpers); repositories und
 ## Secrets
 
 `.env` (from `.env.example`) is git-ignored and loaded in `main.dart`. Never commit
-keys. `places_service.dart` has a legacy hardcoded key — do not copy that pattern.
+or hardcode keys in source; read them from `.env`.
 
 ## Developer-only tools (keep out of production UI)
 
