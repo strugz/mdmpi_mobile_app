@@ -35,6 +35,7 @@ import 'dao/collection/collection_activity_dao.dart';
 import 'dao/collection/collection_advance_dao.dart';
 import 'dao/collection/collection_account_history_dao.dart';
 import 'dao/collection/collection_target_dao.dart';
+import 'dao/collection/collection_actual_dao.dart';
 import 'dao/collection/collection_engagement_dao.dart';
 import 'db_schema.dart';
 
@@ -70,6 +71,7 @@ class DatabaseHelper {
   CollectionAdvanceDao? _collectionAdvanceDao;
   CollectionAccountHistoryDao? _collectionAccountHistoryDao;
   CollectionTargetDao? _collectionTargetDao;
+  CollectionActualDao? _collectionActualDao;
   CollectionEngagementDao? _collectionEngagementDao;
 
   Future<Database> get database async {
@@ -381,6 +383,13 @@ class DatabaseHelper {
     return _collectionTargetDao!;
   }
 
+  Future<CollectionActualDao> get collectionActualDao async {
+    if (_collectionActualDao != null) return _collectionActualDao!;
+    final db = await database;
+    _collectionActualDao = CollectionActualDao(db);
+    return _collectionActualDao!;
+  }
+
   Future<CollectionEngagementDao> get collectionEngagementDao async {
     if (_collectionEngagementDao != null) return _collectionEngagementDao!;
     final db = await database;
@@ -413,6 +422,14 @@ class DatabaseHelper {
       {required StandardDeliveryModel requestModel}) async {
     final dao = await requestDao;
     return await dao.updateRequest(requestModel: requestModel);
+  }
+
+  /// See [RequestDao.replaceWithServerCopy]: bypasses the status-regression
+  /// guard, so only for requests the server has just refused.
+  Future<void> replaceRequestWithServerCopy(
+      StandardDeliveryModel requestModel) async {
+    final dao = await requestDao;
+    return await dao.replaceWithServerCopy(requestModel);
   }
 
   Future<int> cancelRequestWithRemarks({

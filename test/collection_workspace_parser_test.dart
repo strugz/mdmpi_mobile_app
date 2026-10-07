@@ -86,4 +86,94 @@ void main() {
     expect(ws.accountHistory, isEmpty);
     expect(ws.targets, isEmpty);
   });
+
+  // Revisions item 11: Actual Collection as the office posts it.
+  group('ActualCollections', () {
+    Map<String, dynamic> row(Map<String, dynamic> over) => {
+          'ActualId': 41,
+          'CollectionDate': '2026-09-12',
+          'Amount': 15250.5,
+          'ReferenceNo': 'OR 12345',
+          'Remarks': 'BDO deposit slip',
+          'PostedBy': 'Ana (Office)',
+          'CreatedAt': '2026-09-12T09:30:00',
+          'UpdatedAt': null,
+          'UpdatedBy': null,
+          ...over,
+        };
+
+    test('parses a posted entry, field for field', () {
+      final ws = CollectionWorkspaceParser.parse({
+        'ActualCollections': [row({})],
+      });
+      expect(ws.hasActualCollections, isTrue);
+      final a = ws.actualCollections.single;
+      expect(a.actualId, 41);
+      expect(a.collectionDate, '2026-09-12');
+      expect(a.amount, 15250.5);
+      expect(a.referenceNo, 'OR 12345');
+      expect(a.remarks, 'BDO deposit slip');
+      expect(a.postedBy, 'Ana (Office)');
+      expect(a.createdAt, '2026-09-12T09:30:00');
+      expect(a.updatedAt, isNull);
+      expect(a.updatedBy, isNull);
+    });
+
+    test('an older server that does not send the list is not an empty list',
+        () {
+      final ws = CollectionWorkspaceParser.parse({'Items': []});
+      expect(ws.hasActualCollections, isFalse,
+          reason: 'absent must leave the local copy alone');
+      expect(ws.actualCollections, isEmpty);
+    });
+
+    test('a sent empty list is present, so it replaces the local copy', () {
+      final ws = CollectionWorkspaceParser.parse({'ActualCollections': []});
+      expect(ws.hasActualCollections, isTrue);
+      expect(ws.actualCollections, isEmpty);
+    });
+
+    test('tolerates camelCase and a null list', () {
+      final camel = CollectionWorkspaceParser.parse({
+        'actualCollections': [
+          {'actualId': 7, 'collectionDate': '2026-08-01', 'amount': 100},
+        ],
+      });
+      expect(camel.actualCollections.single.actualId, 7);
+
+      final nulled = CollectionWorkspaceParser.parse({'ActualCollections': null});
+      expect(nulled.hasActualCollections, isFalse);
+    });
+
+    test('reads the amount as a number or a string', () {
+      final ws = CollectionWorkspaceParser.parse({
+        'ActualCollections': [
+          row({'ActualId': 1, 'Amount': 900}),
+          row({'ActualId': 2, 'Amount': '1250.75'}),
+          row({'ActualId': 3, 'Amount': 'n/a'}),
+        ],
+      });
+      expect(ws.actualCollections.map((a) => a.amount), [900, 1250.75, 0]);
+    });
+
+    test('skips rows it cannot keep, and keeps the rest', () {
+      final ws = CollectionWorkspaceParser.parse({
+        'ActualCollections': [
+          row({'ActualId': null}), // no key
+          row({'ActualId': 'abc'}),
+          row({'ActualId': 5, 'CollectionDate': ''}), // no month
+          row({'ActualId': 6, 'CollectionDate': 'Sept 12'}),
+          'not a row',
+          42,
+          row({'ActualId': '8', 'CollectionDate': '2026-09-03T00:00:00'}),
+          row({'ActualId': 9, 'Remarks': null, 'ReferenceNo': null}),
+        ],
+      });
+      expect(ws.actualCollections.map((a) => a.actualId), [8, 9]);
+      expect(ws.actualCollections.first.collectionDate, '2026-09-03',
+          reason: 'a timestamp is cut to its day');
+      expect(ws.actualCollections.last.remarks, '');
+      expect(ws.actualCollections.last.referenceNo, '');
+    });
+  });
 }

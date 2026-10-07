@@ -12,6 +12,9 @@ class CollectionItemDto {
   final String remarks;
   final String documentDate;
   final String bpCode;
+
+  /// Customer P.O. number (SAP "BP Ref. No."); empty when unknown.
+  final String poNumber;
   final String postingDate;
   final String dueDate;
   final String status;
@@ -30,6 +33,7 @@ class CollectionItemDto {
     required this.remarks,
     required this.documentDate,
     required this.bpCode,
+    this.poNumber = '',
     required this.postingDate,
     required this.dueDate,
     required this.status,
@@ -51,6 +55,7 @@ class CollectionItemDto {
       'Remarks': remarks,
       'DocumentDate': documentDate,
       'BPCode': bpCode,
+      'PONumber': poNumber,
       'PostingDate': postingDate,
       'DueDate': dueDate,
       'Status': status,
@@ -82,6 +87,8 @@ class CollectionItemDto {
       remarks: json['Remarks']?.toString() ?? 'No remarks',
       documentDate: json['DocumentDate']?.toString() ?? 'N/A',
       bpCode: json['BPCode']?.toString() ?? 'N/A',
+      // Blank, not 'N/A': a missing P.O. is hidden, never printed.
+      poNumber: json['PONumber']?.toString().trim() ?? '',
       postingDate: json['PostingDate']?.toString() ?? 'N/A',
       dueDate: json['DueDate']?.toString() ?? 'N/A',
       status: json['Status']?.toString() ?? '',

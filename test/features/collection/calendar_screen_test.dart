@@ -9,8 +9,10 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar/widgets/calendar_day_cell.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar/widgets/calendar_day_heading.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar/widgets/calendar_skeleton.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar/widgets/calendar_visit_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/day_entry_grouping.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 /// The calendar. What these protect: tapping a day answers with that day's
@@ -33,6 +35,8 @@ CollectionEngagementRecord _engagement(
   String engagedAt, {
   required String itemId,
   required String clientName,
+  String status = 'Collected',
+  double amount = 1200,
 }) =>
     CollectionEngagementRecord(
       localRef: CollectionEngagementRecord.buildLocalRef(
@@ -45,8 +49,8 @@ CollectionEngagementRecord _engagement(
       clientName: clientName,
       engagedAt: engagedAt,
       engagedOn: BFormatter.localDayKey(engagedAt)!,
-      status: 'Collected',
-      amount: 1200,
+      status: status,
+      amount: amount,
       createdAt: engagedAt,
     );
 
@@ -78,7 +82,7 @@ void main() {
     ]);
     await _pump(tester);
 
-    expect(find.byType(ActivityHistoryList), findsOneWidget);
+    expect(find.byType(ActivityHistoryCard), findsNWidgets(2));
     expect(find.textContaining('select an account'), findsNothing);
     expect(find.text('Alexis Yu Pharmacy'), findsOneWidget);
     expect(find.text('Bicol Medical'), findsOneWidget);
@@ -112,7 +116,75 @@ void main() {
     ]);
     await _pump(tester);
     expect(find.text('All'), findsNothing);
-    expect(find.byType(ActivityHistoryList), findsOneWidget);
+    // Two invoices of one account on one day are one visit, one card.
+    expect(find.byType(CalendarVisitCard), findsOneWidget);
+    expect(find.byType(ActivityHistoryCard), findsNothing);
+  });
+
+  testWidgets("one account's invoices fold into one card that opens",
+      (tester) async {
+    _seed([
+      _engagement(_at(9), itemId: '1', clientName: 'Alexis Yu Pharmacy'),
+      _engagement(_at(9), itemId: '2', clientName: 'Alexis Yu Pharmacy'),
+      _engagement(_at(9), itemId: '3', clientName: 'Alexis Yu Pharmacy'),
+      _engagement(_at(14), itemId: '4', clientName: 'Bicol Medical'),
+    ]);
+    await _pump(tester);
+
+    expect(find.byType(CalendarVisitCard), findsOneWidget);
+    expect(find.byType(ActivityHistoryCard), findsOneWidget,
+        reason: 'the lone Bicol invoice keeps the standalone card');
+    expect(find.text('Alexis Yu Pharmacy'), findsOneWidget);
+    expect(find.textContaining('3 invoices'), findsOneWidget);
+    expect(find.text(BFormatter.formatPesoCurrency(3600)), findsOneWidget);
+    expect(find.text('Invoice #1'), findsNothing);
+
+    // The card sits under the month grid; bring it on screen before tapping.
+    await tester.ensureVisible(find.byType(CalendarVisitCard));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Alexis Yu Pharmacy'));
+    await tester.pumpAndSettle();
+    expect(find.text('Invoice #1'), findsOneWidget);
+    expect(find.text('Invoice #2'), findsOneWidget);
+    expect(find.text('Invoice #3'), findsOneWidget);
+
+    await tester.tap(find.text('Alexis Yu Pharmacy'));
+    await tester.pumpAndSettle();
+    expect(find.text('Invoice #1'), findsNothing);
+  });
+
+  testWidgets('a long account name with two outcomes is still read in full',
+      (tester) async {
+    // On a phone the name shared its line with the badges and lost: "Al…".
+    // The name now owns its line, may take two, and the badges sit beneath.
+    const name = 'Alexis Yu Best Care Pharmacy and Medical Supplies';
+    _seed([
+      _engagement(_at(9), itemId: '1', clientName: name),
+      _engagement(_at(9),
+          itemId: '2', clientName: name, status: 'Refused to Pay', amount: 0),
+      _engagement(_at(14), itemId: '3', clientName: 'Bicol Medical'),
+    ]);
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await _pump(tester);
+
+    final title = tester.widget<Text>(find.descendant(
+        of: find.byType(CalendarVisitCard), matching: find.text(name)));
+    expect(title.maxLines, 2);
+    expect(find.text('Collected · 1'), findsOneWidget);
+    expect(find.text('Refused to Pay · 1'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('grouping keeps first-appearance order and leaves the nameless alone',
+      () {
+    Map<String, dynamic> e(String name) => {'accountName': name};
+    final groups = groupDayEntriesByAccount(
+        [e('B'), e('A'), e(''), e('B'), e(''), e('A')]);
+    expect(groups.map((g) => g.length).toList(), [2, 2, 1, 1]);
+    expect(groups[0].first['accountName'], 'B');
+    expect(groups[1].first['accountName'], 'A');
   });
 
   testWidgets('the account filter narrows the day without ever emptying it',
@@ -128,7 +200,7 @@ void main() {
 
     await tester.tap(find.text('Bicol Medical · 1'));
     await tester.pumpAndSettle();
-    expect(find.byType(ActivityHistoryList), findsOneWidget);
+    expect(find.byType(ActivityHistoryCard), findsOneWidget);
     expect(find.text('Alexis Yu Pharmacy'), findsNothing);
 
     await tester.tap(find.text('All'));

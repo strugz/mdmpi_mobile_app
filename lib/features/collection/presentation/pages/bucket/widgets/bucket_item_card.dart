@@ -157,6 +157,17 @@ class BucketItemCard extends StatelessWidget {
                           ),
                         ),
                       ],
+
+                      /// Customer P.O. (SAP BP Ref. No.), only when present.
+                      if (item.hasPoNumber) ...[
+                        const SizedBox(width: BSizes.xs),
+                        Flexible(
+                          child: BIconLabelChip(
+                            icon: Iconsax.receipt_item,
+                            label: 'PO ${item.poNumber.trim()}',
+                          ),
+                        ),
+                      ],
                     ],
                   ),
 

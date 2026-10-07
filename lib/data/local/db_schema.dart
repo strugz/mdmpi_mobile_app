@@ -367,6 +367,7 @@ Future<void> ensureCollectionTables(Database db) async {
       remarks TEXT,
       documentDate TEXT,
       bpCode TEXT,
+      poNumber TEXT,
       postingDate TEXT,
       dueDate TEXT,
       status TEXT,
@@ -377,6 +378,10 @@ Future<void> ensureCollectionTables(Database db) async {
       updatedAt TEXT
     )
   ''');
+  // The customer's P.O. number (SAP "BP Ref. No."), added 2026-09-22. Devices
+  // that created the table before then get it by ALTER; see
+  // docs/application/COLLECTION_ADR_001_PO_NUMBER.md.
+  await _addColumnIfMissing(db, 'a_tblCollectionItems', 'poNumber', 'TEXT');
 
   // Table: a_tblCollectionHistory (engagement history per item)
   await db.execute('''
@@ -405,9 +410,16 @@ Future<void> ensureCollectionTables(Database db) async {
       itemId TEXT,
       createdAt TEXT NOT NULL,
       retryCount INTEGER DEFAULT 0,
-      lastRetryAt TEXT
+      lastRetryAt TEXT,
+      lastError TEXT
     )
   ''');
+  // The server's rejection reason, so the outbox can say WHY a row is stuck
+  // instead of only counting the attempts. Added 2026-09-25, after the table
+  // shipped: installs that already have the queue get it by ALTER on the next
+  // cold start (onOpen), like poNumber above. A hot reload keeps the database
+  // open, so the column does not appear until the app is relaunched.
+  await _addColumnIfMissing(db, 'a_tblCollectionPending', 'lastError', 'TEXT');
 
   // Table: a_tblCollectionBank (the company bank list, cached)
   //
@@ -424,6 +436,27 @@ Future<void> ensureCollectionTables(Database db) async {
   ''');
 
   // --- Stage C2: concepts that previously lived only in memory -------------
+
+  // Table: a_tblCollectionClient (the client registry, cached)
+  //
+  // A copy of the server's a_tblcollectionclient, for the activity forms'
+  // account picker. Cached like the bank list, and for the same reason: the
+  // picker used to ask the server on every keystroke, sat empty while it
+  // waited, and had nothing to offer without signal. Replaced wholesale on
+  // each refresh; the picker reads only this.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionClient (
+      clientCode TEXT PRIMARY KEY,
+      clientName TEXT,
+      clientAddress TEXT,
+      clientContact TEXT,
+      clientEmail TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_client_name
+      ON a_tblCollectionClient (clientName COLLATE NOCASE)
+  ''');
 
   // Table: a_tblCollectionActivity (Deposit / CWT Pick-up / Reconciliation)
   await db.execute('''
@@ -475,6 +508,31 @@ Future<void> ensureCollectionTables(Database db) async {
       yearMonth TEXT PRIMARY KEY,
       amount REAL DEFAULT 0
     )
+  ''');
+
+  // Table: a_tblCollectionActual (Actual Collection as the office posts it)
+  //
+  // One row per deposit slip / OR reference, posted on the Collection web and
+  // sent back in the workspace download (revisions list item 11): the team's
+  // figure, the same list for every collector. A cache of
+  // the server's list: replaced wholesale whenever a download carries it, and
+  // left alone when an older server does not. Read by collectionDate month.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionActual (
+      actualId INTEGER PRIMARY KEY,
+      collectionDate TEXT,
+      amount REAL DEFAULT 0,
+      referenceNo TEXT,
+      remarks TEXT,
+      postedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      updatedBy TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_actual_date
+      ON a_tblCollectionActual (collectionDate)
   ''');
 
   // Table: a_tblCollectionEngagement (the collector's own field-work archive)

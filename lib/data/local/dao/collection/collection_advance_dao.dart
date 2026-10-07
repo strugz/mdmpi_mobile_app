@@ -82,6 +82,20 @@ class CollectionAdvanceDao {
         whereArgs: [externalRef],
       );
 
+  /// Part of the advance went onto an invoice and the rest stays float for
+  /// the next one: the row stays unassigned, holding only [remaining].
+  ///
+  /// Same [externalRef] on purpose. The server keeps one payment and spreads
+  /// it across invoices, so the next ASSIGN_ADVANCE must name the same
+  /// advance; a download then reports the same remainder as `Unallocated`.
+  Future<void> keepRemainder(String externalRef, double remaining) =>
+      db.update(
+        table,
+        {'amount': remaining},
+        where: 'externalRef = ?',
+        whereArgs: [externalRef],
+      );
+
   /// Replace everything (used after a server download).
   Future<void> replaceAll(List<CollectionAdvanceRecord> records) async {
     final batch = db.batch();

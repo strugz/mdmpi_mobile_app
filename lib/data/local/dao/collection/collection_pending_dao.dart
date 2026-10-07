@@ -10,6 +10,9 @@ class PendingChange {
   final int retryCount;
   final String? lastRetryAt;
 
+  /// The server's reason for the last rejection (null until one happens).
+  final String? lastError;
+
   PendingChange({
     this.id,
     required this.operation,
@@ -18,6 +21,7 @@ class PendingChange {
     required this.createdAt,
     this.retryCount = 0,
     this.lastRetryAt,
+    this.lastError,
   });
 
   /// Convert to JSON for database storage.
@@ -30,6 +34,7 @@ class PendingChange {
       'createdAt': createdAt,
       'retryCount': retryCount,
       'lastRetryAt': lastRetryAt,
+      'lastError': lastError,
     };
   }
 
@@ -43,6 +48,7 @@ class PendingChange {
       createdAt: json['createdAt'],
       retryCount: json['retryCount'] ?? 0,
       lastRetryAt: json['lastRetryAt'],
+      lastError: json['lastError'],
     );
   }
 
@@ -55,6 +61,7 @@ class PendingChange {
     String? createdAt,
     int? retryCount,
     String? lastRetryAt,
+    String? lastError,
   }) {
     return PendingChange(
       id: id ?? this.id,
@@ -64,6 +71,7 @@ class PendingChange {
       createdAt: createdAt ?? this.createdAt,
       retryCount: retryCount ?? this.retryCount,
       lastRetryAt: lastRetryAt ?? this.lastRetryAt,
+      lastError: lastError ?? this.lastError,
     );
   }
 }

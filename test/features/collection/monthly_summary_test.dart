@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/theme/theme.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
@@ -10,6 +11,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/to
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 
 /// The month's ledger. What these protect: the headline total is the month's
 /// total and not the search result's; the month cannot be stepped into the
@@ -28,6 +31,33 @@ class _Totals extends TotalCollectedController {
   Future<void> reloadTarget() async {}
 }
 
+/// The posted Actual Collection as the workspace download left it, by month.
+class _Repo extends CollectionRepository {
+  final Map<String, List<CollectionActualRecord>> byMonth = {};
+  final asked = <String>[];
+
+  @override
+  Future<List<CollectionActualRecord>> getActualCollections(
+      String yearMonth) async {
+    asked.add(yearMonth);
+    return byMonth[yearMonth] ?? const [];
+  }
+
+  @override
+  Future<double?> getTarget(String yearMonth) async => null;
+}
+
+CollectionActualRecord _actual(int id, DateTime day, double amount,
+        {String ref = '', String remarks = '', String postedBy = 'Ana'}) =>
+    CollectionActualRecord(
+      actualId: id,
+      collectionDate: DateFormat('yyyy-MM-dd').format(day),
+      amount: amount,
+      referenceNo: ref,
+      remarks: remarks,
+      postedBy: postedBy,
+    );
+
 final _now = DateTime.now();
 final _fmt = DateFormat('yyyy-MM-dd HH:mm');
 
@@ -36,6 +66,31 @@ String _onDay(int day, [int hour = 10]) =>
 
 ClientModel _client(String id, String name) => ClientModel(
     id: id, code: 'c', name: name, address: '', contact: '', emailAddress: '');
+
+/// One Actual Collection entry as the office would post it. [when] is an
+/// [_onDay] string or a [DateTime].
+MonthlyEntry _posted(Object when, double amount, String account) =>
+    MonthlyEntry(
+      date: when is DateTime ? when : _fmt.parse(when as String),
+      amount: amount,
+      accountName: account,
+      invoiceNumber: '',
+      collectorName: 'Office',
+    );
+
+/// Two For Deposit activities this month, as Field Engagement logs them.
+List<Map<String, dynamic>> _deposits() => [
+      {
+        'type': 'Deposit',
+        'accountName': 'Alexis Yu Best Care Pharmacy',
+        'history': _paid(_onDay(15), 20000),
+      },
+      {
+        'type': 'Deposit',
+        'accountName': 'Bicol Medical Center',
+        'history': _paid(_onDay(16), 12000),
+      },
+    ];
 
 CollectionHistoryModel _paid(String date, double amount,
         {String collector = 'Jay'}) =>
@@ -68,6 +123,62 @@ CollectionEngagementRecord _engagement(
       engagedAt: date,
       engagedOn: date.split(' ').first,
       status: 'Collected',
+      amount: amount,
+      createdAt: date,
+    );
+
+/// A For Deposit as the archive stores it: an OFFICE row with the amount.
+CollectionEngagementRecord _depositEngagement(String date, double amount) =>
+    CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+          kind: 'OFFICE', subjectId: 'A', engagedAt: date),
+      collectorCode: 'jay',
+      collectorName: 'Jay',
+      kind: 'OFFICE',
+      itemId: '',
+      clientId: 'A',
+      clientName: 'Alexis Yu Best Care Pharmacy',
+      engagedAt: date,
+      engagedOn: date.split(' ').first,
+      status: 'Deposit',
+      amount: amount,
+      createdAt: date,
+    );
+
+/// An Advanced Payment as the archive stores it on receipt: an ADVANCE row.
+CollectionEngagementRecord _advanceEngagement(String date, double amount) =>
+    CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+          kind: 'ADVANCE', subjectId: 'AP-1', engagedAt: date),
+      collectorCode: 'jay',
+      collectorName: 'Jay',
+      kind: 'ADVANCE',
+      itemId: 'AP-1',
+      clientId: 'A',
+      clientName: 'Alexis Yu Best Care Pharmacy',
+      engagedAt: date,
+      engagedOn: date.split(' ').first,
+      status: 'Advanced Payment',
+      amount: amount,
+      createdAt: date,
+    );
+
+/// An advance applied to an invoice: the INVOICE row assignAdvance archives,
+/// on the date the collector chose.
+CollectionEngagementRecord _appliedAdvance(String date, double amount,
+        {required String itemId}) =>
+    CollectionEngagementRecord(
+      localRef: CollectionEngagementRecord.buildLocalRef(
+          kind: 'INVOICE', subjectId: itemId, engagedAt: date),
+      collectorCode: 'jay',
+      collectorName: 'Jay',
+      kind: 'INVOICE',
+      itemId: itemId,
+      clientId: 'A',
+      clientName: 'Alexis Yu Best Care Pharmacy',
+      engagedAt: date,
+      engagedOn: date.split(' ').first,
+      status: 'Advanced Payment Applied',
       amount: amount,
       createdAt: date,
     );
@@ -137,29 +248,182 @@ void main() {
       expect(s.totals.monthlyTotal, closeTo(46977.31, 0.001));
     });
 
-    test('for deposits agrees with the deposit entries', () {
+    // Revisions item 9: For Deposit records what the collector did. It is not
+    // money the office has counted, and Actual Collection used to be exactly
+    // the sum of deposits.
+    test('for Actual Collection ignores deposits', () {
       final s = _seed();
-      s.activity.globalActivities.addAll([
-        {
-          'type': 'Deposit',
-          'accountName': 'Alexis Yu Best Care Pharmacy',
-          'history': _paid(_onDay(15), 20000),
-        },
-        {
-          'type': 'Deposit',
-          'accountName': 'Bicol Medical Center',
-          'history': _paid(_onDay(16), 12000),
-        },
+      s.activity.globalActivities.addAll(_deposits());
+
+      expect(s.totals.actualCollectionTotal, 0);
+      expect(s.totals.postedEntries, isEmpty);
+    });
+
+    // A For Deposit is archived as an OFFICE engagement carrying its amount,
+    // and the month's total used to add it — counting the same pesos twice,
+    // once when collected and again when taken to the bank.
+    test('for Collected this Month ignores deposits too', () {
+      final s = _seed();
+      s.activity.ownEngagements.addAll([
+        _depositEngagement(_onDay(15), 20000),
+        _depositEngagement(_onDay(16), 12000),
+      ]);
+
+      expect(s.totals.monthlyTotal, closeTo(46977.31, 0.001),
+          reason: 'a deposit is an activity, not a collection');
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          isNot(contains('Deposit')));
+      expect(s.activity.ownEngagements.where((e) => e.status == 'Deposit'),
+          hasLength(2),
+          reason: 'the deposits are still in the archive for the calendar');
+    });
+
+    // An Advanced Payment is float. It counts toward no month until the
+    // collector applies it to an invoice, and then in the month of the date
+    // they chose. It used to count when received and again when applied.
+    test('for Collected this Month leaves an unapplied advance out', () {
+      final s = _seed();
+      s.activity.ownEngagements.add(_advanceEngagement(_onDay(10), 50000));
+
+      expect(s.totals.monthlyTotal, closeTo(46977.31, 0.001));
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          isNot(contains('AP-1')));
+    });
+
+    test('for Collected this Month counts an applied advance in its month', () {
+      final s = _seed();
+      final lastMonth = DateTime(_now.year, _now.month - 1, 20);
+      s.activity.ownEngagements.addAll([
+        // Received this month, still float.
+        _advanceEngagement(_onDay(10), 50000),
+        // Applied to an invoice, dated this month by the collector.
+        _appliedAdvance(_onDay(11), 8000, itemId: 'INV-AP-1'),
+        // Applied and dated last month: that month's, not this one's.
+        _appliedAdvance(_fmt.format(lastMonth), 3000, itemId: 'INV-AP-2'),
+      ]);
+
+      expect(s.totals.monthlyTotal, closeTo(46977.31 + 8000, 0.001));
+
+      s.totals.previousMonth();
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          contains('INV-AP-2'));
+      expect(s.totals.monthEntries.map((e) => e.invoiceNumber),
+          isNot(contains('AP-1')));
+    });
+
+    test('an applied advance is stamped on the chosen day, at the time applied',
+        () {
+      final stamp = CollectionActivityController.collectionStamp(
+        DateTime(2026, 8, 31),
+        DateTime(2026, 9, 24, 14, 5, 9),
+      );
+      expect(stamp, startsWith('2026-08-31T14:05:09'));
+      expect(BFormatter.localDayKey(stamp), '2026-08-31',
+          reason: 'it must file under the chosen day, in the chosen month');
+    });
+
+    test('for Actual Collection is what the office posted, not the search', () {
+      final s = _seed();
+      s.totals.postedActual.addAll([
+        _posted(_onDay(15), 20000, 'Alexis Yu Best Care Pharmacy'),
+        _posted(_onDay(16), 12000, 'Bicol Medical Center'),
+        // Another month: posted, but not this one's.
+        _posted(DateTime(2020, 1, 15), 99999, 'Bicol Medical Center'),
       ]);
 
       expect(s.totals.actualCollectionTotal, 32000);
-      expect(s.totals.depositEntries.length, 2);
+      expect(s.totals.postedEntries.length, 2);
 
       s.totals.searchQuery.value = 'bicol';
       expect(s.totals.actualEntries.length, 1);
       expect(s.totals.actualCollectionTotal, 32000,
-          reason:
-              'the deposit total never followed the search, and still must not');
+          reason: 'the total never follows the search, and still must not');
+    });
+  });
+
+  // Revisions item 11: the office posts Actual Collection on the Collection
+  // web; the workspace download stores it and the controller reads it back.
+  group('posted Actual Collection', () {
+    final ym = DateFormat('yyyy-MM');
+    final head = TotalCollectedController.thisMonth();
+    final prev = DateTime(head.year, head.month - 1, 1);
+
+    Future<void> settle() async {
+      for (var i = 0; i < 5; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+
+    ({_Repo repo, TotalCollectedController totals}) seedReal() {
+      final activity = _Activity();
+      Get.put<CollectionActivityController>(activity);
+      final repo = _Repo()
+        ..byMonth[ym.format(head)] = [
+          _actual(1, DateTime(head.year, head.month, 3), 15000,
+              ref: 'OR 12345', remarks: 'BDO deposit slip'),
+          _actual(2, DateTime(head.year, head.month, 9), 5000, ref: '88812'),
+        ]
+        ..byMonth[ym.format(prev)] = [
+          _actual(3, DateTime(prev.year, prev.month, 20), 7000, ref: 'OR 7'),
+        ];
+      Get.put<CollectionRepository>(repo);
+      // The real onInit: it is what wires the loads.
+      final totals = Get.put(TotalCollectedController());
+      return (repo: repo, totals: totals);
+    }
+
+    test('fills from the repository for the selected month', () async {
+      final s = seedReal();
+      await settle();
+
+      expect(s.repo.asked, contains(ym.format(head)));
+      expect(s.totals.actualCollectionTotal, 20000);
+      expect(s.totals.postedEntries.map((e) => e.referenceNo),
+          ['88812', 'OR 12345'],
+          reason: 'newest first');
+      expect(s.totals.postedEntries.last.remarks, 'BDO deposit slip');
+      expect(s.totals.postedEntries.last.postedBy, 'Ana');
+    });
+
+    test('follows the selected month', () async {
+      final s = seedReal();
+      await settle();
+
+      s.totals.previousMonth();
+      await settle();
+      expect(s.repo.asked.last, ym.format(prev));
+      expect(s.totals.postedEntries.single.referenceNo, 'OR 7');
+      expect(s.totals.actualCollectionTotal, 7000);
+    });
+
+    test('refreshes when a download replaces the local data', () async {
+      final s = seedReal();
+      await settle();
+      expect(s.totals.actualCollectionTotal, 20000);
+
+      // The office corrected an entry and posted another.
+      s.repo.byMonth[ym.format(head)] = [
+        _actual(1, DateTime(head.year, head.month, 3), 14000, ref: 'OR 12345'),
+        _actual(4, DateTime(head.year, head.month, 10), 1000, ref: 'OR 999'),
+      ];
+      CollectionRepository.instance.localDataVersion.value++;
+      await settle();
+
+      expect(s.totals.actualCollectionTotal, 15000);
+      expect(s.totals.postedEntries.map((e) => e.referenceNo),
+          ['OR 999', 'OR 12345']);
+    });
+
+    test('the search matches reference and remarks', () async {
+      final s = seedReal();
+      await settle();
+
+      s.totals.searchQuery.value = '12345';
+      expect(s.totals.actualEntries.single.referenceNo, 'OR 12345');
+      s.totals.searchQuery.value = 'bdo';
+      expect(s.totals.actualEntries.single.referenceNo, 'OR 12345');
+      expect(s.totals.actualCollectionTotal, 20000,
+          reason: 'the total never follows the search');
     });
   });
 
@@ -333,28 +597,77 @@ void main() {
           reason: 'nothing to search in an empty month');
     });
 
-    testWidgets('deposits show progress against the target', (tester) async {
+    testWidgets('Actual Collection shows progress against the target',
+        (tester) async {
       final s = _seed();
-      s.activity.globalActivities.add({
-        'type': 'Deposit',
-        'accountName': 'Bicol Medical Center',
-        'history': _paid(_onDay(16), 32000),
-      });
+      s.totals.postedActual
+          .add(_posted(_onDay(16), 32000, 'Bicol Medical Center'));
       s.totals.targetAmount.value = 50000;
-      await pump(tester, type: 'Deposit');
+      await pump(tester, type: 'Actual');
 
       expect(find.text('₱32,000.00'), findsWidgets);
-      expect(find.text('64% of ₱50,000.00 target'), findsOneWidget);
+      expect(find.text('64% of ₱50,000.00 team target'), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing);
     });
 
-    testWidgets('deposits with no target offer to set one', (tester) async {
-      _seed();
-      await pump(tester, type: 'Deposit');
+    testWidgets('an Actual Collection row leads with its reference',
+        (tester) async {
+      final s = _seed();
+      s.totals.postedActual.addAll([
+        MonthlyEntry.fromActual(_actual(
+            1, DateTime(_now.year, _now.month, 3), 15000,
+            ref: 'OR 12345', remarks: 'BDO deposit slip'))!,
+        MonthlyEntry.fromActual(_actual(
+            2, DateTime(_now.year, _now.month, 4), 5000,
+            ref: '88812', postedBy: ''))!,
+      ]);
+      await pump(tester, type: 'Actual');
 
-      expect(find.text('Set a target'), findsOneWidget);
+      expect(find.text('OR 12345'), findsOneWidget);
+      expect(find.text('Ref. 88812'), findsOneWidget,
+          reason: 'a bare number is labelled');
+      expect(find.text('BDO deposit slip'), findsOneWidget);
+      expect(find.text('Posted by Ana'), findsOneWidget);
+      expect(find.text('₱15,000.00'), findsOneWidget);
+      expect(find.text('₱20,000.00'), findsOneWidget, reason: 'the headline');
+
+      await tester.enterText(find.byType(TextField), 'bdo');
+      await tester.pumpAndSettle();
+      expect(find.text('OR 12345'), findsOneWidget);
+      expect(find.text('Ref. 88812'), findsNothing);
+    });
+
+    testWidgets('the target is read-only: the office sets it', (tester) async {
+      final s = _seed();
+      await pump(tester, type: 'Actual');
+
+      expect(find.text('No team target set yet · the office sets it'),
+          findsOneWidget);
+      expect(find.text('Set a target'), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsNothing);
+
+      s.totals.targetAmount.value = 50000;
+      await tester.pumpAndSettle();
+      expect(find.text('0% of ₱50,000.00 team target'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Edit'), findsNothing,
+          reason: 'a collector cannot change their own target');
+    });
+
+    testWidgets('a month of deposits alone posts nothing, and says why',
+        (tester) async {
+      final s = _seed();
+      s.activity.globalActivities.addAll(_deposits());
+      s.totals.targetAmount.value = 50000;
+      await pump(tester, type: 'Actual');
+
+      final month = DateFormat('MMMM').format(s.totals.selectedMonth.value);
+      expect(
+          find.text('No Actual Collection posted for $month'), findsOneWidget);
+      expect(find.textContaining('stay in your engagement history'),
+          findsOneWidget);
+      expect(find.text('0% of ₱50,000.00 team target'), findsOneWidget);
+      expect(find.text('Deposited'), findsNothing);
     });
   });
 }

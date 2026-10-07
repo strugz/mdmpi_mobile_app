@@ -243,6 +243,31 @@ class CollectionEngagementDao {
         whereArgs: [CollectionEngagementRecord.sourceServer],
       );
 
+  /// Swap the server-copied rows for [records] in one transaction, and return
+  /// how many old copies went.
+  ///
+  /// [clearServerCopied] followed by [upsertAll] left a window with no copies
+  /// at all; a reader landing in it saw the month's collections vanish and
+  /// "Collected this Month" read ₱0.00 until the rebuild finished. Like
+  /// [clearServerCopied], this only ever touches rows the backfill wrote.
+  Future<int> replaceServerCopies(
+      List<CollectionEngagementRecord> records) async {
+    return db.transaction((txn) async {
+      final removed = await txn.delete(
+        table,
+        where: 'source = ?',
+        whereArgs: [CollectionEngagementRecord.sourceServer],
+      );
+      final batch = txn.batch();
+      for (final r in records) {
+        batch.insert(table, r.toJson(),
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      await batch.commit(noResult: true);
+      return removed;
+    });
+  }
+
   /// Retention lever. Unused today; the archive is small and grows slowly.
   Future<int> purgeOlderThan(String day) =>
       db.delete(table, where: 'engagedOn < ?', whereArgs: [day]);

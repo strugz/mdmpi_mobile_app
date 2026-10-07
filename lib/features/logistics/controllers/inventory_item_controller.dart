@@ -32,6 +32,10 @@ class InventoryItemController extends GetxController {
   /// Nullable error message observable.
   final RxnString errorMessage = RxnString();
 
+  /// Request id that [items] currently belongs to. The controller is a shared
+  /// singleton, so pages must check this before trusting [items].
+  final RxnString currentRequestId = RxnString();
+
   InventoryItemController({InventoryItemRepository? repository})
       : _repo = repository ?? Get.find<InventoryItemRepository>();
 
@@ -43,6 +47,11 @@ class InventoryItemController extends GetxController {
   /// The inventory service expects a path-style endpoint: `/items/{requestId}`.
   /// This method calls the repository with the path `/items/{requestId}`.
   Future<Result<List<InventoryItemModel>>> loadItems(String requestId) async {
+    // Drop the previous request's items up front so a failed or empty fetch
+    // never leaves another request's items on screen.
+    currentRequestId.value = requestId;
+    items.clear();
+    expanded.clear();
     try {
       isLoading.value = true;
       errorMessage.value = null;
@@ -51,29 +60,34 @@ class InventoryItemController extends GetxController {
       if (_requestCache.containsKey(requestId)) {
         final cached = _requestCache[requestId]!;
         items.assignAll(cached);
-        expanded.clear();
         return Result.success(cached);
       }
 
       final res = await _repo.fetchItems(requestId);
+      // A newer loadItems call for another request owns the list now.
+      final isStale = currentRequestId.value != requestId;
 
       if (res.isSuccess) {
         final list = res.value;
-        items.assignAll(list);
-        expanded.clear();
         _requestCache[requestId] = List<InventoryItemModel>.from(list);
+        if (!isStale) {
+          items.assignAll(list);
+          expanded.clear();
+        }
         return Result.success(list);
       }
 
-      errorMessage.value = res.error;
+      if (!isStale) errorMessage.value = res.error;
       return Result.failure(res.error);
     } catch (e, st) {
       logDebug('InventoryItemController.loadItems error: $e\n$st');
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
-      errorMessage.value = e.toString();
+      if (currentRequestId.value == requestId) {
+        errorMessage.value = e.toString();
+      }
       return Result.failure(e.toString());
     } finally {
-      isLoading.value = false;
+      if (currentRequestId.value == requestId) isLoading.value = false;
     }
   }
 
@@ -130,6 +144,7 @@ class InventoryItemController extends GetxController {
 
   /// Clear all state.
   void clear() {
+    currentRequestId.value = null;
     items.clear();
     expanded.clear();
     errorMessage.value = null;

@@ -83,6 +83,29 @@ void main() {
       expect((await dao.getAll()).single.assignedDocumentId, 'SI-OCT-1');
     });
 
+    // An advance larger than its invoice keeps the excess as float for the
+    // next invoice: same advance, still unassigned, only the remainder.
+    test('an excess stays float on the same advance', () async {
+      final dao = CollectionAdvanceDao(db);
+      await dao.upsert(const CollectionAdvanceRecord(
+        externalRef: 'AP-1',
+        clientId: 'VIS-777',
+        clientName: 'Cebu Clinic',
+        amount: 750000,
+        date: '2026-09-15 09:00',
+        collectorName: 'Juan',
+      ));
+
+      await dao.keepRemainder('AP-1', 250000);
+
+      final left = (await dao.getUnassigned()).single;
+      expect(left.externalRef, 'AP-1',
+          reason: 'the server spreads one payment across invoices');
+      expect(left.amount, 250000);
+      expect(left.isUnassigned, isTrue);
+      expect(left.clientName, 'Cebu Clinic');
+    });
+
     test('account history and target persist', () async {
       final hist = CollectionAccountHistoryDao(db);
       await hist.insert(const CollectionAccountHistoryRecord(

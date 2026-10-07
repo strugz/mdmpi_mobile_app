@@ -16,10 +16,7 @@ class ImageOutboxPage extends StatelessWidget {
 
     return Scaffold(
       appBar: BAppBar(
-        title: Text(
-          'Image Outbox',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+        title: Text('Image Outbox'),
         showBackArrow: true,
         actions: [
           IconButton(

@@ -115,6 +115,13 @@ case 'collection':
   for display only. Older rows may carry the full name, initials or the literal `'You'`,
   which is what `CollectionRepository.collectorAliases` and the one-shot
   `backfillOwnEngagements()` match against.
+- An invoice carries the customer's **P.O. number** (`poNumber`, JSON `PONumber`, SAP
+  `BP Ref. No.`) since 2026-09-22. It is blank when SAP had none — never `'N/A'` — and every
+  surface checks `hasPoNumber` before showing it (invoice and bucket cards, details sheet,
+  info card, engagement picker; the account search matches it). One P.O. is often billed
+  as several invoices and the same string can recur under another client, so treat it as a
+  label scoped to the account. The local column arrives by `_addColumnIfMissing`, not a
+  schema version bump. Design: `docs/application/COLLECTION_ADR_001_PO_NUMBER.md`.
 - The module uses the same `NavigationMenu` bottom-tab shell as other departments after
   onboarding.
 - This is one of the four department types alongside Logistics, Service, and InHouse.

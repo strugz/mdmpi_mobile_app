@@ -18,11 +18,11 @@ List<CollectionSummaryStat> _stats({void Function(String)? onTap}) => [
         onTap: () => onTap?.call('Settled'),
       ),
       CollectionSummaryStat(
-        title: 'Due Date',
+        title: 'Past Due',
         value: '3767',
         icon: Iconsax.timer,
         color: BCollectionColors.danger,
-        onTap: () => onTap?.call('Due Date'),
+        onTap: () => onTap?.call('Past Due'),
       ),
       CollectionSummaryStat(
         title: 'Reconciliation',
@@ -72,7 +72,7 @@ void main() {
     expect(tester.takeException(), isNull);
     for (final title in [
       'Settled',
-      'Due Date',
+      'Past Due',
       'Reconciliation',
       'Advanced Payment',
     ]) {
@@ -128,10 +128,10 @@ void main() {
 
     await tester.tap(find.text('Reconciliation'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Due Date'));
+    await tester.tap(find.text('Past Due'));
     await tester.pumpAndSettle();
 
-    expect(opened, ['Reconciliation', 'Due Date']);
+    expect(opened, ['Reconciliation', 'Past Due']);
   });
 
   testWidgets('survives the dashboard text-scale clamp', (tester) async {

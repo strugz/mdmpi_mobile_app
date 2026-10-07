@@ -325,57 +325,94 @@ class BFormatter {
   }
 }
 
-/// Input formatter that adds comma thousand-separators while typing.
-/// Keeps decimal part intact. Works for positive numbers only.
+/// Check numbers: the numeric keypad and digits only, on every form that asks
+/// for one (Record Deposit, Field Engagement, batch engagement). Some opened
+/// the full keyboard and one let letters in; a pasted "CHK-123" now keeps
+/// "123".
+class BCheckNumberInput {
+  BCheckNumberInput._();
+
+  static const TextInputType keyboardType = TextInputType.number;
+
+  static final List<TextInputFormatter> formatters = [
+    FilteringTextInputFormatter.digitsOnly,
+    LengthLimitingTextInputFormatter(20),
+  ];
+}
+
+/// Money fields that format as you type, the same rules as the Collection web:
+/// "7200000" reads "7,200,000" while it is typed, digits and one decimal point
+/// only, at most two centavos, and [finalize] (see [BAmountBlurPad]) makes it
+/// "7,200,000.00" once the field is left. The caret stays after the digit it
+/// was after, so inserting or deleting in the middle of a number never throws
+/// it to the end. Positive amounts only; read the text back with
+/// [BFormatter.parseAmount], which drops the commas.
 class ThousandsSeparatorInputFormatter extends TextInputFormatter {
-  final NumberFormat _intFormat = NumberFormat('#,##0', 'en_US');
+  static final RegExp _significant = RegExp(r'[0-9.]');
+
+  /// Digits and one dot, at most two decimals, thousands separators on the
+  /// whole part. A second dot is dropped rather than moving the decimal place
+  /// (one stray keystroke used to turn "12.34.5" into 12.345), and the dot is
+  /// kept the moment it is typed so centavos can be entered at all.
+  static String format(String raw) {
+    final sanitized = raw.replaceAll(RegExp(r'[^0-9.]'), '');
+    final dot = sanitized.indexOf('.');
+    var whole = dot == -1 ? sanitized : sanitized.substring(0, dot);
+    String? frac;
+    if (dot != -1) {
+      final rest = sanitized.substring(dot + 1).replaceAll('.', '');
+      frac = rest.length > 2 ? rest.substring(0, 2) : rest;
+    }
+
+    whole = whole.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+    if (whole.isEmpty && frac != null) whole = '0';
+    final grouped = whole.replaceAllMapped(
+        RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
+    return frac == null ? grouped : '$grouped.$frac';
+  }
+
+  /// "7,200,000" → "7,200,000.00" when the field is left; blank stays blank.
+  static String finalize(String raw) {
+    final formatted = format(raw);
+    if (formatted.isEmpty) return '';
+    final parts = formatted.split('.');
+    final frac = parts.length > 1 ? parts[1] : '';
+    return '${parts[0]}.${frac.padRight(2, '0')}';
+  }
 
   @override
   TextEditingValue formatEditUpdate(
       TextEditingValue oldValue, TextEditingValue newValue) {
     if (newValue.text.isEmpty) return newValue;
 
-    // Preserve selection index later
-    final selectionIndexFromTheRight =
-        newValue.text.length - newValue.selection.end;
-
-    // Remove all characters except digits and dot
-    final sanitized = newValue.text.replaceAll(RegExp(r'[^0-9.]'), '');
-
-    // Keep the first decimal point and drop the rest. Joining the extra
-    // groups (the old behaviour) turned "12.34.5" into 12.345, so one stray
-    // keystroke moved the decimal place on a money field.
-    final parts = sanitized.split('.');
-    final intPartRaw = parts[0];
-    final decPartRaw = parts.length > 1
-        // Centavos, so two digits. Past that the extra digits are noise that
-        // would only surface as a sub-centavo mismatch somewhere later.
-        ? parts[1].substring(0, parts[1].length > 2 ? 2 : parts[1].length)
-        : '';
-
-    // Format integer part with commas
-    String formattedInt;
-    try {
-      formattedInt =
-          _intFormat.format(int.parse(intPartRaw.isEmpty ? '0' : intPartRaw));
-    } catch (_) {
-      // Fallback: use raw integer part
-      formattedInt = intPartRaw;
+    final raw = newValue.text;
+    final caret = newValue.selection.end < 0
+        ? raw.length
+        : newValue.selection.end.clamp(0, raw.length);
+    // How many digits and dots sit before the caret: the same count, in the
+    // formatted text, is where the caret goes back.
+    var keep = 0;
+    for (var i = 0; i < caret; i++) {
+      if (_significant.hasMatch(raw[i])) keep++;
     }
 
-    // Keyed off "was there a dot", not "are there decimals yet": testing the
-    // decimals swallowed the point the moment it was typed, so centavos could
-    // not be entered at all.
-    final newText =
-        parts.length > 1 ? '$formattedInt.$decPartRaw' : formattedInt;
-
-    // Recalculate selection
-    final selectionIndex = newText.length - selectionIndexFromTheRight;
-    final boundedIndex = selectionIndex.clamp(0, newText.length);
+    final text = format(raw);
+    var offset = 0;
+    if (keep > 0) {
+      offset = text.length;
+      var seen = 0;
+      for (var i = 0; i < text.length; i++) {
+        if (_significant.hasMatch(text[i])) seen++;
+        if (seen == keep) {
+          offset = i + 1;
+          break;
+        }
+      }
+    }
 
     return TextEditingValue(
-      text: newText,
-      selection: TextSelection.collapsed(offset: boundedIndex),
+      text: text,
+      selection: TextSelection.collapsed(offset: offset),
     );
   }
 }

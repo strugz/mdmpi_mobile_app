@@ -274,6 +274,7 @@ Ordered by severity. Items 1–5 and 7 are fixed; the rest are recorded here.
    other's cancel remark.
 9. **Four copies of the status ordinal map** with differing contents and no shared source of
    truth.
-10. **`/api3` readers bypass the whole abstraction** — no connectivity check, no cache, and
-    raw `dotenv.env['API_URL']!` instead of `BApiEnvironment`, so a missing `API_URL` is a
-    crash rather than a fallback.
+10. **The `/api2` reference-list readers bypass the whole abstraction** — no connectivity
+    check, no cache, and raw `dotenv.env['API_URL']!` instead of `BApiEnvironment`, so a
+    missing `API_URL` is a crash rather than a fallback. (These were the `/api3` readers
+    before that version was retired; the endpoint moved, the shortcut did not.)

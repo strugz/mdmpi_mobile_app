@@ -32,6 +32,9 @@ class ActivityInfoCard extends StatelessWidget {
                 value: BFormatter.formatPesoCurrency(item.totalCollected)),
             _ActivityDetailRow(
                 label: 'Documents', value: item.documentReferences.join(', ')),
+            if (item.hasPoNumber)
+              _ActivityDetailRow(
+                  label: 'P.O. Number', value: item.poNumber.trim()),
           ],
         ),
       ),

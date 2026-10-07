@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/day_entry_grouping.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
@@ -18,6 +19,7 @@ import 'widgets/calendar_day_empty_state.dart';
 import 'widgets/calendar_day_heading.dart';
 import 'widgets/calendar_month_header.dart';
 import 'widgets/calendar_skeleton.dart';
+import 'widgets/calendar_visit_card.dart';
 import 'widgets/day_account_filter_bar.dart';
 
 /// The collector's own record of their days.
@@ -179,21 +181,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
   static final DateTime _firstDay = DateTime.utc(2020, 1, 1);
   static final DateTime _lastDay = DateTime.utc(2030, 12, 31);
 
-  void _addEngagement() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(BSizes.borderRadiusLg)),
-      ),
-      builder: (sheetContext) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.paddingOf(sheetContext).bottom),
-        child: const ActivityTypeModal(),
-      ),
-    );
-  }
+  void _addEngagement() => ActivityTypeModal.show(context);
 
   @override
   Widget build(BuildContext context) {
@@ -338,26 +326,33 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: BSizes.defaultSpace),
-      child: ActivityHistoryList(
-        history:
-            entries.map((e) => e['history'] as CollectionHistoryModel).toList(),
-        accountNames: {
-          for (var i = 0; i < entries.length; i++)
-            i: entries[i]['accountName'].toString()
-        },
-        invoiceIds: {
-          for (var i = 0; i < entries.length; i++)
-            i: entries[i]['invoiceId']?.toString()
-        },
-        items: {
-          for (var i = 0; i < entries.length; i++)
-            i: entries[i]['item'] as CollectionItemModel?
-        },
-        // A day's list is read by who was visited and at what time; the date
-        // is already in the heading above it.
-        accountFirst: true,
-        timeOnly: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final group in groupDayEntriesByAccount(entries))
+            if (group.length == 1)
+              _singleEntryCard(group.single)
+            else
+              CalendarVisitCard(
+                key: ValueKey('visit:${group.first['accountName']}'),
+                accountName: group.first['accountName'].toString(),
+                entries: group,
+              ),
+        ],
       ),
     );
   }
+
+  /// A day's list is read by who was visited and at what time; the date is
+  /// already in the heading above it.
+  Widget _singleEntryCard(Map<String, dynamic> e) => ActivityHistoryCard(
+        history: e['history'] as CollectionHistoryModel,
+        accountName: e['accountName'].toString(),
+        invoiceId: e['invoiceId']?.toString(),
+        item: e['item'] as CollectionItemModel?,
+        reconciledOn: e['reconciledOn'] as String?,
+        invoiceCount: e['invoiceCount'] as int?,
+        accountFirst: true,
+        timeOnly: true,
+      );
 }

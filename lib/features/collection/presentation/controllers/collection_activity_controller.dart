@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
+import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
@@ -8,12 +11,15 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation_fold.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/bank_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/invoice_filter.dart';
 
@@ -44,6 +50,16 @@ class CollectionActivityController extends GetxController {
     final assigned = item.assignedAt.trim();
     return assigned.isNotEmpty && assigned != 'N/A' && item.toBeCollected > 0;
   }
+
+  /// Marked for reconciliation. Such an invoice lives under Home →
+  /// Reconciliation only: the regular bucket neither lists, counts nor
+  /// acquires it, so each open invoice is in exactly one place.
+  static bool isReconciliation(CollectionItemModel item) =>
+      item.status == CollectionStatusColors.statusReconciliation;
+
+  /// Open and in the regular bucket: what the bucket lists and acquires.
+  static bool isRegularBucketInvoice(CollectionItemModel item) =>
+      item.toBeCollected > 0 && !isReconciliation(item);
 
   /// Every known invoice exactly once. An id can transiently live in both
   /// lists; the Activity copy wins because it carries the freshest history.
@@ -83,6 +99,10 @@ class CollectionActivityController extends GetxController {
   final Map<String, double> _totalDueByClient = {};
   final Map<String, double> _totalCollectedByClient = {};
 
+  /// Distinct customer P.O.s per account, bucket-only like the invoice count.
+  /// Case-insensitive: SAP hands us `ADC-1` and `adc-1` for the same order.
+  final Map<String, int> _poCountByClient = {};
+
   /// Marks the cached aggregates stale. Call after changing item contents in
   /// a way that bypasses the observable lists (nothing does today).
   void invalidateAggregates() => _aggregatesDirty = true;
@@ -106,6 +126,7 @@ class CollectionActivityController extends GetxController {
     _invoiceCountByClient.clear();
     _totalDueByClient.clear();
     _totalCollectedByClient.clear();
+    _poCountByClient.clear();
 
     // Money spans bucket + activity, so it folds over the merged list.
     for (final item in _allItemsCache) {
@@ -114,13 +135,21 @@ class CollectionActivityController extends GetxController {
       _totalCollectedByClient[id] =
           (_totalCollectedByClient[id] ?? 0) + item.totalCollected;
     }
-    // Invoice count is bucket-only and ignores fully-settled invoices,
-    // matching the previous getter exactly.
+    // Invoice count is bucket-only and ignores fully-settled invoices and
+    // those marked for reconciliation (listed under Reconciliation instead).
+    final posByClient = <String, Set<String>>{};
     for (final item in bucketItems) {
-      if (item.toBeCollected > 0) {
+      if (isRegularBucketInvoice(item)) {
         final id = item.client.id;
         _invoiceCountByClient[id] = (_invoiceCountByClient[id] ?? 0) + 1;
+        if (item.hasPoNumber) {
+          (posByClient[id] ??= <String>{})
+              .add(item.poNumber.trim().toUpperCase());
+        }
       }
+    }
+    for (final e in posByClient.entries) {
+      _poCountByClient[e.key] = e.value.length;
     }
     _cachedSourceLength = bucketItems.length + activityItems.length;
     _aggregatesDirty = false;
@@ -315,18 +344,32 @@ class CollectionActivityController extends GetxController {
     // Any change to either list invalidates the cached per-client aggregates.
     // Registered before the first load so nothing can serve a stale map.
     startAggregateTracking();
+    // Settings → Default area (TODO item 15): a collector who works one
+    // territory has the bucket open on it. Filter by Area still changes it
+    // for the day; nothing is written back.
+    final storage = _storageOrNull();
+    if (storage != null) {
+      selectedArea.value =
+          CollectionSettingsController.readDefaultArea(storage.read);
+    }
     // Load data
     loadBucket();
     _loadPersistedExtras();
     // Reference data for the check fields. Independent of the bucket, and
     // nothing waits on it.
     loadBanks();
+    // The client registry for the account picker: refreshed behind the
+    // collector when the cached copy is missing or a day old.
+    loadClientRegistry();
     // A server download replaces the local cache; mirror it in memory. Local
     // read only (no network), so this cannot loop back into a sync.
     ever(repository.localDataVersion, (_) async {
       _loadPersistedExtras();
       final items = await repository.getLocalCollectionItems();
       _setItems(items);
+      // A download is when the collector expects fresh data: the client
+      // list comes along, behind them.
+      loadClientRegistry(force: true);
     });
     // One wire for all seven save paths, rather than a re-read at each of
     // them: the repository bumps this whenever it archives an engagement, so
@@ -413,6 +456,7 @@ class CollectionActivityController extends GetxController {
     String clientAddress = '',
     String clientContact = '',
     List<String> documentReferences = const [],
+    String? poNumber,
     required double toBeCollected,
     String? bankName,
     String? remarks,
@@ -427,6 +471,7 @@ class CollectionActivityController extends GetxController {
       clientAddress: clientAddress,
       clientContact: clientContact,
       documentReferences: documentReferences,
+      poNumber: poNumber,
       toBeCollected: toBeCollected,
       bankName: bankName,
       remarks: remarks,
@@ -498,6 +543,11 @@ class CollectionActivityController extends GetxController {
   }
 
   bool isSelected(String id) => selectedBucketIds.contains(id);
+
+  /// Bucket invoices outside Reconciliation: the Collection Bucket button's
+  /// count. Reconciliation has its own card.
+  int get regularBucketItemCount =>
+      bucketItems.where((item) => !isReconciliation(item)).length;
 
   bool get allSelected =>
       bucketItems.isNotEmpty && selectedBucketIds.length == bucketItems.length;
@@ -655,7 +705,7 @@ class CollectionActivityController extends GetxController {
     final inArea = area ?? selectedArea.value;
     final matching = <String, List<CollectionItemModel>>{};
     for (final item in bucketItems) {
-      if (item.toBeCollected <= 0 || !spec.matches(item)) continue;
+      if (!isRegularBucketInvoice(item) || !spec.matches(item)) continue;
       matching.putIfAbsent(item.client.id, () => []).add(item);
     }
     final accounts = masterAccountList.where((client) {
@@ -705,7 +755,7 @@ class CollectionActivityController extends GetxController {
   int getBucketAccountOverdueCount(String clientId) => bucketItems
       .where((item) =>
           item.client.id == clientId &&
-          item.toBeCollected > 0 &&
+          isRegularBucketInvoice(item) &&
           item.isOverdue)
       .length;
 
@@ -751,7 +801,8 @@ class CollectionActivityController extends GetxController {
 
   List<CollectionItemModel> getInvoicesByAccount(String clientId) {
     final invoices = bucketItems
-        .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+        .where((item) =>
+            item.client.id == clientId && isRegularBucketInvoice(item))
         .toList();
     // Apply search query if present
     var results = invoices;
@@ -759,6 +810,7 @@ class CollectionActivityController extends GetxController {
       final query = invoiceSearchQuery.value.toLowerCase();
       results = results.where((item) {
         return item.id.toLowerCase().contains(query) ||
+            item.poNumber.toLowerCase().contains(query) ||
             item.documentReferences
                 .any((ref) => ref.toLowerCase().contains(query));
       }).toList();
@@ -790,6 +842,22 @@ class CollectionActivityController extends GetxController {
   int getAccountInvoiceCount(String clientId) {
     _ensureAggregates();
     return _invoiceCountByClient[clientId] ?? 0;
+  }
+
+  /// The account's open bucket invoices, unfiltered: what its card counts.
+  /// The breakdown on the card reads this, so the lines under "3 P.O.s ·
+  /// 7 invoices" are exactly those seven.
+  List<CollectionItemModel> getBucketOpenInvoices(String clientId) =>
+      bucketItems
+          .where((item) =>
+              item.client.id == clientId && isRegularBucketInvoice(item))
+          .toList();
+
+  /// How many distinct customer P.O.s the account's open invoices fall under.
+  /// Zero when none of them carries one.
+  int getAccountPoCount(String clientId) {
+    _ensureAggregates();
+    return _poCountByClient[clientId] ?? 0;
   }
 
   // ========================================================================
@@ -862,6 +930,23 @@ class CollectionActivityController extends GetxController {
       .where((item) => item.client.id == clientId && item.toBeCollected > 0)
       .length;
 
+  /// The account's open engaged invoices, unfiltered: what its Activity card
+  /// counts, and what the card's P.O. breakdown lists.
+  List<CollectionItemModel> getActivityOpenInvoices(String clientId) =>
+      activityItems
+          .where((item) => item.client.id == clientId && item.toBeCollected > 0)
+          .toList();
+
+  /// Distinct customer P.O.s across this account's engaged invoices.
+  int getActivityAccountPoCount(String clientId) => activityItems
+      .where((item) =>
+          item.client.id == clientId &&
+          item.toBeCollected > 0 &&
+          item.hasPoNumber)
+      .map((item) => item.poNumber.trim().toUpperCase())
+      .toSet()
+      .length;
+
   /// How many of this account's engaged invoices are past their due date.
   int getActivityAccountOverdueCount(String clientId) => activityItems
       .where((item) =>
@@ -915,6 +1000,7 @@ class CollectionActivityController extends GetxController {
       final query = invoiceSearchQuery.value.toLowerCase();
       results = results.where((item) {
         return item.id.toLowerCase().contains(query) ||
+            item.poNumber.toLowerCase().contains(query) ||
             item.documentReferences
                 .any((ref) => ref.toLowerCase().contains(query));
       }).toList();
@@ -973,12 +1059,16 @@ class CollectionActivityController extends GetxController {
 
     final List<Map<String, dynamic>> combined = [];
 
-    // 1. Add invoice-level history
+    // 1. Add invoice-level history. A reconciliation an outcome has since
+    //    finished folds into that outcome, as in [allRecentHistory], so the
+    //    list never shows "Reconciliation" and then "Collected" as two events.
     for (var item in accountItems) {
-      for (var history in item.history) {
+      for (final entry in foldFinishedReconciliations(item.history)) {
         combined.add({
-          'history': history,
+          'history': entry.history,
+          'invoiceId': item.id,
           'item': item,
+          'reconciledOn': entry.reconciledOn,
         });
       }
     }
@@ -1003,15 +1093,17 @@ class CollectionActivityController extends GetxController {
   List<Map<String, dynamic>> get allRecentHistory {
     final List<Map<String, dynamic>> combined = [];
 
-    // 1. Add invoice-level history
+    // 1. Add invoice-level history. A reconciliation an outcome has since
+    //    finished folds into that outcome; see [reconciliationMerge].
     final allItems = this.allItems;
     for (var item in allItems) {
-      for (var history in item.history) {
+      for (final entry in foldFinishedReconciliations(item.history)) {
         combined.add({
-          'history': history,
+          'history': entry.history,
           'accountName': item.client.name,
           'invoiceId': item.id,
           'item': item,
+          'reconciledOn': entry.reconciledOn,
         });
       }
     }
@@ -1080,15 +1172,74 @@ class CollectionActivityController extends GetxController {
     return _byDateCache;
   }
 
+  /// One day's engagements, newest first: what Engagement History shows.
+  ///
+  /// From the archive, like the calendar, so advances received, deposits and
+  /// CWT pick-ups are in it and a settled invoice does not take its entry
+  /// with it.
+  List<Map<String, dynamic>> engagementsOn(DateTime day) =>
+      activitiesByDate[DateTime(day.year, day.month, day.day)] ?? const [];
+
+  /// Engagements from [from] to [to], both days included, newest first.
+  List<Map<String, dynamic>> engagementsBetween(DateTime from, DateTime to) {
+    final first = DateTime(from.year, from.month, from.day);
+    final last = DateTime(to.year, to.month, to.day);
+    final days = activitiesByDate.keys
+        .where((d) => !d.isBefore(first) && !d.isAfter(last))
+        .toList()
+      ..sort((a, b) => b.compareTo(a));
+    // Each day's list is already newest first.
+    return [for (final d in days) ...activitiesByDate[d]!];
+  }
+
+  /// Today's engagements: the home preview, and History's default day.
+  List<Map<String, dynamic>> get todayEngagements =>
+      engagementsOn(DateTime.now());
+
   void _rebuildByDate() {
     final grouped = <DateTime, List<Map<String, dynamic>>>{};
     final itemsById = {for (final i in allItems) i.id: i};
     var unplaceable = 0;
 
+    // Some archive rows do not name their account: a deferral copied from
+    // the server (the history table has no name column), or a deferral
+    // recorded when the account had no invoice left in the bucket to copy
+    // the name from. The card then had a blank headline and the day's
+    // account filter had no chip for it. The name is known elsewhere: on the
+    // client's invoices, in the master account list, or on another archive
+    // row of the same client.
+    final namesByClient = <String, String>{};
+    for (final i in allItems) {
+      if (i.client.name.isNotEmpty) {
+        namesByClient.putIfAbsent(i.client.id, () => i.client.name);
+      }
+    }
+    for (final c in masterAccountList) {
+      if (c.name.isNotEmpty) namesByClient.putIfAbsent(c.id, () => c.name);
+    }
+    for (final e in ownEngagements) {
+      if (e.clientName.isNotEmpty) {
+        namesByClient.putIfAbsent(e.clientId, () => e.clientName);
+      }
+    }
+
+    // A reconciliation and the outcome that finished it are one story, told
+    // once. A Reconciliation row followed by an outcome on the same invoice
+    // (or by a deferral of its account) folds into that outcome, which is
+    // then labelled "Reconciliation Collected", "Reconciliation Refused to
+    // Pay", and so on; a reconciliation nothing has finished yet stands on
+    // its own. Read from the archive rather than the cached invoice: once
+    // the invoice settles it leaves the cache, and the archive is what is
+    // left.
+    final merge = reconciliationMerge(ownEngagements);
+
     for (final e in ownEngagements) {
       // Reconciliation reads through invoice status, not as an engagement —
       // the same rule _loadPersistedExtras applies to the activity list.
       if (e.kind == 'OFFICE' && e.status == 'Reconciliation') continue;
+      // A reconciliation an outcome has since finished: shown as part of
+      // that outcome, not as a row of its own.
+      if (merge.finished.contains(e.localRef)) continue;
 
       final day = BFormatter.parseLocal(e.engagedOn);
       if (day == null) {
@@ -1112,9 +1263,20 @@ class CollectionActivityController extends GetxController {
           checkDate: e.checkDate,
           purposeOfVisit: e.purposeOfVisit,
         ),
-        'accountName': e.clientName,
+        'accountName': e.clientName.isNotEmpty
+            ? e.clientName
+            : (namesByClient[e.clientId] ?? ''),
         'invoiceId': e.itemId.isEmpty ? null : e.itemId,
+        // The archive's kind, so the calendar can tell an advance's AP
+        // reference from an invoice number and float from a collection.
+        'kind': e.kind,
         'item': itemsById[e.itemId],
+        'reconciledOn': merge.reconciledOn[e.localRef],
+        // An account-level outcome covers several invoices; the card says
+        // how many in place of the one invoice it does not have.
+        'invoiceCount': e.kind == 'ACCOUNT' && e.documentIds.isNotEmpty
+            ? e.documentIds.length
+            : null,
       });
     }
 
@@ -1132,6 +1294,84 @@ class CollectionActivityController extends GetxController {
     _byDateCache = grouped;
     _byDateSourceLength = ownEngagements.length;
     _byDateDirty = false;
+  }
+
+  /// Which reconciliations an outcome has finished, and which outcome.
+  ///
+  /// Returns the localRefs of every INVOICE Reconciliation row that a later
+  /// engagement has finished, and for each finishing outcome the date of the
+  /// latest reconciliation it finished. The outcome then shows as one entry
+  /// labelled with both, and the reconciliation row is not shown again. A
+  /// reconciliation with no outcome after it is in neither map: it is still
+  /// open and shows on its own.
+  ///
+  /// Two kinds of outcome finish a reconciliation:
+  ///  * an INVOICE engagement on the same invoice (Collected, Partially
+  ///    Collected, ...);
+  ///  * an ACCOUNT engagement of the same client (a deferral: Refused to
+  ///    Pay, Customer Unavailable, ...). A deferral is recorded once per
+  ///    account and lists the invoices it released in [documentIds]; it
+  ///    finishes the open reconciliations of exactly those. Rows copied from
+  ///    the server carry no document ids and fall back to every open
+  ///    reconciliation of the client.
+  ///
+  /// Chronology is per client, so a deferral only reaches reconciliations
+  /// recorded before it.
+  @visibleForTesting
+  static ReconciliationMerge reconciliationMerge(
+      Iterable<CollectionEngagementRecord> engagements) {
+    final finished = <String>{};
+    final reconciledOn = <String, String>{};
+
+    final byClient = <String, List<(DateTime, CollectionEngagementRecord)>>{};
+    for (final r in engagements) {
+      if (r.kind != 'INVOICE' && r.kind != 'ACCOUNT') continue;
+      if (r.kind == 'INVOICE' && r.itemId.isEmpty) continue;
+      if (r.kind == 'ACCOUNT' && r.status.isEmpty) continue;
+      final at = BFormatter.parseLocal(r.engagedAt);
+      if (at == null) continue;
+      byClient.putIfAbsent(r.clientId, () => []).add((at, r));
+    }
+
+    for (final timeline in byClient.values) {
+      timeline.sort((a, b) => a.$1.compareTo(b.$1));
+
+      // invoice id -> the reconciliation still waiting for an outcome
+      final open = <String, CollectionEngagementRecord>{};
+
+      for (final (_, r) in timeline) {
+        if (r.kind == 'INVOICE') {
+          if (r.status == 'Reconciliation') {
+            open[r.itemId] = r;
+            continue;
+          }
+          final rec = open.remove(r.itemId);
+          if (rec != null) {
+            finished.add(rec.localRef);
+            reconciledOn[r.localRef] = rec.engagedAt;
+          }
+          continue;
+        }
+
+        // ACCOUNT: finish the open reconciliations this deferral covered.
+        final covered = r.documentIds.isEmpty
+            ? open.keys.toList()
+            : open.keys.where(r.documentIds.contains).toList();
+        String? latest;
+        DateTime? latestAt;
+        for (final id in covered) {
+          final rec = open.remove(id)!;
+          finished.add(rec.localRef);
+          final at = BFormatter.parseLocal(rec.engagedAt);
+          if (at != null && (latestAt == null || at.isAfter(latestAt))) {
+            latestAt = at;
+            latest = rec.engagedAt;
+          }
+        }
+        if (latest != null) reconciledOn[r.localRef] = latest;
+      }
+    }
+    return ReconciliationMerge(finished: finished, reconciledOn: reconciledOn);
   }
 
   /// Re-read the archive. Cheap: one indexed query over the collector's own
@@ -1249,25 +1489,11 @@ class CollectionActivityController extends GetxController {
     return masterAccountList.where((c) => clientIds.contains(c.id)).toList();
   }
 
-  /// Number of assigned advanced payments (invoices created from advanced payments)
-  int get assignedAdvancedPaymentCount {
-    final fromBucket = bucketItems
-        .where((item) =>
-            item.toBeCollected > 0 &&
-            item.history.any((h) => h.status == 'Advanced Payment Applied'))
-        .map((i) => i.id);
-    final fromActivity = activityItems
-        .where((item) =>
-            item.toBeCollected > 0 &&
-            item.history.any((h) => h.status == 'Advanced Payment Applied'))
-        .map((i) => i.id);
-    final assignedIds = {...fromBucket, ...fromActivity};
-    return assignedIds.length;
-  }
-
-  /// Total advanced payments: assigned (invoices created and still unpaid) + unassigned payments
-  int get advancedPaymentsCount =>
-      assignedAdvancedPaymentCount + unassignedAdvancedPayments.length;
+  /// Advances still waiting for an invoice: what the Advanced Payment page
+  /// lists. An invoice made from an advance and only partly paid is an
+  /// ordinary bucket invoice from then on; counting it here kept the home
+  /// card at 1 over a page that said none were waiting.
+  int get advancedPaymentsCount => unassignedAdvancedPayments.length;
 
   /// Returns reconciliation invoices for a specific account
   List<CollectionItemModel> getReconciliationInvoicesByAccount(
@@ -1329,15 +1555,21 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Marked ${invoiceIds.length} invoices for Reconciliation');
   }
 
+  /// [clientName] from the client picker, which searches the whole registry:
+  /// a client with nothing in the bucket is not in [masterAccountList], and
+  /// looking the name up there saved the client code as its name.
   Future<void> saveAdvancedPayment({
     required String clientId,
     required double amount,
     required String remarks,
+    String? clientName,
   }) async {
     // Persisted + queued (ADVANCED_PAYMENT) so it survives a restart and uploads.
     final record = await repository.saveAdvance(
       clientId: clientId,
-      clientName: _clientNameFor(clientId),
+      clientName: (clientName != null && clientName.trim().isNotEmpty)
+          ? clientName.trim()
+          : _clientNameFor(clientId),
       amount: amount,
       remarks: remarks,
     );
@@ -1351,15 +1583,45 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Saved Advanced Payment ${record.externalRef} for $clientId: ₱$amount');
   }
 
-  Future<void> assignInvoiceToPayment({
+  /// The engagement stamp for a collection the collector dated themselves:
+  /// the day from [day], the time of day from [clock]. ISO, like every other
+  /// archive stamp, so it files under [day] in its month.
+  @visibleForTesting
+  static String collectionStamp(DateTime day, DateTime clock) => DateTime(
+        day.year,
+        day.month,
+        day.day,
+        clock.hour,
+        clock.minute,
+        clock.second,
+        clock.millisecond,
+      ).toIso8601String();
+
+  /// Apply an Advanced Payment to an invoice, as a collection on
+  /// [collectionDate].
+  ///
+  /// The advance is float until this moment and counts toward no month. The
+  /// collector picks the date, and so the month whose Collected this Month it
+  /// lands in; only the day is taken from [collectionDate], with the current
+  /// time of day so two applications on one day keep their order and their
+  /// archive keys apart.
+  ///
+  /// Returns the float left over: an advance larger than the invoice keeps
+  /// the excess under Advanced Payment for the next invoice (0 when spent).
+  ///
+  /// [poNumber] is the customer's P.O. for the new invoice, optional; blank
+  /// is stored as none, so the invoice groups under a P.O. only when it has one.
+  Future<double> assignInvoiceToPayment({
     required String paymentId,
     required String invoiceNumber,
     required double amountDue,
     required String dueDate,
+    required DateTime collectionDate,
+    String? poNumber,
   }) async {
     final paymentIdx =
         unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
-    if (paymentIdx == -1) return;
+    if (paymentIdx == -1) return 0;
 
     final payment = unassignedAdvancedPayments[paymentIdx];
     final clientId = payment['clientId'] as String;
@@ -1367,18 +1629,19 @@ class CollectionActivityController extends GetxController {
     final client = masterAccountList.firstWhere((c) => c.id == clientId,
         orElse: () => ClientModel.empty());
 
-    final now = DateTime.now().toIso8601String();
+    final appliedAt = collectionStamp(collectionDate, DateTime.now());
     final collectorLabel = payment['collectorName'] ?? repository.collectorName;
 
     final remainingDue = (amountDue - paidAmount).clamp(0.0, double.infinity);
     final isFullyPaid = remainingDue == 0;
+    final appliedAmount = paidAmount > amountDue ? amountDue : paidAmount;
 
     final historyEntry = CollectionHistoryModel(
-      date: now,
+      date: appliedAt,
       collectorName: collectorLabel,
       status: 'Advanced Payment Applied',
       remarks: 'Applied from advanced payment: ${payment['remarks']}',
-      totalCollected: paidAmount > amountDue ? amountDue : paidAmount,
+      totalCollected: appliedAmount,
     );
 
     final newItem = CollectionItemModel(
@@ -1386,8 +1649,9 @@ class CollectionActivityController extends GetxController {
       client: client,
       bpCode: client.code,
       toBeCollected: remainingDue,
-      totalCollected: paidAmount > amountDue ? amountDue : paidAmount,
+      totalCollected: appliedAmount,
       dueDate: dueDate,
+      poNumber: poNumber?.trim() ?? '',
       status: isFullyPaid ? 'Collected' : '',
       history: [historyEntry],
     );
@@ -1400,23 +1664,35 @@ class CollectionActivityController extends GetxController {
         clientId: clientId,
         clientName: client.name,
         amount: paidAmount,
-        date: (payment['date'] ?? now).toString(),
+        date: (payment['date'] ?? appliedAt).toString(),
         remarks: (payment['remarks'] ?? '').toString(),
         collectorName: collectorLabel.toString(),
       ),
       newInvoice: newItem,
       amountDue: amountDue,
       dueDate: dueDate,
+      appliedAt: appliedAt,
+      appliedAmount: appliedAmount,
     );
 
     // Add to bucket (if fully paid it shows in settled, if not it waits for next collection)
     bucketItems.add(newItem);
 
-    // Remove from unassigned (use removeWhere to be robust against id type mismatches or duplicates)
-    unassignedAdvancedPayments.removeWhere((e) => e['id'] == paymentId);
+    // What the invoice did not need stays float, on the same advance, for the
+    // next invoice; the repository keeps the same remainder in SQLite. Spent
+    // in full, the advance leaves the list (removeWhere, robust against id
+    // type mismatches or duplicates).
+    final excess = paidAmount - appliedAmount;
+    if (excess > 0.005) {
+      unassignedAdvancedPayments[paymentIdx] = {...payment, 'amount': excess};
+    } else {
+      unassignedAdvancedPayments.removeWhere((e) => e['id'] == paymentId);
+    }
 
     logDebug(
-        '[CollectionActivityController] Assigned invoice $invoiceNumber to payment. Fully paid: $isFullyPaid');
+        '[CollectionActivityController] Assigned invoice $invoiceNumber to payment. '
+        'Fully paid: $isFullyPaid. Float left: ₱$excess');
+    return excess > 0.005 ? excess : 0;
   }
 
   // ========================================================================
@@ -1448,6 +1724,21 @@ class CollectionActivityController extends GetxController {
         clientId: clientId, releasedInvoices: released);
     logDebug(
         '[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
+
+    // SMS trigger 4, Clear Engagement. After the release is saved, never
+    // blocking it.
+    // ignore: unawaited_futures
+    notifyEngagementCleared(clientName: invoices.first.client.name);
+  }
+
+  /// Send the Clear Engagement notice to the Head and the Collection
+  /// contacts. No snackbar here: while an SMS goes out, the sending view and
+  /// "Message Sent!" are the feedback (the service says when nobody is set).
+  Future<CollectionSmsOutcome?> notifyEngagementCleared(
+      {required String clientName}) async {
+    if (!Get.isRegistered<CollectionSmsService>()) return null;
+    return Get.find<CollectionSmsService>()
+        .notifyEngagementCleared(clientName: clientName);
   }
 
   Future<void> unclaimWithReason(
@@ -1481,6 +1772,12 @@ class CollectionActivityController extends GetxController {
       remarks: remarks,
     );
 
+    // SMS trigger 3, Defer Account: the reason and the collector's remarks.
+    _notifySms((sms) => sms.notifyAccountDeferred(
+          clientName: invoices.first.client.name,
+          remarks: remarks.trim().isEmpty ? reason : '$reason - $remarks',
+        ));
+
     final now = DateTime.now().toIso8601String();
     final collectorLabel = repository.collectorName;
     final historyEntry = CollectionHistoryModel(
@@ -1498,30 +1795,34 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Account $clientId unclaimed with account-level reason: $reason');
   }
 
+  /// Acquire an account from the bucket: its regular open invoices. Those
+  /// marked for reconciliation stay behind; [claimReconciliation] takes them.
   void claimAccount(String clientId) {
-    // Prefer claiming reconciliation-marked invoices that are still in the bucket.
-    final reconInvoices = getReconciliationInvoicesByAccount(clientId);
-    final bucketReconIds = reconInvoices
-        .where((i) => bucketItems.any((b) => b.id == i.id))
-        .map((i) => i.id)
+    final ids = bucketItems
+        .where((item) =>
+            item.client.id == clientId && isRegularBucketInvoice(item))
+        .map((e) => e.id)
         .toList();
-
-    if (bucketReconIds.isNotEmpty) {
-      claimItemsByIds(bucketReconIds);
-      logDebug(
-          '[CollectionActivityController] Account $clientId claimed (${bucketReconIds.length} reconciliation invoices)');
-      return;
-    }
-
-    // Fallback: claim all bucket items (legacy behavior)
-    final invoices =
-        bucketItems.where((item) => item.client.id == clientId).toList();
-    if (invoices.isEmpty) return;
-
-    final ids = invoices.map((e) => e.id).toList();
+    if (ids.isEmpty) return;
     claimItemsByIds(ids);
     logDebug(
-        '[CollectionActivityController] Account $clientId claimed (${invoices.length} invoices)');
+        '[CollectionActivityController] Account $clientId claimed (${ids.length} invoices)');
+  }
+
+  /// Acquire an account from Home → Reconciliation: only its invoices marked
+  /// for reconciliation that are still in the bucket.
+  void claimReconciliation(String clientId) {
+    final ids = bucketItems
+        .where((item) =>
+            item.client.id == clientId &&
+            item.toBeCollected > 0 &&
+            isReconciliation(item))
+        .map((e) => e.id)
+        .toList();
+    if (ids.isEmpty) return;
+    claimItemsByIds(ids);
+    logDebug(
+        '[CollectionActivityController] Account $clientId claimed (${ids.length} reconciliation invoices)');
   }
 
   /// Claim items by IDs (move to activity).
@@ -1621,23 +1922,15 @@ class CollectionActivityController extends GetxController {
     if (selectedAccountIds.isEmpty) return;
 
     final wantedClients = selectedAccountIds.toSet();
-    // An account marked for reconciliation contributes only those invoices,
-    // matching what claimAccount does for a single account.
-    final reconByClient = <String, List<String>>{};
-    final allByClient = <String, List<String>>{};
-    for (final item in bucketItems) {
-      if (!wantedClients.contains(item.client.id)) continue;
-      allByClient.putIfAbsent(item.client.id, () => []).add(item.id);
-      if (item.status == 'Reconciliation') {
-        reconByClient.putIfAbsent(item.client.id, () => []).add(item.id);
-      }
-    }
-
-    final ids = <String>[];
-    for (final clientId in wantedClients) {
-      final recon = reconByClient[clientId];
-      ids.addAll(recon ?? allByClient[clientId] ?? const []);
-    }
+    // The regular invoices of every ticked account, as claimAccount takes
+    // them one account at a time. Reconciliation invoices are acquired from
+    // Home → Reconciliation, not from here.
+    final ids = <String>[
+      for (final item in bucketItems)
+        if (wantedClients.contains(item.client.id) &&
+            isRegularBucketInvoice(item))
+          item.id,
+    ];
     if (ids.isEmpty) {
       exitSelectionMode();
       return;
@@ -1865,6 +2158,85 @@ class CollectionActivityController extends GetxController {
     }
   }
 
+  /// Existing clients in the registry (a_tblcollectionclient) matching
+  /// [term] by code or name.
+  ///
+  /// Reads the copy cached on the phone, so the picker answers at once and
+  /// without signal. Only while nothing is cached yet (a first run, before
+  /// the refresh lands) does it ask the server; a failure there sends the
+  /// picker to [searchKnownAccounts].
+  Future<Result<List<ClientModel>>> searchClientRegistry(String term) async {
+    if (!Get.isRegistered<ClientRegistryRepository>()) {
+      return Result.failure('Client list unavailable');
+    }
+    final registry = Get.find<ClientRegistryRepository>();
+    if (await registry.cachedCount() > 0) {
+      return Result.success(await registry.searchCached(term));
+    }
+    return registry.searchOnline(term);
+  }
+
+  /// How long a cached client list is trusted before a background refresh.
+  static const Duration _clientRegistryMaxAge = Duration(hours: 12);
+  static const String _clientRegistryStampKey =
+      'collection.clientRegistryRefreshedAt';
+  bool _refreshingClientRegistry = false;
+
+  /// Keep the cached client registry current, behind the collector.
+  ///
+  /// Refreshes when [force]d (after a bucket download), when nothing is
+  /// cached, or when the copy is older than [_clientRegistryMaxAge]. Never
+  /// blocks anything; a failure leaves the cached copy in place.
+  Future<void> loadClientRegistry({bool force = false}) async {
+    if (!Get.isRegistered<ClientRegistryRepository>()) return;
+    if (_refreshingClientRegistry) return;
+    final registry = Get.find<ClientRegistryRepository>();
+    final box = _storageOrNull();
+    final stamp =
+        DateTime.tryParse(box?.read<String>(_clientRegistryStampKey) ?? '');
+    final stale = stamp == null ||
+        DateTime.now().difference(stamp) > _clientRegistryMaxAge;
+    if (!force && !stale && await registry.cachedCount() > 0) return;
+
+    _refreshingClientRegistry = true;
+    try {
+      final result = await registry.refresh();
+      if (result.isSuccess && result.value > 0) {
+        await box?.write(
+            _clientRegistryStampKey, DateTime.now().toIso8601String());
+      }
+    } finally {
+      _refreshingClientRegistry = false;
+    }
+  }
+
+  /// GetStorage, or null where it was never initialised (tests, a failed
+  /// start): the registry then simply refreshes more often.
+  GetStorage? _storageOrNull() {
+    try {
+      return GetStorage();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The accounts already on this phone (from the downloaded bucket) matching
+  /// [term] — the client picker's fallback when the registry is unreachable.
+  List<ClientModel> searchKnownAccounts(String term) {
+    final q = term.trim().toLowerCase();
+    final seen = <String>{};
+    final matches = [
+      for (final c in masterAccountList)
+        if (!c.isEmpty &&
+            seen.add(c.id) &&
+            (q.isEmpty ||
+                c.name.toLowerCase().contains(q) ||
+                c.code.toLowerCase().contains(q)))
+          c,
+    ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return matches.take(25).toList();
+  }
+
   Future<void> saveGlobalActivity({
     required String type,
     required String accountName,
@@ -1913,6 +2285,34 @@ class CollectionActivityController extends GetxController {
 
     globalActivities.refresh();
     logDebug('[CollectionActivityController] Global activity saved: $type');
+
+    // SMS triggers 5 and 6.
+    final kind = type.trim().toLowerCase();
+    if (kind == 'deposit') {
+      _notifySms((sms) => sms.notifyDepositAdded(
+            bankName: bankName ?? '',
+            amount: totalCollected,
+            checkNumber: checkNumber,
+            remarks: remarks,
+          ));
+    } else if (kind == 'cwt pick-up' || kind == 'cwt pickup') {
+      _notifySms((sms) => sms.notifyCwtPickup(
+            clientName: accountName,
+            remarks: remarks,
+          ));
+    }
+  }
+
+  /// Fire a Collection SMS, guarded so it is a no-op when the service is
+  /// not registered (unit tests, Windows) and never throws into the caller.
+  void _notifySms(
+      Future<dynamic> Function(CollectionSmsService sms) action) {
+    if (!Get.isRegistered<CollectionSmsService>()) return;
+    // ignore: unawaited_futures
+    action(Get.find<CollectionSmsService>()).catchError((Object e) {
+      logDebug('[CollectionActivityController] SMS error: $e');
+      return null;
+    });
   }
 
   // ========================================================================
@@ -1978,6 +2378,9 @@ class CollectionActivityController extends GetxController {
   Map<String, dynamic> _advanceToMap(CollectionAdvanceRecord r) => {
         'id': r.externalRef,
         'clientId': r.clientId,
+        // Carried so a card can name the account even when it is not in the
+        // downloaded account list, instead of printing "N/A".
+        'clientName': r.clientName,
         'amount': r.amount,
         'remarks': r.remarks,
         'date': r.date,

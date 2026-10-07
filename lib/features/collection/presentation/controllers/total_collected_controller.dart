@@ -1,6 +1,8 @@
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 
@@ -27,15 +29,34 @@ class TotalCollectedController extends GetxController {
   void onInit() {
     super.onInit();
     reloadTarget();
-    ever(selectedMonth, (_) => reloadTarget());
-    // A server download may replace the stored targets.
-    ever(CollectionRepository.instance.localDataVersion, (_) => reloadTarget());
+    reloadActual();
+    ever(selectedMonth, (_) {
+      reloadTarget();
+      reloadActual();
+    });
+    // A server download may replace the stored targets and the posted
+    // Actual Collection.
+    ever(CollectionRepository.instance.localDataVersion, (_) {
+      reloadTarget();
+      reloadActual();
+    });
   }
 
   /// Targets used to live only in memory; now read from SQLite per month.
   Future<void> reloadTarget() async {
     final stored = await CollectionRepository.instance.getTarget(_yearMonth);
     targetAmount.value = stored ?? 0.0;
+  }
+
+  /// Reads the selected month's posted Actual Collection from SQLite (the
+  /// workspace download keeps it there).
+  Future<void> reloadActual() async {
+    final yearMonth = _yearMonth;
+    final records =
+        await CollectionRepository.instance.getActualCollections(yearMonth);
+    // The month moved on while this was reading; its own load will land.
+    if (yearMonth != _yearMonth) return;
+    postedActual.assignAll(records.map(MonthlyEntry.fromActual).nonNulls);
   }
 
   /// Every collection in the selected month, before the search box narrows
@@ -61,6 +82,14 @@ class TotalCollectedController extends GetxController {
 
     for (final e in _activityController.ownEngagements) {
       if (e.amount <= 0) continue;
+      // A For Deposit (banking money already counted) and an unapplied
+      // Advanced Payment (float until an invoice takes it; the applied row is
+      // what counts, in the month the collector chose) stay in the archive
+      // for the calendar and the history, and add nothing here. Both used to
+      // count the same pesos twice.
+      if (!CollectionOutcome.countsAsCollected(e.status, kind: e.kind)) {
+        continue;
+      }
       final dt = BFormatter.parseLocal(e.engagedAt);
       if (dt == null) continue;
       if (dt.year != month.year || dt.month != month.month) continue;
@@ -77,35 +106,31 @@ class TotalCollectedController extends GetxController {
     return entries;
   }
 
-  /// Every deposit in the selected month, before the search box narrows it.
-  List<MonthlyEntry> get depositEntries => _sortNewestFirst(_collectDeposits());
+  /// Actual Collection as the office posts it on the Collection web, one
+  /// entry per deposit slip / OR reference (revisions list item 11). The
+  /// workspace download stores it and [reloadActual] fills this for the
+  /// selected month.
+  ///
+  /// Deposits are not in it, and never were meant to be. A *For Deposit*
+  /// activity records what the collector did; it is not money the company has
+  /// counted. The figure used to be the sum of deposits, so every deposit a
+  /// collector logged moved a number the office owns.
+  final RxList<MonthlyEntry> postedActual = <MonthlyEntry>[].obs;
 
-  /// The same, narrowed by the search box (Actual Collection list).
+  /// The posted Actual Collection in the selected month, before the search
+  /// box narrows it.
+  List<MonthlyEntry> get postedEntries => _sortNewestFirst(_postedInMonth());
+
+  /// The same, narrowed by the search box (the Actual Collection list).
   List<MonthlyEntry> get actualEntries =>
-      _filterAndSortEntries(_collectDeposits());
+      _filterAndSortEntries(_postedInMonth());
 
-  List<MonthlyEntry> _collectDeposits() {
-    final List<MonthlyEntry> entries = [];
-
-    for (final entry in _activityController.globalActivities) {
-      final history = entry['history'];
-      if (entry['type'] == 'Deposit' || history.status == 'Deposit') {
-        final dt = _parseDateSafe(history.date);
-        if (dt != null &&
-            dt.year == selectedMonth.value.year &&
-            dt.month == selectedMonth.value.month) {
-          entries.add(MonthlyEntry(
-            date: dt,
-            amount: history.totalCollected ?? 0.0,
-            accountName: entry['accountName'] ?? 'N/A',
-            invoiceNumber: 'Deposit',
-            collectorName: history.collectorName ?? 'Unknown',
-          ));
-        }
-      }
-    }
-
-    return entries;
+  List<MonthlyEntry> _postedInMonth() {
+    final month = selectedMonth.value;
+    return [
+      for (final e in postedActual)
+        if (e.date.year == month.year && e.date.month == month.month) e,
+    ];
   }
 
   List<MonthlyEntry> _sortNewestFirst(List<MonthlyEntry> entries) =>
@@ -120,6 +145,8 @@ class TotalCollectedController extends GetxController {
       return e.accountName.toLowerCase().contains(q) ||
           e.invoiceNumber.toLowerCase().contains(q) ||
           e.collectorName.toLowerCase().contains(q) ||
+          e.referenceNo.toLowerCase().contains(q) ||
+          e.remarks.toLowerCase().contains(q) ||
           NumberFormat('#,##0.00').format(e.amount).contains(q);
     }).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -132,17 +159,10 @@ class TotalCollectedController extends GetxController {
   /// deposit total next door ignored the search. Same label, two behaviours.
   double get monthlyTotal => monthEntries.fold(0.0, (p, e) => p + e.amount);
 
-  /// Sum of deposits for the selected month (Actual Collection).
+  /// Actual Collection for the selected month: the posted entries, never the
+  /// collector's deposits. Off the unfiltered list, like [monthlyTotal].
   double get actualCollectionTotal =>
-      depositEntries.fold(0.0, (p, e) => p + e.amount);
-
-  /// Helper to parse a date string safely, in the reader's own timezone.
-  ///
-  /// The `.toLocal()` inside [BFormatter.parseLocal] matters here as much as
-  /// on the calendar: a server stamp carrying a 'Z' parsed to UTC, and a
-  /// collection late on the last day of the month was filed under the next
-  /// one.
-  DateTime? _parseDateSafe(String? s) => BFormatter.parseLocal(s);
+      postedEntries.fold(0.0, (p, e) => p + e.amount);
 
   /// Set the selected month using a DateTime (only year+month used)
   void setSelectedMonth(DateTime dt) {
@@ -186,19 +206,6 @@ class TotalCollectedController extends GetxController {
   /// when there is more than one.
   int distinctCollectors(List<MonthlyEntry> entries) =>
       entries.map((e) => e.collectorName.trim().toLowerCase()).toSet().length;
-
-  /// Set target amount for the month
-  void setTargetAmount(double value) {
-    targetAmount.value = value;
-    // Persist + queue SET_TARGET for the selected month.
-    CollectionRepository.instance.setTarget(_yearMonth, value);
-  }
-
-  /// Clear target amount
-  void clearTargetAmount() {
-    targetAmount.value = 0.0;
-    CollectionRepository.instance.setTarget(_yearMonth, 0.0);
-  }
 }
 
 /// Internal DTO representing a flattened monthly collection entry
@@ -209,11 +216,40 @@ class MonthlyEntry {
   final String invoiceNumber;
   final String collectorName;
 
+  /// The deposit slip / OR reference of a posted Actual Collection entry.
+  final String referenceNo;
+  final String remarks;
+
+  /// Who in the office posted an Actual Collection entry.
+  final String postedBy;
+
   MonthlyEntry({
     required this.date,
     required this.amount,
     required this.accountName,
     required this.invoiceNumber,
     required this.collectorName,
+    this.referenceNo = '',
+    this.remarks = '',
+    this.postedBy = '',
   });
+
+  /// A posted Actual Collection entry, dated its collection day. Null when
+  /// the stored date does not parse.
+  static MonthlyEntry? fromActual(CollectionActualRecord r) {
+    final date = DateTime.tryParse(r.collectionDate);
+    if (date == null) return null;
+    return MonthlyEntry(
+      date: DateTime(date.year, date.month, date.day),
+      amount: r.amount,
+      // The team's figure, posted against a deposit slip / OR: no account, no
+      // collector.
+      accountName: '',
+      invoiceNumber: '',
+      collectorName: '',
+      referenceNo: r.referenceNo,
+      remarks: r.remarks,
+      postedBy: r.postedBy,
+    );
+  }
 }

@@ -256,6 +256,9 @@ class BRequestDetails extends StatelessWidget {
               TextFormField(
                 controller: requestController.formState.receiver,
                 autocorrect: false,
+                // Matches a_tblrequeststandarddelivery.receiver varchar(255);
+                // a longer value failed the server save as a 404.
+                maxLength: 255,
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Iconsax.user_tick),
                   labelText: 'Receiver',

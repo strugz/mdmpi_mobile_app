@@ -37,9 +37,9 @@ class CollectionHomeScreen extends StatelessWidget {
   /// buttons and truncating tile labels in this fixed dashboard layout.
   static const double _maxTextScale = 1.15;
 
-  /// Fixed page height for the history carousel. The card lays out to about
-  /// 150px at the default text size and 165px at the 1.15 clamp; the extra
-  /// keeps the bottom divider row clear of the page edge.
+  /// Placeholder height for the history carousel's loading skeleton only.
+  /// The carousel itself sizes to its tallest card: a fixed 172 here once
+  /// clipped a card's footer by 2px when its labels grew a point.
   static const double _historyCardHeight = 172;
 
   static const _pageTransition = Transition.cupertino;
@@ -109,7 +109,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                   onActualTap: () => Get.to(
                                                     () =>
                                                         const MonthlySummaryScreen(
-                                                            type: 'Deposit'),
+                                                            type: 'Actual'),
                                                     transition: _pageTransition,
                                                     duration: _pageDuration,
                                                   ),
@@ -127,7 +127,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                 Obx(() =>
                                                     CollectionBucketButton(
                                                       itemCount: controller
-                                                          .bucketItems.length,
+                                                          .regularBucketItemCount,
                                                       onTap: () => Get.to(
                                                         () =>
                                                             const CollectionBucketScreen(),
@@ -169,7 +169,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                       .success),
                                                         ),
                                                         CollectionSummaryStat(
-                                                          title: 'Due Date',
+                                                          title: 'Past Due',
                                                           value: controller
                                                               .overdueItems
                                                               .length
@@ -180,7 +180,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   .danger,
                                                           onTap: () =>
                                                               _openCategory(
-                                                                  'Due Date',
+                                                                  'Past Due',
                                                                   BCollectionColors
                                                                       .danger),
                                                         ),
@@ -285,9 +285,11 @@ class CollectionHomeScreen extends StatelessWidget {
                                                     ),
 
                                                     Obx(() {
+                                                      // Today only, like Show All;
+                                                      // earlier days are on the calendar.
                                                       final recentItems =
                                                           controller
-                                                              .allRecentHistory;
+                                                              .todayEngagements;
 
                                                       if (recentItems.isEmpty) {
                                                         return Padding(
@@ -311,7 +313,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   height: BSizes
                                                                       .sm),
                                                               Text(
-                                                                'No engagement history yet',
+                                                                'No engagements yet today',
                                                                 style: Theme.of(
                                                                         context)
                                                                     .textTheme
@@ -347,6 +349,13 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                 ?.toString(),
                                                             item: e['item']
                                                                 as CollectionItemModel?,
+                                                            reconciledOn:
+                                                                e['reconciledOn']
+                                                                    as String?,
+                                                            invoiceCount:
+                                                                e['invoiceCount']
+                                                                    as int?,
+                                                            timeOnly: true,
                                                             margin:
                                                                 EdgeInsets.zero,
                                                           ),
@@ -354,8 +363,9 @@ class CollectionHomeScreen extends StatelessWidget {
 
                                                       return BMirrorCarousel(
                                                         itemCount: cards.length,
-                                                        height:
-                                                            _historyCardHeight,
+                                                        // No height: the carousel
+                                                        // takes its tallest card's,
+                                                        // at whatever font size.
                                                         onSettleTap: (i) =>
                                                             cards[i].showDetail(
                                                                 context),

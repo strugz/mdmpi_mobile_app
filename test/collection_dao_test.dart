@@ -83,6 +83,57 @@ void main() {
       expect(loaded.history.first.checkNumber, '123');
     });
 
+    test('P.O. number round-trips through the DAO and stays blank when absent',
+        () async {
+      await dao.insertCollectionItem(CollectionItemModel(
+        id: 'PO-1',
+        client: ClientModel(id: 'C1', code: 'C1', name: 'Acme', address: '', contact: '', emailAddress: ''),
+        toBeCollected: 100,
+        poNumber: 'ADC-CHEM-2023-001-A',
+      ));
+      await dao.insertCollectionItem(CollectionItemModel(
+        id: 'PO-2',
+        client: ClientModel(id: 'C1', code: 'C1', name: 'Acme', address: '', contact: '', emailAddress: ''),
+        toBeCollected: 200,
+      ));
+
+      final withPo = await dao.getCollectionItemById('PO-1');
+      expect(withPo!.poNumber, 'ADC-CHEM-2023-001-A');
+      expect(withPo.hasPoNumber, isTrue);
+
+      final without = await dao.getCollectionItemById('PO-2');
+      expect(without!.poNumber, '');
+      expect(without.hasPoNumber, isFalse);
+    });
+
+    test('a table created before the P.O. column gains it on the next open',
+        () async {
+      // Simulate a device whose collection table predates 2026-09-22.
+      final old = await openDatabase(inMemoryDatabasePath, version: 1,
+          onCreate: (db, _) async {
+        await db.execute('''
+          CREATE TABLE a_tblCollectionItems (
+            id TEXT PRIMARY KEY, clientId TEXT, clientName TEXT, clientAddress TEXT,
+            documentReferences TEXT, bankName TEXT, toBeCollected REAL DEFAULT 0,
+            totalCollected REAL DEFAULT 0, remarks TEXT, documentDate TEXT, bpCode TEXT,
+            postingDate TEXT, dueDate TEXT, status TEXT, lastOutcome TEXT,
+            assignedAt TEXT, collectorName TEXT, createdAt TEXT, updatedAt TEXT
+          )
+        ''');
+      });
+      try {
+        await ensureCollectionTables(old);
+        final cols = (await old.rawQuery('PRAGMA table_info(a_tblCollectionItems)'))
+            .map((r) => r['name'])
+            .toList();
+        expect(cols, contains('poNumber'));
+        // Re-running is harmless.
+        await ensureCollectionTables(old);
+      } finally {
+        await old.close();
+      }
+    });
+
     test('re-downloading the bucket does not duplicate history rows', () async {
       final item = CollectionItemModel(
         id: 'INV-9',
@@ -121,6 +172,61 @@ void main() {
 
       await pendingDao.removePendingChange(id);
       expect(await pendingDao.hasPendingChanges(), isFalse);
+    });
+
+    test('a rejected change keeps the server reason for the outbox', () async {
+      final id = await pendingDao.addPendingChange(PendingChange(
+        operation: 'DEPOSIT',
+        payload: '{"AmountCollected":2500000}',
+        itemId: 'ACT-1790319572537',
+        createdAt: '2026-09-25T10:00:00Z',
+      ));
+      final queued = (await pendingDao.getPendingChanges()).single;
+      expect(queued.lastError, isNull);
+
+      await pendingDao.updatePendingChange(queued.copyWith(
+          retryCount: 1,
+          lastRetryAt: '2026-09-25T15:00:00Z',
+          lastError: 'ClientCode is required'));
+
+      final rejected = (await pendingDao.getPendingChanges()).single;
+      expect(rejected.id, id);
+      expect(rejected.retryCount, 1);
+      expect(rejected.lastError, 'ClientCode is required');
+    });
+
+    test('an existing queue table gains the lastError column without a rebuild',
+        () async {
+      // The queue as it shipped before lastError existed, with a row in it.
+      await db.execute('DROP TABLE a_tblCollectionPending');
+      await db.execute('''
+        CREATE TABLE a_tblCollectionPending (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          operation TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          itemId TEXT,
+          createdAt TEXT NOT NULL,
+          retryCount INTEGER DEFAULT 0,
+          lastRetryAt TEXT
+        )''');
+      await db.insert('a_tblCollectionPending', {
+        'operation': 'SAVE_ACTIVITY',
+        'payload': '{}',
+        'itemId': 'INV-9',
+        'createdAt': '2026-09-24T09:00:00Z',
+      });
+
+      await ensureCollectionTables(db);
+      await ensureCollectionTables(db); // idempotent
+
+      final kept = (await pendingDao.getPendingChanges()).single;
+      expect(kept.itemId, 'INV-9', reason: 'un-uploaded work must survive');
+      expect(kept.lastError, isNull);
+
+      await pendingDao.updatePendingChange(
+          kept.copyWith(retryCount: 1, lastError: 'ClientCode is required'));
+      expect((await pendingDao.getPendingChanges()).single.lastError,
+          'ClientCode is required');
     });
   });
 }

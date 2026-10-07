@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_da
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_activity_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_account_history_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
@@ -125,12 +126,21 @@ class CollectionRepository extends GetxController {
           await dao.deleteAllCollectionItems();
           await dao.insertCollectionItems(ws.items);
           await _replaceAccountLevelData(ws);
+          // Rebuild the archive's copied half now, from the invoices already
+          // in memory, so the month's total is current by the time the
+          // screens hear about the download — not after they have re-read
+          // every invoice and started the rebuild themselves.
+          await _backfill(items: ws.items);
 
           localDataVersion.value++;
+          // The rebuild above is for this version; the listeners' own call
+          // to backfillOwnEngagements has nothing left to do.
+          _archiveBackfilledAt = localDataVersion.value;
           logDebug(
               'CollectionRepository: workspace cached — ${ws.items.length} items, '
               '${ws.advances.length} advances, ${ws.activities.length} activities, '
-              '${ws.accountHistory.length} history, ${ws.targets.length} targets');
+              '${ws.accountHistory.length} history, ${ws.targets.length} targets, '
+              '${ws.hasActualCollections ? ws.actualCollections.length : 'no'} actual');
           return ws.items;
         }
       } else {
@@ -161,6 +171,12 @@ class CollectionRepository extends GetxController {
     await (await helper.collectionAccountHistoryDao)
         .replaceAll(ws.accountHistory);
     await (await helper.collectionTargetDao).replaceAll(ws.targets);
+    // Actual Collection is the office's list and wins outright, empty or not
+    // — but only when this server sent one. An older server leaves the key
+    // out, and that is not the office deleting every entry.
+    if (ws.hasActualCollections) {
+      await (await helper.collectionActualDao).replaceAll(ws.actualCollections);
+    }
   }
 
   /// Parse an API item list into domain models via the DTO + mapper layer.
@@ -275,17 +291,46 @@ class CollectionRepository extends GetxController {
       // Update local DB first (optimistic): mark the item claimed by this
       // collector. Server-side first-wins is resolved later at Upload All.
       final name = collectorName;
+      final claimed = <CollectionItemModel>[];
+      // Accounts taken on for reconciliation, which the SMS names as such.
+      final reconClients = <String>{};
       for (final id in ids) {
         final item = await dao.getCollectionItemById(id);
         if (item != null) {
+          // A Reconciliation invoice stays one once claimed, as the
+          // controller keeps it in memory; clearing it here lost the mark on
+          // the next reload.
+          final isRecon = item.status == 'Reconciliation';
+          if (isRecon) reconClients.add(item.client.id);
           final updated = item.copyWith(
-            status: '',
+            status: isRecon ? 'Reconciliation' : '',
             assignedAt: now,
             collectorName: name,
           );
           await dao.updateCollectionItem(updated);
           await _queueChange('CLAIM', id, {'EngagementDate': now});
+          claimed.add(updated);
         }
+      }
+
+      // SMS trigger 1, Acquiring Account: one message for the whole acquire,
+      // each account with its counts and balance.
+      final byClient = <String, List<CollectionItemModel>>{};
+      for (final item in claimed) {
+        byClient.putIfAbsent(item.client.id, () => []).add(item);
+      }
+      final accounts = [
+        for (final group in byClient.values)
+          SmsAccountLine(
+            clientName: group.first.client.name,
+            poNumbers: group.map((i) => i.poNumber).toSet(),
+            invoiceIds: group.map((i) => i.id),
+            amount: group.fold<double>(0, (sum, i) => sum + i.toBeCollected),
+            reconciliation: reconClients.contains(group.first.client.id),
+          ),
+      ];
+      if (accounts.isNotEmpty) {
+        unawaited(_notifySms((sms) => sms.notifyAcquiringAccounts(accounts)));
       }
 
       _showSuccess('Items claimed successfully', silent: silent);
@@ -380,14 +425,15 @@ class CollectionRepository extends GetxController {
       });
 
       // Notify the collection head (Android, over cellular — works offline).
-      unawaited(_notifySms((sms) => sms.notifyEngagement(
+      // SMS trigger 2, Saving Engagement: Collected or Partial only.
+      unawaited(_notifySms((sms) => sms.notifyEngagementSaved(
             clientName: item.client.name,
-            amountCollected: newlyCollected,
-            outcome: status,
-            collectorName: collectorName,
-            documentReference: item.documentReferences.isNotEmpty
-                ? item.documentReferences.first
-                : '',
+            poNumbers: [item.poNumber],
+            invoices: [SmsInvoiceLine(id: item.id, amount: newlyCollected)],
+            status: status,
+            bankName: bankName,
+            checkNumber: checkNumber,
+            checkDate: checkDate,
           )));
 
       _showSuccess('Activity saved successfully', silent: silent);
@@ -418,8 +464,11 @@ class CollectionRepository extends GetxController {
       final name = collectorName;
 
       String batchClientName = '';
-      double batchTotal = 0;
       int batchCount = 0;
+      // For SMS trigger 2: every invoice with its amount; Partial if any is.
+      final smsLines = <SmsInvoiceLine>[];
+      final smsPos = <String>{};
+      String? smsStatus;
 
       // Gathered through the loop and committed once. The batch shares one
       // `now`, and the itemId differs per row, so the keys still differ.
@@ -431,8 +480,14 @@ class CollectionRepository extends GetxController {
 
         final manualAmount = amounts[id] ?? 0.0;
         if (batchClientName.isEmpty) batchClientName = item.client.name;
-        batchTotal += manualAmount;
         batchCount++;
+        smsLines.add(SmsInvoiceLine(id: item.id, amount: manualAmount));
+        smsPos.add(item.poNumber);
+        if (smsStatus != 'Partial') {
+          smsStatus =
+              CollectionSmsService.collectionStatusWord(statuses[id] ?? '') ??
+                  smsStatus;
+        }
         final itemRemarks = remarks[id] ?? 'Batch Recording';
         final itemStatus = statuses[id] ?? '';
 
@@ -495,14 +550,17 @@ class CollectionRepository extends GetxController {
 
       await _archiveAll(archived);
 
-      // One summary SMS to the collection head for the batch.
-      if (batchCount > 0) {
-        unawaited(_notifySms((sms) => sms.notifyBatch(
+      // SMS trigger 2, Saving Engagement: one message for the batch.
+      if (batchCount > 0 && smsStatus != null) {
+        final status = smsStatus;
+        unawaited(_notifySms((sms) => sms.notifyEngagementSaved(
               clientName: batchClientName,
-              invoiceCount: batchCount,
-              totalAmount:
-                  totalAmountReceived > 0 ? totalAmountReceived : batchTotal,
-              collectorName: name,
+              poNumbers: smsPos,
+              invoices: smsLines,
+              status: status,
+              bankName: bankName,
+              checkNumber: checkNumber,
+              checkDate: checkDate,
             )));
       }
 
@@ -587,15 +645,16 @@ class CollectionRepository extends GetxController {
         ? (decoded['Rejected'] as List)
         : const [];
 
-    // Build a set of rejected (operation|itemId) keys and reason strings.
-    final rejectedKeys = <String>{};
+    // Map each rejected (operation|itemId) to the server's reason, so the
+    // outbox can show why the row is stuck rather than only that it is.
+    final rejectedKeys = <String, String>{};
     final rejectedReasons = <String>[];
     for (final r in rejectedList) {
       if (r is Map) {
         final op = (r['Operation'] ?? '').toString();
         final itemId = (r['ItemId'] ?? '').toString();
         final reason = (r['Reason'] ?? 'Rejected').toString();
-        rejectedKeys.add('$op|$itemId');
+        rejectedKeys['$op|$itemId'] = reason;
         rejectedReasons.add('$itemId: $reason');
       }
     }
@@ -604,9 +663,13 @@ class CollectionRepository extends GetxController {
     int accepted = 0;
     for (final p in pending) {
       final key = '${p.operation}|${p.itemId}';
-      if (rejectedKeys.contains(key)) {
+      final reason = rejectedKeys[key];
+      if (reason != null) {
         await pendingDao.updatePendingChange(
-          p.copyWith(retryCount: p.retryCount + 1, lastRetryAt: now),
+          p.copyWith(
+              retryCount: p.retryCount + 1,
+              lastRetryAt: now,
+              lastError: reason),
         );
       } else {
         await pendingDao.removePendingChange(p.id!);
@@ -633,6 +696,7 @@ class CollectionRepository extends GetxController {
     String clientContact = '',
     String clientEmail = '',
     List<String> documentReferences = const [],
+    String? poNumber,
     required double toBeCollected,
     String? bankName,
     String? remarks,
@@ -657,6 +721,8 @@ class CollectionRepository extends GetxController {
         'ClientEmail': clientEmail,
         'BpCode': clientCode,
         'DocumentReferences': documentReferences,
+        // Customer P.O.; the backend trims and stores null for blank.
+        'PoNumber': poNumber,
         'BankName': bankName,
         'ToBeCollected': toBeCollected,
         'Remarks': remarks,
@@ -874,13 +940,28 @@ class CollectionRepository extends GetxController {
   /// re-import from landing a second copy of work the collector did here. The
   /// cut is by day, so the copy can miss part of the day the archive began;
   /// that day is the one day where both halves could describe the same visit.
+  ///
+  /// A download runs it itself, on the invoices it just parsed and before
+  /// [localDataVersion] announces them; this call then finds the archive
+  /// already current for that version and returns at once.
   Future<void> backfillOwnEngagements() async {
+    if (_archiveBackfilledAt == localDataVersion.value) return;
+    await _backfill();
+  }
+
+  /// The [localDataVersion] the archive's copied half was last rebuilt for.
+  int _archiveBackfilledAt = -1;
+
+  /// [items], when the caller already holds the fresh cache, saves reading
+  /// several thousand invoices back out of SQLite — the slowest step here,
+  /// and it sat between a download finishing and "Collected this Month"
+  /// showing the month's collections.
+  Future<void> _backfill({List<CollectionItemModel>? items}) async {
     try {
       final helper = DatabaseHelper.instance;
       final engDao = await helper.collectionEngagementDao;
 
       final watermark = await _archiveWatermark();
-      final removed = await engDao.clearServerCopied();
 
       final aliases = collectorAliases;
       bool mine(String name) => aliases.contains(name.trim().toLowerCase());
@@ -899,7 +980,32 @@ class CollectionRepository extends GetxController {
         }
       }
 
-      for (final item in await (await _dao).getCollectionItems()) {
+      // The account-history table has no name column, so a deferral copied
+      // from it would be archived nameless and the calendar card would have a
+      // blank headline. The invoices know their account; remember the name
+      // per client while walking them, and add the office and advance rows'
+      // names too so an account with no invoice left still gets one.
+      final namesByClient = <String, String>{};
+      void learn(String clientId, String name) {
+        if (clientId.isNotEmpty && name.isNotEmpty) {
+          namesByClient.putIfAbsent(clientId, () => name);
+        }
+      }
+
+      final cached = items ?? await (await _dao).getCollectionItems();
+      for (final item in cached) {
+        learn(item.client.id, item.client.name);
+      }
+      final activities = await (await helper.collectionActivityDao).getAll();
+      for (final a in activities) {
+        learn(a.clientId, a.clientName);
+      }
+      final advances = await (await helper.collectionAdvanceDao).getAll();
+      for (final a in advances) {
+        learn(a.clientId, a.clientName);
+      }
+
+      for (final item in cached) {
         for (final h in item.history) {
           if (!mine(h.collectorName)) continue;
           add(_engagementRecord(
@@ -927,13 +1033,14 @@ class CollectionRepository extends GetxController {
           kind: 'ACCOUNT',
           engagedAt: h.date,
           clientId: h.clientId,
+          clientName: namesByClient[h.clientId] ?? '',
           status: h.reason,
           remarks: h.remarks,
           source: CollectionEngagementRecord.sourceServer,
         ));
       }
 
-      for (final a in await (await helper.collectionActivityDao).getAll()) {
+      for (final a in activities) {
         if (!mine(a.collectorName)) continue;
         add(_engagementRecord(
           kind: 'OFFICE',
@@ -950,7 +1057,7 @@ class CollectionRepository extends GetxController {
         ));
       }
 
-      for (final a in await (await helper.collectionAdvanceDao).getAll()) {
+      for (final a in advances) {
         if (!mine(a.collectorName)) continue;
         add(_engagementRecord(
           kind: 'ADVANCE',
@@ -965,11 +1072,14 @@ class CollectionRepository extends GetxController {
         ));
       }
 
-      await _archiveAll(records);
-      // Bumped even when nothing is written, because dropping the old copies
-      // is itself a change the calendar and the month's total must see —
+      // Old copies out and new ones in as one transaction: the records are
+      // all built first, so no reader ever finds the copied half missing.
+      final removed = await engDao.replaceServerCopies(records);
+      _archiveBackfilledAt = localDataVersion.value;
+      // Also when nothing is written, because dropping the old copies is
+      // itself a change the calendar and the month's total must see —
       // otherwise deleted data stays on screen until the next restart.
-      if (records.isEmpty && removed > 0) ownEngagementVersion.value++;
+      if (records.isNotEmpty || removed > 0) ownEngagementVersion.value++;
       logDebug('CollectionRepository: archive refreshed — '
           '${records.length} copied from the server cache, $removed stale '
           'copies dropped, watermark $watermark'
@@ -1061,12 +1171,23 @@ class CollectionRepository extends GetxController {
 
       // A deferral is field work and belongs on the calendar. The CLEAR branch
       // returned above and archives nothing: clearing an engagement is not one.
+      //
+      // The row names the account and lists the invoices it released. Without
+      // the name the card had a blank header; without the invoices a
+      // reconciliation on one of them could not be folded into this outcome
+      // (see CollectionActivityController.reconciliationMerge). The name
+      // comes from a released invoice, else from any stored invoice of the
+      // account: a deferral with nothing to release still names who refused.
       await _archive(
         kind: 'ACCOUNT',
         engagedAt: now,
         clientId: clientId,
+        clientName: releasedInvoices.isNotEmpty
+            ? releasedInvoices.first.client.name
+            : await _clientNameFor(clientId),
         status: reason,
         remarks: remarks,
+        documentIds: [for (final inv in releasedInvoices) inv.id],
       );
 
       logDebug(
@@ -1083,6 +1204,22 @@ class CollectionRepository extends GetxController {
       logDebug('CollectionRepository.releaseInvoices error: $e');
       return null;
     }
+  }
+
+  /// The account's name as any stored invoice of it gives it, or '' when
+  /// none is stored. Only for the archive, which must never throw.
+  Future<String> _clientNameFor(String clientId) async {
+    try {
+      final items = await (await _dao).getCollectionItems();
+      for (final item in items) {
+        if (item.client.id == clientId && item.client.name.isNotEmpty) {
+          return item.client.name;
+        }
+      }
+    } catch (e) {
+      logDebug('CollectionRepository._clientNameFor error: $e');
+    }
+    return '';
   }
 
   /// Record an office activity (Deposit / CWT Pick-up / Reconciliation).
@@ -1141,6 +1278,27 @@ class CollectionRepository extends GetxController {
         final dao = await _dao;
         for (final inv in updatedInvoices) {
           await dao.updateCollectionItem(inv);
+        }
+      }
+
+      // A reconciliation is read on the calendar and in Field Engagement
+      // through the invoice, not through the OFFICE row above (the controller
+      // hides that one). Until now the only invoice-level trace was the
+      // history entry inside the cached item, which the next download
+      // replaced with the server's copy; once the collector collected the
+      // invoice, nothing was left to say it had been reconciled. A field
+      // outcome writes its own INVOICE row; so does this now.
+      if (type.trim().toLowerCase() == 'reconciliation') {
+        for (final inv in updatedInvoices) {
+          await _archive(
+            kind: 'INVOICE',
+            engagedAt: now,
+            itemId: inv.id,
+            clientId: inv.client.id,
+            clientName: inv.client.name,
+            status: 'Reconciliation',
+            remarks: remarks,
+          );
         }
       }
 
@@ -1227,42 +1385,60 @@ class CollectionRepository extends GetxController {
     }
   }
 
+  /// Under half a centavo is agreement, not float left over.
+  static const double _floatTolerance = 0.005;
+
   /// Assign an advance to an invoice (creating the invoice locally, as the app
   /// does). The server creates the invoice if new and allocates the advance.
+  /// An advance larger than the invoice keeps its excess as float.
+  ///
+  /// [appliedAt] is the collection date the collector chose. An advance is
+  /// float until applied, and the date decides which month's Collected this
+  /// Month it lands in, so it — not the moment of tapping Assign — is the
+  /// engagement's stamp, here and on the server. [appliedAmount] is what went
+  /// onto the invoice (never more than it was due), matching its history.
   Future<bool> assignAdvance({
     required CollectionAdvanceRecord advance,
     required CollectionItemModel newInvoice,
     required double amountDue,
     required String dueDate,
+    required String appliedAt,
+    required double appliedAmount,
   }) async {
     try {
       final dao = await _dao;
       await dao.insertCollectionItem(newInvoice);
 
       final advDao = await DatabaseHelper.instance.collectionAdvanceDao;
-      await advDao.markAssigned(advance.externalRef, newInvoice.id);
-
-      // Hoisted rather than called inline below, so the queued change and the
-      // archive row carry the same stamp.
-      final now = _nowStamp();
+      // What the invoice did not need stays float under Advanced Payment, on
+      // the same advance, for the next invoice. The server does the same: it
+      // allocates min(unallocated, balance) and leaves the rest unallocated.
+      final excess = advance.amount - appliedAmount;
+      if (excess > _floatTolerance) {
+        await advDao.keepRemainder(advance.externalRef, excess);
+      } else {
+        await advDao.markAssigned(advance.externalRef, newInvoice.id);
+      }
 
       await _archive(
         kind: 'INVOICE',
-        engagedAt: now,
+        engagedAt: appliedAt,
         itemId: newInvoice.id,
         clientId: advance.clientId,
         clientName: advance.clientName,
         status: 'Advanced Payment Applied',
         remarks: advance.remarks,
-        amount: advance.amount,
+        amount: appliedAmount,
       );
 
       await _queueChange('ASSIGN_ADVANCE', newInvoice.id, {
         'ClientCode': advance.clientId,
         'ExternalRef': advance.externalRef,
-        'EngagementDate': now,
+        'EngagementDate': appliedAt,
         'AmountDue': amountDue,
         'DueDate': dueDate,
+        // Blank goes as null, like Add to Bucket; the server trims it too.
+        'PoNumber': newInvoice.hasPoNumber ? newInvoice.poNumber.trim() : null,
         'Remarks': advance.remarks,
       });
 
@@ -1275,20 +1451,10 @@ class CollectionRepository extends GetxController {
     }
   }
 
-  /// Persist the monthly target (yyyy-MM) and queue it for upload.
-  Future<void> setTarget(String yearMonth, double amount) async {
-    try {
-      final tDao = await DatabaseHelper.instance.collectionTargetDao;
-      await tDao.set(yearMonth, amount);
-      await _queueChange('SET_TARGET', yearMonth, {
-        'YearMonth': yearMonth,
-        'TargetAmount': amount,
-      });
-    } catch (e) {
-      logDebug('CollectionRepository.setTarget error: $e');
-    }
-  }
-
+  /// The month's target (yyyy-MM), as the office set it on the admin web.
+  ///
+  /// Read-only on the phone: only the CollectionPoster role sets targets, and
+  /// each download replaces the local copy with the server's.
   Future<double?> getTarget(String yearMonth) async {
     try {
       final tDao = await DatabaseHelper.instance.collectionTargetDao;
@@ -1296,6 +1462,19 @@ class CollectionRepository extends GetxController {
     } catch (e) {
       logDebug('CollectionRepository.getTarget error: $e');
       return null;
+    }
+  }
+
+  /// The Actual Collection the office posted in [yearMonth] (yyyy-MM), newest
+  /// first, as the last workspace download left it. Empty on any error.
+  Future<List<CollectionActualRecord>> getActualCollections(
+      String yearMonth) async {
+    try {
+      return await (await DatabaseHelper.instance.collectionActualDao)
+          .forMonth(yearMonth);
+    } catch (e) {
+      logDebug('CollectionRepository.getActualCollections error: $e');
+      return const [];
     }
   }
 

@@ -10,19 +10,24 @@ class BPrimaryHeaderContainer extends StatelessWidget {
   const BPrimaryHeaderContainer({
     super.key,
     required this.child,
-    this.color = BColors.primary,
+    this.color,
   });
 
   final Widget child;
 
-  /// Fill colour. Departments with their own theme pass their header colour.
-  final Color color;
+  /// Fill colour. Left null, it follows the theme's app bar colour when a
+  /// department theme gives the bar one (Collection's navy), so a header
+  /// and the bar inside it are one surface; otherwise [BColors.primary].
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final bar = Theme.of(context).appBarTheme.backgroundColor;
+    final fill = color ??
+        (bar == null || bar.a == 0 ? BColors.primary : bar);
     return BCurvedEdgeWidget(
       child: Container(
-        color: color,
+        color: fill,
         padding: const EdgeInsets.all(0),
         child: SizedBox(
           child: Stack(
