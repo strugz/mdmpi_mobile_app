@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/app_build_info.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
@@ -149,6 +150,7 @@ class _LogisticsSettings extends StatelessWidget {
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _ContactDirectoryTile(),
+        const _AboutTile(),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
@@ -203,17 +205,40 @@ class _CollectionSettings extends StatelessWidget {
           subTitle: 'Local data size, cached pictures, re-download the bucket',
           onTap: () => Get.toNamed(BRoutes.collectionStorage),
         ),
-        BSettingsMenuTile(
-          icon: Iconsax.info_circle,
-          title: 'About',
-          subTitle: 'App version and what\'s new',
-          onTap: () => Get.toNamed(BRoutes.about),
-        ),
+        const _AboutTile(),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _LocalStorageViewerTile(),
       ],
+    );
+  }
+}
+
+/// Settings → About, for every department. The subtitle carries the version
+/// itself, so it can be read out over chat without opening the screen.
+/// The build is read during the splash, so the subtitle is right on the
+/// first frame; Settings is opened too often for it to visibly change text.
+class _AboutTile extends StatelessWidget {
+  const _AboutTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<AppBuildInfo>(
+      future: BAppBuildInfo.current(),
+      initialData: BAppBuildInfo.cached,
+      builder: (context, snapshot) {
+        final info = snapshot.data;
+        return BSettingsMenuTile(
+          key: const ValueKey('settings-about-tile'),
+          icon: Iconsax.info_circle,
+          title: 'About',
+          subTitle: info != null && info.hasVersion
+              ? 'Version ${info.label} · what\'s new'
+              : 'App version and what\'s new',
+          onTap: () => Get.toNamed(BRoutes.about),
+        );
+      },
     );
   }
 }

@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'data/local/database_helper.dart';
 // ...existing code...
+import 'package:mdmpi_mobile_app/base/utils/app_build_info.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/platform_init.dart';
 
@@ -48,6 +49,10 @@ Future<void> main() async {
   ///  Widgets binding
   final WidgetsBinding widgetsBinding =
       WidgetsFlutterBinding.ensureInitialized();
+
+  // Read the app version while the splash is up, so Login and Settings show
+  // it on their first frame instead of popping it in a moment later.
+  BAppBuildInfo.warmUp();
 
   // Android: draw edge-to-edge behind transparent system bars on every OS
   // version (API 35+ forces this anyway). Screens pad for the navigation bar

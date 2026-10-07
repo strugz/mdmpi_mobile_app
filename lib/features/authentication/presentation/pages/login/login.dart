@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/styles/spacing_styles.dart';
+import 'package:mdmpi_mobile_app/common/widgets/texts/app_version_text.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/login/widgets/login_form.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/widgets/auth_header.dart';
 
@@ -21,6 +23,10 @@ class LoginScreen extends StatelessWidget {
               subtitle: BTexts.signInTitle,
             ),
             LoginForm(),
+            SizedBox(height: BSizes.spaceBtwSections),
+
+            /// Which APK this is, for when someone cannot get past login.
+            BAppVersionText(),
           ],
         ),
       ),
