@@ -1,3 +1,9 @@
+import 'package:mdmpi_mobile_app/data/services/outbox/voucher_reread_service.dart';
+import 'package:mdmpi_mobile_app/data/services/gemini_document_service.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/voucher_invoice_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/voucher_scan_controller.dart';
+import 'package:mdmpi_mobile_app/data/services/report_export_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_reports_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/upload_data_controller.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -239,6 +245,9 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
+    // Gemini document reading: the Logistics inventory scanner and the
+    // Collection voucher scan. No Firestore, so outside the Firebase guard.
+    Get.lazyPut(() => GeminiDocumentService(), fenix: true);
 
     // ========================================================================
     // Platform Services
@@ -257,6 +266,12 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionRepository(), fenix: true);
     Get.lazyPut(() => BankRepository(), fenix: true);
     Get.lazyPut(() => ClientRegistryRepository(), fenix: true);
+    // Scanned Invoices: voucher pages read by Gemini (on-device fallback).
+    Get.lazyPut(() => VoucherInvoiceRepository(), fenix: true);
+    Get.lazyPut(
+        () => VoucherScanController(
+            repository: Get.find<VoucherInvoiceRepository>()),
+        fenix: true);
     // CNTMST always; Firestore Users too when Firebase is up (not on a desktop
     // without FlutterFire). Resolved at load time, so UserRepository need not exist yet.
     Get.lazyPut(
@@ -296,11 +311,30 @@ class GeneralBindings extends Bindings {
             repository: Get.find<ReconciliationRepository>()),
         fenix: true);
 
+    // Settings → Reports: builds from the archive, the team feed and the
+    // Tracker's cases, so after them. CSV save/share has no backend.
+    Get.lazyPut(() => ReportExportService(), fenix: true);
+    Get.lazyPut(
+        () => CollectionReportsController(exporter: Get.find<ReportExportService>()),
+        fenix: true);
+
     // Eager, not lazy: it must be alive to hear connectivity and lifecycle
     // events, otherwise nothing drains the proof outboxes automatically.
     // Registered last so NetworkManager and ImageRepository already exist.
     Get.put(ProofOutboxSyncService(), permanent: true);
     // The same for reconciliation photos (proof of payment, documents).
     Get.put(ReconAttachmentSyncService(), permanent: true);
+    // Voucher pages read on the phone, read again by the AI once online.
+    Get.put(
+        VoucherRereadService(
+          // Null until the account's invoices are on hand: the page waits.
+          classifierFor: (clientId) {
+            if (!Get.isRegistered<CollectionActivityController>()) return null;
+            final activity = CollectionActivityController.instance;
+            if (activity.allItems.isEmpty) return null;
+            return VoucherScanController.classifierFor(activity, clientId);
+          },
+        ),
+        permanent: true);
   }
 }

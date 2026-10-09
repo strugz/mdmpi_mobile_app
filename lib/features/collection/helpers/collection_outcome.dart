@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_engagement_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 
 /// What an amount says about the outcome of a collection.
@@ -34,6 +35,19 @@ class CollectionOutcome {
     if (kind == 'ADVANCE') return false;
     return !_activitiesOnly.contains(status.trim());
   }
+
+  /// Whether an archive record is the collection that settled its invoice.
+  ///
+  /// The archive's own flag when the row carries it (set on the collection
+  /// that brought the balance to zero, including an Advanced Payment applied
+  /// in full); for rows written before the flag existed, an invoice
+  /// engagement whose outcome is Collected. A partial collection, a visit
+  /// that collected nothing, and an advance that only reduced the balance
+  /// are not settlements.
+  static bool settlesInvoice(CollectionEngagementRecord e) =>
+      e.kind == 'INVOICE' &&
+      e.itemId.isNotEmpty &&
+      (e.settled || e.status.trim() == CollectionStatusColors.statusCollected);
 
   static const Set<String> _activitiesOnly = {
     CollectionStatusColors.statusAdvance,

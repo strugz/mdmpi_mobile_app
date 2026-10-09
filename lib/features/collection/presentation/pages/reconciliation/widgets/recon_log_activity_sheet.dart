@@ -21,17 +21,23 @@ typedef ReconPhotoPicker = Future<Uint8List?> Function(ImageSource source);
 /// Log one step of a case (Steps 2–9 of the process).
 ///
 /// Offers only the steps the rules allow now ([allowedReconActivityTypes]),
-/// grouped by who did them, so the collector never picks the actor. The same
-/// check runs again on save; its reason is shown here, not in a snackbar.
+/// grouped by who did them, so the collector never picks the actor. A stage
+/// step that must wait for an earlier stage shows locked, with the reason.
+/// The same check runs again on save; its reason is shown here, not in a
+/// snackbar.
 class ReconLogActivitySheet extends StatefulWidget {
   const ReconLogActivitySheet({
     super.key,
     required this.view,
     this.pickPhoto,
     this.cameraAvailable,
+    this.initialType,
   });
 
   final ReconCaseView view;
+
+  /// The step to start on (the stage track opens the sheet on its stage).
+  final ReconActivityType? initialType;
 
   /// Tests pass a fake; the app uses [ImagePicker].
   final ReconPhotoPicker? pickPhoto;
@@ -41,10 +47,15 @@ class ReconLogActivitySheet extends StatefulWidget {
 
   /// Opens the sheet; true when a step was logged.
   static Future<bool> show(ReconCaseView view,
-      {ReconPhotoPicker? pickPhoto, bool? cameraAvailable}) async {
+      {ReconPhotoPicker? pickPhoto,
+      bool? cameraAvailable,
+      ReconActivityType? initialType}) async {
     final logged = await Get.bottomSheet<bool>(
       ReconLogActivitySheet(
-          view: view, pickPhoto: pickPhoto, cameraAvailable: cameraAvailable),
+          view: view,
+          pickPhoto: pickPhoto,
+          cameraAvailable: cameraAvailable,
+          initialType: initialType),
       isScrollControlled: true,
       backgroundColor: BCollectionColors.surface,
       shape: const RoundedRectangleBorder(
@@ -75,6 +86,15 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
   bool _saving = false;
 
   ReconEvaluation get _eval => widget.view.evaluation;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialType;
+    if (initial != null && allowedReconActivityTypes(_eval).contains(initial)) {
+      _pick(initial);
+    }
+  }
 
   @override
   void dispose() {
@@ -163,7 +183,10 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       return;
     }
     final draft = ReconActivityDraft(
-        type: type, invoiceNos: _invoices.toList(), validationResult: _result);
+        type: type,
+        invoiceNos: _invoices.toList(),
+        validationResult: _result,
+        attachmentCount: _photos.length);
     final allowed = canAppendReconActivity(_eval, draft);
     if (allowed.isFailure) {
       setState(() => _error = allowed.error);
@@ -249,133 +272,51 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
                     ?.copyWith(color: BCollectionColors.inkSecondary)),
             const SizedBox(height: BSizes.spaceBtwItems),
             _group('What you did',
-                of((t) => t.doneBy == ReconActor.collector && !t.isLifecycle)),
+                of((t) => t.doneBy == ReconActor.collector && !t.isLifecycle),
+                locked: _lockedStageSteps()),
             _group('What the account did',
                 of((t) => t.doneBy == ReconActor.account)),
             _group('End the case', of((t) => t.isLifecycle)),
-            if (type != null) ...[
-              const Divider(height: BSizes.spaceBtwSections),
-              if (type == ReconActivityType.proofValidated) ...[
-                Text('Is the proof valid?', style: theme.textTheme.titleSmall),
-                const SizedBox(height: BSizes.xs),
-                SegmentedButton<ReconValidationResult>(
-                  key: const ValueKey('recon-validation'),
-                  emptySelectionAllowed: true,
-                  segments: const [
-                    ButtonSegment(
-                        value: ReconValidationResult.valid,
-                        label: Text('Valid'),
-                        icon: Icon(Iconsax.tick_circle)),
-                    ButtonSegment(
-                        value: ReconValidationResult.invalid,
-                        label: Text('Invalid'),
-                        icon: Icon(Iconsax.close_circle)),
-                  ],
-                  selected: {if (_result != null) _result!},
-                  onSelectionChanged: (s) =>
-                      setState(() => _result = s.isEmpty ? null : s.first),
+            // The details for the chosen step grow in (and change over) in
+            // one motion: the height eases while the old form fades into
+            // the new one, instead of the sheet jumping to its new size.
+            AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.topCenter,
+                  children: [...previous, if (current != null) current],
                 ),
-                const SizedBox(height: BSizes.spaceBtwItems),
-              ],
-              if (type == ReconActivityType.soaSent) ...[
-                TextField(
-                  key: const ValueKey('recon-soa-amount'),
-                  controller: _amount,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                      labelText: 'SOA amount', prefixText: 'PHP '),
-                ),
-                const SizedBox(height: BSizes.spaceBtwItems),
-              ],
-              if (_choices.isNotEmpty) ...[
-                Text(
-                    _mustNameInvoices
-                        ? 'Which invoices does the account say are paid?'
-                        : 'Invoices (optional; none means all that apply)',
-                    style: theme.textTheme.titleSmall),
-                for (final i in _choices)
-                  CheckboxListTile(
-                    key: ValueKey('recon-invoice-${i.invoiceNo}'),
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    value: _invoices.contains(i.invoiceNo),
-                    onChanged: (on) => setState(() => on == true
-                        ? _invoices.add(i.invoiceNo)
-                        : _invoices.remove(i.invoiceNo)),
-                    title: Text(i.invoiceNo),
-                    subtitle: Text(BFormatter.formatPesoCurrency(i.amount)),
-                    secondary: ReconChip(
-                        label: i.status.label,
-                        color: BReconStyle.invoiceColor(i.status)),
-                  ),
-                const SizedBox(height: BSizes.spaceBtwItems),
-              ],
-              TextField(
-                key: const ValueKey('recon-remarks'),
-                controller: _remarks,
-                maxLines: 3,
-                minLines: 1,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                    labelText: 'Remarks', prefixIcon: Icon(Iconsax.edit)),
-              ),
-              if (!type.isLifecycle) ...[
-                const SizedBox(height: BSizes.spaceBtwInputFields),
-                TextField(
-                  key: const ValueKey('recon-next-action'),
-                  controller: _nextAction,
-                  decoration: const InputDecoration(
-                      labelText: 'Next action (optional)',
-                      prefixIcon: Icon(Iconsax.arrow_right_3)),
-                ),
-                const SizedBox(height: BSizes.xs),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    key: const ValueKey('recon-due'),
-                    onPressed: _pickDue,
-                    icon: const Icon(Iconsax.calendar_1, size: 18),
-                    label: Text(_due == null
-                        ? 'Set a due date'
-                        : 'Due ${_shown.format(_due!)}'),
-                  ),
-                ),
-              ],
-              if (_takesPhotos) ...[
-                const SizedBox(height: BSizes.xs),
-                Wrap(
-                  spacing: BSizes.sm,
-                  runSpacing: BSizes.sm,
-                  children: [
-                    for (var i = 0; i < _photos.length; i++)
-                      _Thumb(
-                          bytes: _photos[i],
-                          onRemove: () => setState(() => _photos.removeAt(i))),
-                    if (widget.cameraAvailable ?? GetPlatform.isAndroid)
-                      OutlinedButton.icon(
-                        key: const ValueKey('recon-camera'),
-                        onPressed: () => _addPhoto(ImageSource.camera),
-                        icon: const Icon(Iconsax.camera, size: 18),
-                        label: const Text('Photo'),
+                child: type == null
+                    ? const SizedBox.shrink(key: ValueKey('recon-details-none'))
+                    : Column(
+                        key: ValueKey('recon-details-${type.code}'),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: _details(context, type),
                       ),
-                    OutlinedButton.icon(
-                      key: const ValueKey('recon-gallery'),
-                      onPressed: () => _addPhoto(ImageSource.gallery),
-                      icon: const Icon(Iconsax.gallery, size: 18),
-                      label: const Text('Gallery'),
+              ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _error == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(top: BSizes.spaceBtwItems),
+                      child: Text(_error!,
+                          key: const ValueKey('recon-error'),
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: BCollectionColors.danger)),
                     ),
-                  ],
-                ),
-              ],
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: BSizes.spaceBtwItems),
-              Text(_error!,
-                  key: const ValueKey('recon-error'),
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(color: BCollectionColors.danger)),
-            ],
+            ),
             const SizedBox(height: BSizes.spaceBtwItems),
             ElevatedButton(
               key: const ValueKey('recon-save'),
@@ -394,8 +335,151 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
     );
   }
 
-  Widget _group(String title, Iterable<ReconActivityType> types) {
-    if (types.isEmpty) return const SizedBox.shrink();
+  /// The fields for [type]: the question it asks, the invoices it names,
+  /// remarks, the next action and photos.
+  List<Widget> _details(BuildContext context, ReconActivityType type) {
+    final theme = Theme.of(context);
+    return [
+      const Divider(height: BSizes.spaceBtwSections),
+      if (type == ReconActivityType.proofValidated) ...[
+        Text('Is the proof valid?', style: theme.textTheme.titleSmall),
+        const SizedBox(height: BSizes.xs),
+        SegmentedButton<ReconValidationResult>(
+          key: const ValueKey('recon-validation'),
+          emptySelectionAllowed: true,
+          segments: const [
+            ButtonSegment(
+                value: ReconValidationResult.valid,
+                label: Text('Valid'),
+                icon: Icon(Iconsax.tick_circle)),
+            ButtonSegment(
+                value: ReconValidationResult.invalid,
+                label: Text('Invalid'),
+                icon: Icon(Iconsax.close_circle)),
+          ],
+          selected: {if (_result != null) _result!},
+          onSelectionChanged: (s) =>
+              setState(() => _result = s.isEmpty ? null : s.first),
+        ),
+        const SizedBox(height: BSizes.spaceBtwItems),
+      ],
+      if (type == ReconActivityType.soaSent) ...[
+        TextField(
+          key: const ValueKey('recon-soa-amount'),
+          controller: _amount,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+              labelText: 'SOA amount', prefixText: 'PHP '),
+        ),
+        const SizedBox(height: BSizes.spaceBtwItems),
+      ],
+      if (_choices.isNotEmpty) ...[
+        Text(
+            _mustNameInvoices
+                ? 'Which invoices does the account say are paid?'
+                : 'Invoices (optional; none means all that apply)',
+            style: theme.textTheme.titleSmall),
+        for (final i in _choices)
+          CheckboxListTile(
+            key: ValueKey('recon-invoice-${i.invoiceNo}'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            value: _invoices.contains(i.invoiceNo),
+            onChanged: (on) => setState(() => on == true
+                ? _invoices.add(i.invoiceNo)
+                : _invoices.remove(i.invoiceNo)),
+            title: Text(i.invoiceNo),
+            subtitle: Text(BFormatter.formatPesoCurrency(i.amount)),
+            secondary: ReconChip(
+                label: i.status.label,
+                color: BReconStyle.invoiceColor(i.status)),
+          ),
+        const SizedBox(height: BSizes.spaceBtwItems),
+      ],
+      TextField(
+        key: const ValueKey('recon-remarks'),
+        controller: _remarks,
+        maxLines: 3,
+        minLines: 1,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(
+            labelText: 'Remarks', prefixIcon: Icon(Iconsax.edit)),
+      ),
+      if (!type.isLifecycle) ...[
+        const SizedBox(height: BSizes.spaceBtwInputFields),
+        TextField(
+          key: const ValueKey('recon-next-action'),
+          controller: _nextAction,
+          decoration: const InputDecoration(
+              labelText: 'Next action (optional)',
+              prefixIcon: Icon(Iconsax.arrow_right_3)),
+        ),
+        const SizedBox(height: BSizes.xs),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: const ValueKey('recon-due'),
+            onPressed: _pickDue,
+            icon: const Icon(Iconsax.calendar_1, size: 18),
+            label: Text(_due == null
+                ? 'Set a due date'
+                : 'Due ${_shown.format(_due!)}'),
+          ),
+        ),
+      ],
+      if (_takesPhotos) ...[
+        const SizedBox(height: BSizes.xs),
+        if (type == ReconActivityType.collectionLetterSent)
+          Padding(
+            padding: const EdgeInsets.only(bottom: BSizes.xs),
+            child: Text('Attach a photo of the letter (required)',
+                key: const ValueKey('recon-letter-photo-required'),
+                style: theme.textTheme.titleSmall),
+          ),
+        Wrap(
+          spacing: BSizes.sm,
+          runSpacing: BSizes.sm,
+          children: [
+            for (var i = 0; i < _photos.length; i++)
+              _Thumb(
+                  bytes: _photos[i],
+                  onRemove: () => setState(() => _photos.removeAt(i))),
+            if (widget.cameraAvailable ?? GetPlatform.isAndroid)
+              OutlinedButton.icon(
+                key: const ValueKey('recon-camera'),
+                onPressed: () => _addPhoto(ImageSource.camera),
+                icon: const Icon(Iconsax.camera, size: 18),
+                label: const Text('Photo'),
+              ),
+            OutlinedButton.icon(
+              key: const ValueKey('recon-gallery'),
+              onPressed: () => _addPhoto(ImageSource.gallery),
+              icon: const Icon(Iconsax.gallery, size: 18),
+              label: const Text('Gallery'),
+            ),
+          ],
+        ),
+      ],
+    ];
+  }
+
+  /// Stage steps that must wait for an earlier stage, with the reason.
+  List<({ReconActivityType type, String reason})> _lockedStageSteps() {
+    if (_eval.isClosed) return const [];
+    return [
+      for (final stage in ReconStage.values)
+        if (reconStageLockReason(_eval, stage.type) case final reason?)
+          (type: stage.type, reason: reason),
+    ];
+  }
+
+  Widget _group(String title, Iterable<ReconActivityType> types,
+      {List<({ReconActivityType type, String reason})> locked = const []}) {
+    if (types.isEmpty && locked.isEmpty) return const SizedBox.shrink();
+    final caption = Theme.of(context)
+        .textTheme
+        .bodySmall
+        ?.copyWith(color: BCollectionColors.inkSecondary);
     return Padding(
       padding: const EdgeInsets.only(bottom: BSizes.sm),
       child: Column(
@@ -419,8 +503,21 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
                   selected: _type == t,
                   onSelected: (_) => _pick(t),
                 ),
+              for (final l in locked)
+                ChoiceChip(
+                  key: ValueKey('recon-type-${l.type.code}-locked'),
+                  avatar: const Icon(Iconsax.lock, size: 16),
+                  label: Text(l.type.label),
+                  selected: false,
+                  onSelected: null,
+                ),
             ],
           ),
+          for (final l in locked)
+            Padding(
+              padding: const EdgeInsets.only(top: BSizes.xs),
+              child: Text(l.reason, style: caption),
+            ),
         ],
       ),
     );

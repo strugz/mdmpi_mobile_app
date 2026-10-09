@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/widgets/recon_stage_track.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/widgets/recon_log_activity_sheet.dart';
 
 /// One reconciliation case: the account's last activity first (Step 1 of
@@ -56,6 +57,19 @@ class ReconCaseScreen extends StatelessWidget {
         );
       }
       final e = view.evaluation;
+      final canLog = controller.canLog(view);
+      final holder = view.reconCase.collectorName.trim().isNotEmpty
+          ? view.reconCase.collectorName.trim()
+          : view.reconCase.collectorCode.trim();
+      // Closed: say how it ended. Someone else's: say whose, since only
+      // the holder of the account logs on it. Nobody's: say how to take it.
+      final label = e.isClosed
+          ? 'Case ${e.status.label.toLowerCase()}'
+          : canLog
+              ? 'Log a step'
+              : holder.isEmpty
+                  ? 'Acquire the account to log a step'
+                  : 'Held by $holder · acquire to log';
       return Scaffold(
         appBar: AppBar(title: Text(view.reconCase.clientName)),
         // Pinned, so the next step is always one tap away.
@@ -73,12 +87,18 @@ class ReconCaseScreen extends StatelessWidget {
             ),
             child: ElevatedButton.icon(
               key: const ValueKey('recon-log'),
-              onPressed:
-                  e.isClosed ? null : () => ReconLogActivitySheet.show(view),
-              icon: const Icon(Iconsax.add_circle, size: 18),
-              label: Text(e.isClosed
-                  ? 'Case ${e.status.label.toLowerCase()}'
-                  : 'Log a step'),
+              onPressed: canLog ? () => ReconLogActivitySheet.show(view) : null,
+              icon: Icon(
+                  e.isClosed
+                      ? Iconsax.lock
+                      : canLog
+                          ? Iconsax.add_circle
+                          : Iconsax.user,
+                  size: 18),
+              label: Text(label,
+                  key: const ValueKey('recon-log-label'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis),
               style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 48)),
             ),
@@ -92,6 +112,15 @@ class ReconCaseScreen extends StatelessWidget {
               _Header(view: view),
               const SizedBox(height: BSizes.spaceBtwItems),
               _LastActivity(evaluation: e),
+              const SizedBox(height: BSizes.spaceBtwSections),
+              const _SectionTitle('Stage'),
+              ReconStageTrack(
+                evaluation: e,
+                onLog: canLog
+                    ? (type) =>
+                        ReconLogActivitySheet.show(view, initialType: type)
+                    : null,
+              ),
               const SizedBox(height: BSizes.spaceBtwSections),
               _SectionTitle('Invoices (${e.invoices.length})'),
               for (final i in e.invoices) _InvoiceRow(invoice: i),
@@ -179,7 +208,8 @@ class _LastActivity extends StatelessWidget {
     final e = evaluation;
     final last = e.lastActivity;
     final due = last?.nextActionDueDate;
-    final hint = BReconStyle.nextStepHint(e.status, hasActivity: last != null);
+    final hint = BReconStyle.nextStepHint(e.status,
+        hasActivity: last != null, stage: e.currentStage);
     return Container(
       key: const ValueKey('recon-last-activity'),
       padding: const EdgeInsets.all(BSizes.md),

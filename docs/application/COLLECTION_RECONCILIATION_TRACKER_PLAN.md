@@ -1,6 +1,9 @@
 # Collection: Reconciliation Tracker
 
-**Status:** Stages 0–5 done; not yet deployed or committed · **Started:** 2026-09-28
+**Status:** Stages 0–5 committed (1b2b321); revision 1 (2026-10-08) in progress; backend not yet deployed · **Started:** 2026-09-28
+
+**Process flow:** [COLLECTION_RECONCILIATION_CASE_FLOW.html](COLLECTION_RECONCILIATION_CASE_FLOW.html)
+(open in a browser): every step on the Log sheet, whose turn it creates, and the three endings.
 
 ## Why
 
@@ -20,6 +23,7 @@ account's **last activity** before the collector takes the next step.
 | Escalated to | The Collection Head (Settings → My Head), by SMS |
 | NOT COMPLETED | Open invoices stay under Reconciliation; to continue, start a **new** case (no reopen) |
 | Who logs | Any collector currently holding the account; the case follows the account on acquire |
+| Who sees | Every open case goes to every phone (2026-10-08): the next collector to visit the account sees where it stands. Closed cases stay with whoever held, pooled or worked on them |
 | Step 9, "send to Accounting" | A "Validated, awaiting posting" list |
 | Attachments | Photos in v1 (proof of payment, documents) |
 
@@ -55,7 +59,9 @@ Activity types and who does them:
 
 | Type | Done by | Effect on invoices |
 |---|---|---|
-| SOA_SENT | Collector | none (records the SOA date and amount) |
+| SOA_SENT | Collector | none (records the SOA date and amount); the SOA stage |
+| FOLLOW_UP | Collector | none; the Follow up stage (after an SOA; repeatable) |
+| COLLECTION_LETTER_SENT | Collector | none; the Collection letter stage (after a follow up; needs a photo; repeatable) |
 | DOCUMENT_REQUESTED | Account | none |
 | DOCUMENT_PROVIDED | Collector | none |
 | PAID_CLAIM | Account | named OPEN / PROOF INVALID invoices → CLAIMED PAID |
@@ -85,6 +91,15 @@ Case status, the first rule that applies:
    WAITING FOR COLLECTOR.
 5. No activity yet → WAITING FOR COLLECTOR ("Send the SOA").
 
+Stages (case-level, Revision 2): **SOA → Follow up → Collection letter**, in that order. They run
+beside the invoices' claim → proof → validate chain and never decide the case status, flags or
+closing. A stage is done once its step is logged after the stage before it is done; each step may
+be logged again (a re-issued SOA replaces the SOA date and amount; a second letter is a final
+demand). A stage step logged out of order (an offline replay) stays on the timeline and takes the
+collector's turn, but is not counted and is reported under "Not applied". Follow ups and letters
+are collector conversation steps: the case waits on the Account and the No-response wait is not
+restarted.
+
 Flags (open cases only):
 - **No response:** waiting for the Account for 7 or more days, counted from the first collector
   activity after the Account last acted.
@@ -93,7 +108,8 @@ Flags (open cases only):
   date never raises it.
 
 Blocked, by `canAppendReconActivity()`: invoice numbers that aren't in the case, an empty paid
-claim, validating when no proof is pending, and any activity once the case has ended.
+claim, validating when no proof is pending, a follow up before any SOA, a collection letter
+before any follow up or without a photo, and any activity once the case has ended.
 
 Days are Philippine calendar days (+08:00) on every device. Aging of open cases runs from the
 date opened: 0–7, 8–15, 16–30, 31+ days.
@@ -143,4 +159,57 @@ acquired from the Reconciliation card.
   dashboard lists them behind the **Open / Closed / All** filter (Open by default; closed ones
   newest first, with the closing date). An open case they worked on that someone else holds now
   is not theirs.
-- Later: a Head/team case view, and the Accounting list on the collection admin web.
+- Later: the Accounting list on the collection admin web.
+
+## Revision 1 (2026-10-08)
+
+- [x] **Every open case on every phone.** `GetReconCasesForWorkspaceAsync` (MDMPI.App) sends
+  every open case, whoever holds it; closed ones keep the old rule (mine, pooled, or worked on,
+  since the cutoff). **Needs a backend deploy** with the Stage 2 migration. On the phone the
+  dashboard and the reports have a **My cases / Team** switch (`ReconScope`); a collector starts
+  on My cases, the Head on Team. Team cards say who holds the case ("Held by …", or "No holder ·
+  waiting to be acquired"). Only the holder logs: on someone else's case the Log button reads
+  "Held by … · acquire to log" (`ReconciliationController.canLog`); a released case reads
+  "Acquire the account to log a step". The case itself stays readable.
+- [x] **Reports enhanced.** Summary adds the open cases by whose turn (one bar, three legends).
+  **Needs attention**: the flag counts and the flagged open cases, each leading to its case.
+  **Aging** shows the amount per bucket, and a bucket opens to its cases. **Who holds what**
+  (Team only): open, flagged, closed and amount per collector (`reconByCollector`). Validated,
+  awaiting posting is unchanged.
+- [x] **Log a step eases in.** The step's fields grow in and change over in one motion
+  (`AnimatedSize` + `AnimatedSwitcher`) instead of the sheet jumping; the error line too.
+
+## Revision 2 (2026-10-09): stages SOA → Follow up → Collection letter
+
+From the Collections meeting of 2026-10-07 (To-Update List, item 3).
+
+- [x] **Rules.** `ReconStage` (`recon_enums.dart`) and `ReconStageProgress` /
+  `ReconEvaluation.stages`, `currentStage`, `stageUnlocked` (`recon_evaluation.dart`), counted in
+  `evaluateReconCase`. `reconStageLockReason` and the stage checks in `canAppendReconActivity`
+  (`recon_validator.dart`); `ReconActivityDraft.attachmentCount`. No schema change: the new types
+  are new codes in the existing `type` column. Two sample cases added to
+  `sample_cases.json` (`expected.stages` keyed by step wire code, `expected.currentStage`).
+- [x] **Screens.** The case screen shows the stage track (done with date and ×count, current
+  ringed, later ones locked); tapping an unlocked stage opens the log sheet on its step. The log
+  sheet shows locked stage steps as disabled chips with the reason; the letter says its photo is
+  required. The Step 1 hint follows the stage while waiting on the Account.
+- [ ] **Backend (MDMPI.App, not edited).** Deploy before a phone build that can queue the new
+  codes; until then they are refused and wait in the outbox, and older phones drop them on
+  download.
+  - Accept `ActivityType` `FOLLOW_UP` and `COLLECTION_LETTER_SENT` on the `RECON_ACTIVITY` op
+    (no new op, no new payload fields; `DocumentIds` empty, `ReconAmount` and
+    `ValidationResult` null). Widen the `ActivityType` column to at least 24 characters in the
+    undeployed migration if it is narrower (`COLLECTION_LETTER_SENT` is 22), and add both codes
+    to any whitelist or CHECK constraint.
+  - Rules port: both are collector conversation steps naming no invoices. Count stages exactly
+    as `evaluateReconCase`: a follow up with no earlier SOA adds the warning
+    `<activityId>: follow up before any SOA, not counted`; a letter with no earlier counted
+    follow up adds `<activityId>: collection letter before any follow up, not counted`. Stages
+    never change status, flags or closing. Run the two new fixture cases.
+  - Upload checks (mirror `canAppendReconActivity`, ordered by stored `DateTime`, ties by
+    `ActivityId`, not by arrival): `FOLLOW_UP` needs an earlier `SOA_SENT`;
+    `COLLECTION_LETTER_SENT` needs an earlier `FOLLOW_UP` and a non-empty `AttachmentIds` (ids,
+    since the photo upload may come after the op). A retried op with a known `ActivityId` still
+    succeeds.
+- Later: a PDF letter (attachments are JPEG-only today: the file name, the photo upload's content
+  type and the case screen's photo lookup), and a "sent on" date separate from the log time.

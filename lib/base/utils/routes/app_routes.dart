@@ -26,6 +26,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/settings/uploa
 import '../../../features/logistics/screens/request.dart';
 import '../../../features/logistics/screens/data_test/local_storage_data_viewer.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reports/collection_reports_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/upload/collection_upload_outbox_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/my_head_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/team/team_activity_screen.dart';
@@ -90,6 +91,10 @@ class AppRoutes {
     GetPage(name: BRoutes.reconciliationCases, page: () => const ReconDashboardScreen()),
     GetPage(name: BRoutes.reconciliationReports, page: () => const ReconReportsScreen()),
     GetPage(name: BRoutes.reconciliationCase, page: () => ReconCaseScreen(caseId: Get.arguments as String? ?? '')),
+    GetPage(name: BRoutes.collectionReports, page: () => const CollectionReportsScreen()),
+    GetPage(name: BRoutes.collectionReportActivity, page: () => const ActivityReportScreen()),
+    GetPage(name: BRoutes.collectionReportCollectors, page: () => const CollectorsSummaryScreen()),
+    GetPage(name: BRoutes.collectionReportRecon, page: () => const ReconDetailReportScreen()),
     GetPage(name: BRoutes.collectionAdvancedPaymentForm, page: () => const AdvancedPaymentFormScreen()),
   ];
 

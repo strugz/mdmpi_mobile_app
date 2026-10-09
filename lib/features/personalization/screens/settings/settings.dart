@@ -190,6 +190,12 @@ class _CollectionSettings extends StatelessWidget {
           subTitle: 'Review and upload your queued collections',
           onTap: () => Get.toNamed(BRoutes.collectionUploadOutbox),
         ),
+        BSettingsMenuTile(
+          icon: Iconsax.document_download,
+          title: 'Reports',
+          subTitle: 'Activity, collectors summary, reconciliation; save or share as CSV',
+          onTap: () => Get.toNamed(BRoutes.collectionReports),
+        ),
         const SizedBox(height: BSizes.spaceBtwItems),
         const BSectionHeading(title: 'My Team', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),

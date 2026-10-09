@@ -42,6 +42,11 @@ class CollectionEngagementRecord {
   /// [sourceLocal] or [sourceServer]. See the column comment in db_schema.
   final String source;
 
+  /// True on the collection that paid its invoice in full (balance reached
+  /// zero with this engagement). False on partials, visits and non-invoice
+  /// work, and on rows written before the column existed.
+  final bool settled;
+
   /// Recorded on this device. Permanent.
   static const String sourceLocal = 'LOCAL';
 
@@ -72,6 +77,7 @@ class CollectionEngagementRecord {
     this.documentIds = const [],
     required this.createdAt,
     this.source = sourceLocal,
+    this.settled = false,
   });
 
   /// The key that makes a re-save idempotent.
@@ -108,6 +114,7 @@ class CollectionEngagementRecord {
         'documentIds': documentIds.join(','),
         'createdAt': createdAt,
         'source': source,
+        'settled': settled ? 1 : 0,
       };
 
   factory CollectionEngagementRecord.fromJson(Map<String, dynamic> m) =>
@@ -136,6 +143,7 @@ class CollectionEngagementRecord {
         // Rows written before the column existed are the collector's own
         // work, so the absent value reads as LOCAL.
         source: (m['source'] ?? sourceLocal).toString(),
+        settled: m['settled'] == 1 || m['settled'] == true,
       );
 }
 

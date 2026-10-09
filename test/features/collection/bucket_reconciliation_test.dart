@@ -20,7 +20,9 @@ class _Stub extends CollectionActivityController {
   void onInit() {}
 
   @override
-  Future<void> claimItemsByIds(List<String> ids) async => claimed.addAll(ids);
+  Future<void> claimItemsByIds(List<String> ids,
+          {void Function(int done, int total)? onProgress}) async =>
+      claimed.addAll(ids);
 }
 
 ClientModel _client(String id, String name) => ClientModel(

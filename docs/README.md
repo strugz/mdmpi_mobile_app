@@ -57,6 +57,9 @@ docs/
 |---|---|---|---|
 | Post-Demo Revisions TO DO | Logistics / Cross-module | Complete (12/12) | [POST_DEMO_REVISIONS_TODO.md](POST_DEMO_REVISIONS_TODO.md) |
 | Collection Revisions TO DO | Collection (mobile, backend, admin web) | Code complete (4/4); P.O. migration + deploys open | [application/COLLECTION_REVISIONS_TODO.md](application/COLLECTION_REVISIONS_TODO.md) |
+| Reconciliation Tracker plan | Collection (mobile, backend) | Stages 0–5 done; revisions 1–2 (stages) done, backend deploys open | [application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md](application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md) |
+| Reconciliation case flow (diagram) | Collection | Active | [application/COLLECTION_RECONCILIATION_CASE_FLOW.html](application/COLLECTION_RECONCILIATION_CASE_FLOW.html) |
+| To-Update List (meeting 2026-10-07) | Collection (mobile, backend) | App done (items 1–4); backend deploys and Absolute AR (admin web) open | [application/COLLECTION_OCT7_UPDATES_PLAN.md](application/COLLECTION_OCT7_UPDATES_PLAN.md) |
 | Codex to Claude Code transition | Tooling | Historical (2026-08) | [CODEX_TO_CLAUDE_TRANSITION.md](CODEX_TO_CLAUDE_TRANSITION.md) |
 | WebSocket disconnect handling | Cross-cutting | Active | [WEBSOCKET_DISCONNECT_HANDLING.md](WEBSOCKET_DISCONNECT_HANDLING.md) |
 | Data persistence flow (API <-> SQLite) | Cross-cutting | Active | [DATA_PERSISTENCE_FLOW.md](DATA_PERSISTENCE_FLOW.md) |

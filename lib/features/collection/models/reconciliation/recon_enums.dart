@@ -66,6 +66,14 @@ enum ReconInvoiceStatus {
 /// collector never picks the actor when logging.
 enum ReconActivityType {
   soaSent('SOA_SENT', ReconActor.collector, 'SOA sent'),
+
+  /// The collector chased the account after the SOA. Repeatable.
+  followUp('FOLLOW_UP', ReconActor.collector, 'Follow up'),
+
+  /// A collection letter went out, with a photo of it. Repeatable (a first
+  /// letter, then a final demand).
+  collectionLetterSent(
+      'COLLECTION_LETTER_SENT', ReconActor.collector, 'Collection letter sent'),
   documentRequested(
       'DOCUMENT_REQUESTED', ReconActor.account, 'Documents requested'),
   documentProvided(
@@ -111,12 +119,52 @@ enum ReconActivityType {
   /// Ends the case.
   bool get isLifecycle => this == caseNotCompleted || this == caseEscalated;
 
+  /// The stage this step completes, if it is one of the case's stage steps.
+  ReconStage? get stage {
+    for (final s in ReconStage.values) {
+      if (s.type == this) return s;
+    }
+    return null;
+  }
+
   static ReconActivityType? fromCode(String? code) {
     for (final t in values) {
       if (t.code == code) return t;
     }
     return null;
   }
+}
+
+/// The case-level escalation path, in order: SOA, then Follow up, then the
+/// Collection Letter. It runs beside the invoices' claim → proof → validate
+/// chain and never decides the case's status. A stage is done once its step
+/// has been logged in order; each step may be logged again.
+enum ReconStage {
+  soa('SOA', ReconActivityType.soaSent),
+  followUp('Follow up', ReconActivityType.followUp),
+  collectionLetter('Collection letter', ReconActivityType.collectionLetterSent);
+
+  const ReconStage(this.label, this.type);
+
+  final String label;
+
+  /// The step that completes it.
+  final ReconActivityType type;
+
+  /// The stage that must be done first; null for the first.
+  ReconStage? get previous => index == 0 ? null : values[index - 1];
+
+  /// The label mid-sentence ("before any follow up"); SOA stays capitalised.
+  String get inSentence => this == soa ? label : label.toLowerCase();
+
+  /// Why this stage's step cannot be logged until [previous] is done; null
+  /// for the first stage.
+  String? get lockReason => switch (previous) {
+        null => null,
+        ReconStage.soa => 'Log the SOA before a follow up.',
+        final p => 'Log at least one ${p.inSentence} before the '
+            '$inSentence.',
+      };
 }
 
 /// The collector's verdict on a proof of payment.

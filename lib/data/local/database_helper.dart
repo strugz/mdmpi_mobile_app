@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/local/dao/collection/voucher_reread_dao.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -77,6 +78,7 @@ class DatabaseHelper {
   CollectionEngagementDao? _collectionEngagementDao;
   ReconCaseDao? _reconCaseDao;
   ReconAttachmentDao? _reconAttachmentDao;
+  VoucherRereadDao? _voucherRereadDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -408,6 +410,13 @@ class DatabaseHelper {
     return _reconCaseDao!;
   }
 
+  Future<VoucherRereadDao> get voucherRereadDao async {
+    if (_voucherRereadDao != null) return _voucherRereadDao!;
+    final db = await database;
+    _voucherRereadDao = VoucherRereadDao(db);
+    return _voucherRereadDao!;
+  }
+
   Future<ReconAttachmentDao> get reconAttachmentDao async {
     if (_reconAttachmentDao != null) return _reconAttachmentDao!;
     final db = await database;
@@ -712,6 +721,7 @@ class DatabaseHelper {
     _backLoadDao = null;
     _reconCaseDao = null;
     _reconAttachmentDao = null;
+    _voucherRereadDao = null;
   }
 
   /// Delete the database file and reset the instance.
@@ -744,6 +754,7 @@ class DatabaseHelper {
       _formCategoryDao = null;
       _reconCaseDao = null;
       _reconAttachmentDao = null;
+      _voucherRereadDao = null;
     } catch (e) {
       // Ignore errors during deletion
     }

@@ -206,17 +206,21 @@ void main() {
         ],
       );
       // Still open, and MAR holds it now: theirs, not in my list.
-      final openAtMar = _view('RC-8', 'Metro Globe', [
-        _step('RA-81', ReconActivityType.soaSent, '2026-09-15T09:00:00',
-            by: 'JCA'),
-      ], collector: 'MAR');
+      final openAtMar = _view(
+          'RC-8',
+          'Metro Globe',
+          [
+            _step('RA-81', ReconActivityType.soaSent, '2026-09-15T09:00:00',
+                by: 'JCA'),
+          ],
+          collector: 'MAR');
       final tracker = await _pump(tester, const ReconDashboardScreen(), cases: [
         ReconCaseView(paidByMar, paidByMar.evaluate(now: _now)),
         openAtMar,
       ]);
       expect(tracker.myCases.map((c) => c.caseId), ['RC-7']);
-      expect(tracker.myCases.single.evaluation.status,
-          ReconCaseStatus.completed);
+      expect(
+          tracker.myCases.single.evaluation.status, ReconCaseStatus.completed);
       expect(find.text('No open cases. Closed ones are under Closed.'),
           findsOneWidget);
 
@@ -238,6 +242,27 @@ void main() {
     testWidgets('with no cases it says how to open one', (tester) async {
       await _pump(tester, const ReconDashboardScreen(), cases: const []);
       expect(find.text('No reconciliation cases yet'), findsOneWidget);
+    });
+
+    testWidgets("Team shows everyone's open cases, and who holds them",
+        (tester) async {
+      final tracker = await _pump(tester, const ReconDashboardScreen());
+      await tester.tap(find.byKey(const ValueKey('recon-scope-team')));
+      await tester.pumpAndSettle();
+      expect(tracker.dashboardScope.value, ReconScope.team);
+      expect(find.byKey(const ValueKey('recon-case-RC-4')), findsOneWidget,
+          reason: "MAR's open case, for whoever visits the account next");
+      expect(
+          tester
+              .widget<Text>(
+                  find.byKey(const ValueKey('recon-case-holder-RC-4')))
+              .data,
+          'Held by Jay');
+      expect(find.byKey(const ValueKey('recon-case-holder-RC-1')), findsNothing,
+          reason: 'mine: no need to say so');
+      expect(find.text('3 open cases · ₱82,859.01 under reconciliation'),
+          findsOneWidget,
+          reason: 'the summary follows the scope');
     });
   });
 
@@ -277,6 +302,43 @@ void main() {
           .widget<ButtonStyleButton>(find.byKey(const ValueKey('recon-log')));
       expect(button.onPressed, isNull);
       expect(find.text('Case escalated'), findsOneWidget);
+    });
+
+    testWidgets("someone else's case is read-only until acquired",
+        (tester) async {
+      await _pump(tester, const ReconCaseScreen(caseId: 'RC-4'));
+      final button = tester
+          .widget<ButtonStyleButton>(find.byKey(const ValueKey('recon-log')));
+      expect(button.onPressed, isNull);
+      expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('recon-log-label')))
+              .data,
+          'Held by Jay · acquire to log');
+      expect(find.text('Metro Globe'), findsOneWidget,
+          reason: 'the case itself is still shown');
+    });
+
+    testWidgets('a released case says to acquire the account', (tester) async {
+      // No holder at all: no code and no name.
+      const bundle = ReconCaseBundle(
+        reconCase: ReconCase(
+            caseId: 'RC-5',
+            clientCode: 'C-5',
+            clientName: 'Nobody Pharmacy',
+            collectorCode: '',
+            dateOpened: '2026-09-14T09:00:00'),
+        invoices: [ReconCaseInvoice(invoiceNo: '700009771', amount: 100)],
+        activities: [],
+      );
+      final released = ReconCaseView(bundle, bundle.evaluate(now: _now));
+      await _pump(tester, const ReconCaseScreen(caseId: 'RC-5'),
+          cases: [released]);
+      expect(
+          tester
+              .widget<Text>(find.byKey(const ValueKey('recon-log-label')))
+              .data,
+          'Acquire the account to log a step');
     });
 
     testWidgets('an unknown case says so', (tester) async {
@@ -397,6 +459,83 @@ void main() {
       await tester.tap(find.text('End case').last);
       await tester.pumpAndSettle();
       expect(tracker.logged.single.type, ReconActivityType.caseNotCompleted);
+    });
+  });
+
+  group('stages', () {
+    testWidgets('the case screen shows the stage track', (tester) async {
+      await _pump(tester, ReconCaseScreen(caseId: _stale.caseId),
+          cases: [_stale]);
+      expect(find.byKey(const ValueKey('recon-stage-track')), findsOneWidget);
+      expect(find.byKey(const ValueKey('recon-stage-soa')), findsOneWidget);
+      expect(find.text('next'), findsOneWidget,
+          reason: 'the SOA is done; Follow up is next');
+      expect(find.text('after follow up'), findsOneWidget,
+          reason: 'the letter waits for a follow up');
+    });
+
+    testWidgets('a locked stage shows locked with its reason', (tester) async {
+      final fresh = _view('RC-9', 'Fresh Co', const []);
+      await _pump(
+          tester,
+          Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => ReconLogActivitySheet.show(fresh),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+          cases: [fresh]);
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('recon-type-FOLLOW_UP-locked')),
+          findsOneWidget);
+      expect(find.byKey(const ValueKey('recon-type-FOLLOW_UP')), findsNothing);
+      expect(find.text('Log the SOA before a follow up.'), findsOneWidget);
+    });
+
+    testWidgets('the letter cannot be logged without a photo', (tester) async {
+      final followed = _view('RC-8', 'Followed Co', [
+        _step('RA-81', ReconActivityType.soaSent, '2026-09-15T09:00:00'),
+        _step('RA-82', ReconActivityType.followUp, '2026-09-18T09:00:00'),
+      ]);
+      final tracker = await _pump(
+          tester,
+          Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => ReconLogActivitySheet.show(followed,
+                    pickPhoto: (_) async => Uint8List.fromList([1]),
+                    cameraAvailable: true,
+                    initialType: ReconActivityType.collectionLetterSent),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+          cases: [followed]);
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('recon-letter-photo-required')),
+          findsOneWidget,
+          reason: 'the sheet opened on the letter step');
+
+      Future<void> save() async {
+        await tester.ensureVisible(find.byKey(const ValueKey('recon-save')));
+        await tester.tap(find.byKey(const ValueKey('recon-save')));
+        await tester.pumpAndSettle();
+      }
+
+      await save();
+      expect(find.text('Attach a photo of the letter.'), findsOneWidget);
+      expect(tracker.logged, isEmpty);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('recon-camera')));
+      await tester.tap(find.byKey(const ValueKey('recon-camera')));
+      await tester.pumpAndSettle();
+      await save();
+      expect(tracker.logged.single.type, ReconActivityType.collectionLetterSent);
+      expect(tracker.logged.single.photos, 1);
     });
   });
 

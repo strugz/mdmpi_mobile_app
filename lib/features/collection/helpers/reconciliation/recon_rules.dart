@@ -66,6 +66,23 @@ ReconEvaluation evaluateReconCase({
   DateTime? waitingOnAccountSince;
   DateTime? soaDate;
   double? soaAmount;
+  // Stage steps counted in order, per stage: (count, first, latest).
+  final stageCount = List<int>.filled(ReconStage.values.length, 0);
+  final stageFirst = List<DateTime?>.filled(ReconStage.values.length, null);
+  final stageLast = List<DateTime?>.filled(ReconStage.values.length, null);
+
+  /// Counts a stage step, unless the stage before it is not done yet.
+  void stageStep(ReconActivity a, ReconStage stage, DateTime at) {
+    final previous = stage.previous;
+    if (previous != null && stageCount[previous.index] == 0) {
+      warnings.add('${a.activityId}: ${stage.inSentence} before any '
+          '${previous.inSentence}, not counted');
+      return;
+    }
+    stageCount[stage.index]++;
+    stageFirst[stage.index] ??= at;
+    stageLast[stage.index] = at;
+  }
 
   /// The named invoices this step can touch; unknown numbers are reported.
   List<_InvoiceState> named(ReconActivity a) {
@@ -105,6 +122,12 @@ ReconEvaluation evaluateReconCase({
             states.values
                 .where((s) => !s.status.isSettled)
                 .fold<double>(0, (sum, s) => sum + s.owed);
+        stageStep(a, ReconStage.soa, at);
+
+      // Case-level: they name no invoices.
+      case ReconActivityType.followUp:
+      case ReconActivityType.collectionLetterSent:
+        stageStep(a, a.type.stage!, at);
 
       case ReconActivityType.documentRequested:
       case ReconActivityType.documentProvided:
@@ -289,6 +312,15 @@ ReconEvaluation evaluateReconCase({
     dateClosed: dateClosed,
     soaDate: soaDate,
     soaAmount: soaAmount,
+    stages: [
+      for (final stage in ReconStage.values)
+        ReconStageProgress(
+          stage: stage,
+          count: stageCount[stage.index],
+          firstAt: stageFirst[stage.index],
+          lastAt: stageLast[stage.index],
+        ),
+    ],
   );
 }
 

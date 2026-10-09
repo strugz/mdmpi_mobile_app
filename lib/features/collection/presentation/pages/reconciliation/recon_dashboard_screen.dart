@@ -39,12 +39,13 @@ class ReconDashboardScreen extends StatelessWidget {
         onRefresh: controller.load,
         child: Obx(() {
           final filter = controller.dashboardFilter.value;
+          final scope = controller.dashboardScope.value;
           final cases = controller.dashboardCases;
           final waiting = Get.isRegistered<CollectionActivityController>()
               ? CollectionActivityController
                   .instance.reconciliationAccounts.length
               : 0;
-          final open = controller.myOpenCases;
+          final open = controller.dashboardOpenCases;
           final under = open.fold<double>(
               0, (s, c) => s + c.evaluation.amountUnderReconciliation);
           return ListView(
@@ -54,6 +55,23 @@ class ReconDashboardScreen extends StatelessWidget {
                 BSizes.defaultSpace,
                 BSizes.defaultSpace + MediaQuery.paddingOf(context).bottom),
             children: [
+              // Whose cases: mine, or the whole team's (every open case
+              // reaches every phone, so the next visitor sees the standing).
+              SegmentedButton<ReconScope>(
+                key: const ValueKey('recon-dashboard-scope'),
+                showSelectedIcon: false,
+                segments: [
+                  for (final s in ReconScope.values)
+                    ButtonSegment(
+                        value: s,
+                        label: Text(s.label,
+                            key: ValueKey('recon-scope-${s.name}'))),
+                ],
+                selected: {scope},
+                onSelectionChanged: (s) =>
+                    controller.dashboardScope.value = s.first,
+              ),
+              const SizedBox(height: BSizes.spaceBtwItems),
               Text(
                 '${open.length} open ${open.length == 1 ? 'case' : 'cases'} · '
                 '${BFormatter.formatPesoCurrency(under)} under reconciliation',
@@ -97,12 +115,20 @@ class ReconDashboardScreen extends StatelessWidget {
               if (cases.isEmpty &&
                   !controller.isLoading.value &&
                   filter != ReconDashboardFilter.all &&
-                  controller.myCases.isNotEmpty)
+                  controller.casesIn(scope).isNotEmpty)
                 _NoneHere(filter: filter)
               else if (cases.isEmpty && !controller.isLoading.value)
                 const _Empty()
               else
-                for (final c in cases) _CaseCard(view: c),
+                for (final c in cases)
+                  _CaseCard(
+                      view: c,
+                      // Whose it is matters only when it may not be mine.
+                      holder: scope == ReconScope.team && !controller.holds(c)
+                          ? (c.reconCase.collectorName.trim().isNotEmpty
+                              ? c.reconCase.collectorName.trim()
+                              : c.reconCase.collectorCode.trim())
+                          : null),
             ],
           );
         }),
@@ -162,9 +188,13 @@ class _NoneHere extends StatelessWidget {
 }
 
 class _CaseCard extends StatelessWidget {
-  const _CaseCard({required this.view});
+  const _CaseCard({required this.view, this.holder});
 
   final ReconCaseView view;
+
+  /// Who holds the case when it is not mine: a name, '' for nobody (released
+  /// and not yet acquired), or null to say nothing.
+  final String? holder;
 
   static final DateFormat _date = DateFormat('MMM d, yyyy');
 
@@ -236,6 +266,29 @@ class _CaseCard extends StatelessWidget {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: BCollectionColors.inkSecondary),
               ),
+              if (holder != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.user,
+                          size: 12, color: BCollectionColors.inkMuted),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          holder!.isEmpty
+                              ? 'No holder · waiting to be acquired'
+                              : 'Held by $holder',
+                          key: ValueKey('recon-case-holder-${view.caseId}'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: BCollectionColors.inkMuted),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               if (e.flags.isNotEmpty) ...[
                 const SizedBox(height: BSizes.sm),
                 Wrap(

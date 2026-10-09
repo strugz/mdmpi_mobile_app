@@ -27,8 +27,10 @@ CollectionEngagementRecord _row(
   String clientId = 'C1',
   String clientName = 'Alexis Yu Best Care Pharmacy',
   List<String> documentIds = const [],
+  bool settled = false,
 }) =>
     CollectionEngagementRecord(
+      settled: settled,
       localRef: CollectionEngagementRecord.buildLocalRef(
           kind: kind,
           subjectId: kind == 'ACCOUNT' ? clientId : itemId,
@@ -87,6 +89,21 @@ void main() {
     });
 
     tearDown(() async => db.close());
+
+    test('keeps the settled flag, and reads old rows as not settled', () async {
+      await dao.upsertAll([
+        _row('2026-09-10T10:00:00', itemId: 'FULL', settled: true),
+        _row('2026-09-11T10:00:00', itemId: 'PART', settled: false),
+      ]);
+      // A row from before the column existed carries no flag at all.
+      await db.rawInsert(
+          "INSERT INTO a_tblCollectionEngagement (localRef, collectorCode, kind, itemId, engagedAt, engagedOn, createdAt) "
+          "VALUES ('INVOICE|OLD|2026-09-12T10:00:00', 'jay', 'INVOICE', 'OLD', '2026-09-12T10:00:00', '2026-09-12', '2026-09-12T10:00:00')");
+
+      final rows = await dao.getAll('jay');
+      final settled = {for (final r in rows) r.itemId: r.settled};
+      expect(settled, {'FULL': true, 'PART': false, 'OLD': false});
+    });
 
     test('is created, with both of its indexes', () async {
       final tables = await db.rawQuery(

@@ -599,6 +599,14 @@ Future<void> ensureCollectionTables(Database db) async {
   // explain. They are now refreshed with each download instead.
   await _addColumnIfMissing(
       db, 'a_tblCollectionEngagement', 'source', "TEXT NOT NULL DEFAULT 'LOCAL'");
+  // settled is 1 on the collection that paid its invoice down to zero. The
+  // Settled tile on the Collection home reads it: a settled invoice stops
+  // coming back from the server, so the tile cannot count from the bucket,
+  // and the status alone cannot say it - an Advanced Payment applied in full
+  // is archived as 'Advanced Payment Applied', not 'Collected'. Rows written
+  // before the column existed read as 0 and fall back to the status.
+  await _addColumnIfMissing(
+      db, 'a_tblCollectionEngagement', 'settled', 'INTEGER NOT NULL DEFAULT 0');
   // IF NOT EXISTS on the indexes too: this whole function re-runs on every
   // database open, not just on create and upgrade (see DatabaseHelper._initDB).
   await db.execute('''
@@ -611,6 +619,35 @@ Future<void> ensureCollectionTables(Database db) async {
   ''');
 
   await ensureReconciliationTables(db);
+  await ensureVoucherRereadTables(db);
+}
+
+/// Voucher pages read on the phone (no connection, or Scan with camera),
+/// kept for the AI to read again once online (VoucherRereadService). The
+/// page itself is the file at `pagePath`; `offlineIds` / `foundIds` /
+/// `notFound` are comma lists of invoice numbers; `seen` is 1 once the
+/// collector has selected or dismissed what the re-read found.
+Future<void> ensureVoucherRereadTables(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionVoucherReread (
+      rereadId    TEXT PRIMARY KEY,
+      clientId    TEXT NOT NULL,
+      clientName  TEXT NOT NULL DEFAULT '',
+      pagePath    TEXT NOT NULL,
+      offlineIds  TEXT NOT NULL DEFAULT '',
+      status      TEXT NOT NULL DEFAULT 'Pending',
+      retryCount  INTEGER NOT NULL DEFAULT 0,
+      foundIds    TEXT NOT NULL DEFAULT '',
+      notFound    TEXT NOT NULL DEFAULT '',
+      seen        INTEGER NOT NULL DEFAULT 0,
+      lastError   TEXT,
+      createdAt   TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_voucher_reread_status
+      ON a_tblCollectionVoucherReread (status)
+  ''');
 }
 
 /// The Reconciliation Tracker's tables

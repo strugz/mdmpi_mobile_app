@@ -230,7 +230,10 @@ class ReconciliationRepository extends GetxController {
       final allowed = canAppendReconActivity(
         bundle.evaluate(now: now, settings: settings),
         ReconActivityDraft(
-            type: type, invoiceNos: names, validationResult: validationResult),
+            type: type,
+            invoiceNos: names,
+            validationResult: validationResult,
+            attachmentCount: photos.length),
       );
       if (allowed.isFailure) return Result.failure(allowed.error);
 

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_posting.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_summary.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case_bundle.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
@@ -157,10 +158,16 @@ void main() {
   String text(WidgetTester tester, String key) =>
       tester.widget<Text>(find.byKey(ValueKey(key))).data!;
 
+  ReconScope scope(WidgetTester tester) => tester
+      .widget<SegmentedButton<ReconScope>>(
+          find.byKey(const ValueKey('recon-reports-scope')))
+      .selected
+      .single;
+
   testWidgets('a collector sees the summary and aging of their own cases',
       (tester) async {
     await pump(tester, head: false);
-    expect(text(tester, 'recon-reports-scope'), 'Your cases');
+    expect(scope(tester), ReconScope.mine);
     expect(text(tester, 'recon-summary-Total'), '4',
         reason: "the teammate's case is not mine");
     expect(text(tester, 'recon-summary-Open'), '2');
@@ -169,10 +176,72 @@ void main() {
     expect(text(tester, 'recon-summary-Not completed'), '0');
     expect(text(tester, 'recon-summary-Under reconciliation'), '₱2,000.00',
         reason: 'RC-1 has 500 open; RC-3 owes 1,000 + 500 (1,500)');
+    // Whose turn: RC-1 waits on the account (validated, A2 open), RC-3 too.
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('recon-status-waitingForAccount')), 100);
+    expect(find.text("Account's turn 2"), findsOneWidget);
+    expect(find.text("Collector's turn 0"), findsOneWidget);
     // RC-1 is 3 days open, RC-3 39 days.
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('recon-aging-over30')), 100);
     expect(text(tester, 'recon-aging-upTo7'), '1');
     expect(text(tester, 'recon-aging-over30'), '1');
     expect(text(tester, 'recon-aging-upTo15'), '0');
+    expect(text(tester, 'recon-aging-amount-over30'), '₱1,500.00');
+    expect(
+        find.byKey(const ValueKey('recon-aging-amount-upTo15')), findsNothing,
+        reason: 'an empty bucket shows no amount');
+  });
+
+  testWidgets('needs attention: the flagged open cases, with their flags',
+      (tester) async {
+    await pump(tester, head: false);
+    // RC-3: the SOA went out 39 days ago and nothing came back.
+    expect(find.text('Needs attention (1)'), findsOneWidget);
+    expect(find.byKey(const ValueKey('recon-flag-noResponse')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recon-attention-RC-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recon-attention-RC-1')), findsNothing);
+    expect(find.byKey(const ValueKey('recon-attention-none')), findsNothing);
+  });
+
+  testWidgets('an aging bucket opens to its cases', (tester) async {
+    await pump(tester, head: false);
+    expect(find.byKey(const ValueKey('recon-aging-case-RC-3')), findsNothing);
+    await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('recon-aging-row-over30')), 100);
+    await tester
+        .ensureVisible(find.byKey(const ValueKey('recon-aging-over30')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('recon-aging-row-over30')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('recon-aging-case-RC-3')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recon-aging-case-RC-1')), findsNothing,
+        reason: 'RC-1 is in 0–7 days');
+    await tester
+        .ensureVisible(find.byKey(const ValueKey('recon-aging-over30')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('recon-aging-row-over30')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('recon-aging-case-RC-3')), findsNothing);
+  });
+
+  testWidgets('a collector can switch to the team and see who holds what',
+      (tester) async {
+    await pump(tester, head: false);
+    expect(find.text('Who holds what'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('recon-reports-scope-team')));
+    await tester.pumpAndSettle();
+    expect(scope(tester), ReconScope.team);
+    expect(text(tester, 'recon-summary-Total'), '5');
+    expect(text(tester, 'recon-summary-Open'), '3');
+    await tester.scrollUntilVisible(find.text('Who holds what'), 200);
+    expect(find.byKey(const ValueKey('recon-collector-JCA')), findsOneWidget);
+    expect(find.byKey(const ValueKey('recon-collector-MAR')), findsOneWidget);
+    final jca =
+        tester.getTopLeft(find.byKey(const ValueKey('recon-collector-JCA'))).dy;
+    final mar =
+        tester.getTopLeft(find.byKey(const ValueKey('recon-collector-MAR'))).dy;
+    expect(jca, lessThan(mar), reason: 'the most open cases first');
   });
 
   testWidgets('the awaiting-posting list shows the validated invoice',
@@ -187,12 +256,36 @@ void main() {
         reason: 'already posted');
   });
 
-  testWidgets('the Head sees every case on the phone', (tester) async {
+  testWidgets('the Head starts on every case on the phone', (tester) async {
     await pump(tester, head: true);
-    expect(text(tester, 'recon-reports-scope'),
-        'Every case on this phone (the team)');
+    expect(scope(tester), ReconScope.team);
     expect(text(tester, 'recon-summary-Total'), '5');
     expect(text(tester, 'recon-summary-Open'), '3');
+  });
+
+  test('by collector: open, flagged, closed and owed per holder', () {
+    final rows = reconByCollector([
+      for (final v in [_validated, _posted, _old, _escalated, _teammate])
+        (bundle: v.bundle, evaluation: v.evaluation),
+    ]);
+    expect(rows.map((r) => r.collectorCode), ['JCA', 'MAR']);
+    final jca = rows.first;
+    expect(jca.open, 2);
+    expect(jca.needsAttention, 1, reason: 'RC-3 has had no response');
+    expect(jca.closed, 2);
+    expect(jca.amountUnderReconciliation, 2000);
+    expect(rows.last.open, 1);
+    expect(rows.last.label, 'MAR', reason: 'no name known: the code');
+  });
+
+  test('a case with no holder is its own row', () {
+    final released = _view(
+        'RC-9', 'Nobody Pharmacy', '2026-09-26T09:00:00', const [],
+        collector: '');
+    final rows = reconByCollector(
+        [(bundle: released.bundle, evaluation: released.evaluation)]);
+    expect(rows.single.collectorCode, '');
+    expect(rows.single.label, 'No holder');
   });
 
   for (final scale in [1.0, 1.3]) {

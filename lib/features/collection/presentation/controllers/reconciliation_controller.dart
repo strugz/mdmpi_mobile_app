@@ -26,6 +26,10 @@ class ReconCaseView {
 
   ReconCase get reconCase => bundle.reconCase;
   String get caseId => bundle.caseId;
+
+  /// The shape the pure summaries and reports take.
+  ({ReconCaseBundle bundle, ReconEvaluation evaluation}) get asRecord =>
+      (bundle: bundle, evaluation: evaluation);
 }
 
 /// Which of the collector's cases the dashboard lists.
@@ -35,6 +39,19 @@ enum ReconDashboardFilter {
   all('All');
 
   const ReconDashboardFilter(this.label);
+
+  final String label;
+}
+
+/// Whose cases a screen covers: the collector's own, or every case on the
+/// phone. Every open case reaches every phone (whoever holds the account),
+/// so a collector about to visit an account sees where its reconciliation
+/// stands.
+enum ReconScope {
+  mine('My cases'),
+  team('Team');
+
+  const ReconScope(this.label);
 
   final String label;
 }
@@ -149,6 +166,25 @@ class ReconciliationController extends GetxController {
   final Rx<ReconDashboardFilter> dashboardFilter =
       ReconDashboardFilter.open.obs;
 
+  /// The dashboard's scope: the collector's own cases unless they ask for
+  /// the team's.
+  final Rx<ReconScope> dashboardScope = ReconScope.mine.obs;
+
+  /// I hold the case, or I hold one of its invoices (a case on them is mine
+  /// even before the server has moved it to me).
+  bool holds(ReconCaseView c) {
+    final me = _collectorCode().trim().toUpperCase();
+    final held = _heldInvoiceIds();
+    return (me.isNotEmpty &&
+            c.reconCase.collectorCode.trim().toUpperCase() == me) ||
+        c.bundle.invoices.any((i) => held.contains(i.invoiceNo));
+  }
+
+  /// Only the collector holding the account logs on its case
+  /// (docs/application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md, "Who
+  /// logs"). Everyone else reads it: a released case waits for an acquire.
+  bool canLog(ReconCaseView c) => !c.evaluation.isClosed && holds(c);
+
   /// This collector's cases (Step 1 of every round): open ones first, the
   /// one untouched longest at the top. Mine: I hold it, I hold one of its
   /// invoices, or it has ended and I logged a step on it (a paid case stays
@@ -156,31 +192,44 @@ class ReconciliationController extends GetxController {
   /// worked on that someone else holds now is theirs.
   List<ReconCaseView> get myCases {
     final me = _collectorCode().trim().toUpperCase();
-    final held = _heldInvoiceIds();
     bool workedOn(ReconCaseView c) =>
         c.evaluation.isClosed &&
-        c.bundle.activities
-            .any((a) => a.recordedBy.trim().toUpperCase() == me);
+        c.bundle.activities.any((a) => a.recordedBy.trim().toUpperCase() == me);
     final mine = cases
-        .where((c) =>
-            c.reconCase.collectorCode.trim().toUpperCase() == me ||
-            c.bundle.invoices.any((i) => held.contains(i.invoiceNo)) ||
-            (me.isNotEmpty && workedOn(c)))
+        .where((c) => holds(c) || (me.isNotEmpty && workedOn(c)))
         .toList()
       ..sort((a, b) => compareForReconDashboard(a.evaluation, b.evaluation));
     return mine;
   }
 
+  /// Every case on the phone, in the dashboard's order.
+  List<ReconCaseView> get teamCases => [...cases]
+    ..sort((a, b) => compareForReconDashboard(a.evaluation, b.evaluation));
+
+  List<ReconCaseView> casesIn(ReconScope scope) => switch (scope) {
+        ReconScope.mine => myCases,
+        ReconScope.team => teamCases,
+      };
+
   List<ReconCaseView> get myOpenCases =>
       myCases.where((c) => !c.evaluation.isClosed).toList();
 
-  /// [myCases] through [dashboardFilter].
-  List<ReconCaseView> get dashboardCases => switch (dashboardFilter.value) {
-        ReconDashboardFilter.open => myOpenCases,
-        ReconDashboardFilter.closed =>
-          myCases.where((c) => c.evaluation.isClosed).toList(),
-        ReconDashboardFilter.all => myCases,
-      };
+  /// The open cases of [dashboardScope].
+  List<ReconCaseView> get dashboardOpenCases => casesIn(dashboardScope.value)
+      .where((c) => !c.evaluation.isClosed)
+      .toList();
+
+  /// The cases of [dashboardScope] through [dashboardFilter].
+  List<ReconCaseView> get dashboardCases {
+    final scoped = casesIn(dashboardScope.value);
+    return switch (dashboardFilter.value) {
+      ReconDashboardFilter.open =>
+        scoped.where((c) => !c.evaluation.isClosed).toList(),
+      ReconDashboardFilter.closed =>
+        scoped.where((c) => c.evaluation.isClosed).toList(),
+      ReconDashboardFilter.all => scoped,
+    };
+  }
 
   /// Invoices whose case has ended (completed, not completed, escalated) and
   /// that no open case has taken up since: nobody may acquire them from
@@ -198,22 +247,39 @@ class ReconciliationController extends GetxController {
   ReconCaseView? caseById(String caseId) =>
       cases.firstWhereOrNull((c) => c.caseId == caseId);
 
-  /// Whose cases the reports cover: the Head sees every case on the phone
-  /// (the whole team's, as the download carries them), a collector their own.
-  bool get reportsCoverTeam => _isHead();
+  /// Whose cases the reports cover. Anyone can switch; the Head starts on
+  /// the team's, a collector on their own.
+  late final Rx<ReconScope> reportScope =
+      (_isHead() ? ReconScope.team : ReconScope.mine).obs;
 
-  List<ReconCaseView> get reportCases {
-    if (!_isHead()) return myCases;
-    return [...cases]
-      ..sort((a, b) => compareForReconDashboard(a.evaluation, b.evaluation));
-  }
+  bool get reportsCoverTeam => reportScope.value == ReconScope.team;
+
+  List<ReconCaseView> get reportCases => casesIn(reportScope.value);
 
   ReconSummary get summary =>
       ReconSummary.of(reportCases.map((c) => c.evaluation));
 
+  /// Open cases of the report with at least one flag, the one untouched
+  /// longest first.
+  List<ReconCaseView> get reportAttention => reportCases
+      .where((c) => !c.evaluation.isClosed && c.evaluation.flags.isNotEmpty)
+      .toList();
+
+  /// Open cases of the report in [bucket], the oldest first.
+  List<ReconCaseView> reportCasesAging(ReconAgingBucket bucket) => reportCases
+      .where((c) =>
+          !c.evaluation.isClosed &&
+          ReconAgingBucket.forDays(c.evaluation.daysOpen) == bucket)
+      .toList()
+    ..sort((a, b) => b.evaluation.daysOpen.compareTo(a.evaluation.daysOpen));
+
+  /// Who holds what, over the report's cases.
+  List<ReconCollectorSummary> get byCollector =>
+      reconByCollector(reportCases.map((c) => c.asRecord));
+
   /// Step 9: validated paid, waiting for Accounting to post.
-  List<ReconAwaitingPosting> get awaitingPosting => reconAwaitingPosting(
-      reportCases.map((c) => (bundle: c.bundle, evaluation: c.evaluation)));
+  List<ReconAwaitingPosting> get awaitingPosting =>
+      reconAwaitingPosting(reportCases.map((c) => c.asRecord));
 
   /// Escalated: the Head is told by SMS (Android; the escalation is logged
   /// either way). Never blocks or undoes the step.

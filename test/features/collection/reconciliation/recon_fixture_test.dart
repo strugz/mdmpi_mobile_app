@@ -90,6 +90,15 @@ void main() {
       if (expected.containsKey('dateClosed')) {
         expect(e.dateClosed, BReconClock.parse(expected['dateClosed']));
       }
+      // Stages are keyed by the wire code of the step that completes each,
+      // so the backend reads them without the phone's enum names.
+      if (expected.containsKey('stages')) {
+        expect({for (final p in e.stages) p.stage.type.code: p.count},
+            expected['stages']);
+      }
+      if (expected.containsKey('currentStage')) {
+        expect(e.currentStage?.type.code, expected['currentStage']);
+      }
     });
   }
 }

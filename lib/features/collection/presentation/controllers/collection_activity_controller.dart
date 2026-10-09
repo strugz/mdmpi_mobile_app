@@ -7,6 +7,8 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/invoice_search.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -279,6 +281,21 @@ class CollectionActivityController extends GetxController {
 
   final RxString invoiceSearchQuery = ''.obs;
 
+  /// P.O. groups or a flat SI list on an account's invoices, remembered
+  /// across launches (GetStorage [invoiceViewModeKey]). Search follows it.
+  final Rx<InvoiceViewMode> invoiceViewMode = InvoiceViewMode.po.obs;
+
+  static const String invoiceViewModeKey = 'collection.invoiceViewMode';
+
+  void setInvoiceViewMode(InvoiceViewMode mode) {
+    invoiceViewMode.value = mode;
+    try {
+      _storageOrNull()?.write(invoiceViewModeKey, mode.name);
+    } catch (e) {
+      logDebug('CollectionActivityController: view mode not saved: $e');
+    }
+  }
+
   /// Filter and sort for one account's invoice list. Its own value, not the
   /// engagement list's: once an account is open, the questions worth asking
   /// are about its invoices. See [InvoiceFilter]. Reset on leaving the
@@ -353,6 +370,10 @@ class CollectionActivityController extends GetxController {
     if (storage != null) {
       selectedArea.value =
           CollectionSettingsController.readDefaultArea(storage.read);
+      try {
+        invoiceViewMode.value =
+            InvoiceViewMode.fromName(storage.read(invoiceViewModeKey));
+      } catch (_) {}
     }
     // Load data
     loadBucket();
@@ -807,16 +828,11 @@ class CollectionActivityController extends GetxController {
             item.client.id == clientId && isRegularBucketInvoice(item))
         .toList();
     // Apply search query if present
-    var results = invoices;
-    if (invoiceSearchQuery.value.isNotEmpty) {
-      final query = invoiceSearchQuery.value.toLowerCase();
-      results = results.where((item) {
-        return item.id.toLowerCase().contains(query) ||
-            item.poNumber.toLowerCase().contains(query) ||
-            item.documentReferences
-                .any((ref) => ref.toLowerCase().contains(query));
-      }).toList();
-    }
+    final query = invoiceSearchQuery.value;
+    final mode = invoiceViewMode.value;
+    var results = invoices
+        .where((item) => invoiceMatchesSearch(item, query, mode))
+        .toList();
 
     // The same filter the bucket list uses, so opening an account shows the
     // invoices that put it on the list and nothing else.
@@ -994,21 +1010,16 @@ class CollectionActivityController extends GetxController {
   /// that cannot be paid.
   List<CollectionItemModel> _activityInvoicesFor(
       String clientId, InvoiceFilter spec) {
-    var results = activityItems
-        .where((item) => item.client.id == clientId && item.toBeCollected > 0)
-        .toList();
-
-    if (invoiceSearchQuery.value.isNotEmpty) {
-      final query = invoiceSearchQuery.value.toLowerCase();
-      results = results.where((item) {
-        return item.id.toLowerCase().contains(query) ||
-            item.poNumber.toLowerCase().contains(query) ||
-            item.documentReferences
-                .any((ref) => ref.toLowerCase().contains(query));
-      }).toList();
-    }
-
-    return results.where(spec.matches).toList()..sort(spec.compare);
+    final query = invoiceSearchQuery.value;
+    final mode = invoiceViewMode.value;
+    return activityItems
+        .where((item) =>
+            item.client.id == clientId &&
+            item.toBeCollected > 0 &&
+            invoiceMatchesSearch(item, query, mode) &&
+            spec.matches(item))
+        .toList()
+      ..sort(spec.compare);
   }
 
   // ========================================================================
@@ -1401,14 +1412,105 @@ class CollectionActivityController extends GetxController {
 
   // Core and Outcomes summary getters removed per UI requirements.
 
-  /// Completed: invoices that reach 0 total amount due, filtered by area
+  /// Settled: invoices paid down to a zero balance *this calendar month*,
+  /// filtered by area.
+  ///
+  /// The tile sits beside Collected this Month and reads on the same
+  /// calendar: an invoice settled in a past month is history, not this
+  /// month's work.
+  ///
+  /// Two sources, merged by invoice. The bucket and activity lists hold the
+  /// invoice itself while it is still on the phone: its settle date is its
+  /// last collection ([settledOn]). But those lists are a cache of what the
+  /// server says today, and a settled invoice stops coming back on the next
+  /// download — so the count also reads the engagement archive, which the
+  /// download never rewrites, for an invoice collected in full this month.
+  /// Both screens that count money already read the archive for the same
+  /// reason; counting settlements from the cache alone showed 0 the morning
+  /// after the collector downloaded.
   List<CollectionItemModel> get completedItems {
     final allItems = this.allItems;
-    return allItems.where((item) {
-      if (item.toBeCollected != 0) return false;
-      if (!_matchesArea(item.bpCode)) return false;
-      return true;
-    }).toList();
+    final now = DateTime.now();
+    bool inMonth(DateTime dt) => dt.year == now.year && dt.month == now.month;
+
+    final byInvoice = <String, CollectionItemModel>{};
+    for (final item in allItems) {
+      if (item.toBeCollected != 0) continue;
+      if (!_matchesArea(item.bpCode)) continue;
+      final settled = settledOn(item);
+      if (settled == null || !inMonth(settled)) continue;
+      byInvoice[item.id] = item;
+    }
+
+    for (final e in ownEngagements) {
+      if (!settlesInvoice(e)) continue;
+      if (byInvoice.containsKey(e.itemId)) continue;
+      final dt = BFormatter.parseLocal(e.engagedAt);
+      if (dt == null || !inMonth(dt)) continue;
+      final client = masterAccountList.firstWhere(
+        (c) => c.id == e.clientId,
+        orElse: () => ClientModel(
+          id: e.clientId,
+          code: e.clientId,
+          name: e.clientName,
+          address: '',
+          contact: '',
+          emailAddress: '',
+        ),
+      );
+      if (!_matchesArea(client.code)) continue;
+      byInvoice[e.itemId] = CollectionItemModel(
+        id: e.itemId,
+        client: client,
+        bpCode: client.code,
+        toBeCollected: 0,
+        totalCollected: e.amount,
+        status: CollectionStatusColors.statusCollected,
+        lastOutcome: e.status,
+        remarks: e.remarks,
+        collectorName: e.collectorName,
+        history: [
+          CollectionHistoryModel(
+            date: e.engagedAt,
+            collectorName: e.collectorName,
+            status: e.status,
+            remarks: e.remarks,
+            totalCollected: e.amount,
+            bankName: e.bankName,
+            checkNumber: e.checkNumber,
+            checkDate: e.checkDate,
+            purposeOfVisit: e.purposeOfVisit,
+          ),
+        ],
+      );
+    }
+    return byInvoice.values.toList();
+  }
+
+  /// Whether an archive record is the collection that settled its invoice
+  /// (see [CollectionOutcome.settlesInvoice]).
+  @visibleForTesting
+  static bool settlesInvoice(CollectionEngagementRecord e) =>
+      CollectionOutcome.settlesInvoice(e);
+
+  /// When [item] was settled: the date of its latest history entry that
+  /// collected money, else its latest history entry of any kind (an Advanced
+  /// Payment applied in full writes the amount on the entry too). Null when
+  /// the invoice has no dated history.
+  @visibleForTesting
+  static DateTime? settledOn(CollectionItemModel item) {
+    DateTime? latestPaid;
+    DateTime? latestAny;
+    for (final h in item.history) {
+      final dt = BFormatter.parseLocal(h.date);
+      if (dt == null) continue;
+      if (latestAny == null || dt.isAfter(latestAny)) latestAny = dt;
+      if (h.totalCollected > 0 &&
+          (latestPaid == null || dt.isAfter(latestPaid))) {
+        latestPaid = dt;
+      }
+    }
+    return latestPaid ?? latestAny;
   }
 
   /// Due Date: invoices past their due date, filtered by area
@@ -1426,12 +1528,20 @@ class CollectionActivityController extends GetxController {
     }).toList();
   }
 
-  /// Returns accounts that have settled invoices
+  /// Returns accounts that have settled invoices this month.
+  ///
+  /// The master list's record when it has one; else the client as the
+  /// invoice carries it, so an account that left the bucket with its last
+  /// settled invoice still appears under the tile that counted it.
   List<ClientModel> get settledAccounts {
-    final settledInvoiceIds = completedItems.map((e) => e.client.id).toSet();
-    return masterAccountList
-        .where((c) => settledInvoiceIds.contains(c.id))
-        .toList();
+    final byId = <String, ClientModel>{};
+    for (final item in completedItems) {
+      byId.putIfAbsent(item.client.id, () => item.client);
+    }
+    for (final c in masterAccountList) {
+      if (byId.containsKey(c.id)) byId[c.id] = c;
+    }
+    return byId.values.toList();
   }
 
   /// Returns accounts that have overdue invoices
@@ -1875,7 +1985,10 @@ class CollectionActivityController extends GetxController {
   /// turn and add/remove one invoice at a time, so acquiring an account of
   /// 1,095 invoices did a million comparisons and fired 2,190 list changes,
   /// each waking every Obx on the screen. That was 400ms of frozen UI.
-  Future<void> claimItemsByIds(List<String> ids) async {
+  Future<void> claimItemsByIds(
+    List<String> ids, {
+    void Function(int done, int total)? onProgress,
+  }) async {
     if (ids.isEmpty) return;
 
     try {
@@ -1903,7 +2016,8 @@ class CollectionActivityController extends GetxController {
       selectedBucketIds.removeWhere(wanted.contains);
 
       // Persist to repository
-      await repository.claimItemsByIds(ids, silent: true);
+      await repository.claimItemsByIds(ids,
+          silent: true, onProgress: onProgress);
       logDebug('[CollectionActivityController] Claimed ${ids.length} items');
     } catch (e) {
       logDebug('[CollectionActivityController] claimItemsByIds error: $e');
@@ -1955,6 +2069,9 @@ class CollectionActivityController extends GetxController {
   final RxInt acquiringInvoices = 0.obs;
   final RxInt acquiringAccounts = 0.obs;
 
+  /// How many of [acquiringInvoices] the running acquire has written so far.
+  final RxInt acquiredInvoices = 0.obs;
+
   /// Move every invoice of every ticked account into Field Engagement.
   ///
   /// Gathers the ids in one pass and claims them once, rather than calling
@@ -1981,10 +2098,12 @@ class CollectionActivityController extends GetxController {
 
     acquiringInvoices.value = ids.length;
     acquiringAccounts.value = wantedClients.length;
+    acquiredInvoices.value = 0;
     exitSelectionMode();
     isAcquiring.value = true;
     try {
-      await claimItemsByIds(ids);
+      await claimItemsByIds(ids,
+          onProgress: (done, _) => acquiredInvoices.value = done);
       logDebug('[CollectionActivityController] Claimed ${ids.length} invoices '
           'across ${wantedClients.length} accounts');
     } finally {
@@ -2095,10 +2214,7 @@ class CollectionActivityController extends GetxController {
 
   void toggleActivityInvoiceSelection(String id) {
     if (selectedActivityInvoiceIds.contains(id)) {
-      selectedActivityInvoiceIds.remove(id);
-      if (selectedActivityInvoiceIds.isEmpty) {
-        isActivitySelectionMode.value = false;
-      }
+      _dropFromCart([id]);
     } else {
       isActivitySelectionMode.value = true;
       selectedActivityInvoiceIds.add(id);
@@ -2108,6 +2224,70 @@ class CollectionActivityController extends GetxController {
   void exitActivitySelectionMode() {
     isActivitySelectionMode.value = false;
     selectedActivityInvoiceIds.clear();
+    voucherInvoiceIds.clear();
+  }
+
+  // ========================================================================
+  // Cart (meeting of 2026-10-07, item 1): the activity selection, for one
+  // account, reviewed before one batch record. Session-only: it ends when
+  // the account's screen closes or the batch is saved.
+  // ========================================================================
+
+  /// Carted invoices that came from a scanned voucher (the review marks
+  /// them, and leaving the account asks first).
+  final RxSet<String> voucherInvoiceIds = <String>{}.obs;
+
+  /// The carted invoices of [clientId] still open, in list order. An invoice
+  /// paid off since it was added drops out.
+  List<CollectionItemModel> cartItems(String clientId) => activityItems
+      .where((item) =>
+          item.client.id == clientId &&
+          item.toBeCollected > 0 &&
+          selectedActivityInvoiceIds.contains(item.id))
+      .toList();
+
+  double cartTotal(String clientId) =>
+      cartItems(clientId).fold(0.0, (sum, i) => sum + i.toBeCollected);
+
+  void addToCart(Iterable<String> ids) {
+    if (ids.isEmpty) return;
+    selectedActivityInvoiceIds.addAll(ids);
+    isActivitySelectionMode.value = true;
+  }
+
+  void removeFromCart(String id) => _dropFromCart([id]);
+
+  /// Takes [ids] out; an emptied cart ends carting altogether (selection
+  /// mode and the last voucher scan with it).
+  void _dropFromCart(Iterable<String> ids) {
+    selectedActivityInvoiceIds.removeAll(ids);
+    voucherInvoiceIds.removeAll(ids);
+    if (selectedActivityInvoiceIds.isEmpty) exitActivitySelectionMode();
+  }
+
+  /// Whether every invoice on screen for [clientId] is in the cart. Compared
+  /// with what is visible, not with the cart's size: carted invoices a search
+  /// hides stay carted.
+  bool isAllVisibleSelected(String clientId) {
+    final visible = getActivityInvoicesByAccount(clientId);
+    return visible.isNotEmpty &&
+        visible.every((i) => selectedActivityInvoiceIds.contains(i.id));
+  }
+
+  /// Select All / Deselect All over the invoices on screen only.
+  void toggleSelectAllVisible(String clientId) {
+    final visible = getActivityInvoicesByAccount(clientId).map((i) => i.id);
+    if (isAllVisibleSelected(clientId)) {
+      _dropFromCart(visible.toList());
+    } else {
+      addToCart(visible);
+    }
+  }
+
+  /// Adds the invoices the Scanned Invoices screen confirmed to the cart.
+  void addFromVoucher(Iterable<String> ids) {
+    addToCart(ids);
+    voucherInvoiceIds.addAll(ids);
   }
 
   /// Save batch activity for multiple items.
@@ -2364,8 +2544,7 @@ class CollectionActivityController extends GetxController {
 
   /// Fire a Collection SMS, guarded so it is a no-op when the service is
   /// not registered (unit tests, Windows) and never throws into the caller.
-  void _notifySms(
-      Future<dynamic> Function(CollectionSmsService sms) action) {
+  void _notifySms(Future<dynamic> Function(CollectionSmsService sms) action) {
     if (!Get.isRegistered<CollectionSmsService>()) return;
     // ignore: unawaited_futures
     action(Get.find<CollectionSmsService>()).catchError((Object e) {

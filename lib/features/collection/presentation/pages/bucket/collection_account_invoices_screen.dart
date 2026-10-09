@@ -14,6 +14,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity
 import 'package:mdmpi_mobile_app/features/collection/models/activity_filter.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/po_grouping.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/po_invoice_group_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_view_toggle.dart';
 
 class CollectionAccountInvoicesScreen extends StatefulWidget {
   final ClientModel client;
@@ -93,13 +94,14 @@ class _CollectionAccountInvoicesScreenState
       ),
       body: Obx(() {
         final invoices = controller.getInvoicesByAccount(widget.client.id);
+        final mode = controller.invoiceViewMode.value;
         final grouping = PoGrouping.of(invoices);
 
         return Column(
           children: [
             /// Search and Filter Bar
             Obx(() => CollectionSearchFilterBar(
-                  searchHint: 'Search invoice or bank',
+                  searchHint: controller.invoiceViewMode.value.searchHint,
                   initialValue: controller.invoiceSearchQuery.value,
                   onSearchChanged: (value) =>
                       controller.invoiceSearchQuery.value = value,
@@ -120,6 +122,11 @@ class _CollectionAccountInvoicesScreenState
                   defaultSort: ActivitySort.name,
                   onChanged: (f) => controller.bucketFilterSpec.value = f,
                 )),
+            // Nothing to switch when no invoice of the account has a P.O.
+            if (controller.bucketItems
+                .any((i) => i.client.id == widget.client.id && i.hasPoNumber))
+              InvoiceViewToggle(
+                  mode: mode, onChanged: controller.setInvoiceViewMode),
 
             Expanded(
               child: invoices.isEmpty
@@ -130,16 +137,17 @@ class _CollectionAccountInvoicesScreenState
                             : 'No invoices match your search.',
                       ),
                     )
-                  : grouping.hasGroups
+                  : grouping.hasGroups && mode.showsPo
                       ? _groupedList(grouping)
-                      // No P.O. on any invoice: the flat list, unchanged.
+                      // SI mode, or no P.O. on any invoice: a flat list.
                       : ListView.separated(
                           padding: const EdgeInsets.all(BSizes.defaultSpace),
                           itemCount: invoices.length,
                           separatorBuilder: (_, __) =>
                               const SizedBox(height: BSizes.spaceBtwItems),
-                          itemBuilder: (context, index) =>
-                              InvoiceCard(item: invoices[index]),
+                          itemBuilder: (context, index) => InvoiceCard(
+                              item: invoices[index],
+                              showPoNumber: mode.showsPo),
                         ),
             ),
           ],

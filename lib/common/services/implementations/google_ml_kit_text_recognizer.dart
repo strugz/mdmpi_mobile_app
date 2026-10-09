@@ -12,6 +12,15 @@ class GoogleMlKitTextRecognizer implements ITextRecognitionService {
   }
 
   @override
+  Future<List<OcrLine>> processImageLines(InputImage image) async {
+    final result = await _textRecognizer.processImage(image);
+    return [
+      for (final block in result.blocks)
+        for (final line in block.lines) OcrLine(line.text, line.boundingBox),
+    ];
+  }
+
+  @override
   void close() {
     _textRecognizer.close();
   }

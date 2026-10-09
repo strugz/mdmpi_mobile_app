@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// Covers the bucket while an acquire is writing to the database.
@@ -9,16 +10,16 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.da
 /// nothing on screen the list simply stopped responding, which reads as a
 /// crash rather than as work in progress.
 ///
-/// It says what is happening and how much of it, because "1,095 invoices" is
-/// the reason for the wait and knowing the number makes it tolerable. There is
-/// no progress bar: the write reports no intermediate steps, and a bar that
-/// fills on a timer is a lie about state.
+/// It says what is happening and how far along it is: the write reports each
+/// invoice as it lands, so the ring fills and the count ("312 of 1,095") runs
+/// from real progress, not from a timer.
 class AcquiringOverlay extends StatelessWidget {
   const AcquiringOverlay({
     super.key,
     required this.visible,
     required this.invoiceCount,
     required this.accountCount,
+    this.doneCount = 0,
   });
 
   final bool visible;
@@ -27,6 +28,9 @@ class AcquiringOverlay extends StatelessWidget {
   /// change to zero halfway through.
   final int invoiceCount;
   final int accountCount;
+
+  /// How many of [invoiceCount] have been written so far.
+  final int doneCount;
 
   static const Duration fadeDuration = Duration(milliseconds: 200);
 
@@ -63,10 +67,14 @@ class AcquiringOverlay extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SizedBox(
+                        SizedBox(
                           width: 28,
                           height: 28,
-                          child: CircularProgressIndicator(strokeWidth: 3),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            // Indeterminate until the first invoice lands.
+                            value: _fraction,
+                          ),
                         ),
                         const SizedBox(height: BSizes.md),
                         Text(
@@ -74,6 +82,17 @@ class AcquiringOverlay extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: theme.textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: BSizes.xs),
+                        Text(
+                          _progress,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            // Digits keep their width, so the line does not
+                            // jitter as the count climbs.
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                         const SizedBox(height: BSizes.xs),
                         Text(
@@ -91,8 +110,22 @@ class AcquiringOverlay extends StatelessWidget {
     );
   }
 
+  double? get _fraction {
+    if (invoiceCount <= 0 || doneCount <= 0) return null;
+    return (doneCount / invoiceCount).clamp(0.0, 1.0);
+  }
+
+  String get _progress {
+    final done = doneCount.clamp(0, invoiceCount);
+    final pct = invoiceCount <= 0 ? 0 : (done * 100 ~/ invoiceCount);
+    return '${_n(done)} of ${_n(invoiceCount)} · $pct%';
+  }
+
+  static String _n(int v) => BFormatter.formatIntegerNoDecimal(v.toDouble());
+
   String get _subtitle {
-    final invoices = '$invoiceCount invoice${invoiceCount == 1 ? '' : 's'}';
+    final invoices =
+        '${_n(invoiceCount)} invoice${invoiceCount == 1 ? '' : 's'}';
     final accounts = '$accountCount account${accountCount == 1 ? '' : 's'}';
     return '$invoices across $accounts';
   }

@@ -290,7 +290,14 @@ class CollectionRepository extends GetxController {
   }
 
   /// Claim items by IDs (move to activity)
-  Future<void> claimItemsByIds(List<String> ids, {bool silent = false}) async {
+  ///
+  /// [onProgress] is called after each invoice is written with how many of
+  /// [ids] are done, so a long acquire can show where it is.
+  Future<void> claimItemsByIds(
+    List<String> ids, {
+    bool silent = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
     try {
       final dao = await _dao;
       final now = DateTime.now().toIso8601String();
@@ -301,6 +308,7 @@ class CollectionRepository extends GetxController {
       final claimed = <CollectionItemModel>[];
       // Accounts taken on for reconciliation, which the SMS names as such.
       final reconClients = <String>{};
+      var done = 0;
       for (final id in ids) {
         final item = await dao.getCollectionItemById(id);
         if (item != null) {
@@ -318,6 +326,7 @@ class CollectionRepository extends GetxController {
           await _queueChange('CLAIM', id, {'EngagementDate': now});
           claimed.add(updated);
         }
+        onProgress?.call(++done, ids.length);
       }
 
       // SMS trigger 1, Acquiring Account: one message for the whole acquire,
@@ -417,6 +426,7 @@ class CollectionRepository extends GetxController {
         checkNumber: checkNumber,
         checkDate: checkDate,
         purposeOfVisit: purposeOfVisit,
+        settled: isFullyPaid,
       );
 
       // Queue for end-of-day upload.
@@ -540,6 +550,7 @@ class CollectionRepository extends GetxController {
           checkNumber: checkNumber,
           checkDate: checkDate,
           purposeOfVisit: purposeOfVisit,
+          settled: isFullyPaid,
         );
         if (record != null) archived.add(record);
 
@@ -823,6 +834,7 @@ class CollectionRepository extends GetxController {
     String? checkDate,
     String? purposeOfVisit,
     List<String> documentIds = const [],
+    bool settled = false,
   }) async {
     try {
       final record = _engagementRecord(
@@ -839,6 +851,7 @@ class CollectionRepository extends GetxController {
         checkDate: checkDate,
         purposeOfVisit: purposeOfVisit,
         documentIds: documentIds,
+        settled: settled,
       );
       if (record == null) return;
       final dao = await DatabaseHelper.instance.collectionEngagementDao;
@@ -862,6 +875,24 @@ class CollectionRepository extends GetxController {
     }
   }
 
+  /// The raw date of the latest history entry of [item] that collected
+  /// money, or null when none did. Compared as parsed dates, returned as
+  /// written so it can be matched back against the entry.
+  static String? _lastPaidAt(CollectionItemModel item) {
+    String? raw;
+    DateTime? latest;
+    for (final h in item.history) {
+      if (h.totalCollected <= 0) continue;
+      final dt = BFormatter.parseLocal(h.date);
+      if (dt == null) continue;
+      if (latest == null || dt.isAfter(latest)) {
+        latest = dt;
+        raw = h.date;
+      }
+    }
+    return raw;
+  }
+
   /// Builds the record, or null when [engagedAt] is not a date we can file
   /// under a day. A row the calendar could not place used to disappear into a
   /// bare `catch`; here it is counted out loud.
@@ -880,6 +911,7 @@ class CollectionRepository extends GetxController {
     String? purposeOfVisit,
     List<String> documentIds = const [],
     String source = CollectionEngagementRecord.sourceLocal,
+    bool settled = false,
   }) {
     final engagedOn = BFormatter.localDayKey(engagedAt);
     if (engagedOn == null) {
@@ -912,6 +944,7 @@ class CollectionRepository extends GetxController {
       documentIds: documentIds,
       createdAt: _nowStamp(),
       source: source,
+      settled: settled,
     );
   }
 
@@ -1019,6 +1052,10 @@ class CollectionRepository extends GetxController {
       }
 
       for (final item in cached) {
+        // The invoice is settled by its last paying entry, whatever that
+        // entry's status (an advance applied in full says 'Advanced Payment
+        // Applied').
+        final settledAt = item.toBeCollected == 0 ? _lastPaidAt(item) : null;
         for (final h in item.history) {
           if (!mine(h.collectorName)) continue;
           add(_engagementRecord(
@@ -1030,6 +1067,7 @@ class CollectionRepository extends GetxController {
             status: h.status,
             remarks: h.remarks,
             amount: h.totalCollected,
+            settled: settledAt != null && h.date == settledAt,
             bankName: h.bankName,
             checkNumber: h.checkNumber,
             checkDate: h.checkDate,
@@ -1442,6 +1480,9 @@ class CollectionRepository extends GetxController {
         status: 'Advanced Payment Applied',
         remarks: advance.remarks,
         amount: appliedAmount,
+        // Paid in full by the advance: this is the invoice's settlement, and
+        // the status cannot say so.
+        settled: newInvoice.toBeCollected <= _floatTolerance,
       );
 
       await _queueChange('ASSIGN_ADVANCE', newInvoice.id, {

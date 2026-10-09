@@ -34,6 +34,8 @@ class BReconStyle {
 
   static IconData activityIcon(ReconActivityType t) => switch (t) {
         ReconActivityType.soaSent => Iconsax.document_upload,
+        ReconActivityType.followUp => Iconsax.call_calling,
+        ReconActivityType.collectionLetterSent => Iconsax.sms,
         ReconActivityType.documentRequested => Iconsax.document_text,
         ReconActivityType.documentProvided => Iconsax.document_forward,
         ReconActivityType.paidClaim => Iconsax.money_tick,
@@ -48,6 +50,15 @@ class BReconStyle {
         ReconActivityType.caseAcquired => Iconsax.login,
       };
 
+  /// An open status as whose turn it is, for a set of cases that may not all
+  /// be mine (the reports): "Collector's turn 3".
+  static String statusTurnLabel(ReconCaseStatus s) => switch (s) {
+        ReconCaseStatus.waitingForCollector => "Collector's turn",
+        ReconCaseStatus.waitingForAccount => "Account's turn",
+        ReconCaseStatus.underValidation => 'Validating proof',
+        _ => s.label,
+      };
+
   /// "Your turn" / "The account's turn", from the collector's side.
   static String nextActorLabel(ReconActor? actor) => switch (actor) {
         ReconActor.collector => 'Your turn',
@@ -55,13 +66,21 @@ class BReconStyle {
         _ => 'Case ended',
       };
 
-  /// The step to suggest when it is the collector's turn.
-  static String nextStepHint(ReconCaseStatus s, {required bool hasActivity}) =>
+  /// The step to suggest next. While waiting on the account, [stage] (the
+  /// case's first stage not yet done) says how to chase it.
+  static String nextStepHint(ReconCaseStatus s,
+          {required bool hasActivity, ReconStage? stage}) =>
       switch (s) {
         ReconCaseStatus.waitingForCollector =>
           hasActivity ? 'Reply to the account' : 'Send the SOA',
         ReconCaseStatus.underValidation => 'Validate the proof of payment',
-        ReconCaseStatus.waitingForAccount => 'Follow up with the account',
+        ReconCaseStatus.waitingForAccount => switch (stage) {
+            ReconStage.soa => 'Send the SOA',
+            ReconStage.followUp => 'Follow up with the account',
+            ReconStage.collectionLetter =>
+              'Follow up again, or send the collection letter',
+            null => 'Follow up, send another letter, or escalate',
+          },
         _ => '',
       };
 }

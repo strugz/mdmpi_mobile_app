@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case_bundle.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
 
@@ -37,6 +38,10 @@ class ReconSummary {
     required this.amountUnderReconciliation,
     required this.amountValidatedPaid,
     required this.aging,
+    required this.agingAmount,
+    required this.openByStatus,
+    required this.flagged,
+    required this.needsAttention,
   });
 
   final int totalCases;
@@ -54,10 +59,34 @@ class ReconSummary {
   /// Open cases per aging bucket, every bucket present.
   final Map<ReconAgingBucket, int> aging;
 
+  /// Still owed on the open cases in each aging bucket, every bucket present.
+  final Map<ReconAgingBucket, double> agingAmount;
+
+  /// Open cases by where they stand (the three open statuses, every one
+  /// present): whose turn it is across the set.
+  final Map<ReconCaseStatus, int> openByStatus;
+
+  /// Open cases carrying each flag, every flag present. A case with two
+  /// flags counts under both.
+  final Map<ReconFlag, int> flagged;
+
+  /// Open cases carrying at least one flag.
+  final int needsAttention;
+
+  /// The open statuses, in the order the reports show them.
+  static const openStatuses = [
+    ReconCaseStatus.waitingForCollector,
+    ReconCaseStatus.waitingForAccount,
+    ReconCaseStatus.underValidation,
+  ];
+
   factory ReconSummary.of(Iterable<ReconEvaluation> cases) {
     var total = 0, open = 0, completed = 0, notCompleted = 0, escalated = 0;
-    var under = 0.0, validated = 0.0;
+    var under = 0.0, validated = 0.0, attention = 0;
     final aging = {for (final b in ReconAgingBucket.values) b: 0};
+    final agingAmount = {for (final b in ReconAgingBucket.values) b: 0.0};
+    final byStatus = {for (final s in openStatuses) s: 0};
+    final flagged = {for (final f in ReconFlag.values) f: 0};
     for (final e in cases) {
       total++;
       validated += e.amountValidatedPaid;
@@ -73,8 +102,15 @@ class ReconSummary {
         case ReconCaseStatus.underValidation:
           open++;
           under += e.amountUnderReconciliation;
+          byStatus[e.status] = byStatus[e.status]! + 1;
           final bucket = ReconAgingBucket.forDays(e.daysOpen);
           aging[bucket] = aging[bucket]! + 1;
+          agingAmount[bucket] =
+              agingAmount[bucket]! + e.amountUnderReconciliation;
+          if (e.flags.isNotEmpty) attention++;
+          for (final f in e.flags) {
+            flagged[f] = flagged[f]! + 1;
+          }
       }
     }
     return ReconSummary(
@@ -86,8 +122,83 @@ class ReconSummary {
       amountUnderReconciliation: under,
       amountValidatedPaid: validated,
       aging: aging,
+      agingAmount: agingAmount,
+      openByStatus: byStatus,
+      flagged: flagged,
+      needsAttention: attention,
     );
   }
+}
+
+/// One collector's share of a set of cases (the team report).
+class ReconCollectorSummary {
+  const ReconCollectorSummary({
+    required this.collectorCode,
+    required this.collectorName,
+    required this.open,
+    required this.needsAttention,
+    required this.closed,
+    required this.amountUnderReconciliation,
+  });
+
+  /// Empty when the case has no holder (released, not yet acquired).
+  final String collectorCode;
+  final String collectorName;
+  final int open;
+
+  /// Open cases with at least one flag.
+  final int needsAttention;
+  final int closed;
+  final double amountUnderReconciliation;
+
+  String get label => collectorName.trim().isNotEmpty
+      ? collectorName.trim()
+      : collectorCode.trim().isNotEmpty
+          ? collectorCode.trim()
+          : 'No holder';
+}
+
+/// Who holds what: one row per collector (and one for cases with no holder),
+/// the most open cases first, then the most owed.
+List<ReconCollectorSummary> reconByCollector(
+    Iterable<({ReconCaseBundle bundle, ReconEvaluation evaluation})> cases) {
+  final open = <String, int>{};
+  final attention = <String, int>{};
+  final closed = <String, int>{};
+  final under = <String, double>{};
+  final names = <String, String>{};
+  for (final (:bundle, :evaluation) in cases) {
+    final code = bundle.reconCase.collectorCode.trim().toUpperCase();
+    final name = bundle.reconCase.collectorName.trim();
+    if (name.isNotEmpty || !names.containsKey(code)) names[code] = name;
+    if (evaluation.isClosed) {
+      closed[code] = (closed[code] ?? 0) + 1;
+      continue;
+    }
+    open[code] = (open[code] ?? 0) + 1;
+    under[code] = (under[code] ?? 0) + evaluation.amountUnderReconciliation;
+    if (evaluation.flags.isNotEmpty) {
+      attention[code] = (attention[code] ?? 0) + 1;
+    }
+  }
+  return [
+    for (final code in names.keys)
+      ReconCollectorSummary(
+        collectorCode: code,
+        collectorName: names[code] ?? '',
+        open: open[code] ?? 0,
+        needsAttention: attention[code] ?? 0,
+        closed: closed[code] ?? 0,
+        amountUnderReconciliation: under[code] ?? 0,
+      ),
+  ]..sort((a, b) {
+      final byOpen = b.open.compareTo(a.open);
+      if (byOpen != 0) return byOpen;
+      final byAmount =
+          b.amountUnderReconciliation.compareTo(a.amountUnderReconciliation);
+      if (byAmount != 0) return byAmount;
+      return a.label.compareTo(b.label);
+    });
 }
 
 /// The collector dashboard's order: open cases first, the one untouched

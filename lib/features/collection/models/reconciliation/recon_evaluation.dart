@@ -25,6 +25,27 @@ class ReconInvoiceState {
   final bool proofRequested;
 }
 
+/// How far a case has got through one [ReconStage].
+class ReconStageProgress {
+  const ReconStageProgress({
+    required this.stage,
+    this.count = 0,
+    this.firstAt,
+    this.lastAt,
+  });
+
+  final ReconStage stage;
+
+  /// Steps logged for it in order (out-of-order ones are not counted).
+  final int count;
+
+  /// Philippine wall-clock times of the first and latest counted step.
+  final DateTime? firstAt;
+  final DateTime? lastAt;
+
+  bool get done => count > 0;
+}
+
 /// Everything the Tracker derives for one case at one moment: the result of
 /// `evaluateReconCase`. Nothing here is stored as truth.
 class ReconEvaluation {
@@ -40,6 +61,11 @@ class ReconEvaluation {
     required this.dateClosed,
     required this.soaDate,
     required this.soaAmount,
+    this.stages = const [
+      ReconStageProgress(stage: ReconStage.soa),
+      ReconStageProgress(stage: ReconStage.followUp),
+      ReconStageProgress(stage: ReconStage.collectionLetter),
+    ],
   });
 
   final ReconCaseStatus status;
@@ -67,10 +93,31 @@ class ReconEvaluation {
 
   /// When it ended, as a Philippine wall-clock time; null while open.
   final DateTime? dateClosed;
+
+  /// The latest SOA (a re-issued SOA replaces the earlier one here).
   final DateTime? soaDate;
   final double? soaAmount;
 
+  /// One entry per [ReconStage], in order.
+  final List<ReconStageProgress> stages;
+
   bool get isClosed => status.isClosed;
+
+  ReconStageProgress stageProgress(ReconStage stage) => stages[stage.index];
+
+  /// The first stage not yet done; null once all are.
+  ReconStage? get currentStage {
+    for (final p in stages) {
+      if (!p.done) return p.stage;
+    }
+    return null;
+  }
+
+  /// Whether [stage]'s step may be logged now: the stage before it is done.
+  bool stageUnlocked(ReconStage stage) {
+    final previous = stage.previous;
+    return previous == null || stageProgress(previous).done;
+  }
 
   List<ReconInvoiceState> get openInvoices =>
       invoices.where((i) => !i.status.isSettled).toList();

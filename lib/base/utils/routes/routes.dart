@@ -50,6 +50,11 @@ class BRoutes{
   static const reconciliationCases = '/collection/reconciliation';
   static const reconciliationCase = '/collection/reconciliation/case';
   static const reconciliationReports = '/collection/reconciliation/reports';
+  // Collection - Settings → Reports (CSV export).
+  static const collectionReports = '/collection/reports';
+  static const collectionReportActivity = '/collection/reports/activity';
+  static const collectionReportCollectors = '/collection/reports/collectors';
+  static const collectionReportRecon = '/collection/reports/reconciliation';
   static const signatureOutbox = '/signature-outbox';
   static const imageOutbox = '/image-outbox';
   static const uploadData = '/upload-data';

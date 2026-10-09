@@ -215,6 +215,50 @@
         "warnings": 0,
         "amountUnderReconciliation": 276995.0
       }
+    },
+    {
+      "name": "Stages in order: SOA, two follow ups, a collection letter",
+      "case": { "caseId": "RC-JCA-20", "clientCode": "NLN-120", "clientName": "Stage Track Trading", "collectorCode": "JCA", "dateOpened": "2026-09-10T08:00:00" },
+      "invoices": [
+        { "invoiceNo": "700020001", "amount": 15000.00 },
+        { "invoiceNo": "700020002", "amount": 5000.00 }
+      ],
+      "activities": [
+        { "activityId": "RA-JCA-201", "dateTime": "2026-09-10T09:00:00", "type": "SOA_SENT" },
+        { "activityId": "RA-JCA-202", "dateTime": "2026-09-15T09:00:00", "type": "FOLLOW_UP" },
+        { "activityId": "RA-JCA-203", "dateTime": "2026-09-20T09:00:00", "type": "FOLLOW_UP" },
+        { "activityId": "RA-JCA-204", "dateTime": "2026-09-25T09:00:00", "type": "COLLECTION_LETTER_SENT" }
+      ],
+      "expected": {
+        "status": "WAITING_FOR_ACCOUNT",
+        "nextActor": "ACCOUNT",
+        "invoices": { "700020001": "OPEN", "700020002": "OPEN" },
+        "flags": ["NO_RESPONSE"],
+        "warnings": 0,
+        "stages": { "SOA_SENT": 1, "FOLLOW_UP": 2, "COLLECTION_LETTER_SENT": 1 },
+        "currentStage": null
+      }
+    },
+    {
+      "name": "Stages out of order (offline replay): reported, not counted",
+      "case": { "caseId": "RC-JCA-21", "clientCode": "NLN-121", "clientName": "Replay Medical", "collectorCode": "JCA", "dateOpened": "2026-09-18T08:00:00" },
+      "invoices": [
+        { "invoiceNo": "700021001", "amount": 8000.00 }
+      ],
+      "activities": [
+        { "activityId": "RA-JCA-211", "dateTime": "2026-09-20T09:00:00", "type": "FOLLOW_UP" },
+        { "activityId": "RA-JCA-212", "dateTime": "2026-09-22T09:00:00", "type": "SOA_SENT" },
+        { "activityId": "RA-JCA-213", "dateTime": "2026-09-24T09:00:00", "type": "COLLECTION_LETTER_SENT" }
+      ],
+      "expected": {
+        "status": "WAITING_FOR_ACCOUNT",
+        "nextActor": "ACCOUNT",
+        "invoices": { "700021001": "OPEN" },
+        "flags": ["NO_RESPONSE"],
+        "warnings": 2,
+        "stages": { "SOA_SENT": 1, "FOLLOW_UP": 0, "COLLECTION_LETTER_SENT": 0 },
+        "currentStage": "FOLLOW_UP"
+      }
     }
   ]
 }
