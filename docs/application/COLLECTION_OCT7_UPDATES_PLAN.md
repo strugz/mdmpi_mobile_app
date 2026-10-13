@@ -8,7 +8,7 @@ Android is the target (Windows is not pursued for these features).
 |---|---|---|---|
 | 1 | Add to Cart for large invoice volumes | App | Done (below) |
 | 2 | PO/SI switch; SI search by photo of a voucher | App | Done (below) |
-| 3 | Reconciliation: SOA → Follow up → Collection Letter | App + backend | App done; backend spec in [COLLECTION_RECONCILIATION_TRACKER_PLAN.md](COLLECTION_RECONCILIATION_TRACKER_PLAN.md), Revision 2 |
+| 3 | Reconciliation: SOA → Follow up → Collection Letter | App + backend | App done; backend code done 2026-10-13, not deployed ([COLLECTION_RECONCILIATION_TRACKER_PLAN.md](COLLECTION_RECONCILIATION_TRACKER_PLAN.md), Revision 2) |
 | 4 | Reports: month-end Activity, collectors Summary, Reconciliation detail | App (+ backend gaps) | App done; backend gaps below |
 | 5 | Absolute AR on re-upload | Admin web + backend | Not in this repo. The phone already replaces its invoice cache on every download, so an invoice the server stops sending disappears; the collector's own archive and reconciliation cases stay. |
 | 6 | Sales view by territory code | — | Future, not in this round |

@@ -193,7 +193,11 @@ From the Collections meeting of 2026-10-07 (To-Update List, item 3).
   ringed, later ones locked); tapping an unlocked stage opens the log sheet on its step. The log
   sheet shows locked stage steps as disabled chips with the reason; the letter says its photo is
   required. The Step 1 hint follows the stage while waiting on the Account.
-- [ ] **Backend (MDMPI.App, not edited).** Deploy before a phone build that can queue the new
+- [x] **Backend (MDMPI.App)** (code and tests 2026-10-13, **not deployed**: ships with the same
+  deploy and migration as stage 2; `activitytype` is already `varchar(30)` with no CHECK, so no
+  schema change). `ReconRules` counts the stages and reports `StageCounts` / `CurrentStage`;
+  `ReconRules.StageLockReason` refuses an out-of-order step; a letter without `AttachmentIds` is
+  refused. The server fixture is the phone's again (both stage cases). Deploy before a phone build that can queue the new
   codes; until then they are refused and wait in the outbox, and older phones drop them on
   download.
   - Accept `ActivityType` `FOLLOW_UP` and `COLLECTION_LETTER_SENT` on the `RECON_ACTIVITY` op
