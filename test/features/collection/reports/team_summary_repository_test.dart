@@ -52,6 +52,25 @@ void main() {
     }
   });
 
+  test('a summary for another month is refused, not shown as this one',
+      () async {
+    final repo = TeamActivityRepository(
+        fetch: (_) async => http.Response(
+            '{"Month":"2026-08","Collectors":[{"Code":"MAR"}]}', 200));
+    final result = await repo.loadSummary('2026-09');
+    expect(result.isFailure, isTrue);
+    expect(
+        result.error, 'The server sent the summary for 2026-08, not 2026-09.');
+  });
+
+  test('a summary without a Month is taken as the month asked for', () async {
+    final repo = TeamActivityRepository(
+        fetch: (_) async =>
+            http.Response('{"Collectors":[{"Code":"MAR"}]}', 200));
+    final result = await repo.loadSummary('2026-09');
+    expect(result.value!.collectors.single.code, 'MAR');
+  });
+
   test('missing keys read as zero, not a crash', () async {
     final repo = TeamActivityRepository(
         fetch: (_) async => http.Response(

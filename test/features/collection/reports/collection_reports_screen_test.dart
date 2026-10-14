@@ -50,6 +50,7 @@ class _Harness {
         date: '2026-09-02'),
   ]));
   Completer<void>? holdAugust;
+
   /// A server without the summary yet (404) unless a test says otherwise.
   Result<TeamSummary?> summary = Result.success(null);
   var teamCalls = 0;
@@ -197,7 +198,8 @@ void main() {
     test('a broken summary is shown, not replaced by the approximate feed',
         () async {
       final h = _Harness()
-        ..summary = Result.failure('The server could not load the summary (500).');
+        ..summary =
+            Result.failure('The server could not load the summary (500).');
       final c = h.controller(head: true);
       await c.loadCollectors();
       expect(h.teamCalls, 0, reason: 'only a 404 falls back to the feed');
@@ -219,8 +221,8 @@ void main() {
     test('a server summary with no teammates leaves the own row alone',
         () async {
       final h = _Harness()
-        ..summary = Result.success(
-            const TeamSummary(month: '2026-09', collectors: []));
+        ..summary =
+            Result.success(const TeamSummary(month: '2026-09', collectors: []));
       final c = h.controller(head: true);
       await c.loadCollectors();
       expect(h.teamCalls, 0);

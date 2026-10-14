@@ -95,7 +95,18 @@ class TeamActivityRepository extends GetxController {
       if (decoded is! Map<String, dynamic>) {
         return Result.failure('The server sent an unexpected answer.');
       }
-      return Result.success(TeamSummary.fromJson(decoded));
+      final summary = TeamSummary.fromJson(decoded);
+      // A summary for another month (a stale cache, a server that ignored
+      // the query) would be shown as this one; one with no Month is taken
+      // as the month asked for.
+      final month = summary.month.trim();
+      if (month.isNotEmpty && month != yearMonth) {
+        logDebug('TeamActivityRepository.loadSummary: asked $yearMonth, '
+            'got $month');
+        return Result.failure(
+            'The server sent the summary for $month, not $yearMonth.');
+      }
+      return Result.success(summary);
     } catch (e) {
       logDebug('TeamActivityRepository.loadSummary error: $e');
       return Result.failure(
