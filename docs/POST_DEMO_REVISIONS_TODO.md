@@ -36,6 +36,7 @@
 - [x] 25. SMS: include the **waybill number** in the Drop Off message — `S` (done app-only; Drop Off split out of the shared template branch, waybill printed when present, base and HD alike)
 - [x] 26. Users **LNA** and **BON**: add the **Courier** role — ops/config, no code (done 2026-09-18 in Firebase)
 - [x] 27. SMS: a failed write must not text the recipient — the SMS went out even when the request was never saved — `M` (done app-only for Standard Delivery / Hotline Direct create, status update and cancel; the other four logistics forms were audited and already correct; QA + two optional hardening follow-ups still open)
+- [ ] 28. Standard Delivery: one-scan fill — a single photo of the SI/DR fills Client (OCR + fuzzy match against the local client list, learned aliases), Document References (existing extractor) and Items (existing Gemini scan); **additive only**: a new Scan Document button, every existing client / reference / item control stays as is — `L` (planned for 2026-10-12 → 10-16; full plan in [application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md](application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md))
 
 ---
 
