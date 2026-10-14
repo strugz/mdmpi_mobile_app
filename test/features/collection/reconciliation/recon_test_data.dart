@@ -32,6 +32,7 @@ ReconActivity step(
   List<String> invoices = const [],
   ReconValidationResult? result,
   String? due,
+  String action = '',
   double? amount,
   String? id,
 }) =>
@@ -42,6 +43,7 @@ ReconActivity step(
       type: type,
       invoiceNos: invoices,
       validationResult: result,
+      nextAction: action,
       nextActionDueDate: due,
       amount: amount,
       recordedBy: 'JCA',

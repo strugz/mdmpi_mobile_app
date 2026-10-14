@@ -201,12 +201,53 @@ List<ReconCollectorSummary> reconByCollector(
     });
 }
 
-/// The collector dashboard's order: open cases first, the one untouched
-/// longest at the top, so the case most likely forgotten is seen first; then
-/// the closed ones, the latest first (history).
+/// The collector dashboard's order. Open cases first: overdue next actions
+/// (the longest overdue first), then due today, then due soon (the nearest
+/// first), then the rest with the one untouched longest at the top, so what
+/// needs doing now and what is most likely forgotten are seen first. Then the
+/// closed ones, the latest first (history).
 int compareForReconDashboard(ReconEvaluation a, ReconEvaluation b) {
   if (a.isClosed != b.isClosed) return a.isClosed ? 1 : -1;
-  return a.isClosed
-      ? a.daysSinceLastActivity.compareTo(b.daysSinceLastActivity)
-      : b.daysSinceLastActivity.compareTo(a.daysSinceLastActivity);
+  if (a.isClosed) {
+    return a.daysSinceLastActivity.compareTo(b.daysSinceLastActivity);
+  }
+  final byUrgency = _dueRank(a.dueState).compareTo(_dueRank(b.dueState));
+  if (byUrgency != 0) return byUrgency;
+  if (a.dueState.isPressing && a.daysUntilDue != b.daysUntilDue) {
+    return a.daysUntilDue!.compareTo(b.daysUntilDue!);
+  }
+  return b.daysSinceLastActivity.compareTo(a.daysSinceLastActivity);
 }
+
+int _dueRank(ReconDueState s) => switch (s) {
+      ReconDueState.overdue => 0,
+      ReconDueState.today => 1,
+      ReconDueState.soon => 2,
+      ReconDueState.later || ReconDueState.none => 3,
+    };
+
+/// Open cases with a next action due today, and overdue.
+({int today, int overdue}) reconDueCounts(Iterable<ReconEvaluation> cases) {
+  var today = 0;
+  var overdue = 0;
+  for (final e in cases) {
+    if (e.isClosed) continue;
+    if (e.dueState == ReconDueState.today) today++;
+    if (e.dueState == ReconDueState.overdue) overdue++;
+  }
+  return (today: today, overdue: overdue);
+}
+
+/// The Home tile's short form: "2 due today · 1 overdue"; '' when nothing is.
+String reconDueNote(({int today, int overdue}) counts) => [
+      if (counts.today > 0) '${counts.today} due today',
+      if (counts.overdue > 0) '${counts.overdue} overdue',
+    ].join(' · ');
+
+/// "2 follow ups due today · 1 overdue"; '' when nothing is due or overdue.
+String reconDueSummary(({int today, int overdue}) counts) => [
+      if (counts.today > 0)
+        '${counts.today} ${counts.today == 1 ? 'follow up' : 'follow ups'} '
+            'due today',
+      if (counts.overdue > 0) '${counts.overdue} overdue',
+    ].join(' · ');

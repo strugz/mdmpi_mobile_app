@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
 
 /// How the Reconciliation Tracker's statuses look, in one place, so the
 /// dashboard, the case screen and the log sheet agree. Status colours live on
@@ -30,6 +32,39 @@ class BReconStyle {
         ReconFlag.noResponse => BCollectionColors.danger,
         ReconFlag.claimedPaidNoProof => BCollectionColors.warning,
         ReconFlag.nextActionOverdue => BCollectionColors.danger,
+      };
+
+  static final DateFormat _dueDay = DateFormat('MMM d');
+
+  /// The next action's due date in words: "Due today", "Due tomorrow",
+  /// "Due in 2 days", "Due Oct 30", "Overdue since Oct 30"; '' without one.
+  static String dueLabel(ReconEvaluation e) {
+    final due = e.nextActionDue;
+    final days = e.daysUntilDue;
+    if (due == null || days == null) return '';
+    return switch (e.dueState) {
+      ReconDueState.none => '',
+      ReconDueState.overdue => 'Overdue since ${_dueDay.format(due)}',
+      ReconDueState.today => 'Due today',
+      ReconDueState.soon => days == 1 ? 'Due tomorrow' : 'Due in $days days',
+      ReconDueState.later => 'Due ${_dueDay.format(due)}',
+    };
+  }
+
+  /// What to do next on [e]: the collector's own words when they wrote some,
+  /// else what the case's stage suggests ("Follow up with the account").
+  static String nextActionText(ReconEvaluation e) {
+    if (e.nextAction.isNotEmpty) return e.nextAction;
+    final hint = nextStepHint(e.status,
+        hasActivity: e.lastActivity != null, stage: e.currentStage);
+    return hint.isNotEmpty ? hint : 'Follow up';
+  }
+
+  static Color dueColor(ReconDueState s) => switch (s) {
+        ReconDueState.overdue => BCollectionColors.danger,
+        ReconDueState.today => BCollectionColors.primary,
+        ReconDueState.soon => BCollectionColors.warning,
+        ReconDueState.later || ReconDueState.none => BCollectionColors.neutral,
       };
 
   static IconData activityIcon(ReconActivityType t) => switch (t) {

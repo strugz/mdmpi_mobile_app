@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/reco
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_validator.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 
 /// Picks one photo; null when the collector backs out.
@@ -173,7 +174,26 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 2),
     );
-    if (picked != null) setState(() => _due = picked);
+    if (picked == null) return;
+    setState(() => _due = picked);
+    await _askForReminders();
+  }
+
+  /// A due date means a morning reminder (Android), which needs the
+  /// notification permission. Asked here, where it makes sense; a refusal
+  /// only loses the reminder, and is not pushed to Settings.
+  static Future<void> _askForReminders() async {
+    if (!GetPlatform.isAndroid ||
+        !Get.isRegistered<IPermissionService>() ||
+        !CollectionSettingsController.followUpRemindersOn()) {
+      return;
+    }
+    try {
+      await Get.find<IPermissionService>().requireForFeature(
+          PermissionType.notifications,
+          featureName: 'Follow-up reminders',
+          openSettingsOnPermanentDenial: false);
+    } catch (_) {}
   }
 
   Future<void> _save() async {
@@ -422,9 +442,19 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
             onPressed: _pickDue,
             icon: const Icon(Iconsax.calendar_1, size: 18),
             label: Text(_due == null
-                ? 'Set a due date'
-                : 'Due ${_shown.format(_due!)}'),
+                ? 'Next follow-up date'
+                : 'Follow up on ${_shown.format(_due!)}'),
           ),
+        ),
+        Text(
+          GetPlatform.isAndroid
+              ? 'Shows on your calendar that day, reminds you at 8 AM, and '
+                  'flags the case once it passes.'
+              : 'Shows on your calendar that day, and flags the case once it '
+                  'passes.',
+          key: const ValueKey('recon-due-hint'),
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: BCollectionColors.inkMuted),
         ),
       ],
       if (_takesPhotos) ...[

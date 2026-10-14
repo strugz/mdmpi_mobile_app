@@ -91,6 +91,9 @@ dependencies:
   # notifications
   rxdart: ^0.27.2
   flutter_local_notifications: ^19.2.1
+  # Scheduled reminders fire at a Manila wall-clock time (reconciliation
+  # follow ups), whatever the phone's time zone.
+  timezone: ^0.10.1
 
   # Icons
   iconsax: ^0.0.8

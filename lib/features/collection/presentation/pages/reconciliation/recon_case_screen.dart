@@ -35,6 +35,12 @@ class ReconCaseScreen extends StatelessWidget {
     return t == null ? stamp : _when.format(t);
   }
 
+  /// A stamp or a bare date as "Oct 30, 2026".
+  static String day(String stamp) {
+    final t = BReconClock.parse(stamp);
+    return t == null ? stamp : _date.format(t);
+  }
+
   static String ago(int days) => switch (days) {
         <= 0 => 'today',
         1 => 'yesterday',
@@ -207,7 +213,7 @@ class _LastActivity extends StatelessWidget {
     final theme = Theme.of(context);
     final e = evaluation;
     final last = e.lastActivity;
-    final due = last?.nextActionDueDate;
+    final dueLabel = BReconStyle.dueLabel(e);
     final hint = BReconStyle.nextStepHint(e.status,
         hasActivity: last != null, stage: e.currentStage);
     return Container(
@@ -262,15 +268,19 @@ class _LastActivity extends StatelessWidget {
               ),
             ],
           ),
-          if (last != null && last.nextAction.isNotEmpty || due != null) ...[
+          if (e.nextAction.isNotEmpty || dueLabel.isNotEmpty) ...[
             const SizedBox(height: BSizes.xs),
             Text(
               [
-                if (last!.nextAction.isNotEmpty) 'Next: ${last.nextAction}',
-                if (due != null)
-                  'due ${ReconCaseScreen.when(due).split(' · ').first}',
-              ].join(', '),
-              style: theme.textTheme.bodySmall,
+                if (e.nextAction.isNotEmpty) 'Next: ${e.nextAction}',
+                if (dueLabel.isNotEmpty) dueLabel,
+              ].join(' · '),
+              key: const ValueKey('recon-next-due'),
+              style: e.dueState.isPressing
+                  ? theme.textTheme.bodySmall?.copyWith(
+                      color: BReconStyle.dueColor(e.dueState),
+                      fontWeight: FontWeight.w700)
+                  : theme.textTheme.bodySmall,
             ),
           ],
           const SizedBox(height: BSizes.xs),
@@ -412,7 +422,7 @@ class _TimelineEntry extends StatelessWidget {
                     'Next: ${[
                       if (a.nextAction.isNotEmpty) a.nextAction,
                       if (a.nextActionDueDate != null)
-                        'due ${a.nextActionDueDate}',
+                        'due ${ReconCaseScreen.day(a.nextActionDueDate!)}',
                     ].join(', ')}',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: BCollectionColors.inkSecondary),

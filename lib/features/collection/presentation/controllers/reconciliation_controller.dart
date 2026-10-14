@@ -8,7 +8,9 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/collection_reposit
 import 'package:mdmpi_mobile_app/data/repositories/collection/reconciliation_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_roles.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_clock.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_posting.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_reminder_scheduler.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_summary.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case.dart';
@@ -67,7 +69,9 @@ class ReconciliationController extends GetxController {
     Set<String> Function()? heldInvoiceIds,
     bool Function()? isHead,
     DateTime Function()? now,
+    ReconReminderScheduler? Function()? reminders,
   })  : _repositoryOverride = repository,
+        _reminders = reminders ?? _defaultReminders,
         _isHead = isHead ?? _defaultIsHead,
         _collectorCode = collectorCode ?? _defaultCollector,
         _heldInvoiceIds = heldInvoiceIds ?? _defaultHeld,
@@ -80,6 +84,7 @@ class ReconciliationController extends GetxController {
   final Set<String> Function() _heldInvoiceIds;
   final bool Function() _isHead;
   final DateTime Function() _now;
+  final ReconReminderScheduler? Function() _reminders;
 
   ReconciliationRepository get _repository =>
       _repositoryOverride ?? ReconciliationRepository.instance;
@@ -98,6 +103,11 @@ class ReconciliationController extends GetxController {
   static String _defaultCollector() => Get.isRegistered<CollectionRepository>()
       ? CollectionRepository.instance.collectorCode
       : '';
+
+  static ReconReminderScheduler? _defaultReminders() =>
+      Get.isRegistered<ReconReminderScheduler>()
+          ? Get.find<ReconReminderScheduler>()
+          : null;
 
   static bool _defaultIsHead() =>
       Get.isRegistered<UserController>() &&
@@ -160,6 +170,16 @@ class ReconciliationController extends GetxController {
       for (final b in result.value)
         ReconCaseView(b, b.evaluate(now: now, settings: _repository.settings)),
     ]);
+    syncReminders();
+  }
+
+  /// Bring the phone's follow-up reminders in line with my open cases
+  /// (Android). Fire-and-forget: it never blocks or fails a screen.
+  void syncReminders() {
+    final scheduler = _reminders();
+    if (scheduler == null) return;
+    unawaited(
+        scheduler.sync(myOpenCases.map((c) => c.asRecord), _now()));
   }
 
   /// The dashboard's filter; open cases unless the collector asks for more.
@@ -218,6 +238,39 @@ class ReconciliationController extends GetxController {
   List<ReconCaseView> get dashboardOpenCases => casesIn(dashboardScope.value)
       .where((c) => !c.evaluation.isClosed)
       .toList();
+
+  /// My follow ups planned on the calendar: each of my open cases with a next
+  /// action due, under its due day (a local `DateTime(y, m, d)`, the
+  /// calendar's own day key). An overdue one is also listed under today, so
+  /// it is not left behind on a day already past. Each day is in the
+  /// dashboard's order (overdue first). Nothing here is stored: it follows
+  /// the cases' logs.
+  Map<DateTime, List<ReconCaseView>> get plannedFollowUps {
+    final wall = BReconClock.fromInstant(_now());
+    final today = DateTime(wall.year, wall.month, wall.day);
+    final byDay = <DateTime, List<ReconCaseView>>{};
+    for (final c in myOpenCases) {
+      final due = c.evaluation.nextActionDue;
+      if (due == null) continue;
+      final day = DateTime(due.year, due.month, due.day);
+      (byDay[day] ??= []).add(c);
+      if (c.evaluation.dueState == ReconDueState.overdue) {
+        (byDay[today] ??= []).add(c);
+      }
+    }
+    for (final list in byDay.values) {
+      list.sort((a, b) => compareForReconDashboard(a.evaluation, b.evaluation));
+    }
+    return byDay;
+  }
+
+  /// My open cases due today and overdue (the Home tab's Reconciliation tile).
+  ({int today, int overdue}) get myDueCounts =>
+      reconDueCounts(myOpenCases.map((c) => c.evaluation));
+
+  /// The open cases of [dashboardScope] due today and overdue.
+  ({int today, int overdue}) get dashboardDueCounts =>
+      reconDueCounts(dashboardOpenCases.map((c) => c.evaluation));
 
   /// The cases of [dashboardScope] through [dashboardFilter].
   List<ReconCaseView> get dashboardCases {

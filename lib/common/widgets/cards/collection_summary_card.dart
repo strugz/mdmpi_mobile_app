@@ -18,6 +18,11 @@ class CollectionSummaryCard extends StatelessWidget {
   final bool expand;
   final VoidCallback? onTap;
 
+  /// A short line under the value that needs attention ("2 due today"),
+  /// in [noteColor]; nothing when null or empty.
+  final String? note;
+  final Color? noteColor;
+
   const CollectionSummaryCard({
     super.key,
     required this.title,
@@ -26,6 +31,8 @@ class CollectionSummaryCard extends StatelessWidget {
     this.color = Colors.blue,
     this.expand = true,
     this.onTap,
+    this.note,
+    this.noteColor,
   });
 
   @override
@@ -87,6 +94,19 @@ class CollectionSummaryCard extends StatelessWidget {
                 ),
               ),
             ),
+            if (note != null && note!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                note!,
+                maxLines: 2,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: noteColor ?? color,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  height: 1.2,
+                ),
+              ),
+            ],
           ],
         ),
       ),

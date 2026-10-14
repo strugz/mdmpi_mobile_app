@@ -184,6 +184,30 @@ enum ReconValidationResult {
   }
 }
 
+/// Where an open case's next action stands against its due date (the
+/// collector's own latest step sets it). Not a flag: [ReconFlag.nextActionOverdue]
+/// still marks the same overdue case for the attention counts.
+enum ReconDueState {
+  /// No due date, or the case has ended.
+  none,
+
+  /// Further off than the "due soon" window.
+  later,
+
+  /// Within the "due soon" window (1 day or more away).
+  soon,
+
+  /// Due today.
+  today,
+
+  /// The due day has passed.
+  overdue;
+
+  /// Today, soon or overdue: worth a chip and a place near the top.
+  bool get isPressing =>
+      this == soon || this == today || this == overdue;
+}
+
 /// Alerts on an open case.
 enum ReconFlag {
   noResponse('NO_RESPONSE', 'No response'),

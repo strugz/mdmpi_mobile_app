@@ -154,9 +154,44 @@ void main() {
           findsOneWidget);
       expect(find.text('Last: SOA sent · 13 days ago'), findsOneWidget);
       expect(find.text('No response'), findsOneWidget);
-      expect(find.text('Next action overdue'), findsOneWidget);
+      expect(find.text('Overdue since Sep 21'), findsOneWidget,
+          reason: 'the due chip, in place of the overdue flag');
+      expect(find.text('Next action overdue'), findsNothing);
+      expect(find.text('1 overdue'), findsOneWidget,
+          reason: 'the summary line under the totals');
       expect(find.text('Waiting for account'), findsOneWidget);
       expect(find.text('Waiting for collector'), findsOneWidget);
+    });
+
+    testWidgets('a follow up due today is flagged and goes to the top',
+        (tester) async {
+      final dueToday = _view('RC-5', 'Due Today Co', [
+        _step('RA-51', ReconActivityType.soaSent, '2026-09-27T09:00:00',
+            due: '2026-09-28'),
+      ]);
+      await _pump(tester, const ReconDashboardScreen(),
+          cases: [_stale, _recent, dueToday]);
+      expect(find.byKey(const ValueKey('recon-case-due-RC-5')), findsOneWidget);
+      expect(find.text('Due today'), findsOneWidget);
+      expect(find.text('1 follow up due today · 1 overdue'), findsOneWidget);
+      double top(String id) =>
+          tester.getTopLeft(find.byKey(ValueKey('recon-case-$id'))).dy;
+      expect(top('RC-1'), lessThan(top('RC-5')), reason: 'overdue first');
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('recon-case-RC-2')), 200);
+      expect(top('RC-5'), lessThan(top('RC-2')),
+          reason: 'due today before a case with nothing due');
+    });
+
+    testWidgets('the case says what is next and when', (tester) async {
+      await _pump(tester, ReconCaseScreen(caseId: _stale.caseId),
+          cases: [_stale]);
+      expect(find.text('Next: Follow up · Overdue since Sep 21'),
+          findsOneWidget);
+      await tester.scrollUntilVisible(
+          find.textContaining('due Sep 21, 2026'), 200);
+      expect(find.textContaining('due Sep 21, 2026'), findsOneWidget,
+          reason: 'the timeline uses the same date format as the card');
     });
 
     testWidgets('open cases by default; closed ones are history under Closed',

@@ -7,14 +7,17 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_status_style.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_summary.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/recon_case_screen.dart';
 
 /// The collector's reconciliation cases (Home → Reconciliation): open ones
-/// first, the one untouched longest at the top, so the case most likely to be
-/// forgotten is seen first. Closed ones (completed, not completed, escalated)
+/// first, overdue and due follow ups at the top, then the one untouched
+/// longest, so what needs doing now and the case most likely to be forgotten
+/// are seen first. Closed ones (completed, not completed, escalated)
 /// are kept as history behind the Closed and All filters. Accounts marked for
 /// reconciliation that nobody has acquired yet are one tap away.
 class ReconDashboardScreen extends StatelessWidget {
@@ -48,6 +51,7 @@ class ReconDashboardScreen extends StatelessWidget {
           final open = controller.dashboardOpenCases;
           final under = open.fold<double>(
               0, (s, c) => s + c.evaluation.amountUnderReconciliation);
+          final due = reconDueSummary(controller.dashboardDueCounts);
           return ListView(
             padding: EdgeInsets.fromLTRB(
                 BSizes.defaultSpace,
@@ -81,6 +85,27 @@ class ReconDashboardScreen extends StatelessWidget {
                     .bodyMedium
                     ?.copyWith(color: BCollectionColors.inkSecondary),
               ),
+              if (due.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: BSizes.xs),
+                  child: Row(
+                    children: [
+                      const Icon(Iconsax.calendar_tick,
+                          size: 16, color: BCollectionColors.primary),
+                      const SizedBox(width: BSizes.xs),
+                      Expanded(
+                        child: Text(
+                          due,
+                          key: const ValueKey('recon-dashboard-due'),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               const SizedBox(height: BSizes.spaceBtwItems),
               if (waiting > 0)
                 Card(
@@ -221,6 +246,12 @@ class _CaseCard extends StatelessWidget {
     final theme = Theme.of(context);
     final e = view.evaluation;
     final last = e.lastActivity;
+    // The due chip says "Overdue since …", so the flag would repeat it.
+    final showDue = e.dueState.isPressing;
+    final flags = [
+      for (final f in e.flags)
+        if (!(showDue && f == ReconFlag.nextActionOverdue)) f,
+    ];
     return Card(
       key: ValueKey('recon-case-${view.caseId}'),
       margin: const EdgeInsets.only(bottom: BSizes.spaceBtwItems),
@@ -289,13 +320,19 @@ class _CaseCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              if (e.flags.isNotEmpty) ...[
+              if (showDue || flags.isNotEmpty) ...[
                 const SizedBox(height: BSizes.sm),
                 Wrap(
                   spacing: BSizes.xs,
                   runSpacing: BSizes.xs,
                   children: [
-                    for (final f in e.flags)
+                    if (showDue)
+                      ReconChip(
+                          key: ValueKey('recon-case-due-${view.caseId}'),
+                          label: BReconStyle.dueLabel(e),
+                          color: BReconStyle.dueColor(e.dueState),
+                          icon: Iconsax.calendar_1),
+                    for (final f in flags)
                       ReconChip(
                           label: f.label,
                           color: BReconStyle.flagColor(f),

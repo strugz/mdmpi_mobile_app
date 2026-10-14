@@ -5,10 +5,13 @@ import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon
 
 /// Settings the team may tune.
 class ReconSettings {
-  const ReconSettings({this.noResponseDays = 7});
+  const ReconSettings({this.noResponseDays = 7, this.dueSoonDays = 2});
 
   /// Days waiting on the Account before a case is flagged No response.
   final int noResponseDays;
+
+  /// How many days ahead a next action counts as due soon.
+  final int dueSoonDays;
 }
 
 /// A balance at or below this is paid (floating-point pennies).
@@ -270,6 +273,21 @@ ReconEvaluation evaluateReconCase({
     _ => null,
   };
 
+  // The collector's own latest step sets the next action; a payment or a
+  // release the app logged since does not clear it.
+  final due = status.isClosed
+      ? null
+      : BReconClock.parse(lastLogged?.nextActionDueDate);
+  final daysUntilDue =
+      due == null ? null : BReconClock.daysBetween(today, due);
+  final dueState = switch (daysUntilDue) {
+    null => ReconDueState.none,
+    < 0 => ReconDueState.overdue,
+    0 => ReconDueState.today,
+    final d when d <= settings.dueSoonDays => ReconDueState.soon,
+    _ => ReconDueState.later,
+  };
+
   final flags = <ReconFlag>{};
   if (!status.isClosed) {
     if (status == ReconCaseStatus.waitingForAccount &&
@@ -281,10 +299,7 @@ ReconEvaluation evaluateReconCase({
     if (states.values.any((s) => s.proofRequested)) {
       flags.add(ReconFlag.claimedPaidNoProof);
     }
-    // The collector's own latest step sets the next action; a payment or a
-    // release the app logged since does not clear it.
-    final due = BReconClock.parse(lastLogged?.nextActionDueDate);
-    if (due != null && BReconClock.daysBetween(due, today) > 0) {
+    if (dueState == ReconDueState.overdue) {
       flags.add(ReconFlag.nextActionOverdue);
     }
   }
@@ -312,6 +327,10 @@ ReconEvaluation evaluateReconCase({
     dateClosed: dateClosed,
     soaDate: soaDate,
     soaAmount: soaAmount,
+    nextActionDue: due == null ? null : BReconClock.day(due),
+    nextAction: status.isClosed ? '' : (lastLogged?.nextAction.trim() ?? ''),
+    dueState: dueState,
+    daysUntilDue: daysUntilDue,
     stages: [
       for (final stage in ReconStage.values)
         ReconStageProgress(

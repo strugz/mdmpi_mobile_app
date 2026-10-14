@@ -5,6 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:mdmpi_mobile_app/common/services/abstracts/i_notification_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_notification_router.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/common/services/implementations/permission_service.dart';
 import 'package:mdmpi_mobile_app/data/controllers/navigation_controller.dart';
@@ -47,6 +49,7 @@ Future<void> requestBatteryOptimizationPermission() async {
 /// --  Entry point of Flutter App
 Future<void> main() async {
   ///  Widgets binding
+  ///
   final WidgetsBinding widgetsBinding =
       WidgetsFlutterBinding.ensureInitialized();
 
@@ -79,12 +82,25 @@ Future<void> main() async {
   final firebaseApp = await initPlatform(
     initFirebase: true,
     onSelectNotification: (payload) {
+      // A follow-up reminder opens its reconciliation case.
+      if (BReconNotificationRouter.onTap(payload)) return;
       try {
         final selectedPayload = Get.put(NavigationController());
         selectedPayload.selectedIndex.value = 1;
       } catch (_) {}
     },
   );
+
+  // Launched by tapping a follow-up reminder: open its case once the main
+  // navigation is up (NavigationController.onReady).
+  if (Get.isRegistered<INotificationService>()) {
+    try {
+      BReconNotificationRouter.holdLaunch(
+          await Get.find<INotificationService>().launchPayload());
+    } catch (e) {
+      logDebug('main: no notification launch details: $e');
+    }
+  }
 
   logDebug(
       'initPlatform completed; firebase initialized: ${firebaseApp != null}');

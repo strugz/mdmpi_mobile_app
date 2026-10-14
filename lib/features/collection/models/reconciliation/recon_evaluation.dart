@@ -61,6 +61,10 @@ class ReconEvaluation {
     required this.dateClosed,
     required this.soaDate,
     required this.soaAmount,
+    this.nextActionDue,
+    this.nextAction = '',
+    this.dueState = ReconDueState.none,
+    this.daysUntilDue,
     this.stages = const [
       ReconStageProgress(stage: ReconStage.soa),
       ReconStageProgress(stage: ReconStage.followUp),
@@ -97,6 +101,21 @@ class ReconEvaluation {
   /// The latest SOA (a re-issued SOA replaces the earlier one here).
   final DateTime? soaDate;
   final double? soaAmount;
+
+  /// The day the collector's own latest step said to act next by, as a
+  /// Philippine calendar day; null when it set none or the case has ended.
+  final DateTime? nextActionDue;
+
+  /// What that step said to do next, with or without a date ('' when
+  /// nothing was written or the case has ended).
+  final String nextAction;
+
+  /// Where [nextActionDue] stands today.
+  final ReconDueState dueState;
+
+  /// Calendar days from today to [nextActionDue]: 0 today, negative once
+  /// overdue; null without a date.
+  final int? daysUntilDue;
 
   /// One entry per [ReconStage], in order.
   final List<ReconStageProgress> stages;

@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/activity.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/calendar/calendar.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_roles.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_notification_router.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/team/team_activity_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/home.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
@@ -18,6 +19,14 @@ class NavigationController extends GetxController {
   static NavigationController get instance => Get.find();
 
   final Rx<int> selectedIndex = 0.obs;
+
+  /// The main navigation is up: if a follow-up reminder launched the app,
+  /// open its case now.
+  @override
+  void onReady() {
+    super.onReady();
+    BReconNotificationRouter.openPending();
+  }
 
   // Store route names instead of widget instances
   final List<String> screenRoutes = [

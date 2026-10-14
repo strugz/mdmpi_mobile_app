@@ -102,6 +102,7 @@ import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.
 import 'package:mdmpi_mobile_app/data/services/outbox/recon_attachment_sync_service.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/reconciliation_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_reminder_scheduler.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -293,23 +294,27 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
     // Reconciliation Tracker: queues through CollectionRepository and
     // SyncManager (above). SQLite + /api4 only, so outside the Firebase guard.
-    Get.lazyPut(
-        () => ReconciliationRepository(
-              // The phone's live balances, so a payment recorded here shows
-              // on its case before the next upload and download.
-              liveBalances: () => Get.isRegistered<CollectionActivityController>()
-                  ? {
-                      for (final i
-                          in CollectionActivityController.instance.allItems)
-                        i.id: i.toBeCollected,
-                    }
-                  : const {},
-            ),
-        fenix: true);
-    Get.lazyPut(
-        () => ReconciliationController(
-            repository: Get.find<ReconciliationRepository>()),
-        fenix: true);
+    registerReconciliationTracker(
+      repository: () => ReconciliationRepository(
+        // The phone's live balances, so a payment recorded here shows
+        // on its case before the next upload and download.
+        liveBalances: () => Get.isRegistered<CollectionActivityController>()
+            ? {
+                for (final i in CollectionActivityController.instance.allItems)
+                  i.id: i.toBeCollected,
+              }
+            : const {},
+      ),
+      controller: () => ReconciliationController(
+          repository: Get.find<ReconciliationRepository>()),
+      // Morning phone reminders for follow ups that are due (Android).
+      reminders: () => ReconReminderScheduler(
+        notifications: () => Get.isRegistered<INotificationService>()
+            ? Get.find<INotificationService>()
+            : null,
+        enabled: CollectionSettingsController.followUpRemindersOn,
+      ),
+    );
 
     // Settings → Reports: builds from the archive, the team feed and the
     // Tracker's cases, so after them. CSV save/share has no backend.
@@ -336,5 +341,26 @@ class GeneralBindings extends Bindings {
           },
         ),
         permanent: true);
+  }
+
+  /// The Tracker is app-wide state, so it is created on first use but never
+  /// deleted with a route. Plain `lazyPut` ties it to whichever route first
+  /// used it: the calendar's Reconciliation form replaces itself with the
+  /// case (`Get.offNamed`), GetX then deleted the Tracker, and the case
+  /// screen stayed subscribed to the dead one, so steps logged there never
+  /// showed on its stage track.
+  static void registerReconciliationTracker({
+    required ReconciliationRepository Function() repository,
+    required ReconciliationController Function() controller,
+    ReconReminderScheduler Function()? reminders,
+  }) {
+    if (reminders != null) {
+      GetInstance().lazyPut<ReconReminderScheduler>(reminders,
+          fenix: true, permanent: true);
+    }
+    GetInstance().lazyPut<ReconciliationRepository>(repository,
+        fenix: true, permanent: true);
+    GetInstance().lazyPut<ReconciliationController>(controller,
+        fenix: true, permanent: true);
   }
 }

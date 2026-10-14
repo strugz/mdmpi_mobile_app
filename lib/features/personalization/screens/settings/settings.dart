@@ -205,6 +205,7 @@ class _CollectionSettings extends StatelessWidget {
         const BSectionHeading(title: 'Preferences', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _DefaultAreaTile(),
+        if (GetPlatform.isAndroid) const _FollowUpRemindersTile(),
         BSettingsMenuTile(
           icon: Iconsax.folder_2,
           title: 'Storage',
@@ -269,6 +270,33 @@ class _DefaultAreaTile extends StatelessWidget {
             await settings.setDefaultArea(code);
           },
         ));
+  }
+}
+
+/// The 8 AM phone reminder for a reconciliation follow up that is due
+/// (docs/application/COLLECTION_RECON_FOLLOWUP_REMINDERS_PLAN.md, Phase 3).
+class _FollowUpRemindersTile extends StatelessWidget {
+  const _FollowUpRemindersTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Get.find<CollectionSettingsController>();
+    return Obx(() {
+      final on = settings.followUpReminders.value;
+      return BSettingsMenuTile(
+        icon: Iconsax.notification,
+        title: 'Follow-up reminders',
+        subTitle: on
+            ? 'A notification at 8 AM on a reconciliation follow-up date'
+            : 'Off · follow ups still show on the calendar',
+        trailing: Switch(
+          key: const ValueKey('settings-followup-reminders'),
+          value: on,
+          onChanged: settings.setFollowUpReminders,
+        ),
+        onTap: () => settings.setFollowUpReminders(!on),
+      );
+    });
   }
 }
 
