@@ -157,11 +157,41 @@ class CollectionEngagementRecord {
 /// [clearServerCopied] is narrow on purpose and keeps that guarantee: it can
 /// only reach rows the backfill wrote, never an engagement this device
 /// recorded. [purgeOlderThan] is dated, and nothing calls it yet.
+/// [deleteDiscarded] is the one way a recorded engagement goes: the collector
+/// discarded its queued upload, so the work never reaches the server.
 class CollectionEngagementDao {
   final Database db;
   CollectionEngagementDao(this.db);
 
   static const table = 'a_tblCollectionEngagement';
+
+  /// Removes [collectorCode]'s own (LOCAL) rows stamped at exactly one of
+  /// [engagedAts]: the `EngagementDate` of queued changes the collector
+  /// discarded (each write archives at the same stamp it queues). Work
+  /// already uploaded has no queued change left, so it is never matched.
+  /// Returns how many rows went.
+  Future<int> deleteDiscarded({
+    required String collectorCode,
+    required Iterable<String> engagedAts,
+  }) async {
+    final stamps = engagedAts.where((s) => s.isNotEmpty).toSet().toList();
+    var removed = 0;
+    // SQLite caps bound variables; 400 stamps per statement stays well under.
+    for (var i = 0; i < stamps.length; i += 400) {
+      final chunk = stamps.sublist(i, (i + 400).clamp(0, stamps.length));
+      removed += await db.delete(
+        table,
+        where: 'source = ? AND collectorCode = ? AND engagedAt IN '
+            '(${List.filled(chunk.length, '?').join(',')})',
+        whereArgs: [
+          CollectionEngagementRecord.sourceLocal,
+          collectorCode,
+          ...chunk,
+        ],
+      );
+    }
+    return removed;
+  }
 
   Future<void> upsert(CollectionEngagementRecord record) => db.insert(
         table,

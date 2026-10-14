@@ -103,6 +103,29 @@ class ReconAttachmentDao {
       'WHERE attachmentId = ?',
       [ReconAttachmentStatus.failed, error, attachmentId]);
 
+  /// Removes the photos of [caseIds] (every step) and of [activityIds], and
+  /// returns them, so the caller can delete their files. For steps whose
+  /// upload the collector discarded: the server will never have them.
+  Future<List<ReconAttachmentRecord>> deleteFor({
+    Iterable<String> caseIds = const [],
+    Iterable<String> activityIds = const [],
+  }) async {
+    final cases = caseIds.toSet().toList();
+    final steps = activityIds.toSet().toList();
+    if (cases.isEmpty && steps.isEmpty) return const [];
+    String inList(List<String> ids) => List.filled(ids.length, '?').join(',');
+    final where = [
+      if (cases.isNotEmpty) 'caseId IN (${inList(cases)})',
+      if (steps.isNotEmpty) 'activityId IN (${inList(steps)})',
+    ].join(' OR ');
+    final args = [...cases, ...steps];
+    return db.transaction((txn) async {
+      final rows = await txn.query(table, where: where, whereArgs: args);
+      await txn.delete(table, where: where, whereArgs: args);
+      return rows.map(ReconAttachmentRecord.fromRow).toList();
+    });
+  }
+
   Future<int> countUnsent() async =>
       Sqflite.firstIntValue(await db.rawQuery(
           'SELECT COUNT(*) FROM $table WHERE status != ?',

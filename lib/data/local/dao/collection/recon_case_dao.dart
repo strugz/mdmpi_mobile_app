@@ -43,6 +43,42 @@ class ReconCaseDao {
     });
   }
 
+  /// Removes what this device logged and the collector discarded before it
+  /// was uploaded: the cases in [caseIds] that this device opened (with
+  /// their invoices and every step), and the steps in [activityIds] that this
+  /// device logged. A server copy is never removed; the next download brings
+  /// back its state.
+  Future<void> deleteDiscarded({
+    Iterable<String> caseIds = const [],
+    Iterable<String> activityIds = const [],
+  }) async {
+    final cases = caseIds.toSet().toList();
+    final steps = activityIds.toSet().toList();
+    if (cases.isEmpty && steps.isEmpty) return;
+    String inList(List<String> ids) => List.filled(ids.length, '?').join(',');
+    await db.transaction((txn) async {
+      if (cases.isNotEmpty) {
+        final local = (await txn.query(caseTable,
+                columns: ['caseId'],
+                where: 'source = ? AND caseId IN (${inList(cases)})',
+                whereArgs: [ReconSource.local, ...cases]))
+            .map((r) => r['caseId'] as String)
+            .toList();
+        if (local.isNotEmpty) {
+          final w = 'caseId IN (${inList(local)})';
+          await txn.delete(caseTable, where: w, whereArgs: local);
+          await txn.delete(invoiceTable, where: w, whereArgs: local);
+          await txn.delete(activityTable, where: w, whereArgs: local);
+        }
+      }
+      if (steps.isNotEmpty) {
+        await txn.delete(activityTable,
+            where: 'source = ? AND activityId IN (${inList(steps)})',
+            whereArgs: [ReconSource.local, ...steps]);
+      }
+    });
+  }
+
   /// Who holds the case now: '' when released and waiting to be acquired.
   Future<void> setCollector(String caseId, String code, String name) =>
       db.update(caseTable, {'collectorCode': code, 'collectorName': name},

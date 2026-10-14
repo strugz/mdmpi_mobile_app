@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_upload_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
@@ -18,13 +19,21 @@ class CollectionUploadOutboxScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Upload Collections'),
         actions: [
-          Obx(() => (controller.pending.isEmpty || controller.isUploading.value)
-              ? const SizedBox.shrink()
-              : IconButton(
-                  tooltip: 'Discard all',
-                  icon: const Icon(Iconsax.trash),
-                  onPressed: () => _confirmDiscardAll(controller),
-                )),
+          Obx(() => controller.isResetting.value
+              ? const Padding(
+                  padding: EdgeInsets.all(BSizes.md),
+                  child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2)),
+                )
+              : (controller.pending.isEmpty || controller.isUploading.value)
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      tooltip: 'Discard all',
+                      icon: const Icon(Iconsax.trash),
+                      onPressed: () => _confirmDiscardAll(controller),
+                    )),
         ],
       ),
       body: Obx(() {
@@ -88,16 +97,23 @@ class CollectionUploadOutboxScreen extends StatelessWidget {
 
   void _confirmDiscardAll(CollectionUploadController controller) {
     Get.defaultDialog(
-      title: 'Discard all?',
+      title: 'Discard all and reset?',
       middleText:
-          'This permanently removes all queued collections without uploading them.',
+          'Everything queued is removed without uploading, and this phone goes '
+          "back to the server's copy: cases, calendar entries, claims and "
+          'payments recorded since your last upload disappear. Needs internet.',
       textConfirm: 'Discard',
       textCancel: 'Cancel',
       confirmTextColor: BCollectionColors.surface,
       buttonColor: BCollectionColors.danger,
-      onConfirm: () {
+      onConfirm: () async {
         Get.back();
-        controller.discardAll();
+        final result = await controller.discardAll();
+        if (result.isSuccess) {
+          BLoaders.successSnackBar(title: 'Reset', message: result.value);
+        } else {
+          BLoaders.errorSnackBar(title: 'Not reset', message: result.error);
+        }
       },
     );
   }

@@ -201,6 +201,40 @@ class ReconciliationRepository extends GetxController {
     }
   }
 
+  /// Removes what this phone logged and the collector discarded before it was
+  /// uploaded: the cases in [caseIds] it opened (with every step and photo)
+  /// and the steps in [activityIds] (with their photos and photo files). The
+  /// server never gets them, so they must not go on showing here; a case the
+  /// server has keeps its copy and is refreshed by the next download.
+  Future<Result<void>> discardLocal({
+    Set<String> caseIds = const {},
+    Set<String> activityIds = const {},
+  }) async {
+    if (caseIds.isEmpty && activityIds.isEmpty) return Result.success(null);
+    try {
+      await (await _caseDao())
+          .deleteDiscarded(caseIds: caseIds, activityIds: activityIds);
+      final photos = await (await _attachmentDao())
+          .deleteFor(caseIds: caseIds, activityIds: activityIds);
+      for (final p in photos) {
+        try {
+          final file = File(p.filePath);
+          if (await file.exists()) await file.delete();
+        } catch (e) {
+          logDebug('ReconciliationRepository: photo ${p.attachmentId} '
+              'not deleted: $e');
+        }
+      }
+      version.value++;
+      logDebug('ReconciliationRepository: discarded ${caseIds.length} '
+          'case(s), ${activityIds.length} step(s), ${photos.length} photo(s)');
+      return Result.success(null);
+    } catch (e) {
+      logDebug('ReconciliationRepository.discardLocal error: $e');
+      return Result.failure('Could not remove the discarded cases: $e');
+    }
+  }
+
   /// Log one step of case [caseId], with its [photos] (JPEG bytes).
   ///
   /// Refused with the reason when the rules would not apply it (the case has

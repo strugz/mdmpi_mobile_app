@@ -1574,6 +1574,24 @@ class CollectionRepository extends GetxController {
     return await dao.getCollectionItems();
   }
 
+  /// Removes the calendar / report rows of work the collector discarded
+  /// before uploading: this device's own rows stamped at one of
+  /// [engagedAts] (see [CollectionEngagementDao.deleteDiscarded]).
+  Future<Result<int>> discardLocalEngagements(Set<String> engagedAts) async {
+    if (engagedAts.isEmpty) return Result.success(0);
+    try {
+      final dao = await DatabaseHelper.instance.collectionEngagementDao;
+      final removed = await dao.deleteDiscarded(
+          collectorCode: collectorCode, engagedAts: engagedAts);
+      if (removed > 0) ownEngagementVersion.value++;
+      logDebug('CollectionRepository: removed $removed discarded engagements');
+      return Result.success(removed);
+    } catch (e) {
+      logDebug('CollectionRepository.discardLocalEngagements error: $e');
+      return Result.failure('Could not remove the discarded engagements: $e');
+    }
+  }
+
   /// Clear all local collection data.
   Future<void> clearLocalData() async {
     final dao = await _dao;
