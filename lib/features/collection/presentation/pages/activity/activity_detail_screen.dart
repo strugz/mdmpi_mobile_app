@@ -169,7 +169,12 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     }
   }
 
-  void _saveActivity() {
+  /// Set while a save (and the SMS after it) runs, so a second tap does not
+  /// record the payment twice.
+  bool _saving = false;
+
+  Future<void> _saveActivity() async {
+    if (_saving) return;
     final controller = CollectionActivityController.instance;
     final isOthers = selectedStatus == CollectionStatusColors.statusOthers;
     final customRemark = othersRemarkController.text.trim();
@@ -182,8 +187,11 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
     final finalStatus = isOthers ? customRemark : selectedStatus;
     final usingCheck = _payingByCheck;
+    final status = finalStatus.isEmpty ? 'Others' : finalStatus;
+    final smsFollows = CollectionSmsService.smsFollows(status: status);
+    _saving = true;
 
-    controller.saveActivity(
+    final saving = controller.saveActivity(
       id: widget.item.id,
       status: finalStatus.isEmpty ? 'Others' : finalStatus,
       remarks: finalStatus.isEmpty ? 'Others' : finalStatus,
@@ -204,12 +212,20 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               : 'Collection',
     );
 
-    Get.back();
-    // With an SMS to follow, the sending view and "Message Sent!" confirm it.
-    if (!CollectionSmsService.smsFollows(
-        status: finalStatus.isEmpty ? 'Others' : finalStatus)) {
+    if (!smsFollows) {
+      Get.back();
       BLoaders.successSnackBar(title: 'Saved', message: 'Engagement updated');
+      return;
     }
+
+    // With an SMS to follow, stay here while the sending view and "Message
+    // Sent!" play over this screen; they are the confirmation. Leaving first
+    // put them over the list, after the record had already closed.
+    await saving;
+    await CollectionSmsService.whenSettled();
+    // Not Get.back(): with a failed-SMS warning showing, it only closes the
+    // snackbar and the record would stay open.
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override

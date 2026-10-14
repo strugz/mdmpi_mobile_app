@@ -174,6 +174,53 @@ void main() {
       expect(result.value.map((p) => p.key), ['JCA']);
     });
 
+    test(
+        'empty CNTMST on the phone (fresh install, Collection sign-in) is '
+        'downloaded, stored, and used', () async {
+      List<CNTMSTModel>? stored;
+      final repo = UserDirectoryRepository(
+        cntmst: () async => const [],
+        cntmstRemote: () async =>
+            [_cnt('HEAD', full: 'The Head', phone: '0917 000 0009')],
+        saveCntmst: (rows) async => stored = rows,
+      );
+      final result = await repo.load();
+      expect(result.value.single.phone, '0917 000 0009');
+      expect(stored?.single.cntmnn, 'HEAD');
+    });
+
+    test('a CNTMST already on the phone is not downloaded again', () async {
+      var downloads = 0;
+      final repo = UserDirectoryRepository(
+        cntmst: () async => [_cnt('JCA', full: 'Jay')],
+        cntmstRemote: () async {
+          downloads++;
+          return const [];
+        },
+      );
+      await repo.load();
+      expect(downloads, 0);
+    });
+
+    test('a failed refill is not cached: the next load tries again', () async {
+      var downloads = 0;
+      final repo = UserDirectoryRepository(
+        cntmst: () async => const [],
+        cntmstRemote: () async {
+          downloads++;
+          if (downloads == 1) throw Exception('offline');
+          return [_cnt('HEAD', full: 'The Head', phone: '0917 000 0009')];
+        },
+        saveCntmst: (_) async {},
+        firestoreUsers: () async => [_fs('JCA', first: 'Jay')],
+      );
+      final first = await repo.load();
+      expect(first.value.map((p) => p.key), ['JCA']);
+      final second = await repo.load();
+      expect(downloads, 2);
+      expect(second.value.map((p) => p.key), containsAll(['HEAD', 'JCA']));
+    });
+
     test('a failure only when neither source can be read', () async {
       final repo = UserDirectoryRepository(
         cntmst: () async => throw Exception('no db'),

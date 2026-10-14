@@ -425,6 +425,20 @@ class CollectionRepository extends GetxController {
         settled: isFullyPaid,
       );
 
+      // Notify the collection head (Android, over cellular — works offline).
+      // SMS trigger 2, Saving Engagement: Collected or Partial only. Before
+      // the queue below, which waits up to seconds for a location fix the
+      // message does not need: the sending view comes up on the tap.
+      unawaited(_notifySms((sms) => sms.notifyEngagementSaved(
+            clientName: item.client.name,
+            poNumbers: [item.poNumber],
+            invoices: [SmsInvoiceLine(id: item.id, amount: newlyCollected)],
+            status: status,
+            bankName: bankName,
+            checkNumber: checkNumber,
+            checkDate: checkDate,
+          )));
+
       // Queue for end-of-day upload.
       await _queueChange('SAVE_ACTIVITY', id, {
         'EngagementDate': now,
@@ -436,18 +450,6 @@ class CollectionRepository extends GetxController {
         'CheckDate': checkDate,
         'PurposeOfVisit': purposeOfVisit,
       });
-
-      // Notify the collection head (Android, over cellular — works offline).
-      // SMS trigger 2, Saving Engagement: Collected or Partial only.
-      unawaited(_notifySms((sms) => sms.notifyEngagementSaved(
-            clientName: item.client.name,
-            poNumbers: [item.poNumber],
-            invoices: [SmsInvoiceLine(id: item.id, amount: newlyCollected)],
-            status: status,
-            bankName: bankName,
-            checkNumber: checkNumber,
-            checkDate: checkDate,
-          )));
 
       _showSuccess('Activity saved successfully', silent: silent);
       logDebug('CollectionRepository: Activity saved for $id');
@@ -486,6 +488,8 @@ class CollectionRepository extends GetxController {
       // Gathered through the loop and committed once. The batch shares one
       // `now`, and the itemId differs per row, so the keys still differ.
       final archived = <CollectionEngagementRecord>[];
+      // Queued after the SMS goes out (see below).
+      final queued = <(String, Map<String, dynamic>)>[];
 
       for (final id in ids) {
         final item = await dao.getCollectionItemById(id);
@@ -550,7 +554,7 @@ class CollectionRepository extends GetxController {
         );
         if (record != null) archived.add(record);
 
-        await _queueChange('BATCH_ACTIVITY', id, {
+        queued.add((id, {
           'EngagementDate': now,
           'Status': itemStatus,
           'Remarks': itemRemarks,
@@ -559,12 +563,14 @@ class CollectionRepository extends GetxController {
           'CheckNo': checkNumber,
           'CheckDate': checkDate,
           'PurposeOfVisit': purposeOfVisit,
-        });
+        }));
       }
 
       await _archiveAll(archived);
 
-      // SMS trigger 2, Saving Engagement: one message for the batch.
+      // SMS trigger 2, Saving Engagement: one message for the batch. Before
+      // the queue below, which waits for a location fix the message does not
+      // need: the sending view comes up on the tap.
       if (batchCount > 0 && smsStatus != null) {
         final status = smsStatus;
         unawaited(_notifySms((sms) => sms.notifyEngagementSaved(
@@ -576,6 +582,11 @@ class CollectionRepository extends GetxController {
               checkNumber: checkNumber,
               checkDate: checkDate,
             )));
+      }
+
+      // Queue for end-of-day upload, in list order.
+      for (final (id, fields) in queued) {
+        await _queueChange('BATCH_ACTIVITY', id, fields);
       }
 
       _showSuccess('Batch activity saved successfully', silent: silent);

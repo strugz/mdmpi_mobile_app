@@ -131,7 +131,10 @@ class CollectionSmsService extends GetxController {
     SentViewOpener? showSent,
     InitialsResolver? initials,
     Duration betweenRecipients = const Duration(seconds: 1),
-  })  : _head = head ?? _headFromDirectory,
+    Duration? minSendingView,
+  })  : _minSendingView = minSendingView ??
+            (openProgress == null ? defaultMinSendingView : Duration.zero),
+        _head = head ?? _headFromDirectory,
         _contacts = contacts ?? _collectionContacts,
         _sendOne = send,
         _permission = permission,
@@ -169,6 +172,12 @@ class CollectionSmsService extends GetxController {
   final SentViewOpener _showSent;
   final InitialsResolver _initials;
   final Duration _betweenRecipients;
+
+  /// The sending view stays up at least this long. One recipient goes out in
+  /// about a tenth of a second, which flashed the view by unseen and left
+  /// "Message Sent!" with nothing before it to say a message was going out.
+  static const Duration defaultMinSendingView = Duration(milliseconds: 1500);
+  final Duration _minSendingView;
 
   /// "No one to text" is said once per app run, not on every save.
   static bool _noRecipientsShown = false;
@@ -566,6 +575,20 @@ class CollectionSmsService extends GetxController {
 
   /// The last queued send, and the "Message Sent!" view it left open.
   Future<void> _queue = Future<void>.value();
+
+  /// Completes once every send queued so far is done, its sending view and
+  /// "Message Sent!" included. Never fails.
+  Future<void> get settled => _queue;
+
+  /// [settled] on the registered service; at once when there is none.
+  static Future<void> whenSettled() {
+    if (!Get.isRegistered<CollectionSmsService>()) return Future.value();
+    try {
+      return Get.find<CollectionSmsService>().settled;
+    } catch (_) {
+      return Future.value();
+    }
+  }
   Future<void>? _sentView;
 
   /// Send [message] to every recipient. Never throws; the outcome is
@@ -662,6 +685,7 @@ class CollectionSmsService extends GetxController {
     } catch (e) {
       logDebug('CollectionSmsService: progress view failed: $e');
     }
+    final shownAt = DateTime.now();
     var confirmed = 0;
     var unconfirmed = 0;
     try {
@@ -679,6 +703,8 @@ class CollectionSmsService extends GetxController {
           await Future.delayed(_betweenRecipients);
         }
       }
+      final shortBy = _minSendingView - DateTime.now().difference(shownAt);
+      if (shortBy > Duration.zero) await Future.delayed(shortBy);
     } finally {
       try {
         _closeProgress();

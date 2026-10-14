@@ -307,8 +307,12 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     });
   }
 
-  void _saveBatch() {
-    if (!_canSave) return;
+  /// Set while a save (and the SMS after it) runs, so a second tap does not
+  /// record the batch twice.
+  bool _saving = false;
+
+  Future<void> _saveBatch() async {
+    if (!_canSave || _saving) return;
 
     final controller = CollectionActivityController.instance;
 
@@ -334,7 +338,13 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     String? trimmedOrNull(TextEditingController c) =>
         c.text.trim().isEmpty ? null : c.text.trim();
 
-    controller.saveBatchActivity(
+    // One Collected or Partial row means the batch SMS goes out, and the
+    // sending view and "Message Sent!" confirm the save.
+    final smsFollows = finalStatuses.values
+        .any((s) => CollectionSmsService.smsFollows(status: s));
+    _saving = true;
+
+    final saving = controller.saveBatchActivity(
       ids: widget.items.map((e) => e.id).toList(),
       statuses: finalStatuses,
       remarks: finalRemarks,
@@ -346,18 +356,21 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
       purposeOfVisit: 'Collection',
     );
 
-    Get.back();
-    // One Collected or Partial row means the batch SMS goes out, and the
-    // sending view and "Message Sent!" confirm the save.
-    final smsFollows = finalStatuses.values
-        .any((s) => CollectionSmsService.smsFollows(status: s));
     if (!smsFollows) {
+      Get.back();
       BLoaders.successSnackBar(
         title: 'Saved',
         message:
             'Recorded ${BFormatter.formatPesoCurrency(_targetTotal)} across ${widget.items.length} invoices.',
       );
+      return;
     }
+
+    // Stay here while the sending view and "Message Sent!" play over this
+    // screen, then leave (see ActivityDetailScreen._saveActivity).
+    await saving;
+    await CollectionSmsService.whenSettled();
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override

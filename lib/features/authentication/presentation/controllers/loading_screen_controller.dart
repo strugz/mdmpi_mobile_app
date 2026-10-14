@@ -20,10 +20,10 @@ class LoadingScreenController extends GetxController {
   final userController = Get.find<UserController>();
   final userMDMPIController = Get.find<UserMdmpiController>();
 
-  /// The lists only the Logistics screens read (clients, users, requesters,
-  /// item and form categories). A Collection user's screens read none of
-  /// them, so they are not loaded at their sign-in; that was a wait on six
-  /// "Loading Form Categories…" steps for data they never see.
+  /// The lists only the Logistics screens read (clients, users, item and
+  /// form categories). A Collection user's screens read none of them, so
+  /// they are not loaded at their sign-in. Requesters (CNTMST) is not one of
+  /// them: it loads for everyone.
   static bool needsLogisticsData(String department) =>
       !BCollectionRoles.isCollectionDepartment(department);
 
@@ -47,16 +47,19 @@ class LoadingScreenController extends GetxController {
       loadingProgressText.value = 'Loading User Profile...';
       await userController.fetchUserRecord();
       final steps = <({String label, Future<void> Function() run})>[
+        // CNTMST for every department: Logistics picks requesters from it,
+        // and Collection's SMS (the Head's number), My Head and the Contact
+        // Directory read it too.
+        (
+          label: 'Requesters',
+          run: () => userMDMPIController.fetchUserMdmpiFromDb()
+        ),
         if (needsLogisticsData(userController.user.value.department)) ...[
           (
             label: 'Clients',
             run: () => clientController.fetchClientFromDb(false)
           ),
           (label: 'Users', run: () => userController.fetchUsersRecord(false)),
-          (
-            label: 'Requesters',
-            run: () => userMDMPIController.fetchUserMdmpiFromDb()
-          ),
           (label: 'Item Categories', run: _loadItemCategories),
           (label: 'Form Categories', run: _loadFormCategories),
         ],
