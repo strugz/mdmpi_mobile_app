@@ -129,6 +129,19 @@ Code: `lib/data/models/report_table.dart` (the rows the screen and the CSV share
 
 ### Backend gaps (team feed, not edited)
 
+**Done 2026-10-13 (gaps 1, 2 and 6):** `GET /api4/Collection/team/summary?month=yyyy-MM`
+(MDMPI.App `CollectionReportRepository.GetTeamSummaryAsync`, not deployed) counts each collector's
+month on the server with the phone's rules: collected, engagements, visits, settled invoices (the
+payment that brought the balance to zero, so an instalment plan's last payment counts, or an outcome
+of Collected), open and flagged cases they hold now (flags from `ReconRules`), cases closed in the
+month, and steps they logged in the month. The Head's Collectors summary uses it for teammates
+(Data source "Server"). Only a server without it (404) falls back to the team feed below. Any
+other failure (a server error, no connection, an answer that can't be read) is shown as the
+team error, with the own row kept, so a broken server isn't mistaken for an older one. The
+collector's own row stays from the phone. A server row can never replace it, whatever the
+code's casing or spacing. "Recon closed" now counts cases closed in the selected
+month on every row (it was every closed case on the phone). Gaps 3–5 remain.
+
 Teammates' rows are approximate until the feed carries more. In order of value:
 
 1. **`GET /api4/Collection/team/summary?month=yyyy-MM`**: per collector: collected, engagements,

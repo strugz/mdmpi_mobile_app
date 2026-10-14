@@ -32,8 +32,9 @@ class TeamActivityFeed {
           .map(TeamCollector.fromJson)
           .where((c) => c.code.isNotEmpty)
           .toList(),
-      engagements:
-          _list(_pick(json, 'Engagements')).map(TeamEngagement.fromJson).toList(),
+      engagements: _list(_pick(json, 'Engagements'))
+          .map(TeamEngagement.fromJson)
+          .toList(),
     );
   }
 }
@@ -137,6 +138,73 @@ class TeamEngagement {
       purposeOfVisit: _strOrNull(_pick(json, 'PurposeOfVisit')),
       bankName: _strOrNull(_pick(json, 'BankName')),
       referenceNo: _strOrNull(_pick(json, 'ReferenceNo')),
+    );
+  }
+}
+
+/// The Collectors summary for one month, as
+/// `GET /api4/Collection/team/summary?month=yyyy-MM` returns it: one row per
+/// collector, counted on the server with the phone's rules. Online only, like
+/// the feed: unsent work is not here.
+class TeamSummary {
+  const TeamSummary({required this.month, this.collectors = const []});
+
+  /// `yyyy-MM`.
+  final String month;
+  final List<TeamCollectorSummary> collectors;
+
+  factory TeamSummary.fromJson(Map<String, dynamic> json) => TeamSummary(
+        month: _str(_pick(json, 'Month')),
+        collectors: _list(_pick(json, 'Collectors'))
+            .map(TeamCollectorSummary.fromJson)
+            .where((c) => c.code.isNotEmpty)
+            .toList(),
+      );
+}
+
+/// One collector's month on the server. Open and flagged cases are as they
+/// stand now; closed cases and steps are the month's.
+class TeamCollectorSummary {
+  const TeamCollectorSummary({
+    required this.code,
+    this.name = '',
+    this.collected = 0,
+    this.engagements = 0,
+    this.visits = 0,
+    this.settledInvoices = 0,
+    this.reconOpen = 0,
+    this.reconFlagged = 0,
+    this.reconClosed = 0,
+    this.reconSteps = 0,
+  });
+
+  final String code;
+  final String name;
+  final double collected;
+  final int engagements;
+  final int visits;
+
+  /// Paid off by this collector this month, an instalment plan's last
+  /// payment included.
+  final int settledInvoices;
+  final int reconOpen;
+  final int reconFlagged;
+  final int reconClosed;
+  final int reconSteps;
+
+  factory TeamCollectorSummary.fromJson(Map<String, dynamic> json) {
+    int count(String key) => _num(_pick(json, key)).toInt();
+    return TeamCollectorSummary(
+      code: _str(_pick(json, 'Code')).trim().toUpperCase(),
+      name: _str(_pick(json, 'Name')).trim(),
+      collected: _num(_pick(json, 'Collected')),
+      engagements: count('Engagements'),
+      visits: count('Visits'),
+      settledInvoices: count('SettledInvoices'),
+      reconOpen: count('ReconOpen'),
+      reconFlagged: count('ReconFlagged'),
+      reconClosed: count('ReconClosed'),
+      reconSteps: count('ReconSteps'),
     );
   }
 }

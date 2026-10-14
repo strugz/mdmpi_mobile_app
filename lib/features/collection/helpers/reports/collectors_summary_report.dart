@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_summary.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reports/activity_report.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reports/report_month.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case_bundle.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/team_engagement.dart';
@@ -38,7 +39,7 @@ class CollectorSummaryRow {
   /// Steps they logged on cases this month.
   final int reconSteps;
 
-  /// [sourcePhone] or [sourceFeed].
+  /// [sourcePhone], [sourceServer] or [sourceFeed].
   final String source;
 
   /// The signed-in collector's own row, from this phone's archive (exact,
@@ -46,8 +47,12 @@ class CollectorSummaryRow {
   static const sourcePhone = 'This phone';
 
   /// A teammate's row, from the uploaded team feed (approximate; see the
-  /// Notes column).
+  /// Notes column). Only when the server has no summary yet.
   static const sourceFeed = 'Team feed';
+
+  /// A teammate's row counted on the server (`team/summary`): exact for
+  /// uploaded work, case counts included.
+  static const sourceServer = 'Server';
 
   String get label => name.trim().isNotEmpty ? name.trim() : code;
 
@@ -91,6 +96,34 @@ CollectorSummaryRow ownSummaryRow({
       source: CollectorSummaryRow.sourcePhone,
     );
 
+/// Teammates' rows from the server's summary, skipping [skipCode] (the
+/// signed-in collector, whose own row is exact). Their case counts are the
+/// server's and are kept by [withReconCounts].
+List<CollectorSummaryRow> serverSummaryRows(TeamSummary summary,
+    {String skipCode = ''}) {
+  final skip = skipCode.trim().toUpperCase();
+  return [
+    for (final c in summary.collectors)
+      // Codes compared as the phone keeps them (" jca " is JCA), so the
+      // server can never stand in for the signed-in collector's own row.
+      if (c.code.trim().toUpperCase() case final code
+          when code.isNotEmpty && code != skip)
+        CollectorSummaryRow(
+          code: code,
+          name: c.name,
+          collected: c.collected,
+          engagements: c.engagements,
+          visits: c.visits,
+          settledInvoices: c.settledInvoices,
+          reconOpen: c.reconOpen,
+          reconFlagged: c.reconFlagged,
+          reconClosed: c.reconClosed,
+          reconSteps: c.reconSteps,
+          source: CollectorSummaryRow.sourceServer,
+        ),
+  ];
+}
+
 /// Teammates' rows from the team feed, one per collector, skipping
 /// [skipCode] (the signed-in collector, whose own row is exact).
 List<CollectorSummaryRow> teamSummaryRows(TeamActivityFeed feed,
@@ -133,21 +166,29 @@ List<CollectorSummaryRow> teamSummaryRows(TeamActivityFeed feed,
   ];
 }
 
-/// [rows] with each collector's case counts ([reconByCollector]: open and
-/// flagged cases they hold, closed ones they held) and the steps they
-/// logged in [yearMonth]. A collector who only has cases gets a row of their
-/// own.
+/// [rows] with each collector's case counts from the cases on this phone
+/// ([reconByCollector]: open and flagged cases they hold now, ones that
+/// closed in [yearMonth] while they held them) and the steps they logged in
+/// [yearMonth]. A [CollectorSummaryRow.sourceServer] row keeps the server's
+/// counts. A collector who only has cases gets a row of their own.
 List<CollectorSummaryRow> withReconCounts(
   List<CollectorSummaryRow> rows,
   Iterable<({ReconCaseBundle bundle, ReconEvaluation evaluation})> cases, {
   required String yearMonth,
 }) {
   final held = {
-    for (final c in reconByCollector(cases))
+    for (final c in reconByCollector(cases.where((c) =>
+        !c.evaluation.isClosed ||
+        BReportMonth.contains(yearMonth, c.evaluation.dateClosed))))
       if (c.collectorCode.isNotEmpty) c.collectorCode: c,
   };
   final bundles = [for (final c in cases) c.bundle];
-  final byCode = {for (final r in rows) r.code.trim().toUpperCase(): r};
+  // The first row for a code wins: the caller puts the signed-in collector's
+  // own (exact) row first, and nothing later may replace it.
+  final byCode = <String, CollectorSummaryRow>{};
+  for (final r in rows) {
+    byCode.putIfAbsent(r.code.trim().toUpperCase(), () => r);
+  }
   for (final c in held.values) {
     byCode.putIfAbsent(
         c.collectorCode,
@@ -158,14 +199,17 @@ List<CollectorSummaryRow> withReconCounts(
   }
   return [
     for (final MapEntry(key: code, value: row) in byCode.entries)
-      row.withRecon(
-        open: held[code]?.open ?? 0,
-        flagged: held[code]?.needsAttention ?? 0,
-        closed: held[code]?.closed ?? 0,
-        steps: reconStepsInMonth(bundles,
-                collectorCode: code, yearMonth: yearMonth)
-            .length,
-      ),
+      if (row.source == CollectorSummaryRow.sourceServer)
+        row
+      else
+        row.withRecon(
+          open: held[code]?.open ?? 0,
+          flagged: held[code]?.needsAttention ?? 0,
+          closed: held[code]?.closed ?? 0,
+          steps: reconStepsInMonth(bundles,
+                  collectorCode: code, yearMonth: yearMonth)
+              .length,
+        ),
   ]..sort((a, b) {
       if (a.source != b.source) {
         return a.source == CollectorSummaryRow.sourcePhone ? -1 : 1;
@@ -212,11 +256,15 @@ ReportTable buildCollectorsSummary(List<CollectorSummaryRow> rows,
           ReportCell.integer(r.reconClosed),
           ReportCell.integer(r.reconSteps),
           ReportCell.text(r.source),
-          ReportCell.text(r.source == CollectorSummaryRow.sourceFeed
-              ? 'Uploaded work only; settled = invoices collected in full, '
+          ReportCell.text(switch (r.source) {
+            CollectorSummaryRow.sourceFeed =>
+              'Uploaded work only; settled = invoices collected in full, '
                   'instalments not counted; recon counts are the cases on '
-                  'this phone'
-              : ''),
+                  'this phone',
+            CollectorSummaryRow.sourceServer =>
+              'Uploaded work only; open and flagged cases as they stand now',
+            _ => '',
+          }),
         ],
     ],
     totals: rows.isEmpty

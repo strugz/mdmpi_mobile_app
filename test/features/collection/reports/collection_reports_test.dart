@@ -97,10 +97,17 @@ void main() {
   group('Activity report', () {
     final engagements = [
       _e('2026-09-03T10:00:00', amount: 1000, settled: true),
-      _e('2026-09-03T15:00:00', item: '700002', status: 'Partially Collected', amount: 200),
-      _e('2026-09-04T09:00:00', item: '700003', status: 'Deposit', amount: 5000),
-      _e('2026-09-05T09:00:00', kind: 'ADVANCE', item: 'AP-1', status: 'Advanced Payment', amount: 800),
-      _e('2026-09-02T08:00:00', kind: 'ACCOUNT', item: '', client: 'NCR-1', status: 'Follow Up'),
+      _e('2026-09-03T15:00:00',
+          item: '700002', status: 'Partially Collected', amount: 200),
+      _e('2026-09-04T09:00:00',
+          item: '700003', status: 'Deposit', amount: 5000),
+      _e('2026-09-05T09:00:00',
+          kind: 'ADVANCE',
+          item: 'AP-1',
+          status: 'Advanced Payment',
+          amount: 800),
+      _e('2026-09-02T08:00:00',
+          kind: 'ACCOUNT', item: '', client: 'NCR-1', status: 'Follow Up'),
     ];
     final table = buildActivityReport(ActivityReportInput(
       collectorCode: 'jca',
@@ -122,7 +129,8 @@ void main() {
     });
 
     test('my own logged recon steps in the month, never automatic ones', () {
-      expect(table.summary['Recon steps'], '2', reason: 'SOA and one follow up');
+      expect(table.summary['Recon steps'], '2',
+          reason: 'SOA and one follow up');
       final recon = table.rows.where((r) => r[2].csv == 'Reconciliation step');
       expect(recon.map((r) => r[6].csv), ['SOA sent', 'Follow up']);
       expect(recon.every((r) => r[8].csv == 'N'), isTrue);
@@ -147,11 +155,40 @@ void main() {
         code: 'JCA',
         name: 'Jay',
         engagements: [_e('2026-09-03T10:00:00', amount: 1000, settled: true)]);
-    final feed = TeamActivityFeed(from: '2026-09-01', to: '2026-09-30', engagements: [
-      const TeamEngagement(kind: 'Engagement', id: 1, collectorCode: 'MAR', collectorName: 'Mar', clientCode: 'C1', documentId: 'D1', status: 'Collected', amount: 300, date: '2026-09-02'),
-      const TeamEngagement(kind: 'Engagement', id: 2, collectorCode: 'MAR', clientCode: 'C1', documentId: 'D2', status: 'Partial Payment', amount: 100, date: '2026-09-02'),
-      const TeamEngagement(kind: 'Deposit', id: 3, collectorCode: 'MAR', amount: 999, date: '2026-09-03'),
-      const TeamEngagement(kind: 'Engagement', id: 4, collectorCode: 'jca', status: 'Collected', amount: 77, date: '2026-09-03'),
+    final feed =
+        TeamActivityFeed(from: '2026-09-01', to: '2026-09-30', engagements: [
+      const TeamEngagement(
+          kind: 'Engagement',
+          id: 1,
+          collectorCode: 'MAR',
+          collectorName: 'Mar',
+          clientCode: 'C1',
+          documentId: 'D1',
+          status: 'Collected',
+          amount: 300,
+          date: '2026-09-02'),
+      const TeamEngagement(
+          kind: 'Engagement',
+          id: 2,
+          collectorCode: 'MAR',
+          clientCode: 'C1',
+          documentId: 'D2',
+          status: 'Partial Payment',
+          amount: 100,
+          date: '2026-09-02'),
+      const TeamEngagement(
+          kind: 'Deposit',
+          id: 3,
+          collectorCode: 'MAR',
+          amount: 999,
+          date: '2026-09-03'),
+      const TeamEngagement(
+          kind: 'Engagement',
+          id: 4,
+          collectorCode: 'jca',
+          status: 'Collected',
+          amount: 77,
+          date: '2026-09-03'),
     ]);
 
     test('team rows skip my own code and leave deposits out of collected', () {
@@ -175,6 +212,114 @@ void main() {
       final table = buildCollectorsSummary(rows, yearMonth: '2026-09');
       expect(table.totals![2].csv, '1400.00');
       expect(table.rows.last[11].csv, contains('Uploaded work only'));
+    });
+
+    const summary = TeamSummary(month: '2026-09', collectors: [
+      TeamCollectorSummary(
+          code: 'JCA', name: 'Jay', collected: 77, engagements: 1),
+      TeamCollectorSummary(
+          code: 'MAR',
+          name: 'Mar',
+          collected: 400,
+          engagements: 3,
+          visits: 1,
+          settledInvoices: 2,
+          reconOpen: 4,
+          reconFlagged: 1,
+          reconClosed: 2,
+          reconSteps: 5),
+    ]);
+
+    test('server rows skip my own code and keep the server case counts', () {
+      final rows = withReconCounts(
+        [own, ...serverSummaryRows(summary, skipCode: 'jca')],
+        [(bundle: _case, evaluation: _case.evaluate(now: now))],
+        yearMonth: '2026-09',
+      );
+      expect(rows.map((r) => r.code), ['JCA', 'MAR']);
+      final mar = rows.last;
+      expect(mar.source, CollectorSummaryRow.sourceServer);
+      expect(mar.settledInvoices, 2, reason: 'instalments counted');
+      expect(mar.reconOpen, 4);
+      expect(mar.reconSteps, 5,
+          reason: "the server's count, not the note on this phone");
+      expect(rows.first.reconOpen, 1, reason: 'my own row: this phone');
+      final table = buildCollectorsSummary(rows, yearMonth: '2026-09');
+      expect(table.rows.last[10].csv, 'Server');
+      expect(table.rows.last[11].csv, contains('as they stand now'));
+    });
+
+    test('a case closed in another month is not counted as closed', () {
+      final closed = ReconCaseBundle(
+        reconCase: _case.reconCase,
+        invoices: _case.invoices,
+        activities: [
+          ..._case.activities.take(2),
+          _step('RA-9', ReconActivityType.caseNotCompleted,
+              '2026-09-10T10:00:00'),
+        ],
+      );
+      final cases = [(bundle: closed, evaluation: closed.evaluate(now: now))];
+      expect(
+          withReconCounts([own], cases, yearMonth: '2026-09')
+              .single
+              .reconClosed,
+          1);
+      expect(
+          withReconCounts([own], cases, yearMonth: '2026-10')
+              .single
+              .reconClosed,
+          0);
+    });
+
+    test('closed at the month edge counts in its own Manila month', () {
+      int closedIn(String closedAt, String ym) {
+        final b = ReconCaseBundle(
+          reconCase: _case.reconCase,
+          invoices: _case.invoices,
+          activities: [
+            ..._case.activities.take(2),
+            _step('RA-9', ReconActivityType.caseNotCompleted, closedAt),
+          ],
+        );
+        return withReconCounts(
+                [own], [(bundle: b, evaluation: b.evaluate(now: now))],
+                yearMonth: ym)
+            .single
+            .reconClosed;
+      }
+
+      expect(closedIn('2026-09-30T23:59:59', '2026-09'), 1);
+      expect(closedIn('2026-09-30T23:59:59', '2026-10'), 0);
+      expect(closedIn('2026-10-01T00:00:00', '2026-09'), 0);
+      expect(closedIn('2026-10-01T00:00:00', '2026-10'), 1);
+    });
+
+    test('no close date is never "closed in the month"', () {
+      expect(BReportMonth.contains('2026-09', null), isFalse);
+    });
+
+    test('the summary reads PascalCase and camelCase alike', () {
+      final parsed = TeamSummary.fromJson({
+        'Month': '2026-09',
+        'Collectors': [
+          {
+            'Code': ' mar ',
+            'Name': 'Mar',
+            'Collected': 400.5,
+            'SettledInvoices': 2,
+            'ReconFlagged': 1,
+          },
+          {'code': 'EMP2', 'reconSteps': 3},
+          {'Code': ''},
+        ],
+      });
+      expect(parsed.month, '2026-09');
+      expect(parsed.collectors.map((c) => c.code), ['MAR', 'EMP2']);
+      expect(parsed.collectors.first.collected, 400.5);
+      expect(parsed.collectors.first.settledInvoices, 2);
+      expect(parsed.collectors.first.reconFlagged, 1);
+      expect(parsed.collectors.last.reconSteps, 3);
     });
   });
 

@@ -19,6 +19,12 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/re
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
+/// The server's Collectors summary for one month (`yyyy-MM`): Success(null)
+/// when the server has no summary yet (404), so the team feed stands in;
+/// a failure is a real error, shown as such.
+typedef TeamSummaryLoader = Future<Result<TeamSummary?>> Function(
+    String yearMonth);
+
 /// The collector's archive for one month (`yyyy-MM`).
 typedef OwnEngagementsLoader = Future<Result<List<CollectionEngagementRecord>>>
     Function(String yearMonth);
@@ -31,6 +37,7 @@ class CollectionReportsController extends GetxController {
   CollectionReportsController({
     OwnEngagementsLoader? loadOwn,
     TeamFeedLoader? loadTeam,
+    TeamSummaryLoader? loadSummary,
     List<ReconCaseView> Function(ReconScope scope)? cases,
     RxInterface? casesChanged,
     String Function()? collectorCode,
@@ -40,6 +47,7 @@ class CollectionReportsController extends GetxController {
     DateTime Function()? now,
   })  : _loadOwn = loadOwn ?? _ownFromRepository,
         _loadTeam = loadTeam ?? _teamFromRepository,
+        _loadSummary = loadSummary ?? _summaryFromRepository,
         _cases = cases ?? _casesFromTracker,
         _casesChangedOverride = casesChanged,
         _collectorCode = collectorCode ?? _defaultCode,
@@ -52,6 +60,7 @@ class CollectionReportsController extends GetxController {
 
   final OwnEngagementsLoader _loadOwn;
   final TeamFeedLoader _loadTeam;
+  final TeamSummaryLoader _loadSummary;
   final List<ReconCaseView> Function(ReconScope scope) _cases;
 
   /// Fires when the cases change, so the Reconciliation detail rebuilds;
@@ -163,7 +172,9 @@ class CollectionReportsController extends GetxController {
   }
 
   /// The collector's own row at once; for the Head, the team's after the
-  /// feed answers. A feed failure keeps the own row and says why.
+  /// server answers: its summary, or the team feed from a server that has no
+  /// summary yet (404). Any other failure is not papered over with the
+  /// approximate feed: the own row stays and the error is shown.
   Future<void> loadCollectors() async {
     final generation = ++_collectorsGeneration;
     final ym = yearMonth;
@@ -198,6 +209,22 @@ class CollectionReportsController extends GetxController {
     collectorsTable.value = table(rows);
     if (!head) {
       collectorsLoading.value = false;
+      return;
+    }
+
+    final summary = await _loadSummary(ym);
+    if (generation != _collectorsGeneration) return;
+    if (summary.isFailure) {
+      collectorsLoading.value = false;
+      teamError.value = summary.error;
+      return;
+    }
+    if (summary.value case final server?) {
+      collectorsLoading.value = false;
+      collectorsTable.value = table([
+        ...rows,
+        ...serverSummaryRows(server, skipCode: _collectorCode()),
+      ]);
       return;
     }
 
@@ -249,6 +276,14 @@ class CollectionReportsController extends GetxController {
           {required DateTime from, required DateTime to, String? collector}) =>
       TeamActivityRepository.instance
           .load(from: from, to: to, collector: collector);
+
+  /// No repository (tests, or a build without it) is a server without the
+  /// summary: the team feed stands in.
+  static Future<Result<TeamSummary?>> _summaryFromRepository(
+          String yearMonth) async =>
+      Get.isRegistered<TeamActivityRepository>()
+          ? TeamActivityRepository.instance.loadSummary(yearMonth)
+          : Result.success(null);
 
   static List<ReconCaseView> _casesFromTracker(ReconScope scope) =>
       Get.isRegistered<ReconciliationController>()

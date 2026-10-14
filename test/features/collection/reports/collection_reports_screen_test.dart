@@ -37,21 +37,22 @@ class _Harness {
   final saved = <String, String>{};
   final shared = <String>[];
   final months = <String>[];
-  Result<TeamActivityFeed> team = Result.success(const TeamActivityFeed(
-      from: '',
-      to: '',
-      engagements: [
-        TeamEngagement(
-            kind: 'Engagement',
-            id: 1,
-            collectorCode: 'MAR',
-            collectorName: 'Mar',
-            clientCode: 'C1',
-            status: 'Collected',
-            amount: 300,
-            date: '2026-09-02'),
-      ]));
+  Result<TeamActivityFeed> team =
+      Result.success(const TeamActivityFeed(from: '', to: '', engagements: [
+    TeamEngagement(
+        kind: 'Engagement',
+        id: 1,
+        collectorCode: 'MAR',
+        collectorName: 'Mar',
+        clientCode: 'C1',
+        status: 'Collected',
+        amount: 300,
+        date: '2026-09-02'),
+  ]));
   Completer<void>? holdAugust;
+  /// A server without the summary yet (404) unless a test says otherwise.
+  Result<TeamSummary?> summary = Result.success(null);
+  var teamCalls = 0;
 
   CollectionReportsController controller({bool head = false}) =>
       CollectionReportsController(
@@ -62,7 +63,11 @@ class _Harness {
               ? [_e('2026-09-03T10:00:00', 1000)]
               : <CollectionEngagementRecord>[]);
         },
-        loadTeam: ({required from, required to, collector}) async => team,
+        loadTeam: ({required from, required to, collector}) async {
+          teamCalls++;
+          return team;
+        },
+        loadSummary: (_) async => summary,
         cases: (_) => const [],
         collectorCode: () => 'JCA',
         collectorName: () => 'Jay',
@@ -81,8 +86,8 @@ class _Harness {
       );
 }
 
-Future<void> _pump(WidgetTester tester, CollectionReportsController c,
-    Widget home) async {
+Future<void> _pump(
+    WidgetTester tester, CollectionReportsController c, Widget home) async {
   Get.put(c);
   tester.view.devicePixelRatio = 1;
   tester.view.physicalSize = const Size(360, 800);
@@ -123,8 +128,7 @@ void main() {
       expect(c.activityTable.value!.rows, hasLength(1));
     });
 
-    test('the reconciliation detail rebuilds on a filter or case change',
-        () {
+    test('the reconciliation detail rebuilds on a filter or case change', () {
       final changed = 0.obs;
       var builds = 0;
       final c = CollectionReportsController(
@@ -181,28 +185,96 @@ void main() {
       final h = _Harness();
       final c = h.controller(head: true);
       await c.loadCollectors();
-      expect(c.collectorsTable.value!.rows.map((r) => r[0].csv),
-          ['JCA', 'MAR']);
+      expect(
+          c.collectorsTable.value!.rows.map((r) => r[0].csv), ['JCA', 'MAR']);
 
       h.team = Result.failure('Could not reach the server.');
       await c.loadCollectors();
       expect(c.teamError.value, 'Could not reach the server.');
       expect(c.collectorsTable.value!.rows.single[0].csv, 'JCA');
     });
+
+    test('a broken summary is shown, not replaced by the approximate feed',
+        () async {
+      final h = _Harness()
+        ..summary = Result.failure('The server could not load the summary (500).');
+      final c = h.controller(head: true);
+      await c.loadCollectors();
+      expect(h.teamCalls, 0, reason: 'only a 404 falls back to the feed');
+      expect(c.teamError.value, 'The server could not load the summary (500).');
+      expect(c.collectorsTable.value!.rows.single[0].csv, 'JCA',
+          reason: 'the own row stays');
+      expect(c.collectorsLoading.value, isFalse);
+    });
+
+    test('no summary on the server (404): the feed stands in', () async {
+      final h = _Harness();
+      final c = h.controller(head: true);
+      await c.loadCollectors();
+      expect(h.teamCalls, 1);
+      expect(c.teamError.value, isNull);
+      expect(c.collectorsTable.value!.rows.last[10].csv, isNot('Server'));
+    });
+
+    test('a server summary with no teammates leaves the own row alone',
+        () async {
+      final h = _Harness()
+        ..summary = Result.success(
+            const TeamSummary(month: '2026-09', collectors: []));
+      final c = h.controller(head: true);
+      await c.loadCollectors();
+      expect(h.teamCalls, 0);
+      expect(c.collectorsTable.value!.rows.map((r) => r[0].csv), ['JCA']);
+      expect(c.teamError.value, isNull);
+    });
+
+    test('the server never overwrites the own row, whatever the code casing',
+        () async {
+      final h = _Harness()
+        ..summary =
+            Result.success(const TeamSummary(month: '2026-09', collectors: [
+          TeamCollectorSummary(code: ' jca ', collected: 999999),
+          TeamCollectorSummary(code: 'MAR', collected: 300),
+        ]));
+      final c = h.controller(head: true);
+      await c.loadCollectors();
+      final rows = c.collectorsTable.value!.rows;
+      expect(rows.map((r) => r[0].csv), ['JCA', 'MAR']);
+      expect(rows.first[2].csv, '1000.00', reason: "the phone's own figure");
+    });
+
+    test('the Head gets the server summary when there is one; no feed call',
+        () async {
+      final h = _Harness()
+        ..summary =
+            Result.success(const TeamSummary(month: '2026-09', collectors: [
+          TeamCollectorSummary(code: 'JCA', collected: 1),
+          TeamCollectorSummary(
+              code: 'MAR', name: 'Mar', collected: 300, reconOpen: 2),
+        ]));
+      final c = h.controller(head: true);
+      await c.loadCollectors();
+      expect(h.teamCalls, 0);
+      final rows = c.collectorsTable.value!.rows;
+      expect(rows.map((r) => r[0].csv), ['JCA', 'MAR']);
+      expect(rows.first[2].csv, '1000.00', reason: 'my own row: this phone');
+      expect(rows.last[6].csv, '2');
+      expect(rows.last[10].csv, 'Server');
+      expect(c.teamError.value, isNull);
+    });
   });
 
   group('screens', () {
     testWidgets('the hub opens each report', (tester) async {
-      await _pump(tester, _Harness().controller(),
-          const CollectionReportsScreen());
+      await _pump(
+          tester, _Harness().controller(), const CollectionReportsScreen());
       await tester.tap(find.byKey(const ValueKey('reports-activity')));
       await tester.pumpAndSettle();
       expect(find.text('Activity report'), findsOneWidget);
       expect(find.text('September 2026'), findsOneWidget);
     });
 
-    testWidgets('the activity report saves and shares its CSV',
-        (tester) async {
+    testWidgets('the activity report saves and shares its CSV', (tester) async {
       final h = _Harness();
       await _pump(tester, h.controller(), const ActivityReportScreen());
       expect(find.byKey(const ValueKey('report-row-0')), findsOneWidget);
@@ -228,7 +300,8 @@ void main() {
       expect(find.text('August 2026'), findsOneWidget);
       expect(find.byKey(const ValueKey('report-empty')), findsOneWidget);
       for (final key in ['report-save', 'report-share']) {
-        expect(tester.widget<ButtonStyleButton>(find.byKey(ValueKey(key))).enabled,
+        expect(
+            tester.widget<ButtonStyleButton>(find.byKey(ValueKey(key))).enabled,
             isFalse);
       }
     });
@@ -236,8 +309,8 @@ void main() {
     testWidgets('the Head sees a note when team figures are unavailable',
         (tester) async {
       final h = _Harness()..team = Result.failure('offline');
-      await _pump(tester, h.controller(head: true),
-          const CollectorsSummaryScreen());
+      await _pump(
+          tester, h.controller(head: true), const CollectorsSummaryScreen());
       expect(find.byKey(const ValueKey('report-note')), findsOneWidget);
       expect(find.byKey(const ValueKey('report-row-0')), findsOneWidget);
     });
