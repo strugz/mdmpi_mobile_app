@@ -2,6 +2,7 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_roles.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import '../../../../../../base/utils/constants/image_strings.dart';
 import '../../../../../../base/utils/helpers/network_manager.dart';
@@ -19,22 +20,17 @@ class LoadingScreenController extends GetxController {
   final userController = Get.find<UserController>();
   final userMDMPIController = Get.find<UserMdmpiController>();
 
-  Future<void> loadInitialData() async {
-    final steps = <({String label, Future<void> Function() run})>[
-      (label: 'Clients', run: () => clientController.fetchClientFromDb(false)),
-      (label: 'Users', run: () => userController.fetchUsersRecord(false)),
-      (label: 'User Profile', run: () => userController.fetchUserRecord()),
-      (
-        label: 'Requesters',
-        run: () => userMDMPIController.fetchUserMdmpiFromDb()
-      ),
-      (label: 'Item Categories', run: _loadItemCategories),
-      (label: 'Form Categories', run: _loadFormCategories),
-    ];
+  /// The lists only the Logistics screens read (clients, users, requesters,
+  /// item and form categories). A Collection user's screens read none of
+  /// them, so they are not loaded at their sign-in; that was a wait on six
+  /// "Loading Form Categories…" steps for data they never see.
+  static bool needsLogisticsData(String department) =>
+      !BCollectionRoles.isCollectionDepartment(department);
 
+  Future<void> loadInitialData() async {
     try {
       //  Start Data Loading
-      loadingProgressText.value = 'Data is Loading... (0/${steps.length})';
+      loadingProgressText.value = 'Data is Loading...';
       BFullScreenLoader.openProgressLoadingDialog(
           loadingProgressText, BImages.docerAnimation);
 
@@ -44,6 +40,27 @@ class LoadingScreenController extends GetxController {
         BFullScreenLoader.stopLoading();
         return;
       }
+
+      // The profile first: it says the department, which decides the rest.
+      // An unknown department (profile not loaded) gets everything, as
+      // before.
+      loadingProgressText.value = 'Loading User Profile...';
+      await userController.fetchUserRecord();
+      final steps = <({String label, Future<void> Function() run})>[
+        if (needsLogisticsData(userController.user.value.department)) ...[
+          (
+            label: 'Clients',
+            run: () => clientController.fetchClientFromDb(false)
+          ),
+          (label: 'Users', run: () => userController.fetchUsersRecord(false)),
+          (
+            label: 'Requesters',
+            run: () => userMDMPIController.fetchUserMdmpiFromDb()
+          ),
+          (label: 'Item Categories', run: _loadItemCategories),
+          (label: 'Form Categories', run: _loadFormCategories),
+        ],
+      ];
 
       for (var i = 0; i < steps.length; i++) {
         loadingProgressText.value =
