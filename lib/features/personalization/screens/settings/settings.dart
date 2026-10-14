@@ -207,6 +207,7 @@ class _CollectionSettings extends StatelessWidget {
         const BSectionHeading(title: 'Preferences', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _DefaultAreaTile(),
+        const _CollectedScopeTile(),
         if (GetPlatform.isAndroid) const _FollowUpRemindersTile(),
         if (GetPlatform.isAndroid) const _VisitLocationTile(),
         BSettingsMenuTile(
@@ -273,6 +274,33 @@ class _DefaultAreaTile extends StatelessWidget {
             await settings.setDefaultArea(code);
           },
         ));
+  }
+}
+
+/// What Collected this Month on the home screen counts: this collector's
+/// own work, or every collector's.
+class _CollectedScopeTile extends StatelessWidget {
+  const _CollectedScopeTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Get.find<CollectionSettingsController>();
+    return Obx(() {
+      final all = settings.collectedAllCollectors.value;
+      return BSettingsMenuTile(
+        icon: Iconsax.money,
+        title: 'Collected this Month',
+        subTitle: all
+            ? 'All collectors · needs internet, counts uploaded work'
+            : 'Me only · what I collected',
+        trailing: Switch(
+          key: const ValueKey('settings-collected-all'),
+          value: all,
+          onChanged: settings.setCollectedAllCollectors,
+        ),
+        onTap: () => settings.setCollectedAllCollectors(!all),
+      );
+    });
   }
 }
 

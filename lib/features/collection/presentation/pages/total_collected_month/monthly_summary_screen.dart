@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
@@ -46,6 +47,7 @@ class MonthlySummaryScreen extends StatelessWidget {
         children: [
           _MonthHeader(
               controller: controller, isActual: _isActual, swap: _swap),
+          if (!_isActual) _CollectorBreakdown(controller: controller),
           Expanded(
             child: Obx(() {
               final all = _isActual
@@ -138,9 +140,10 @@ class _MonthHeader extends StatelessWidget {
       ),
       child: Obx(() {
         final month = controller.selectedMonth.value;
+        final all = !isActual && controller.allCollectors;
         final total = isActual
             ? controller.actualCollectionTotal
-            : controller.monthlyTotal;
+            : controller.scopedTotal;
         final entries =
             isActual ? controller.postedEntries : controller.monthEntries;
         final target = controller.targetAmount.value;
@@ -207,7 +210,11 @@ class _MonthHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isActual ? 'Team · posted by the office' : 'Collected',
+                      isActual
+                          ? 'Team · posted by the office'
+                          : all
+                              ? 'Collected · all collectors'
+                              : 'Collected',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
@@ -235,7 +242,11 @@ class _MonthHeader extends StatelessWidget {
                       _TargetLine(total: total, target: target)
                     else
                       Text(
-                        _countLine(entries),
+                        // The list below is this collector's own; say so
+                        // when the total above is everyone's.
+                        all
+                            ? 'Yours: ${_countLine(entries)}'
+                            : _countLine(entries),
                         style: theme.textTheme.bodySmall
                             ?.copyWith(color: BCollectionColors.inkMuted),
                       ),
@@ -255,6 +266,129 @@ class _MonthHeader extends StatelessWidget {
         entries.map((e) => e.accountName.trim().toLowerCase()).toSet().length;
     return '${entries.length} collection${entries.length == 1 ? '' : 's'} · '
         '$accounts account${accounts == 1 ? '' : 's'}';
+  }
+}
+
+/// With Collected this Month on "all collectors": each collector's month,
+/// this phone's own first. The server counts each collector as one total, so
+/// teammates are a line each, not their invoices; the ledger below is
+/// this collector's own. Nothing at all while "me only".
+class _CollectorBreakdown extends StatelessWidget {
+  const _CollectorBreakdown({required this.controller});
+
+  final TotalCollectedController controller;
+
+  /// Tall enough for a handful of collectors; a bigger team scrolls inside.
+  static const double _maxListHeight = 200;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final small =
+        theme.textTheme.bodySmall?.copyWith(color: BCollectionColors.inkMuted);
+    // No setting, nothing to follow: an Obx with no observable would throw.
+    if (!Get.isRegistered<CollectionSettingsController>()) {
+      return const SizedBox.shrink();
+    }
+
+    return Obx(() {
+      if (!controller.allCollectors) return const SizedBox.shrink();
+      final error = controller.othersError.value;
+      final rows = [
+        (name: 'You', amount: controller.monthlyTotal),
+        for (final r in [...controller.otherCollectors]
+          ..sort((a, b) => b.collected.compareTo(a.collected)))
+          (name: r.name.isNotEmpty ? r.name : r.code, amount: r.collected),
+      ];
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(
+            BSizes.md, BSizes.sm, BSizes.md, BSizes.sm),
+        decoration: const BoxDecoration(
+          color: BCollectionColors.surface,
+          border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'By collector',
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (controller.othersLoading.value)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  InkWell(
+                    key: const ValueKey('collector-breakdown-reload'),
+                    onTap: controller.reloadOthers,
+                    borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                    child: const Padding(
+                      padding: EdgeInsets.all(BSizes.xs),
+                      child: Icon(Iconsax.refresh,
+                          size: 16, color: BCollectionColors.inkMuted),
+                    ),
+                  ),
+              ],
+            ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: BSizes.xs),
+                child: Text(
+                  'Other collectors not loaded: $error',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: small?.copyWith(color: BCollectionColors.danger),
+                ),
+              ),
+            const SizedBox(height: BSizes.xs),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: _maxListHeight),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final row in rows)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(row.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium),
+                          ),
+                          const SizedBox(width: BSizes.sm),
+                          Text(
+                            BFormatter.formatPesoCurrency(row.amount),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: row.amount > 0
+                                  ? BCollectionColors.success
+                                  : BCollectionColors.inkMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Text('Teammates: what they have uploaded', style: small),
+          ],
+        ),
+      );
+    });
   }
 }
 

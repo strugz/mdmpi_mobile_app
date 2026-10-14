@@ -19,6 +19,10 @@ typedef SettingWriter = Future<void> Function(String key, dynamic value);
 ///
 /// **Follow-up reminders.** The morning notification for a reconciliation
 /// follow up that is due, under [followUpRemindersKey] (on by default).
+///
+/// **Collected this Month.** Me only (default) or all collectors, under
+/// [collectedScopeKey]. Only that figure follows it; Settled and the other
+/// tiles stay this collector's own.
 class CollectionSettingsController extends GetxController {
   CollectionSettingsController({SettingReader? read, SettingWriter? write})
       : _read = read ?? _readStorage,
@@ -40,11 +44,39 @@ class CollectionSettingsController extends GetxController {
 
   final followUpReminders = true.obs;
 
+  /// What Collected this Month on the home screen counts: this collector's
+  /// own work ('me', the default) or every collector's ('all', the server's
+  /// team summary plus this phone's own).
+  static const String collectedScopeKey = 'collection.collectedScope';
+
+  /// True when the home totals count every collector.
+  final collectedAllCollectors = false.obs;
+
   @override
   void onInit() {
     super.onInit();
     defaultArea.value = readDefaultArea(_read);
     followUpReminders.value = readFollowUpReminders(_read);
+    collectedAllCollectors.value = readCollectedAllCollectors(_read);
+  }
+
+  /// Save the Collected this Month scope; the home totals follow at once.
+  Future<void> setCollectedAllCollectors(bool all) async {
+    collectedAllCollectors.value = all;
+    try {
+      await _write(collectedScopeKey, all ? 'all' : 'me');
+    } catch (e) {
+      logDebug('CollectionSettingsController: could not save scope: $e');
+    }
+  }
+
+  /// The saved scope; "me only" when never set or unreadable.
+  static bool readCollectedAllCollectors(SettingReader read) {
+    try {
+      return read(collectedScopeKey) == 'all';
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Whether saves record the phone's location now (Settings → Visit

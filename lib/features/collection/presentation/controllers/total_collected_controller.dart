@@ -5,10 +5,25 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
+import 'package:mdmpi_mobile_app/base/utils/result.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reports/collectors_summary_report.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reports/report_month.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
+
+/// Loads the other collectors' rows for a month (`yyyy-MM`), the signed-in
+/// collector left out. Fails with a message the screen can show.
+typedef OtherCollectorsLoader = Future<Result<List<CollectorSummaryRow>>>
+    Function(String yearMonth, DateTime month);
 
 /// Controller for the Total Collected this Month screen and card.
 class TotalCollectedController extends GetxController {
+  TotalCollectedController({OtherCollectorsLoader? loadOthers})
+      : _loadOthers = loadOthers ?? _othersFromServer;
+
   static TotalCollectedController get instance => Get.find();
+
+  final OtherCollectorsLoader _loadOthers;
 
   /// Currently selected month (use first day of month for comparison)
   final Rx<DateTime> selectedMonth =
@@ -30,16 +45,101 @@ class TotalCollectedController extends GetxController {
     super.onInit();
     reloadTarget();
     reloadActual();
+    reloadOthers();
     ever(selectedMonth, (_) {
       reloadTarget();
       reloadActual();
+      reloadOthers();
     });
     // A server download may replace the stored targets and the posted
-    // Actual Collection.
+    // Actual Collection; teammates may have uploaded since.
     ever(CollectionRepository.instance.localDataVersion, (_) {
       reloadTarget();
       reloadActual();
+      reloadOthers();
     });
+    if (Get.isRegistered<CollectionSettingsController>()) {
+      ever(CollectionSettingsController.instance.collectedAllCollectors,
+          (_) => reloadOthers());
+    }
+  }
+
+  // ========================================================================
+  // All collectors (Settings → Collected this Month)
+  // ========================================================================
+
+  /// Whether Collected this Month counts every collector. Off
+  /// (me only) when the setting is not available.
+  bool get allCollectors =>
+      Get.isRegistered<CollectionSettingsController>() &&
+      CollectionSettingsController.instance.collectedAllCollectors.value;
+
+  /// The other collectors' month, from the server (only what they have
+  /// uploaded). Empty while "me only".
+  final RxList<CollectorSummaryRow> otherCollectors =
+      <CollectorSummaryRow>[].obs;
+  final RxBool othersLoading = false.obs;
+
+  /// Why the other collectors could not be loaded; null when they were.
+  final RxnString othersError = RxnString();
+
+  /// The month [otherCollectors] belong to.
+  String _othersMonth = '';
+  int _othersGeneration = 0;
+
+  /// Load the other collectors for the selected month, when the setting
+  /// asks for them. This collector's own figures stay the phone's, which are
+  /// exact and include what is not uploaded yet.
+  Future<void> reloadOthers() async {
+    final generation = ++_othersGeneration;
+    othersError.value = null;
+    if (!allCollectors) {
+      othersLoading.value = false;
+      otherCollectors.clear();
+      _othersMonth = '';
+      return;
+    }
+    final yearMonth = _yearMonth;
+    // Another month's teammates must not be added to this one's total.
+    if (_othersMonth != yearMonth) otherCollectors.clear();
+    othersLoading.value = true;
+    final result = await _loadOthers(yearMonth, selectedMonth.value);
+    if (generation != _othersGeneration) return;
+    othersLoading.value = false;
+    if (result.isFailure) {
+      othersError.value = result.error;
+      return;
+    }
+    otherCollectors.assignAll(result.value);
+    _othersMonth = yearMonth;
+  }
+
+  /// The other collectors' Collected this Month; 0 while "me only".
+  double get othersCollected => allCollectors
+      ? otherCollectors.fold(0.0, (sum, r) => sum + r.collected)
+      : 0;
+
+  /// Collected this Month as the setting asks: this phone's own total, plus
+  /// the other collectors' when "all collectors".
+  double get scopedTotal => monthlyTotal + othersCollected;
+
+  /// The server's summary, or the team feed where the server is older.
+  static Future<Result<List<CollectorSummaryRow>>> _othersFromServer(
+      String yearMonth, DateTime month) async {
+    if (!Get.isRegistered<TeamActivityRepository>()) {
+      return Result.failure('Team totals are not available.');
+    }
+    final repo = TeamActivityRepository.instance;
+    final me = CollectionRepository.instance.collectorCode;
+    final summary = await repo.loadSummary(yearMonth);
+    if (summary.isFailure) return Result.failure(summary.error);
+    if (summary.value case final server?) {
+      return Result.success(serverSummaryRows(server, skipCode: me));
+    }
+    final feed = await repo.load(
+        from: BReportMonth.first(month), to: BReportMonth.last(month));
+    if (feed.isFailure) return Result.failure(feed.error);
+    return Result.success(teamSummaryRows(feed.value, skipCode: me));
   }
 
   /// Targets used to live only in memory; now read from SQLite per month.

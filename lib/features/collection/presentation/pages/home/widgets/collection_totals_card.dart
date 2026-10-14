@@ -36,7 +36,8 @@ class CollectionTotalsCard extends StatelessWidget {
     return Obx(() {
       final actual = controller.actualCollectionTotal;
       final target = controller.targetAmount.value;
-      final total = controller.monthlyTotal;
+      final all = controller.allCollectors;
+      final total = controller.scopedTotal;
 
       return CollectionTotalsCardView(
         actual: BFormatter.formatPesoCurrency(actual),
@@ -47,6 +48,17 @@ class CollectionTotalsCard extends StatelessWidget {
                 ? 'Target met'
                 : '${(actual / target * 100).floor()}% of ${BFormatter.formatPesoCurrency(target)}',
         collected: BFormatter.formatPesoCurrency(total),
+        collectedLabel:
+            all ? 'Collected this Month · All' : 'Collected this Month',
+        // All collectors: say when the teammates are missing from the figure,
+        // so a phone-only total is never read as the team's.
+        collectedFootnote: !all
+            ? 'View breakdown'
+            : controller.othersLoading.value
+                ? 'Loading collectors…'
+                : controller.othersError.value != null
+                    ? 'Yours only · team not loaded'
+                    : 'All collectors · breakdown',
         onActualTap: onActualTap,
         onCollectedTap: onCollectedTap,
       );
@@ -62,6 +74,7 @@ class CollectionTotalsCardView extends StatelessWidget {
     required this.actual,
     required this.actualFootnote,
     required this.collected,
+    this.collectedLabel = 'Collected this Month',
     this.collectedFootnote = 'View breakdown',
     this.onActualTap,
     this.onCollectedTap,
@@ -70,6 +83,7 @@ class CollectionTotalsCardView extends StatelessWidget {
   final String actual;
   final String actualFootnote;
   final String collected;
+  final String collectedLabel;
   final String collectedFootnote;
   final VoidCallback? onActualTap;
   final VoidCallback? onCollectedTap;
@@ -106,7 +120,7 @@ class CollectionTotalsCardView extends StatelessWidget {
               child: _TotalsHalf(
                 icon: Iconsax.money,
                 color: CollectionTotalsCard._collectedColor,
-                label: 'Collected this Month',
+                label: collectedLabel,
                 value: collected,
                 footnote: collectedFootnote,
                 onTap: onCollectedTap,
