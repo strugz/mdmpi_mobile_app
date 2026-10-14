@@ -244,6 +244,16 @@ String reconDueNote(({int today, int overdue}) counts) => [
       if (counts.overdue > 0) '${counts.overdue} overdue',
     ].join(' · ');
 
+/// The Home tile's line under the team's pending count: this collector's own
+/// open cases, then what of theirs is due ("Mine 1 · 1 overdue").
+String reconTileNote(
+        {required int mine, required ({int today, int overdue}) due}) =>
+    [
+      'Mine $mine',
+      if (reconDueNote(due) case final dueNote when dueNote.isNotEmpty)
+        dueNote,
+    ].join(' · ');
+
 /// "2 follow ups due today · 1 overdue"; '' when nothing is due or overdue.
 String reconDueSummary(({int today, int overdue}) counts) => [
       if (counts.today > 0)

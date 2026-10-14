@@ -407,16 +407,31 @@ class CollectionHomeScreen extends StatelessWidget {
   /// are seen without opening the list. Read inside the grid's Obx.
   static CollectionSummaryStat _reconciliationStat(
       CollectionActivityController controller) {
-    final due = Get.isRegistered<ReconciliationController>()
-        ? ReconciliationController.instance.myDueCounts
-        : (today: 0, overdue: 0);
+    final recon = Get.isRegistered<ReconciliationController>()
+        ? ReconciliationController.instance
+        : null;
+    final due = recon?.myDueCounts ?? (today: 0, overdue: 0);
     return CollectionSummaryStat(
       title: 'Reconciliation',
-      value: controller.reconciliationItems.length.toString(),
+      // Cases, not invoices, and not limited to the selected area: the
+      // figure is every collector's pending (open) cases, as the last
+      // download brought them, so the whole team sees what is outstanding;
+      // the note under it is this collector's own. It counted reconciliation
+      // invoices in the selected area, so a case outside the Default area
+      // read 0 while the page behind the tile listed it.
+      value: (recon == null
+              ? controller.reconciliationItems.length
+              : recon
+                  .casesIn(ReconScope.team)
+                  .where((c) => !c.evaluation.isClosed)
+                  .length)
+          .toString(),
       icon: Iconsax.status_up,
       color: BCollectionColors.reconcile,
       onTap: () => Get.toNamed(BRoutes.reconciliationCases),
-      note: reconDueNote(due),
+      note: recon == null
+          ? reconDueNote(due)
+          : reconTileNote(mine: recon.myOpenCases.length, due: due),
       noteColor: due.overdue > 0
           ? BCollectionColors.danger
           : BCollectionColors.primary,

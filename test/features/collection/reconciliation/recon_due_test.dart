@@ -180,5 +180,14 @@ void main() {
       expect(reconDueSummary((today: 3, overdue: 0)),
           '3 follow ups due today');
     });
+
+    test('the Home tile note names my own cases, then what of them is due',
+        () {
+      expect(reconTileNote(mine: 0, due: (today: 0, overdue: 0)), 'Mine 0');
+      expect(reconTileNote(mine: 1, due: (today: 0, overdue: 1)),
+          'Mine 1 · 1 overdue');
+      expect(reconTileNote(mine: 3, due: (today: 2, overdue: 1)),
+          'Mine 3 · 2 due today · 1 overdue');
+    });
   });
 }
