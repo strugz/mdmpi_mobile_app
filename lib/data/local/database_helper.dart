@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/local/dao/collection/voucher_reread_dao.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -37,6 +38,8 @@ import 'dao/collection/collection_account_history_dao.dart';
 import 'dao/collection/collection_target_dao.dart';
 import 'dao/collection/collection_actual_dao.dart';
 import 'dao/collection/collection_engagement_dao.dart';
+import 'dao/collection/recon_attachment_dao.dart';
+import 'dao/collection/recon_case_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -73,6 +76,9 @@ class DatabaseHelper {
   CollectionTargetDao? _collectionTargetDao;
   CollectionActualDao? _collectionActualDao;
   CollectionEngagementDao? _collectionEngagementDao;
+  ReconCaseDao? _reconCaseDao;
+  ReconAttachmentDao? _reconAttachmentDao;
+  VoucherRereadDao? _voucherRereadDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -397,6 +403,27 @@ class DatabaseHelper {
     return _collectionEngagementDao!;
   }
 
+  Future<ReconCaseDao> get reconCaseDao async {
+    if (_reconCaseDao != null) return _reconCaseDao!;
+    final db = await database;
+    _reconCaseDao = ReconCaseDao(db);
+    return _reconCaseDao!;
+  }
+
+  Future<VoucherRereadDao> get voucherRereadDao async {
+    if (_voucherRereadDao != null) return _voucherRereadDao!;
+    final db = await database;
+    _voucherRereadDao = VoucherRereadDao(db);
+    return _voucherRereadDao!;
+  }
+
+  Future<ReconAttachmentDao> get reconAttachmentDao async {
+    if (_reconAttachmentDao != null) return _reconAttachmentDao!;
+    final db = await database;
+    _reconAttachmentDao = ReconAttachmentDao(db);
+    return _reconAttachmentDao!;
+  }
+
   Future<List<String>> getContactPhoneNumbers() async {
     final dao = await contactDao;
     return await dao.getAllPhoneNumbers();
@@ -692,6 +719,9 @@ class DatabaseHelper {
     _userDao = null;
     _cntmstDao = null;
     _backLoadDao = null;
+    _reconCaseDao = null;
+    _reconAttachmentDao = null;
+    _voucherRereadDao = null;
   }
 
   /// Delete the database file and reset the instance.
@@ -722,6 +752,9 @@ class DatabaseHelper {
       _backLoadDao = null;
       _itemCategoryDao = null;
       _formCategoryDao = null;
+      _reconCaseDao = null;
+      _reconAttachmentDao = null;
+      _voucherRereadDao = null;
     } catch (e) {
       // Ignore errors during deletion
     }

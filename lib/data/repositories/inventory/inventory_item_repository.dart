@@ -9,10 +9,10 @@ import 'package:http/http.dart' as http;
 import '../../../base/utils/exceptions/format_exceptions.dart';
 import '../../../base/utils/exceptions/platform_exceptions.dart';
 import '../../../base/utils/constants/api_environment.dart';
-import '../../../base/utils/images/document_image.dart';
 import '../../../base/utils/popups/loaders.dart';
 import '../../../base/utils/result.dart';
 import '../../models/inventory_item_model.dart';
+import '../../services/gemini_document_service.dart';
 
 /// Repository that calls Google Generative Language (Gemini) directly for
 /// receipt OCR and maps the response into a list of [InventoryItemModel].
@@ -76,172 +76,33 @@ Example output for type B. The values are deliberately generic placeholders that
   String get _baseUrl => BApiEnvironment.api4BaseUrl;
   Uri _uri(String path) => Uri.parse('$_baseUrl$path');
 
-  /// Calls Google Generative Language (Gemini) directly with the provided [file]
-  /// and optional [prompt]. The request body follows the shape:
-  /// { contents: [ { parts: [ { inlineData: { mimeType, data } }, { text } ] } ] }
-  /// On success returns Result.success(List<InventoryItemModel>), otherwise Result.failure.
+  /// Sends [file] to Gemini with [prompt] (else `AI_PROMPT` from `.env`, else
+  /// [defaultAnalysisPrompt]) through [GeminiDocumentService] and maps the
+  /// returned array into [InventoryItemModel]s.
   Future<Result<List<InventoryItemModel>>> analyzeFileWithGemini(File file,
       {String? prompt}) async {
+    final envPrompt = _envPrompt();
+    final result = await _gemini.extractJsonArray(file,
+        prompt: prompt ??
+            ((envPrompt != null && envPrompt.isNotEmpty)
+                ? envPrompt
+                : defaultAnalysisPrompt));
+    if (result.isFailure) return Result.failure(result.error);
+    return Result.success([
+      for (final e in result.value)
+        if (e is Map) InventoryItemModel.fromJson(Map<String, dynamic>.from(e)),
+    ]);
+  }
+
+  GeminiDocumentService get _gemini => Get.isRegistered<GeminiDocumentService>()
+      ? Get.find<GeminiDocumentService>()
+      : GeminiDocumentService();
+
+  static String? _envPrompt() {
     try {
-      if (!await file.exists()) {
-        return Result.failure('File does not exist: ${file.path}');
-      }
-
-      final model =
-          dotenv.env['AI_TOOLKIT_MODEL'] ?? dotenv.env['AI_MODEL'] ?? '';
-      final apiKey =
-          dotenv.env['AI_TOOLKIT_API_KEY'] ?? dotenv.env['API_KEY'] ?? '';
-
-      if (model.isEmpty || apiKey.isEmpty) {
-        return Result.failure(
-            'AI configuration missing (AI_TOOLKIT_MODEL / AI_TOOLKIT_API_KEY)');
-      }
-
-      // The key travels in the x-goog-api-key header, never in the URL, so it
-      // does not end up in proxy/CDN/device request logs. (It is still bundled
-      // in the APK via .env — see TODO item 18 for the GCP-side restrictions.)
-      final googleUrl =
-          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent';
-
-      // Bake EXIF orientation into the pixels first: the model reads raw
-      // pixels, and a rotated table breaks column alignment.
-      final prepared = await BDocumentImage.prepare(file);
-      final b64 = base64Encode(prepared.bytes);
-      final mimeType = prepared.mimeType;
-      final envPrompt = dotenv.env['AI_PROMPT']?.trim();
-      final promptText = prompt ??
-          ((envPrompt != null && envPrompt.isNotEmpty)
-              ? envPrompt
-              : defaultAnalysisPrompt);
-
-      final requestBody = {
-        'contents': [
-          {
-            'parts': [
-              {
-                'inlineData': {
-                  'mimeType': mimeType,
-                  'data': b64,
-                }
-              },
-              {
-                'text': promptText,
-              }
-            ]
-          }
-        ]
-      };
-
-      final resp = await http
-          .post(Uri.parse(googleUrl),
-              headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey,
-              },
-              body: jsonEncode(requestBody))
-          .timeout(const Duration(seconds: 120));
-
-      if (resp.statusCode == 400) {
-        try {
-          final err = jsonDecode(resp.body);
-          final details = err['error']?['details'];
-          if (details is List) {
-            for (final d in details) {
-              if (d is Map<String, dynamic>) {
-                final reason = d['reason'] as String? ?? '';
-                if (reason.toLowerCase().contains('api_key_invalid')) {
-                  return Result.failure(
-                      'AI API key invalid: verify AI_TOOLKIT_API_KEY and Generative Language API enablement.');
-                }
-              }
-            }
-          }
-        } catch (_) {}
-      }
-
-      if (resp.statusCode != 200) {
-        return Result.failure('AI service error: ${resp.statusCode}');
-      }
-
-      final decoded = jsonDecode(resp.body);
-
-      String? textContent;
-
-      try {
-        if (decoded is Map<String, dynamic>) {
-          final candidates = decoded['candidates'];
-          if (candidates is List && candidates.isNotEmpty) {
-            final first = candidates[0];
-            if (first is Map<String, dynamic>) {
-              final content = first['content'];
-              if (content is Map<String, dynamic>) {
-                final parts = content['parts'];
-                if (parts is List && parts.isNotEmpty) {
-                  final p0 = parts[0];
-                  if (p0 is Map<String, dynamic> && p0['text'] is String) {
-                    textContent = p0['text'] as String;
-                  }
-                }
-              } else if (content is List && content.isNotEmpty) {
-                final c0 = content[0];
-                if (c0 is Map<String, dynamic> && c0['parts'] is List) {
-                  final parts = c0['parts'] as List;
-                  if (parts.isNotEmpty) {
-                    final p0 = parts[0];
-                    if (p0 is Map<String, dynamic> && p0['text'] is String) {
-                      textContent = p0['text'] as String;
-                    }
-                  }
-                }
-              }
-
-              if (textContent == null) {
-                if (first['output'] is String) {
-                  textContent = first['output'] as String;
-                } else if (first['text'] is String)
-                  textContent = first['text'] as String;
-              }
-            }
-          }
-        }
-      } catch (_) {}
-
-      final generatedText = (textContent != null && textContent.isNotEmpty)
-          ? textContent
-          : resp.body;
-
-      List<dynamic>? items;
-      try {
-        final asJson = jsonDecode(generatedText);
-        if (asJson is List) items = asJson;
-      } catch (_) {}
-
-      if (items == null) {
-        final firstBracket = generatedText.indexOf('[');
-        final lastBracket = generatedText.lastIndexOf(']');
-        if (firstBracket >= 0 && lastBracket > firstBracket) {
-          final arrStr = generatedText.substring(firstBracket, lastBracket + 1);
-          try {
-            final parsed = jsonDecode(arrStr);
-            if (parsed is List) items = parsed;
-          } catch (_) {}
-        }
-      }
-
-      if (items == null) {
-        return Result.failure('Failed to parse AI response');
-      }
-
-      final parsed = items
-          .whereType<dynamic>()
-          .map((e) => e is Map<String, dynamic>
-              ? InventoryItemModel.fromJson(e)
-              : InventoryItemModel.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-
-      return Result.success(parsed);
-    } catch (e) {
-      return Result.failure('Failed to analyze image with AI: $e');
+      return dotenv.env['AI_PROMPT']?.trim();
+    } catch (_) {
+      return null;
     }
   }
 

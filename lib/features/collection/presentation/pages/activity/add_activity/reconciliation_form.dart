@@ -5,6 +5,10 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -30,8 +34,13 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
     super.dispose();
   }
 
-  void _save() {
-    if (!formKey.currentState!.validate()) return;
+  bool _saving = false;
+
+  /// Opens a Reconciliation Tracker case for the account over the picked
+  /// invoices, marks them for reconciliation as before, and goes to the case,
+  /// where the next step (usually the SOA) is logged.
+  Future<void> _save() async {
+    if (_saving || !formKey.currentState!.validate()) return;
     if (selectedAccount == null) {
       BLoaders.errorSnackBar(
           title: 'Error', message: 'Please select an account');
@@ -44,15 +53,45 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
     }
 
     final controller = CollectionActivityController.instance;
-    controller.markInvoicesForReconciliation(
-      selectedAccount!.id,
+    final account = selectedAccount!;
+    final byId = {
+      for (final i in controller.getInvoicesByAccount(account.id)) i.id: i
+    };
+
+    setState(() => _saving = true);
+    final tracker = ReconciliationController.instance;
+    final opened = await tracker.openCase(
+      clientCode: account.id,
+      clientName: account.name,
+      invoices: [
+        for (final id in selectedInvoiceIds)
+          ReconCaseInvoice(
+              invoiceNo: id, amount: byId[id]?.toBeCollected ?? 0),
+      ],
+    );
+    if (!mounted) return;
+    if (opened.isFailure) {
+      setState(() => _saving = false);
+      BLoaders.errorSnackBar(
+          title: 'Case not opened', message: opened.error);
+      return;
+    }
+
+    await controller.markInvoicesForReconciliation(
+      account.id,
       selectedInvoiceIds,
       remarksController.text,
     );
+    final remarks = remarksController.text.trim();
+    if (remarks.isNotEmpty) {
+      await tracker.logActivity(
+          caseId: opened.value.caseId,
+          type: ReconActivityType.note,
+          remarks: remarks);
+    }
 
-    Get.back(); // Close form
-    BLoaders.successSnackBar(
-        title: 'Success', message: 'Reconciliation activity recorded.');
+    // Straight to the case: its next step is the SOA.
+    Get.offNamed(BRoutes.reconciliationCase, arguments: opened.value.caseId);
   }
 
   @override
@@ -61,7 +100,7 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
 
     return Scaffold(
       appBar: const BAppBar(
-          title: Text('Record Reconciliation'), showBackArrow: true),
+          title: Text('Open Reconciliation Case'), showBackArrow: true),
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.fromLTRB(
@@ -121,10 +160,10 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
                 ElevatedButton(
-                  onPressed: _save,
+                  onPressed: _saving ? null : _save,
                   style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 48)),
-                  child: const Text('Record reconciliation'),
+                  child: const Text('Open reconciliation case'),
                 ),
               ],
             ),

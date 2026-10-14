@@ -1,9 +1,15 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case_bundle.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
@@ -77,6 +83,55 @@ Future<ClientModel?> _open(
   await tester.tap(find.text('open'));
   await tester.pumpAndSettle();
   return picked;
+}
+
+class _Tracker extends ReconciliationController {
+  _Tracker({this.refuse});
+
+  final String? refuse;
+  final opened = <({String clientCode, List<ReconCaseInvoice> invoices})>[];
+  final notes = <String>[];
+
+  @override
+  // ignore: must_call_super
+  void onInit() {}
+
+  @override
+  Future<Result<ReconCaseBundle>> openCase({
+    required String clientCode,
+    required String clientName,
+    required List<ReconCaseInvoice> invoices,
+  }) async {
+    if (refuse != null) return Result.failure(refuse!);
+    opened.add((clientCode: clientCode, invoices: invoices));
+    return Result.success(ReconCaseBundle(
+      reconCase: ReconCase(
+          caseId: 'RC-TEST-1',
+          clientCode: clientCode,
+          clientName: clientName,
+          collectorCode: 'JCA',
+          dateOpened: '2026-09-28T10:00:00'),
+      invoices: invoices,
+      activities: const [],
+    ));
+  }
+
+  @override
+  Future<Result<ReconActivity>> logActivity({
+    required String caseId,
+    required ReconActivityType type,
+    List<String> invoiceNos = const [],
+    String remarks = '',
+    double? amount,
+    ReconValidationResult? validationResult,
+    String nextAction = '',
+    String? nextActionDueDate,
+    List<Uint8List> photos = const [],
+  }) async {
+    notes.add(remarks);
+    return Result.success(ReconActivity(
+        activityId: 'RA-1', caseId: caseId, dateTime: '', type: type));
+  }
 }
 
 class _Activity extends CollectionActivityController {
@@ -299,19 +354,65 @@ void main() {
       await drainSnackbar(tester);
     });
 
-    testWidgets('Reconciliation: picks the account and its invoices',
-        (tester) async {
-      final activity = await pump(tester, const ReconciliationFormScreen());
+    testWidgets(
+        "Reconciliation: opens a case over the account's invoices, marks them "
+        'and goes to the case', (tester) async {
+      final activity = _Activity();
+      Get.put<CollectionActivityController>(activity);
+      activity.bucketItems.add(CollectionItemModel(
+          id: 'INV-1', client: _registry.first, toBeCollected: 5000));
+      final tracker = _Tracker();
+      Get.put<ReconciliationController>(tracker);
+      await tester.pumpWidget(GetMaterialApp(
+        theme: BCollectionTheme.light,
+        home: const ReconciliationFormScreen(),
+        getPages: [
+          GetPage(
+              name: BRoutes.reconciliationCase,
+              page: () => Text('case ${Get.arguments}')),
+        ],
+      ));
+      await tester.pumpAndSettle();
 
       await pick(tester, const ValueKey('reconciliation-account'),
           'Antipolo Doctors Hospital');
       await tester.tap(find.text('INV-1'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Record reconciliation'));
+      await tester.enterText(find.byType(TextFormField).last, 'Asked for SOA');
+      await tester.tap(find.text('Open reconciliation case'));
       await tester.pumpAndSettle();
 
-      expect(activity.reconciled.single.clientId, 'C-100');
-      expect(activity.reconciled.single.invoices, ['INV-1']);
+      expect(tracker.opened.single.clientCode, 'C-100');
+      expect(tracker.opened.single.invoices.single.invoiceNo, 'INV-1');
+      expect(tracker.opened.single.invoices.single.amount, 5000,
+          reason: 'the balance when the case opens');
+      expect(activity.reconciled.single.invoices, ['INV-1'],
+          reason: 'still marked, so it leaves the regular bucket');
+      expect(tracker.notes, ['Asked for SOA']);
+      expect(find.text('case RC-TEST-1'), findsOneWidget);
+    });
+
+    testWidgets('Reconciliation: an account with an open case is refused',
+        (tester) async {
+      final activity = _Activity();
+      Get.put<CollectionActivityController>(activity);
+      activity.bucketItems.add(CollectionItemModel(
+          id: 'INV-1', client: _registry.first, toBeCollected: 5000));
+      Get.put<ReconciliationController>(_Tracker(refuse: 'already open'));
+      await tester.pumpWidget(GetMaterialApp(
+          theme: BCollectionTheme.light, home: const ReconciliationFormScreen()));
+      await tester.pumpAndSettle();
+
+      await pick(tester, const ValueKey('reconciliation-account'),
+          'Antipolo Doctors Hospital');
+      await tester.tap(find.text('INV-1'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open reconciliation case'));
+      await tester.pumpAndSettle();
+
+      expect(activity.reconciled, isEmpty,
+          reason: 'nothing is marked when no case could be opened');
+      expect(find.text('already open'), findsOneWidget);
       await drainSnackbar(tester);
     });
 

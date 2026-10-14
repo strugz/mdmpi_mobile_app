@@ -1,28 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
-// ...existing imports...
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
-import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 
-/// Row with Capture / Attach File actions used by `BItemScanner`.
+/// Capture / Attach File, the two ways into a document scanner: the
+/// Logistics inventory scanner (`ScannedItemsScreen`) and the Collection
+/// voucher scan. Null actions show the button disabled (while analysing).
 class ScannerActionRow extends StatelessWidget {
-  const ScannerActionRow({super.key, required this.controller});
+  const ScannerActionRow({super.key, this.onCapture, this.onAttach});
 
-  final StandardDeliveryController controller;
+  final VoidCallback? onCapture;
+  final VoidCallback? onAttach;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    // Wraps onto two lines on a narrow screen instead of overflowing.
+    return Wrap(
+      alignment: WrapAlignment.center,
+      spacing: BSizes.sm,
+      runSpacing: BSizes.xs,
       children: [
         OutlinedButton.icon(
-          onPressed: controller.pickAndAnalyzeFromCamera,
+          key: const ValueKey('scanner-capture'),
+          onPressed: onCapture,
           icon: const Icon(Iconsax.camera),
           label: const Text('Capture'),
         ),
-        const SizedBox(width: BSizes.sm),
         OutlinedButton.icon(
-          onPressed: controller.pickAndAnalyzeFromFile,
+          key: const ValueKey('scanner-attach'),
+          onPressed: onAttach,
           icon: const Icon(Iconsax.folder_2),
           label: const Text('Attach File'),
         ),
@@ -54,4 +59,3 @@ class AnalyzingIndicator extends StatelessWidget {
     );
   }
 }
-

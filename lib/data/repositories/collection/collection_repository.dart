@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+
+export 'package:mdmpi_mobile_app/features/collection/helpers/upload_batches.dart'
+    show CollectionUploadResult;
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
@@ -20,6 +23,8 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/features/collection/dtos/collection_item_dto.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/upload_batches.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_workspace_parser.dart';
 import 'package:mdmpi_mobile_app/features/collection/mappers/collection_mapper.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
@@ -27,15 +32,6 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_history_m
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 /// Summary of an "Upload All" attempt.
-class CollectionUploadResult {
-  final int accepted;
-  final List<String> rejected; // human-readable "reason" strings
-
-  const CollectionUploadResult({this.accepted = 0, this.rejected = const []});
-
-  int get rejectedCount => rejected.length;
-  bool get hasRejections => rejected.isNotEmpty;
-}
 
 /// Repository for collection operations.
 /// Handles API communication and local database sync for collection items.
@@ -177,6 +173,13 @@ class CollectionRepository extends GetxController {
     if (ws.hasActualCollections) {
       await (await helper.collectionActualDao).replaceAll(ws.actualCollections);
     }
+    // Reconciliation cases: the server's copies, keeping any step this device
+    // logged that has not been uploaded. Only when this server sent them.
+    if (ws.hasReconCases) {
+      final now = DateTime.now();
+      await (await helper.reconCaseDao).replaceServerCopies(
+          ws.reconCases, (b) => b.evaluate(now: now));
+    }
   }
 
   /// Parse an API item list into domain models via the DTO + mapper layer.
@@ -283,7 +286,14 @@ class CollectionRepository extends GetxController {
   }
 
   /// Claim items by IDs (move to activity)
-  Future<void> claimItemsByIds(List<String> ids, {bool silent = false}) async {
+  ///
+  /// [onProgress] is called after each invoice is written with how many of
+  /// [ids] are done, so a long acquire can show where it is.
+  Future<void> claimItemsByIds(
+    List<String> ids, {
+    bool silent = false,
+    void Function(int done, int total)? onProgress,
+  }) async {
     try {
       final dao = await _dao;
       final now = DateTime.now().toIso8601String();
@@ -294,6 +304,7 @@ class CollectionRepository extends GetxController {
       final claimed = <CollectionItemModel>[];
       // Accounts taken on for reconciliation, which the SMS names as such.
       final reconClients = <String>{};
+      var done = 0;
       for (final id in ids) {
         final item = await dao.getCollectionItemById(id);
         if (item != null) {
@@ -311,6 +322,7 @@ class CollectionRepository extends GetxController {
           await _queueChange('CLAIM', id, {'EngagementDate': now});
           claimed.add(updated);
         }
+        onProgress?.call(++done, ids.length);
       }
 
       // SMS trigger 1, Acquiring Account: one message for the whole acquire,
@@ -410,6 +422,7 @@ class CollectionRepository extends GetxController {
         checkNumber: checkNumber,
         checkDate: checkDate,
         purposeOfVisit: purposeOfVisit,
+        settled: isFullyPaid,
       );
 
       // Queue for end-of-day upload.
@@ -533,6 +546,7 @@ class CollectionRepository extends GetxController {
           checkNumber: checkNumber,
           checkDate: checkDate,
           purposeOfVisit: purposeOfVisit,
+          settled: isFullyPaid,
         );
         if (record != null) archived.add(record);
 
@@ -591,12 +605,23 @@ class CollectionRepository extends GetxController {
   /// [fields] carries the operation-specific values using the backend
   /// CollectionChangeDto names; Operation/ItemId/CollectorName are added here so
   /// the stored payload is exactly one element of UploadCollectionDto.Changes.
+  /// [_queueChange] for the other Collection repositories (the Reconciliation
+  /// Tracker), so every change goes through one outbox in one order.
+  Future<void> queueChange(
+          String operation, String itemId, Map<String, dynamic> fields) =>
+      _queueChange(operation, itemId, fields);
+
   Future<void> _queueChange(
       String operation, String itemId, Map<String, dynamic> fields) async {
     final change = <String, dynamic>{
       'Operation': operation,
       'ItemId': itemId,
       'CollectorName': collectorName,
+      // Where the phone was when the work was saved (Settings → Visit
+      // location tells the collector). Never blocks the save: a missing
+      // position goes up as LocationStatus instead.
+      if (Get.isRegistered<BVisitLocation>())
+        ...await Get.find<BVisitLocation>().fields(),
       ...fields,
     };
     await Get.find<SyncManager>().queueChange(
@@ -606,11 +631,19 @@ class CollectionRepository extends GetxController {
     );
   }
 
-  /// Upload all queued changes to the backend in one batch (end-of-day).
+  /// Upload all queued changes (end-of-day), a small batch at a time
+  /// ([planUploadBatches]), in queue order.
   ///
-  /// Accepted changes are removed from the queue; rejected ones are kept (with an
-  /// incremented retry count) so the collector can review or discard them.
-  Future<CollectionUploadResult> uploadAll() async {
+  /// Each answered batch is applied before the next goes: accepted changes
+  /// leave the queue, refused ones stay with the server's reason for the
+  /// collector to review or discard. [onProgress] reports changes answered
+  /// so far out of the run's total. A batch with no answer (connection lost,
+  /// timeout, server error) stops the run with its reason in
+  /// [CollectionUploadResult.error]; what was sent before it stays sent, and
+  /// the rest is still queued for the retry.
+  Future<CollectionUploadResult> uploadAll({
+    void Function(int done, int total)? onProgress,
+  }) async {
     final CollectionPendingDao pendingDao =
         await DatabaseHelper.instance.collectionPendingDao;
     final pending = await pendingDao.getPendingChanges();
@@ -618,14 +651,35 @@ class CollectionRepository extends GetxController {
       return const CollectionUploadResult();
     }
 
-    final changes = pending
-        .map((p) => jsonDecode(p.payload) as Map<String, dynamic>)
-        .toList();
+    final result = await runBatchedUpload(
+      pending: pending,
+      send: _sendUploadBatch,
+      apply: (batch, rejected) =>
+          _applyUploadAnswer(pendingDao, batch, rejected),
+      onProgress: onProgress,
+    );
+    logDebug('CollectionRepository.uploadAll: accepted=${result.accepted} '
+        'rejected=${result.rejectedCount} total=${result.total}'
+        '${result.interrupted ? ' stopped: ${result.error}' : ''}');
+    return result;
+  }
 
+  /// One batch to `/api4/Collection/upload`; the refusals by
+  /// `operation|itemId`. Throws when it gets no usable answer.
+  Future<Map<String, String>> _sendUploadBatch(
+      List<PendingChange> batch) async {
     final body = {
       'CollectorCode': collectorCode,
       'CollectorName': collectorName,
-      'Changes': changes,
+      'Changes': [
+        for (final p in batch)
+          {
+            ...jsonDecode(p.payload) as Map<String, dynamic>,
+            // Lets the server tell a batch sent again (its answer was lost)
+            // from new work.
+            'ClientChangeId': clientChangeId(collectorCode, p),
+          },
+      ],
     };
 
     final response = await http
@@ -634,7 +688,7 @@ class CollectionRepository extends GetxController {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(body),
         )
-        .timeout(const Duration(seconds: 60));
+        .timeout(const Duration(seconds: 45));
 
     if (response.statusCode != 200) {
       throw Exception('Upload failed (${response.statusCode})');
@@ -644,43 +698,31 @@ class CollectionRepository extends GetxController {
     final rejectedList = (decoded is Map && decoded['Rejected'] is List)
         ? (decoded['Rejected'] as List)
         : const [];
-
-    // Map each rejected (operation|itemId) to the server's reason, so the
+    // Each refused (operation|itemId) with the server's reason, so the
     // outbox can show why the row is stuck rather than only that it is.
-    final rejectedKeys = <String, String>{};
-    final rejectedReasons = <String>[];
-    for (final r in rejectedList) {
-      if (r is Map) {
-        final op = (r['Operation'] ?? '').toString();
-        final itemId = (r['ItemId'] ?? '').toString();
-        final reason = (r['Reason'] ?? 'Rejected').toString();
-        rejectedKeys['$op|$itemId'] = reason;
-        rejectedReasons.add('$itemId: $reason');
-      }
-    }
+    return {
+      for (final r in rejectedList)
+        if (r is Map)
+          '${r['Operation'] ?? ''}|${r['ItemId'] ?? ''}':
+              (r['Reason'] ?? 'Rejected').toString(),
+    };
+  }
 
+  Future<int> _applyUploadAnswer(CollectionPendingDao pendingDao,
+      List<PendingChange> batch, Map<String, String> rejected) async {
     final now = DateTime.now().toIso8601String();
-    int accepted = 0;
-    for (final p in pending) {
-      final key = '${p.operation}|${p.itemId}';
-      final reason = rejectedKeys[key];
+    var accepted = 0;
+    for (final p in batch) {
+      final reason = rejected['${p.operation}|${p.itemId}'];
       if (reason != null) {
-        await pendingDao.updatePendingChange(
-          p.copyWith(
-              retryCount: p.retryCount + 1,
-              lastRetryAt: now,
-              lastError: reason),
-        );
+        await pendingDao.updatePendingChange(p.copyWith(
+            retryCount: p.retryCount + 1, lastRetryAt: now, lastError: reason));
       } else {
         await pendingDao.removePendingChange(p.id!);
         accepted++;
       }
     }
-
-    logDebug(
-        'CollectionRepository.uploadAll: accepted=$accepted rejected=${rejectedReasons.length}');
-    return CollectionUploadResult(
-        accepted: accepted, rejected: rejectedReasons);
+    return accepted;
   }
 
   /// Create one bucket invoice on the server (supervisor "Add to Bucket").
@@ -810,6 +852,7 @@ class CollectionRepository extends GetxController {
     String? checkDate,
     String? purposeOfVisit,
     List<String> documentIds = const [],
+    bool settled = false,
   }) async {
     try {
       final record = _engagementRecord(
@@ -826,6 +869,7 @@ class CollectionRepository extends GetxController {
         checkDate: checkDate,
         purposeOfVisit: purposeOfVisit,
         documentIds: documentIds,
+        settled: settled,
       );
       if (record == null) return;
       final dao = await DatabaseHelper.instance.collectionEngagementDao;
@@ -849,6 +893,24 @@ class CollectionRepository extends GetxController {
     }
   }
 
+  /// The raw date of the latest history entry of [item] that collected
+  /// money, or null when none did. Compared as parsed dates, returned as
+  /// written so it can be matched back against the entry.
+  static String? _lastPaidAt(CollectionItemModel item) {
+    String? raw;
+    DateTime? latest;
+    for (final h in item.history) {
+      if (h.totalCollected <= 0) continue;
+      final dt = BFormatter.parseLocal(h.date);
+      if (dt == null) continue;
+      if (latest == null || dt.isAfter(latest)) {
+        latest = dt;
+        raw = h.date;
+      }
+    }
+    return raw;
+  }
+
   /// Builds the record, or null when [engagedAt] is not a date we can file
   /// under a day. A row the calendar could not place used to disappear into a
   /// bare `catch`; here it is counted out loud.
@@ -867,6 +929,7 @@ class CollectionRepository extends GetxController {
     String? purposeOfVisit,
     List<String> documentIds = const [],
     String source = CollectionEngagementRecord.sourceLocal,
+    bool settled = false,
   }) {
     final engagedOn = BFormatter.localDayKey(engagedAt);
     if (engagedOn == null) {
@@ -899,6 +962,7 @@ class CollectionRepository extends GetxController {
       documentIds: documentIds,
       createdAt: _nowStamp(),
       source: source,
+      settled: settled,
     );
   }
 
@@ -1006,6 +1070,10 @@ class CollectionRepository extends GetxController {
       }
 
       for (final item in cached) {
+        // The invoice is settled by its last paying entry, whatever that
+        // entry's status (an advance applied in full says 'Advanced Payment
+        // Applied').
+        final settledAt = item.toBeCollected == 0 ? _lastPaidAt(item) : null;
         for (final h in item.history) {
           if (!mine(h.collectorName)) continue;
           add(_engagementRecord(
@@ -1017,6 +1085,7 @@ class CollectionRepository extends GetxController {
             status: h.status,
             remarks: h.remarks,
             amount: h.totalCollected,
+            settled: settledAt != null && h.date == settledAt,
             bankName: h.bankName,
             checkNumber: h.checkNumber,
             checkDate: h.checkDate,
@@ -1429,6 +1498,9 @@ class CollectionRepository extends GetxController {
         status: 'Advanced Payment Applied',
         remarks: advance.remarks,
         amount: appliedAmount,
+        // Paid in full by the advance: this is the invoice's settlement, and
+        // the status cannot say so.
+        settled: newInvoice.toBeCollected <= _floatTolerance,
       );
 
       await _queueChange('ASSIGN_ADVANCE', newInvoice.id, {
@@ -1518,6 +1590,24 @@ class CollectionRepository extends GetxController {
   Future<List<CollectionItemModel>> getLocalCollectionItems() async {
     final dao = await _dao;
     return await dao.getCollectionItems();
+  }
+
+  /// Removes the calendar / report rows of work the collector discarded
+  /// before uploading: this device's own rows stamped at one of
+  /// [engagedAts] (see [CollectionEngagementDao.deleteDiscarded]).
+  Future<Result<int>> discardLocalEngagements(Set<String> engagedAts) async {
+    if (engagedAts.isEmpty) return Result.success(0);
+    try {
+      final dao = await DatabaseHelper.instance.collectionEngagementDao;
+      final removed = await dao.deleteDiscarded(
+          collectorCode: collectorCode, engagedAts: engagedAts);
+      if (removed > 0) ownEngagementVersion.value++;
+      logDebug('CollectionRepository: removed $removed discarded engagements');
+      return Result.success(removed);
+    } catch (e) {
+      logDebug('CollectionRepository.discardLocalEngagements error: $e');
+      return Result.failure('Could not remove the discarded engagements: $e');
+    }
   }
 
   /// Clear all local collection data.

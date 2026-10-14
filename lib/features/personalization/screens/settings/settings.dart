@@ -17,6 +17,8 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widge
 
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/default_area_sheet.dart';
 
@@ -190,6 +192,12 @@ class _CollectionSettings extends StatelessWidget {
           subTitle: 'Review and upload your queued collections',
           onTap: () => Get.toNamed(BRoutes.collectionUploadOutbox),
         ),
+        BSettingsMenuTile(
+          icon: Iconsax.document_download,
+          title: 'Reports',
+          subTitle: 'Activity, collectors summary, reconciliation; save or share as CSV',
+          onTap: () => Get.toNamed(BRoutes.collectionReports),
+        ),
         const SizedBox(height: BSizes.spaceBtwItems),
         const BSectionHeading(title: 'My Team', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
@@ -199,6 +207,8 @@ class _CollectionSettings extends StatelessWidget {
         const BSectionHeading(title: 'Preferences', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _DefaultAreaTile(),
+        if (GetPlatform.isAndroid) const _FollowUpRemindersTile(),
+        if (GetPlatform.isAndroid) const _VisitLocationTile(),
         BSettingsMenuTile(
           icon: Iconsax.folder_2,
           title: 'Storage',
@@ -263,6 +273,91 @@ class _DefaultAreaTile extends StatelessWidget {
             await settings.setDefaultArea(code);
           },
         ));
+  }
+}
+
+/// The 8 AM phone reminder for a reconciliation follow up that is due
+/// (docs/application/COLLECTION_RECON_FOLLOWUP_REMINDERS_PLAN.md, Phase 3).
+class _FollowUpRemindersTile extends StatelessWidget {
+  const _FollowUpRemindersTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = Get.find<CollectionSettingsController>();
+    return Obx(() {
+      final on = settings.followUpReminders.value;
+      return BSettingsMenuTile(
+        icon: Iconsax.notification,
+        title: 'Follow-up reminders',
+        subTitle: on
+            ? 'A notification at 8 AM on a reconciliation follow-up date'
+            : 'Off · follow ups still show on the calendar',
+        trailing: Switch(
+          key: const ValueKey('settings-followup-reminders'),
+          value: on,
+          onChanged: settings.setFollowUpReminders,
+        ),
+        onTap: () => settings.setFollowUpReminders(!on),
+      );
+    });
+  }
+}
+
+/// Tells the collector, truthfully, that the phone's location is recorded on
+/// every engagement they save, and whether it is working right now. A tap
+/// asks for the permission, or opens the phone's settings where only they
+/// can allow it.
+class _VisitLocationTile extends StatefulWidget {
+  const _VisitLocationTile();
+
+  @override
+  State<_VisitLocationTile> createState() => _VisitLocationTileState();
+}
+
+class _VisitLocationTileState extends State<_VisitLocationTile> {
+  final settings = Get.find<CollectionSettingsController>();
+
+  @override
+  void initState() {
+    super.initState();
+    settings.refreshVisitLocation();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Obx(() {
+      final state = settings.visitLocation.value;
+      final subTitle = switch (state) {
+        VisitLocationState.on =>
+          'On · your location is recorded each time you save an engagement',
+        VisitLocationState.needsPermission =>
+          'Needs permission · tap to allow; your location is recorded on '
+              'each saved engagement',
+        VisitLocationState.blocked =>
+          'Blocked · tap to allow it in the phone settings',
+        VisitLocationState.serviceOff =>
+          "Location is off · tap to turn on the phone's location",
+        VisitLocationState.unsupported => 'Not available on this device',
+        null => 'Checking…',
+      };
+      return BSettingsMenuTile(
+        key: const ValueKey('settings-visit-location'),
+        icon: Iconsax.location_tick,
+        title: 'Visit location',
+        subTitle: subTitle,
+        trailing: Icon(
+          state == VisitLocationState.on
+              ? Iconsax.tick_circle
+              : Iconsax.warning_2,
+          color: state == VisitLocationState.on
+              ? BCollectionColors.success
+              : BCollectionColors.warning,
+        ),
+        onTap: state == VisitLocationState.on
+            ? null
+            : settings.turnOnVisitLocation,
+      );
+    });
   }
 }
 

@@ -89,7 +89,9 @@ class ScannedItemsScreen extends StatelessWidget {
         child: Column(
           children: [
             // Top quick actions row (capture / attach)
-            ScannerActionRow(controller: ctl),
+            ScannerActionRow(
+                onCapture: ctl.pickAndAnalyzeFromCamera,
+                onAttach: ctl.pickAndAnalyzeFromFile),
             const SizedBox(height: BSizes.sm),
 
             // Embedded scanner widget (includes capture/attach actions / list)

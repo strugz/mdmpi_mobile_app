@@ -11,6 +11,8 @@ class CollectionSummaryStat {
     required this.icon,
     required this.color,
     this.onTap,
+    this.note,
+    this.noteColor,
   });
 
   final String title;
@@ -18,6 +20,10 @@ class CollectionSummaryStat {
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
+
+  /// What needs attention under the figure ("2 due today"), if anything.
+  final String? note;
+  final Color? noteColor;
 }
 
 /// The dashboard's four counts, two by two.
@@ -77,5 +83,7 @@ class CollectionSummaryGrid extends StatelessWidget {
         icon: stat.icon,
         color: stat.color,
         onTap: stat.onTap,
+        note: stat.note,
+        noteColor: stat.noteColor,
       );
 }

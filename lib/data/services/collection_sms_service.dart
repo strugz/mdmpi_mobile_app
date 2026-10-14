@@ -424,6 +424,19 @@ class CollectionSmsService extends GetxController {
           {required String clientName, required String remarks}) =>
       'Picked up CWT from ${_end(clientName)}${_note('Note', remarks)}';
 
+  /// 7. Reconciliation escalated (Reconciliation Tracker, to the Head only):
+  /// "Reconciliation escalated: [Client]. 2 open invoices, PHP 276,995.00.
+  /// Reason: [Remarks]."
+  static String reconEscalated({
+    required String clientName,
+    required int openInvoices,
+    required double openAmount,
+    String remarks = '',
+  }) =>
+      'Reconciliation escalated: ${_end(clientName)} '
+      '$openInvoices open ${openInvoices == 1 ? 'invoice' : 'invoices'}, '
+      '${_end(_peso(openAmount))}${_note('Reason', remarks)}';
+
   /// "[message] - MAR": who sent it, since the Head hears from every
   /// collector. A plain hyphen, not a dash: a dash is outside GSM-7 too.
   static String signed(String message, String initials) {
@@ -494,6 +507,22 @@ class CollectionSmsService extends GetxController {
           {required String clientName, required String remarks}) =>
       send(cwtPickup(clientName: clientName, remarks: remarks));
 
+  /// A case escalated to the Head: the Head alone is told, not the
+  /// Collection contacts; an escalation is theirs to take on.
+  Future<CollectionSmsOutcome> notifyReconEscalated({
+    required String clientName,
+    required int openInvoices,
+    required double openAmount,
+    String remarks = '',
+  }) =>
+      send(
+          reconEscalated(
+              clientName: clientName,
+              openInvoices: openInvoices,
+              openAmount: openAmount,
+              remarks: remarks),
+          headOnly: true);
+
   /// Whether a Head with a number is set, for the one-time Settings hint.
   Future<bool> hasHead() async {
     try {
@@ -509,7 +538,8 @@ class CollectionSmsService extends GetxController {
   // ------------------------------------------------------------------
 
   /// The Head first, then the Collection contacts, without duplicates.
-  Future<List<String>> recipients() async {
+  /// [headOnly]: the Head alone (a reconciliation escalation).
+  Future<List<String>> recipients({bool headOnly = false}) async {
     final numbers = <String>[];
     try {
       final head = await _head();
@@ -517,6 +547,7 @@ class CollectionSmsService extends GetxController {
     } catch (e) {
       logDebug('CollectionSmsService: head lookup failed: $e');
     }
+    if (headOnly) return numbers;
     try {
       numbers.addAll(await _contacts());
     } catch (e) {
@@ -545,22 +576,23 @@ class CollectionSmsService extends GetxController {
   /// once, and each opens and pops its own full-screen view. Overlapping,
   /// a pop can close another send's view (or the screen beneath it), so each
   /// send waits for the one before it, "Message Sent!" included.
-  Future<CollectionSmsOutcome> send(String message) {
-    final result = _queue.then((_) => _sendNow(message));
+  Future<CollectionSmsOutcome> send(String message, {bool headOnly = false}) {
+    final result = _queue.then((_) => _sendNow(message, headOnly: headOnly));
     _queue = result
         .then((_) => _sentView ?? Future<void>.value())
         .catchError((Object _) {});
     return result;
   }
 
-  Future<CollectionSmsOutcome> _sendNow(String message) async {
+  Future<CollectionSmsOutcome> _sendNow(String message,
+      {bool headOnly = false}) async {
     _sentView = null;
     message = signed(message, _safeInitials());
     var count = 0;
     String? reason;
     CollectionSmsOutcome outcome;
     try {
-      final to = await recipients();
+      final to = await recipients(headOnly: headOnly);
       count = to.length;
       if (to.isEmpty) {
         logDebug('CollectionSmsService: no recipients');

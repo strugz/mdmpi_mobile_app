@@ -17,6 +17,29 @@ void main() {
   tearDown(Get.reset);
 
   group('templates', () {
+    test('7. Reconciliation escalated', () {
+      expect(
+        CollectionSmsService.reconEscalated(
+            clientName: 'Allied Care Experts (ACE) Medical Center - Bohol, Inc.',
+            openInvoices: 1,
+            openAmount: 276995,
+            remarks: 'No proof after three follow-ups'),
+        'Reconciliation escalated: Allied Care Experts (ACE) Medical Center - '
+        'Bohol, Inc. 1 open invoice, PHP 276,995.00. Reason: No proof after '
+        'three follow-ups.',
+      );
+      expect(
+        CollectionSmsService.reconEscalated(
+            clientName: 'Metro Globe', openInvoices: 2, openAmount: 100),
+        'Reconciliation escalated: Metro Globe. 2 open invoices, PHP 100.00.',
+      );
+      expect(
+          RegExp(r'^[\x20-\x7E]*$').hasMatch(CollectionSmsService.reconEscalated(
+              clientName: 'X', openInvoices: 1, openAmount: 1)),
+          isTrue,
+          reason: 'plain SMS text');
+    });
+
     test('1. Acquiring Account', () {
       expect(
         CollectionSmsService.acquiringAccount(
@@ -338,6 +361,24 @@ void main() {
       head = const HeadContact(
           key: 'MDD', name: 'Maria Dela Cruz', phone: '0917 000 0001');
       contacts = ['0918 000 0002', '0917-000-0001', '0919 000 0003'];
+    });
+
+    test('an escalation goes to the Head alone, not the Collection contacts',
+        () async {
+      final r = await build().notifyReconEscalated(
+          clientName: 'Metro Globe', openInvoices: 1, openAmount: 100);
+      expect(r, CollectionSmsOutcome.sent);
+      expect(sent.map((s) => s.$1), ['0917 000 0001']);
+      expect(sent.single.$2, endsWith(' - MAR'));
+
+      head = null;
+      sent = [];
+      expect(
+          await build().notifyReconEscalated(
+              clientName: 'Metro Globe', openInvoices: 1, openAmount: 100),
+          CollectionSmsOutcome.noRecipients,
+          reason: 'no Head set: nobody to tell, the contacts are not a stand-in');
+      expect(sent, isEmpty);
     });
 
     test('the Head first, then the Collection contacts, no duplicates',

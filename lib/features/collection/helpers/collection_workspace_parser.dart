@@ -4,6 +4,8 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_activity_d
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/dtos/collection_item_dto.dart';
 import 'package:mdmpi_mobile_app/features/collection/mappers/collection_mapper.dart';
+import 'package:mdmpi_mobile_app/features/collection/mappers/recon_case_mapper.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case_bundle.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 
 /// Everything one `GET /api4/Collection/workspace` call returns, already shaped
@@ -28,6 +30,13 @@ class CollectionWorkspace {
   /// only a list that was sent (even an empty one) replaces the local copy.
   final bool hasActualCollections;
 
+  /// Reconciliation cases (docs/application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md).
+  final List<ReconCaseBundle> reconCases;
+
+  /// Whether the server sent `ReconCases` at all: an older server leaves it
+  /// out, and that must not remove the cases on the phone.
+  final bool hasReconCases;
+
   const CollectionWorkspace({
     required this.items,
     required this.advances,
@@ -36,6 +45,8 @@ class CollectionWorkspace {
     required this.targets,
     this.actualCollections = const [],
     this.hasActualCollections = false,
+    this.reconCases = const [],
+    this.hasReconCases = false,
   });
 }
 
@@ -75,6 +86,13 @@ class CollectionWorkspaceParser {
           .whereType<CollectionActualRecord>()
           .toList(),
       hasActualCollections: _pick(json, 'ActualCollections') is List,
+      reconCases: _list(json, 'ReconCases')
+          .whereType<Map>()
+          .map(_map)
+          .map(ReconCaseMapper.fromJson)
+          .whereType<ReconCaseBundle>()
+          .toList(),
+      hasReconCases: _pick(json, 'ReconCases') is List,
     );
   }
 

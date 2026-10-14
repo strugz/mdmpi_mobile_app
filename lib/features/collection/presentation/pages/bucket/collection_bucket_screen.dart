@@ -292,6 +292,7 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
             Obx(() => AcquiringOverlay(
                   visible: controller.isAcquiring.value,
                   invoiceCount: controller.acquiringInvoices.value,
+                  doneCount: controller.acquiredInvoices.value,
                   accountCount: controller.acquiringAccounts.value,
                 )),
           ],

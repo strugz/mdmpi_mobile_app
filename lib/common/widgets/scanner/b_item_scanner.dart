@@ -88,7 +88,7 @@ class BItemScanner extends StatelessWidget {
         // NOTE: ScannerActionRow is intentionally NOT rendered here when
         // BItemScanner is embedded inside a full-screen parent. Parent
         // widgets (e.g., ScannedItemsScreen) should place
-        // `ScannerActionRow(controller: ctl)` above this widget so the
+        // `ScannerActionRow(onCapture: …, onAttach: …)` above this widget so the
         // capture/attach actions are not duplicated.
 
         // Observed scanned items, loading and errors

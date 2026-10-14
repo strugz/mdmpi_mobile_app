@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -19,6 +20,7 @@ CollectionItemModel _item(
   String id, {
   double toBeCollected = 0,
   double totalCollected = 0,
+  List<CollectionHistoryModel> history = const [],
 }) =>
     CollectionItemModel(
       id: id,
@@ -32,6 +34,7 @@ CollectionItemModel _item(
       ),
       toBeCollected: toBeCollected,
       totalCollected: totalCollected,
+      history: history,
     );
 
 CollectionActivityController _bareController() {
@@ -103,8 +106,22 @@ void main() {
     await tester.pumpWidget(_obxText(() => '${c.completedItems.length}'));
     expect(find.text('0'), findsOneWidget);
 
-    // A settled invoice arrives: toBeCollected 0 makes it "completed".
-    c.bucketItems.add(_item('INV-1', toBeCollected: 0, totalCollected: 500));
+    // A settled invoice arrives: toBeCollected 0, paid this month, makes it
+    // "completed".
+    c.bucketItems.add(_item(
+      'INV-1',
+      toBeCollected: 0,
+      totalCollected: 500,
+      history: [
+        CollectionHistoryModel(
+          date: DateTime.now().toIso8601String(),
+          collectorName: 'Jay',
+          status: 'Collected',
+          remarks: '',
+          totalCollected: 500,
+        ),
+      ],
+    ));
     await tester.pump();
 
     expect(find.text('1'), findsOneWidget, reason: 'Obx must have subscribed');

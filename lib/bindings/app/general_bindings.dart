@@ -1,3 +1,9 @@
+import 'package:mdmpi_mobile_app/data/services/outbox/voucher_reread_service.dart';
+import 'package:mdmpi_mobile_app/data/services/gemini_document_service.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/voucher_invoice_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/voucher_scan_controller.dart';
+import 'package:mdmpi_mobile_app/data/services/report_export_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_reports_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/upload_data_controller.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -91,6 +97,12 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repo
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.dart';
+import 'package:mdmpi_mobile_app/data/services/outbox/recon_attachment_sync_service.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/reconciliation_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_reminder_scheduler.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/upload_reminder.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -234,6 +246,9 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
+    // Gemini document reading: the Logistics inventory scanner and the
+    // Collection voucher scan. No Firestore, so outside the Firebase guard.
+    Get.lazyPut(() => GeminiDocumentService(), fenix: true);
 
     // ========================================================================
     // Platform Services
@@ -251,6 +266,12 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionRepository(), fenix: true);
     Get.lazyPut(() => BankRepository(), fenix: true);
     Get.lazyPut(() => ClientRegistryRepository(), fenix: true);
+    // Scanned Invoices: voucher pages read by Gemini (on-device fallback).
+    Get.lazyPut(() => VoucherInvoiceRepository(), fenix: true);
+    Get.lazyPut(
+        () => VoucherScanController(
+            repository: Get.find<VoucherInvoiceRepository>()),
+        fenix: true);
     // CNTMST always; Firestore Users too when Firebase is up (not on a desktop
     // without FlutterFire). Resolved at load time, so UserRepository need not exist yet.
     Get.lazyPut(
@@ -269,11 +290,89 @@ class GeneralBindings extends Bindings {
     // Settings → Default area (item 15): GetStorage-backed, no repository.
     Get.lazyPut(() => CollectionSettingsController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
+    // The phone's position, stamped on every queued Collection change.
+    // Permanent: it keeps the last fix so a batch asks once.
+    GetInstance().lazyPut<BVisitLocation>(() => BVisitLocation(),
+        fenix: true, permanent: true);
+    // The 17:00 "upload your collections" nudge (Android), kept in line
+    // with the queue by SyncManager.
+    Get.lazyPut(
+        () => BUploadReminder(
+              notifications: () => Get.isRegistered<INotificationService>()
+                  ? Get.find<INotificationService>()
+                  : null,
+            ),
+        fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
+    // Reconciliation Tracker: queues through CollectionRepository and
+    // SyncManager (above). SQLite + /api4 only, so outside the Firebase guard.
+    registerReconciliationTracker(
+      repository: () => ReconciliationRepository(
+        // The phone's live balances, so a payment recorded here shows
+        // on its case before the next upload and download.
+        liveBalances: () => Get.isRegistered<CollectionActivityController>()
+            ? {
+                for (final i in CollectionActivityController.instance.allItems)
+                  i.id: i.toBeCollected,
+              }
+            : const {},
+      ),
+      controller: () => ReconciliationController(
+          repository: Get.find<ReconciliationRepository>()),
+      // Morning phone reminders for follow ups that are due (Android).
+      reminders: () => ReconReminderScheduler(
+        notifications: () => Get.isRegistered<INotificationService>()
+            ? Get.find<INotificationService>()
+            : null,
+        enabled: CollectionSettingsController.followUpRemindersOn,
+      ),
+    );
+
+    // Settings → Reports: builds from the archive, the team feed and the
+    // Tracker's cases, so after them. CSV save/share has no backend.
+    Get.lazyPut(() => ReportExportService(), fenix: true);
+    Get.lazyPut(
+        () => CollectionReportsController(exporter: Get.find<ReportExportService>()),
+        fenix: true);
 
     // Eager, not lazy: it must be alive to hear connectivity and lifecycle
     // events, otherwise nothing drains the proof outboxes automatically.
     // Registered last so NetworkManager and ImageRepository already exist.
     Get.put(ProofOutboxSyncService(), permanent: true);
+    // The same for reconciliation photos (proof of payment, documents).
+    Get.put(ReconAttachmentSyncService(), permanent: true);
+    // Voucher pages read on the phone, read again by the AI once online.
+    Get.put(
+        VoucherRereadService(
+          // Null until the account's invoices are on hand: the page waits.
+          classifierFor: (clientId) {
+            if (!Get.isRegistered<CollectionActivityController>()) return null;
+            final activity = CollectionActivityController.instance;
+            if (activity.allItems.isEmpty) return null;
+            return VoucherScanController.classifierFor(activity, clientId);
+          },
+        ),
+        permanent: true);
+  }
+
+  /// The Tracker is app-wide state, so it is created on first use but never
+  /// deleted with a route. Plain `lazyPut` ties it to whichever route first
+  /// used it: the calendar's Reconciliation form replaces itself with the
+  /// case (`Get.offNamed`), GetX then deleted the Tracker, and the case
+  /// screen stayed subscribed to the dead one, so steps logged there never
+  /// showed on its stage track.
+  static void registerReconciliationTracker({
+    required ReconciliationRepository Function() repository,
+    required ReconciliationController Function() controller,
+    ReconReminderScheduler Function()? reminders,
+  }) {
+    if (reminders != null) {
+      GetInstance().lazyPut<ReconReminderScheduler>(reminders,
+          fenix: true, permanent: true);
+    }
+    GetInstance().lazyPut<ReconciliationRepository>(repository,
+        fenix: true, permanent: true);
+    GetInstance().lazyPut<ReconciliationController>(controller,
+        fenix: true, permanent: true);
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/mirror_carousel.dart';
@@ -9,7 +10,9 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_summary.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
@@ -184,23 +187,8 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   BCollectionColors
                                                                       .danger),
                                                         ),
-                                                        CollectionSummaryStat(
-                                                          title:
-                                                              'Reconciliation',
-                                                          value: controller
-                                                              .reconciliationItems
-                                                              .length
-                                                              .toString(),
-                                                          icon:
-                                                              Iconsax.status_up,
-                                                          color:
-                                                              BCollectionColors
-                                                                  .reconcile,
-                                                          onTap: () => _openCategory(
-                                                              'Reconciliation',
-                                                              BCollectionColors
-                                                                  .reconcile),
-                                                        ),
+                                                        _reconciliationStat(
+                                                            controller),
                                                         CollectionSummaryStat(
                                                           title:
                                                               'Advanced Payment',
@@ -411,6 +399,27 @@ class CollectionHomeScreen extends StatelessWidget {
       () => CategoryDetailScreen(title: title, color: color),
       transition: _pageTransition,
       duration: _pageDuration,
+    );
+  }
+
+  /// The Tracker's cases; accounts waiting to be acquired are linked from
+  /// there. Follow ups due today and overdue show under the figure, so they
+  /// are seen without opening the list. Read inside the grid's Obx.
+  static CollectionSummaryStat _reconciliationStat(
+      CollectionActivityController controller) {
+    final due = Get.isRegistered<ReconciliationController>()
+        ? ReconciliationController.instance.myDueCounts
+        : (today: 0, overdue: 0);
+    return CollectionSummaryStat(
+      title: 'Reconciliation',
+      value: controller.reconciliationItems.length.toString(),
+      icon: Iconsax.status_up,
+      color: BCollectionColors.reconcile,
+      onTap: () => Get.toNamed(BRoutes.reconciliationCases),
+      note: reconDueNote(due),
+      noteColor: due.overdue > 0
+          ? BCollectionColors.danger
+          : BCollectionColors.primary,
     );
   }
 }
