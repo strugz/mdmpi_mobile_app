@@ -22,7 +22,8 @@ abstract class INotificationService {
   /// Shows [title]/[body] at [wallClock] in [timeZone] (an IANA name), read
   /// as plain wall-clock fields whatever the phone's own zone. Inexact, so it
   /// may land a few minutes late, and needs no exact-alarm permission.
-  /// Replaces any notification scheduled under [id]. Returns false when it
+  /// Replaces any notification scheduled under [id]. With [daily], it comes
+  /// back at the same time every day until cancelled. Returns false when it
   /// was not scheduled (no support here, or the time has passed).
   Future<bool> scheduleAt({
     required int id,
@@ -33,6 +34,7 @@ abstract class INotificationService {
     required String channelName,
     String timeZone = 'Asia/Manila',
     String? payload,
+    bool daily = false,
   });
 
   /// Cancels the notification scheduled or shown under [id].

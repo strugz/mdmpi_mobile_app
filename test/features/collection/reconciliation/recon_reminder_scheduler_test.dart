@@ -42,6 +42,7 @@ class _FakeNotifications implements INotificationService {
     required String channelName,
     String timeZone = 'Asia/Manila',
     String? payload,
+    bool daily = false,
   }) async {
     expect(channelId, ReconReminderScheduler.channelId);
     expect(timeZone, 'Asia/Manila');

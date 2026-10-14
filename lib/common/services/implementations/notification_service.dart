@@ -97,6 +97,7 @@ class NotificationService implements INotificationService {
     required String channelName,
     String timeZone = 'Asia/Manila',
     String? payload,
+    bool daily = false,
   }) async {
     if (!canSchedule) return false;
     if (!_initialized) await init();
@@ -125,6 +126,7 @@ class NotificationService implements INotificationService {
       // SCHEDULE_EXACT_ALARM permission or Play declaration.
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: payload,
+      matchDateTimeComponents: daily ? DateTimeComponents.time : null,
     );
     return true;
   }

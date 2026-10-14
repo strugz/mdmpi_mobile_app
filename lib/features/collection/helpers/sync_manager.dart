@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_pending_dao.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/outbox/recon_attachment_sync_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/upload_reminder.dart';
 
 /// Manages syncing of pending collection changes to the server.
 ///
@@ -59,6 +60,11 @@ class SyncManager extends GetxController {
     pendingCount.value = count;
     hasPendingChanges.value = count > 0;
     logDebug('SyncManager: $count pending changes');
+    // The 17:00 nudge follows the queue: on while anything waits, off once
+    // it is uploaded or discarded.
+    if (Get.isRegistered<BUploadReminder>()) {
+      unawaited(Get.find<BUploadReminder>().sync(count));
+    }
   }
 
   /// Queue a pending change for later sync.

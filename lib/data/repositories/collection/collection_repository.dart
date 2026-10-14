@@ -20,6 +20,7 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/features/collection/dtos/collection_item_dto.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_workspace_parser.dart';
 import 'package:mdmpi_mobile_app/features/collection/mappers/collection_mapper.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
@@ -621,6 +622,11 @@ class CollectionRepository extends GetxController {
       'Operation': operation,
       'ItemId': itemId,
       'CollectorName': collectorName,
+      // Where the phone was when the work was saved (Settings → Visit
+      // location tells the collector). Never blocks the save: a missing
+      // position goes up as LocationStatus instead.
+      if (Get.isRegistered<BVisitLocation>())
+        ...await Get.find<BVisitLocation>().fields(),
       ...fields,
     };
     await Get.find<SyncManager>().queueChange(

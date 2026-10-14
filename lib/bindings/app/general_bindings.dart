@@ -103,6 +103,8 @@ import 'package:mdmpi_mobile_app/data/services/outbox/recon_attachment_sync_serv
 import 'package:mdmpi_mobile_app/data/repositories/collection/reconciliation_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_reminder_scheduler.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/upload_reminder.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -291,6 +293,19 @@ class GeneralBindings extends Bindings {
     // Settings → Default area (item 15): GetStorage-backed, no repository.
     Get.lazyPut(() => CollectionSettingsController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
+    // The phone's position, stamped on every queued Collection change.
+    // Permanent: it keeps the last fix so a batch asks once.
+    GetInstance().lazyPut<BVisitLocation>(() => BVisitLocation(),
+        fenix: true, permanent: true);
+    // The 17:00 "upload your collections" nudge (Android), kept in line
+    // with the queue by SyncManager.
+    Get.lazyPut(
+        () => BUploadReminder(
+              notifications: () => Get.isRegistered<INotificationService>()
+                  ? Get.find<INotificationService>()
+                  : null,
+            ),
+        fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
     // Reconciliation Tracker: queues through CollectionRepository and
     // SyncManager (above). SQLite + /api4 only, so outside the Firebase guard.

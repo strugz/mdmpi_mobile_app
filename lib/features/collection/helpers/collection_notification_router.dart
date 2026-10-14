@@ -2,45 +2,61 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_reminder_scheduler.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/upload_reminder.dart';
 
-/// Opens the case a follow-up reminder was about, when the collector taps it.
+/// Opens the screen a Collection reminder is about when the collector taps
+/// it: a follow-up reminder opens its reconciliation case, the end-of-day
+/// upload reminder opens Upload Collections.
 ///
-/// A tap while the app runs opens the case at once. A tap that launched the
-/// app is held ([holdLaunch]) until the main navigation is up
-/// ([openPending], from `NavigationController.onReady`), so the case opens
-/// over the home screen instead of before login and routing have finished.
-class BReconNotificationRouter {
-  BReconNotificationRouter._();
+/// A tap while the app runs opens it at once. A tap that launched the app is
+/// held ([holdLaunch]) until the main navigation is up ([openPending], from
+/// `NavigationController.onReady`), so the screen opens over the home screen
+/// instead of before login and routing have finished.
+class BCollectionNotificationRouter {
+  BCollectionNotificationRouter._();
 
-  static String? _pending;
+  static ({String route, Object? arguments})? _pending;
 
-  /// Handles [payload] if it is a reconciliation reminder; false otherwise,
-  /// so the caller keeps its own handling for other notifications.
-  static bool onTap(String? payload) {
+  /// Where [payload] leads; null for a notification that is not ours.
+  static ({String route, Object? arguments})? destinationFor(String? payload) {
+    if (payload == BUploadReminder.payload) {
+      return (route: BRoutes.collectionUploadOutbox, arguments: null);
+    }
     final caseId = ReconReminderScheduler.caseIdFrom(payload);
-    if (caseId == null) return false;
-    _open(caseId);
+    if (caseId != null) {
+      return (route: BRoutes.reconciliationCase, arguments: caseId);
+    }
+    return null;
+  }
+
+  /// Handles [payload] if it is one of ours; false otherwise, so the caller
+  /// keeps its own handling for other notifications.
+  static bool onTap(String? payload) {
+    final to = destinationFor(payload);
+    if (to == null) return false;
+    _open(to);
     return true;
   }
 
-  /// Keep the case of the reminder that launched the app, for [openPending].
+  /// Keep where the notification that launched the app leads, for
+  /// [openPending].
   static void holdLaunch(String? payload) {
-    final caseId = ReconReminderScheduler.caseIdFrom(payload);
-    if (caseId != null) _pending = caseId;
+    final to = destinationFor(payload);
+    if (to != null) _pending = to;
   }
 
-  /// Open the held case, once.
+  /// Open the held screen, once.
   static void openPending() {
-    final caseId = _pending;
+    final to = _pending;
     _pending = null;
-    if (caseId != null) _open(caseId);
+    if (to != null) _open(to);
   }
 
-  static void _open(String caseId) {
+  static void _open(({String route, Object? arguments}) to) {
     try {
-      Get.toNamed(BRoutes.reconciliationCase, arguments: caseId);
+      Get.toNamed(to.route, arguments: to.arguments);
     } catch (e) {
-      logDebug('BReconNotificationRouter: could not open $caseId: $e');
+      logDebug('BCollectionNotificationRouter: could not open ${to.route}: $e');
     }
   }
 }

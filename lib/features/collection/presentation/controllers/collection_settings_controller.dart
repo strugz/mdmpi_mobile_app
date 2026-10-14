@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 
@@ -44,6 +45,21 @@ class CollectionSettingsController extends GetxController {
     super.onInit();
     defaultArea.value = readDefaultArea(_read);
     followUpReminders.value = readFollowUpReminders(_read);
+  }
+
+  /// Whether saves record the phone's location now (Settings → Visit
+  /// location); null until first read.
+  final visitLocation = Rxn<VisitLocationState>();
+
+  Future<void> refreshVisitLocation() async {
+    if (!Get.isRegistered<BVisitLocation>()) return;
+    visitLocation.value = await Get.find<BVisitLocation>().state();
+  }
+
+  /// The collector tapped the tile: ask, or open the phone's settings.
+  Future<void> turnOnVisitLocation() async {
+    if (!Get.isRegistered<BVisitLocation>()) return;
+    visitLocation.value = await Get.find<BVisitLocation>().turnOn();
   }
 
   /// Save the follow-up reminders switch, and schedule or cancel at once.

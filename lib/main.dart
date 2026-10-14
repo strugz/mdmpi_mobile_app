@@ -6,7 +6,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_notification_service.dart';
-import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_notification_router.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_notification_router.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/common/services/implementations/permission_service.dart';
 import 'package:mdmpi_mobile_app/data/controllers/navigation_controller.dart';
@@ -82,8 +82,8 @@ Future<void> main() async {
   final firebaseApp = await initPlatform(
     initFirebase: true,
     onSelectNotification: (payload) {
-      // A follow-up reminder opens its reconciliation case.
-      if (BReconNotificationRouter.onTap(payload)) return;
+      // A Collection reminder opens its screen (the case, or Upload).
+      if (BCollectionNotificationRouter.onTap(payload)) return;
       try {
         final selectedPayload = Get.put(NavigationController());
         selectedPayload.selectedIndex.value = 1;
@@ -95,7 +95,7 @@ Future<void> main() async {
   // navigation is up (NavigationController.onReady).
   if (Get.isRegistered<INotificationService>()) {
     try {
-      BReconNotificationRouter.holdLaunch(
+      BCollectionNotificationRouter.holdLaunch(
           await Get.find<INotificationService>().launchPayload());
     } catch (e) {
       logDebug('main: no notification launch details: $e');
