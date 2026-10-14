@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+
+export 'package:mdmpi_mobile_app/features/collection/helpers/upload_batches.dart'
+    show CollectionUploadResult;
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
@@ -20,6 +23,7 @@ import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/features/collection/dtos/collection_item_dto.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/upload_batches.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_workspace_parser.dart';
 import 'package:mdmpi_mobile_app/features/collection/mappers/collection_mapper.dart';
@@ -28,15 +32,6 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_history_m
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
 /// Summary of an "Upload All" attempt.
-class CollectionUploadResult {
-  final int accepted;
-  final List<String> rejected; // human-readable "reason" strings
-
-  const CollectionUploadResult({this.accepted = 0, this.rejected = const []});
-
-  int get rejectedCount => rejected.length;
-  bool get hasRejections => rejected.isNotEmpty;
-}
 
 /// Repository for collection operations.
 /// Handles API communication and local database sync for collection items.
@@ -636,11 +631,19 @@ class CollectionRepository extends GetxController {
     );
   }
 
-  /// Upload all queued changes to the backend in one batch (end-of-day).
+  /// Upload all queued changes (end-of-day), a small batch at a time
+  /// ([planUploadBatches]), in queue order.
   ///
-  /// Accepted changes are removed from the queue; rejected ones are kept (with an
-  /// incremented retry count) so the collector can review or discard them.
-  Future<CollectionUploadResult> uploadAll() async {
+  /// Each answered batch is applied before the next goes: accepted changes
+  /// leave the queue, refused ones stay with the server's reason for the
+  /// collector to review or discard. [onProgress] reports changes answered
+  /// so far out of the run's total. A batch with no answer (connection lost,
+  /// timeout, server error) stops the run with its reason in
+  /// [CollectionUploadResult.error]; what was sent before it stays sent, and
+  /// the rest is still queued for the retry.
+  Future<CollectionUploadResult> uploadAll({
+    void Function(int done, int total)? onProgress,
+  }) async {
     final CollectionPendingDao pendingDao =
         await DatabaseHelper.instance.collectionPendingDao;
     final pending = await pendingDao.getPendingChanges();
@@ -648,14 +651,35 @@ class CollectionRepository extends GetxController {
       return const CollectionUploadResult();
     }
 
-    final changes = pending
-        .map((p) => jsonDecode(p.payload) as Map<String, dynamic>)
-        .toList();
+    final result = await runBatchedUpload(
+      pending: pending,
+      send: _sendUploadBatch,
+      apply: (batch, rejected) =>
+          _applyUploadAnswer(pendingDao, batch, rejected),
+      onProgress: onProgress,
+    );
+    logDebug('CollectionRepository.uploadAll: accepted=${result.accepted} '
+        'rejected=${result.rejectedCount} total=${result.total}'
+        '${result.interrupted ? ' stopped: ${result.error}' : ''}');
+    return result;
+  }
 
+  /// One batch to `/api4/Collection/upload`; the refusals by
+  /// `operation|itemId`. Throws when it gets no usable answer.
+  Future<Map<String, String>> _sendUploadBatch(
+      List<PendingChange> batch) async {
     final body = {
       'CollectorCode': collectorCode,
       'CollectorName': collectorName,
-      'Changes': changes,
+      'Changes': [
+        for (final p in batch)
+          {
+            ...jsonDecode(p.payload) as Map<String, dynamic>,
+            // Lets the server tell a batch sent again (its answer was lost)
+            // from new work.
+            'ClientChangeId': clientChangeId(collectorCode, p),
+          },
+      ],
     };
 
     final response = await http
@@ -664,7 +688,7 @@ class CollectionRepository extends GetxController {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode(body),
         )
-        .timeout(const Duration(seconds: 60));
+        .timeout(const Duration(seconds: 45));
 
     if (response.statusCode != 200) {
       throw Exception('Upload failed (${response.statusCode})');
@@ -674,43 +698,31 @@ class CollectionRepository extends GetxController {
     final rejectedList = (decoded is Map && decoded['Rejected'] is List)
         ? (decoded['Rejected'] as List)
         : const [];
-
-    // Map each rejected (operation|itemId) to the server's reason, so the
+    // Each refused (operation|itemId) with the server's reason, so the
     // outbox can show why the row is stuck rather than only that it is.
-    final rejectedKeys = <String, String>{};
-    final rejectedReasons = <String>[];
-    for (final r in rejectedList) {
-      if (r is Map) {
-        final op = (r['Operation'] ?? '').toString();
-        final itemId = (r['ItemId'] ?? '').toString();
-        final reason = (r['Reason'] ?? 'Rejected').toString();
-        rejectedKeys['$op|$itemId'] = reason;
-        rejectedReasons.add('$itemId: $reason');
-      }
-    }
+    return {
+      for (final r in rejectedList)
+        if (r is Map)
+          '${r['Operation'] ?? ''}|${r['ItemId'] ?? ''}':
+              (r['Reason'] ?? 'Rejected').toString(),
+    };
+  }
 
+  Future<int> _applyUploadAnswer(CollectionPendingDao pendingDao,
+      List<PendingChange> batch, Map<String, String> rejected) async {
     final now = DateTime.now().toIso8601String();
-    int accepted = 0;
-    for (final p in pending) {
-      final key = '${p.operation}|${p.itemId}';
-      final reason = rejectedKeys[key];
+    var accepted = 0;
+    for (final p in batch) {
+      final reason = rejected['${p.operation}|${p.itemId}'];
       if (reason != null) {
-        await pendingDao.updatePendingChange(
-          p.copyWith(
-              retryCount: p.retryCount + 1,
-              lastRetryAt: now,
-              lastError: reason),
-        );
+        await pendingDao.updatePendingChange(p.copyWith(
+            retryCount: p.retryCount + 1, lastRetryAt: now, lastError: reason));
       } else {
         await pendingDao.removePendingChange(p.id!);
         accepted++;
       }
     }
-
-    logDebug(
-        'CollectionRepository.uploadAll: accepted=$accepted rejected=${rejectedReasons.length}');
-    return CollectionUploadResult(
-        accepted: accepted, rejected: rejectedReasons);
+    return accepted;
   }
 
   /// Create one bucket invoice on the server (supervisor "Add to Bucket").

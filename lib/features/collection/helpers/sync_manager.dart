@@ -35,6 +35,20 @@ class SyncManager extends GetxController {
   /// Observable: error message if sync failed
   final RxnString syncErrorMessage = RxnString();
 
+  /// Upload All progress: changes answered so far, of [uploadTotal].
+  final RxInt uploadDone = 0.obs;
+  final RxInt uploadTotal = 0.obs;
+
+  /// The last run stopped part-way (no connection, a server error); it is
+  /// resumed by itself when the phone is back online ([_resumeWhenOnline]).
+  final RxBool uploadInterrupted = false.obs;
+
+  /// The last Upload All run, for the screen's banner; null before one.
+  final Rxn<CollectionUploadResult> lastUploadResult =
+      Rxn<CollectionUploadResult>();
+
+  Worker? _onlineWorker;
+
   /// Retry configuration
   static const int maxRetries = 3;
   static const Duration initialRetryDelay = Duration(seconds: 5);
@@ -51,6 +65,25 @@ class SyncManager extends GetxController {
   void onInit() {
     super.onInit();
     _updatePendingStatus();
+    _resumeWhenOnline();
+  }
+
+  @override
+  void onClose() {
+    _onlineWorker?.dispose();
+    super.onClose();
+  }
+
+  /// A run the connection cut picks up where it stopped once the phone is
+  /// online again: what was sent stays sent, the rest goes.
+  void _resumeWhenOnline() {
+    if (!Get.isRegistered<NetworkManager>()) return;
+    _onlineWorker = ever<bool>(NetworkManager.instance.isOnline, (online) {
+      if (online && uploadInterrupted.value && !isSyncing.value) {
+        logDebug('SyncManager: back online, resuming the upload');
+        unawaited(uploadAll());
+      }
+    });
   }
 
   /// Update pending changes status observable.
@@ -91,17 +124,21 @@ class SyncManager extends GetxController {
     }
   }
 
-  /// Upload all pending changes to the backend in one batch (end-of-day
-  /// "Upload All"). Delegates the HTTP push and queue reconciliation to
-  /// [CollectionRepository.uploadAll].
+  /// Upload all pending changes (end-of-day "Upload All"), a batch at a
+  /// time, with progress in [uploadDone] / [uploadTotal]. Delegates the HTTP
+  /// push and queue bookkeeping to [CollectionRepository.uploadAll].
   ///
-  /// Returns the upload result, or null when offline / on error (details land in
-  /// [syncErrorMessage]).
+  /// Returns the run's result, or null when it could not start (offline, or
+  /// one already running); details land in [syncErrorMessage]. A run that
+  /// stopped part-way sets [uploadInterrupted] and resumes by itself when
+  /// the phone is back online.
   Future<CollectionUploadResult?> uploadAll() async {
+    if (isSyncing.value) return null;
     final isConnected = await NetworkManager.instance.isConnected();
     if (!isConnected) {
       syncStatus.value = 'idle (offline)';
       syncErrorMessage.value = 'No internet connection.';
+      if (pendingCount.value > 0) uploadInterrupted.value = true;
       logDebug('SyncManager: Offline, cannot upload');
       return null;
     }
@@ -109,17 +146,30 @@ class SyncManager extends GetxController {
     isSyncing.value = true;
     syncStatus.value = 'syncing';
     syncErrorMessage.value = null;
+    uploadDone.value = 0;
+    uploadTotal.value = pendingCount.value;
 
     try {
-      final result = await CollectionRepository.instance.uploadAll();
+      final result = await CollectionRepository.instance.uploadAll(
+        onProgress: (done, total) {
+          uploadDone.value = done;
+          uploadTotal.value = total;
+        },
+      );
       await _updatePendingStatus();
+      uploadInterrupted.value = result.interrupted;
+      lastUploadResult.value = result;
       // The upload is what puts reconciliation cases on the server; their
       // photos can follow now instead of waiting for the next app resume.
-      if (Get.isRegistered<ReconAttachmentSyncService>()) {
+      if (result.accepted > 0 &&
+          Get.isRegistered<ReconAttachmentSyncService>()) {
         unawaited(ReconAttachmentSyncService.instance.flushNow());
       }
 
-      if (hasPendingChanges.value) {
+      if (result.interrupted) {
+        syncStatus.value = 'interrupted';
+        syncErrorMessage.value = result.error;
+      } else if (hasPendingChanges.value) {
         syncStatus.value = 'failed';
         syncErrorMessage.value =
             'Uploaded ${result.accepted}. ${result.rejectedCount} rejected — review and retry or discard.';
@@ -131,6 +181,7 @@ class SyncManager extends GetxController {
     } catch (e) {
       syncStatus.value = 'error';
       syncErrorMessage.value = 'Upload failed: $e';
+      uploadInterrupted.value = true;
       logDebug('SyncManager.uploadAll error: $e');
       return null;
     } finally {
