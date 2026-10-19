@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/ocr_dump_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -169,6 +170,13 @@ class _LogisticsSettings extends StatelessWidget {
           subTitle: 'Review pending or failed proof image uploads',
           onTap: () => Get.toNamed(BRoutes.imageOutbox),
         ),
+        if (GetPlatform.isAndroid)
+          BSettingsMenuTile(
+            icon: Iconsax.scan,
+            title: 'Dump OCR lines',
+            subTitle: 'Save document photos as one-scan test fixtures',
+            onTap: () => Get.to(() => const OcrDumpPage()),
+          ),
       ],
     );
   }

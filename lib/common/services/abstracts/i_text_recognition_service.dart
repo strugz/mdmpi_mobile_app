@@ -1,4 +1,4 @@
-import 'dart:ui' show Rect;
+import 'dart:ui' show Offset, Rect;
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
@@ -15,10 +15,18 @@ abstract class ITextRecognitionService {
 
 /// One line of recognised text and its box on the image (pixels).
 class OcrLine {
-  const OcrLine(this.text, this.box);
+  const OcrLine(this.text, this.box, {this.angle, this.cornerPoints});
 
   final String text;
   final Rect box;
+
+  /// The line's rotation in degrees as the recognizer reports it, or null.
+  /// About ±90 means the page was photographed sideways.
+  final double? angle;
+
+  /// The line's corners, clockwise from its top-left, or null. Gives the
+  /// reading direction when [angle] is missing.
+  final List<Offset>? cornerPoints;
 
   @override
   String toString() => 'OcrLine($text @ $box)';

@@ -695,6 +695,41 @@ class StandardDeliveryController extends GetxController
     }
   }
 
+  // ========================================================================
+  // ONE-SCAN ENTRY POINTS (plan §5 step 15: additions only)
+  // ========================================================================
+
+  /// Adds scanned document references to the form, skipping any already
+  /// there (case and spaces ignored). Empty reference fields are filled
+  /// first, then new fields are added. Returns how many were added.
+  int appendDocumentReferences(List<String> references) {
+    String key(String v) => v.replaceAll(' ', '').toUpperCase();
+    final controllers = formState.documentReferenceControllers;
+    final present = {
+      for (final c in controllers)
+        if (c.text.trim().isNotEmpty) key(c.text.trim()),
+    };
+    var added = 0;
+    for (final ref in references) {
+      final value = ref.trim();
+      if (value.isEmpty || !present.add(key(value))) continue;
+      final empty = controllers.firstWhereOrNull((c) => c.text.trim().isEmpty);
+      if (empty != null) {
+        empty.text = value;
+      } else {
+        controllers.add(TextEditingController(text: value));
+      }
+      added++;
+    }
+    controllers.refresh();
+    return added;
+  }
+
+  /// Merges items read by the one-scan into the form, the same way the
+  /// Add Item scan does.
+  void mergeScannedItems(List<InventoryItemModel> items) =>
+      _mergeScannedItems(items);
+
   /// Merge incoming scanned items into [formState.scannedInventoryItems].
   ///
   /// Merge strategy:

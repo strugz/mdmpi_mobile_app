@@ -77,6 +77,11 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controll
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transport_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/client/client_alias_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_document_scan_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/client_matcher.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/delivery_document_scan_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
@@ -249,6 +254,34 @@ class GeneralBindings extends Bindings {
     // Gemini document reading: the Logistics inventory scanner and the
     // Collection voucher scan. No Firestore, so outside the Firebase guard.
     Get.lazyPut(() => GeminiDocumentService(), fenix: true);
+
+    // Standard Delivery one-scan (plan §5 steps 8, 13, 14, 16): on-device
+    // OCR only, local SQLite aliases, so outside the Firebase guard. Registered
+    // after ITextRecognitionService, ITextExtractor and ClientController.
+    // The client list is resolved fresh on every scan, never stored.
+    Get.lazyPut(() => ClientAliasRepository(), fenix: true);
+    Get.lazyPut<IDeliveryDocumentScanService>(
+        () => DeliveryDocumentScanService(
+              textRecognition: Get.find<ITextRecognitionService>(),
+              textExtractor: Get.find<ITextExtractor>(),
+              matcher:
+                  ClientMatcher(aliases: Get.find<ClientAliasRepository>()),
+              clients: () async {
+                final clients = Get.find<ClientController>();
+                if (clients.allClient.isEmpty) {
+                  await clients.fetchClientFromDb(false);
+                }
+                return clients.allClient.toList();
+              },
+            ),
+        fenix: true);
+    Get.lazyPut(
+        () => DeliveryDocumentScanController(
+              service: Get.find<IDeliveryDocumentScanService>(),
+              aliases: Get.find<ClientAliasRepository>(),
+              permissions: Get.find<IPermissionService>(),
+            ),
+        fenix: true);
 
     // ========================================================================
     // Platform Services

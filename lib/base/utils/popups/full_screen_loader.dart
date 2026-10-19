@@ -32,6 +32,7 @@ import '../../../data/controllers/app_data/user_initial_controller.dart';
 import '../../../features/authentication/presentation/controllers/signup_controller.dart';
 import '../../../features/logistics/controllers/air_sea_controller.dart';
 import '../../../features/logistics/controllers/standard_delivery_controller.dart';
+import '../../../features/logistics/models/client_model.dart';
 import '../../../features/logistics/models/standard_delivery_model.dart';
 import '../../../features/logistics/models/pull_out_model.dart';
 import '../../../features/logistics/models/pick_up_model.dart';
@@ -257,13 +258,20 @@ class BFullScreenLoader {
   }
 
   /// Open a half screen dialog with a text and list to search for a client to select
+  /// [initialQuery] pre-fills the search box (Standard Delivery one-scan);
+  /// load the matching clients with `filterClientFromDb` before calling.
+  /// [onClientSelected] replaces putting the tapped client on the form.
+  /// Both default to today's behaviour.
   static void showSearchSheet(
       BuildContext context,
       ClientController clientController,
-      StandardDeliveryController requestController) {
+      StandardDeliveryController requestController,
+      {String? initialQuery,
+      void Function(ClientModel client)? onClientSelected}) {
     final FocusNode searchFocusNode = FocusNode();
+    if (initialQuery != null) clientController.query.text = initialQuery;
 
-    showModalBottomSheet<void>(
+    final sheet = showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true, // Important for height
       builder: (BuildContext context) {
@@ -301,8 +309,9 @@ class BFullScreenLoader {
                       final client = clientController.searchClient[index];
                       return InkWell(
                         onTap: () {
-                          requestController
-                              .updateRequestClientInformation(client);
+                          (onClientSelected ??
+                                  requestController
+                                      .updateRequestClientInformation)(client);
                           Navigator.of(context).pop();
                         },
                         child: ListTile(
@@ -319,6 +328,10 @@ class BFullScreenLoader {
         );
       },
     );
+    // A pre-filled search must not leave its text for the next normal search.
+    if (initialQuery != null) {
+      sheet.whenComplete(() => clientController.query.clear());
+    }
   }
 
   /// Open a half screen dialog with a text and list to search for a client to select
