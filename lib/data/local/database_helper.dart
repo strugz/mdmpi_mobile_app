@@ -91,7 +91,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 21,
+      version: 22,
       onCreate: (db, version) async {
         await createAllTables(db);
       },

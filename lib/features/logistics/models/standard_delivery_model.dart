@@ -36,6 +36,11 @@ class StandardDeliveryModel {
   String itemCategoryID;
   String formCategoryID;
 
+  /// The scanned delivery address stored on this request when the client's
+  /// saved address was missing (plan §4.4b). Empty for every other request.
+  /// When set, [client] already carries it as its address.
+  String deliveryAddress;
+
   StandardDeliveryModel({
     this.id = '',
     required this.clientId,
@@ -69,6 +74,7 @@ class StandardDeliveryModel {
     this.cancelRemarks = CancelRemarksModel.empty,
     this.itemCategoryID = '',
     this.formCategoryID = '',
+    this.deliveryAddress = '',
   });
 
   StandardDeliveryModel copyWith({
@@ -104,6 +110,7 @@ class StandardDeliveryModel {
     CancelRemarksModel? cancelRemarks,
     String? itemCategoryID,
     String? formCategoryID,
+    String? deliveryAddress,
   }) {
     return StandardDeliveryModel(
       id: id ?? this.id,
@@ -138,8 +145,18 @@ class StandardDeliveryModel {
        cancelRemarks: cancelRemarks ?? this.cancelRemarks,
       itemCategoryID: itemCategoryID ?? this.itemCategoryID,
       formCategoryID: formCategoryID ?? this.formCategoryID,
+      deliveryAddress: deliveryAddress ?? this.deliveryAddress,
     );
   }
+
+  /// [client] with the per-request [deliveryAddress] in place of the master
+  /// address, or [client] unchanged when there is none. Always a copy: the
+  /// master `ClientModel` is shared by every request for that client.
+  static ClientModel clientWithDeliveryAddress(
+          ClientModel client, String deliveryAddress) =>
+      deliveryAddress.trim().isEmpty
+          ? client
+          : client.copyWith(address: deliveryAddress.trim());
 
   // Backwards-compatible aliases for legacy RequestModel field names
   String get requestID => id;
@@ -234,6 +251,7 @@ class StandardDeliveryModel {
        'CancelRemarks': cancelRemarks.toJson(),
       'ItemCategoryID': itemCategoryID,
       'FormCategoryID': formCategoryID,
+      if (deliveryAddress.isNotEmpty) 'DeliveryAddress': deliveryAddress,
     };
   }
 
@@ -252,6 +270,7 @@ class StandardDeliveryModel {
 
   /// Map Json oriented from API to Model
   factory StandardDeliveryModel.fromJson(Map<String, dynamic> json) {
+    final deliveryAddress = json['DeliveryAddress']?.toString().trim() ?? '';
     return StandardDeliveryModel(
       id: (json['ID']?.toString() ?? ''),
       clientId: (json['ClientID']?.toString() ?? ''),
@@ -264,9 +283,12 @@ class StandardDeliveryModel {
       documentReference: json['DocumentReference'] != null
           ? List<String>.from((json['DocumentReference'] as List).map((e) => e?.toString() ?? ''))
           : [],
-      client: json['Client'] != null
-          ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
-          : ClientModel.empty(),
+      client: clientWithDeliveryAddress(
+          json['Client'] != null
+              ? ClientModel.fromJson(Map<String, dynamic>.from(json['Client']))
+              : ClientModel.empty(),
+          deliveryAddress),
+      deliveryAddress: deliveryAddress,
       createdBy: (json['CreatedBy']?.toString() ?? ''),
       itemPreparedBy: (json['ItemPreparedBy']?.toString() ?? ''),
       deliveredBy: (json['DeliveredBy']?.toString() ?? ''),
@@ -314,6 +336,10 @@ class StandardDeliveryModel {
       if (mobileRaw is String) parsedMobileId = int.tryParse(mobileRaw);
 
       String idValue = (lower['requestid'] ?? lower['id'] ?? '').toString();
+      final deliveryAddress =
+          (lower['requestdeliveryaddress'] ?? lower['deliveryaddress'] ?? '')
+              .toString()
+              .trim();
 
       // Parse embedded client JSON if present in the `Client` column
       ClientModel clientModel = ClientModel.empty();
@@ -356,7 +382,8 @@ class StandardDeliveryModel {
          helper: (lower['requestdriverhelper'] ?? lower['helper'] ?? '').toString(),
          receiver: (lower['receiver'] ?? '').toString(),
           signature: (lower['signature'] ?? '').toString(),
-          client: clientModel,
+          client: clientWithDeliveryAddress(clientModel, deliveryAddress),
+          deliveryAddress: deliveryAddress,
           documentReference: [],
           image: (lower['image'] ?? '').toString(),
           tripTicketNumber: (lower['tripticketnumber'] ?? '').toString(),
@@ -385,6 +412,7 @@ class StandardDeliveryModel {
     String formCategoryID = '',
     String recipientContactDetails = '',
     String recipientName = '',
+    String deliveryAddress = '',
   }) {
     if (clientId == null || client == null) {
       throw ArgumentError('Client ID and Client information cannot be null.');
@@ -405,6 +433,7 @@ class StandardDeliveryModel {
        formCategoryID: formCategoryID,
        recipientContactDetails: recipientContactDetails,
        recipientName: recipientName,
+       deliveryAddress: deliveryAddress,
      );
    }
  }

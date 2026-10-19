@@ -46,7 +46,8 @@ Future<void> createAllTables(Database db) async {
       RecipientName TEXT,
       TripTicketNumber TEXT,
       ItemCategoryID TEXT,
-      FormCategoryID TEXT
+      FormCategoryID TEXT,
+      RequestDeliveryAddress TEXT
     )
   ''');
 

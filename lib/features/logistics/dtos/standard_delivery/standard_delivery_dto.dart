@@ -35,6 +35,9 @@ class StandardDeliveryDto {
   final int? itemCategoryID;  // Changed to int
   final int? formCategoryID;  // Changed to int
 
+  /// Per-request delivery address (plan §4.4b); null on older backends.
+  final String? deliveryAddress;
+
   StandardDeliveryDto({
     this.id,
     this.clientId,
@@ -66,6 +69,7 @@ class StandardDeliveryDto {
     this.signature,
     this.itemCategoryID,
     this.formCategoryID,
+    this.deliveryAddress,
   });
 
   factory StandardDeliveryDto.fromJson(Map<String, dynamic> json) {
@@ -106,6 +110,7 @@ class StandardDeliveryDto {
       formCategoryID: json['FormCategoryID'] is int
           ? json['FormCategoryID']
           : (json['FormCategoryID'] != null ? int.tryParse(json['FormCategoryID'].toString()) : null),
+      deliveryAddress: json['DeliveryAddress']?.toString(),
     );
   }
 
@@ -141,6 +146,7 @@ class StandardDeliveryDto {
       'Signature': signature?.toJson(),
       'ItemCategoryID': itemCategoryID,
       'FormCategoryID': formCategoryID,
+      if (deliveryAddress != null) 'DeliveryAddress': deliveryAddress,
     };
   }
 }

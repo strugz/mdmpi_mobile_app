@@ -56,6 +56,20 @@ class StandardDeliveryFormState {
   // section clears stale entries when the courier opens a different request.
   final RxString backloadItemsRequestId = RxString('');
 
+  // Standard Delivery one-scan (plan §4.4a/§4.4b A6): the scanned address the
+  // review sheet put on the client because its saved address was missing.
+  // Saved with the request only while that same client is still selected.
+  final Rx<({String clientId, String address})?> scannedFallbackAddress =
+      Rx<({String clientId, String address})?>(null);
+
+  /// The delivery address to store on the request: the scanned fallback when
+  /// it belongs to the selected client, otherwise empty (today's payload).
+  String deliveryAddressFor(String selectedClientId) {
+    final fallback = scannedFallbackAddress.value;
+    if (fallback == null || fallback.clientId != selectedClientId) return '';
+    return fallback.address;
+  }
+
   // Reactive state
   final Rx<DateTime?> deliveryDate = Rx<DateTime?>(null);
   final Rx<ClientModel?> clientInformation = Rx<ClientModel?>(ClientModel.empty());
@@ -88,6 +102,7 @@ class StandardDeliveryFormState {
     formKey.currentState?.reset();
     documentReferenceControllers.clear();
     clientInformation.value = ClientModel.empty();
+    scannedFallbackAddress.value = null;
     receiverSignatureBytes.value = null;
     receiverSignatureBase64.value = "";
      selectedDriver.clear();

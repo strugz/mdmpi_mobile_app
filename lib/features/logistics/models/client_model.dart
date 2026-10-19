@@ -14,6 +14,25 @@ class ClientModel {
       required this.contact,
       required this.emailAddress});
 
+  /// A copy with the given fields replaced. The one-scan puts a scanned
+  /// fallback address on a copy for one request; `ACCMST_` is never changed.
+  ClientModel copyWith({
+    String? id,
+    String? code,
+    String? name,
+    String? address,
+    String? contact,
+    String? emailAddress,
+  }) =>
+      ClientModel(
+        id: id ?? this.id,
+        code: code ?? this.code,
+        name: name ?? this.name,
+        address: address ?? this.address,
+        contact: contact ?? this.contact,
+        emailAddress: emailAddress ?? this.emailAddress,
+      );
+
   /// True when this is the [empty] placeholder — no client has been selected.
   bool get isEmpty => id.trim().isEmpty || id == 'N/A';
 
