@@ -3,6 +3,7 @@ import 'package:mdmpi_mobile_app/data/services/gemini_document_service.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/voucher_invoice_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/voucher_scan_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/report_export_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_calendar_print_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_reports_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/upload_data_controller.dart';
 import 'package:get/get.dart';
@@ -93,6 +94,7 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.da
 import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/my_head_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/collection_calendar_print_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
@@ -334,6 +336,10 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(
         () => CollectionReportsController(exporter: Get.find<ReportExportService>()),
         fenix: true);
+    // Calendar → Print: the month as a PDF drawn on MDMPI.App (/api4), shared
+    // through the export service above. Online only.
+    Get.lazyPut(() => CollectionCalendarPrintRepository(), fenix: true);
+    Get.lazyPut(() => CollectionCalendarPrintController(), fenix: true);
 
     // Eager, not lazy: it must be alive to hear connectivity and lifecycle
     // events, otherwise nothing drains the proof outboxes automatically.
