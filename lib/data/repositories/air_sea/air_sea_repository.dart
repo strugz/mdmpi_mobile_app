@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/format_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/exceptions/platform_exceptions.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_status_stages_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/air_sea_mapper.dart';
@@ -78,7 +79,16 @@ class AirSeaRepository extends GetxController {
     }
   }
 
+  /// Test seam: receives warnings instead of a snackbar.
+  @visibleForTesting
+  void Function(String message)? warningForTest;
+
   void _showWarning(String message, {bool silent = false}) {
+    final capture = warningForTest;
+    if (capture != null) {
+      if (!silent) capture(message);
+      return;
+    }
     if (!silent) {
       BLoaders.warningSnackBar(title: 'Information', message: message);
     }
@@ -88,12 +98,22 @@ class AirSeaRepository extends GetxController {
   Future<http.Response> _safeGet(Uri url) =>
       http.get(url).timeout(const Duration(seconds: 60));
 
-  /// Performs a POST request with timeout.
-  Future<http.Response> _safePost(Uri url, Map<String, dynamic> payload) => http
-      .post(url,
-          headers: const {'Content-Type': 'application/json'},
-          body: jsonEncode(payload))
+  /// POSTs a raw JSON [body] with a timeout: the request map and the item
+  /// list (a JSON array) both go through here.
+  Future<http.Response> _postJson(Uri url, String body) =>
+      (postJsonForTest ?? _httpPostJson)(url, body);
+
+  static Future<http.Response> _httpPostJson(Uri url, String body) => http
+      .post(url, headers: const {'Content-Type': 'application/json'}, body: body)
       .timeout(const Duration(seconds: 60));
+
+  /// Test seam for the POST calls (create and items).
+  @visibleForTesting
+  Future<http.Response> Function(Uri url, String body)? postJsonForTest;
+
+  /// Performs a POST request with timeout.
+  Future<http.Response> _safePost(Uri url, Map<String, dynamic> payload) =>
+      _postJson(url, jsonEncode(payload));
 
   /// Performs a PATCH request with timeout.
   Future<http.Response> _safePatch(
@@ -260,7 +280,13 @@ class AirSeaRepository extends GetxController {
   }
 
   /// Insert a new Air/Sea request to API and local DB.
-  Future<void> insert(AirSeaModel data, {bool silent = false}) async {
+  /// When [items] are given they are posted to the shared
+  /// `POST /api4/Item/request/{id}` endpoint after the request is created,
+  /// exactly as Pull Out does (plan LOGISTICS_AIR_SEA_ITEMS_PLAN.md, A3). The
+  /// Air/Sea create body itself is unchanged, so older backends and older
+  /// apps are unaffected. No items: no extra call.
+  Future<void> insert(AirSeaModel data,
+      {bool silent = false, List<InventoryItemModel>? items}) async {
     try {
       final dto = AirSeaMapper.toInsertDto(data);
       final payload = dto.toJson();
@@ -284,6 +310,24 @@ class AirSeaRepository extends GetxController {
         } catch (parseError) {
           logDebug(
               'AirSeaRepository: Could not parse RequestID from response: $parseError');
+        }
+
+        if (items != null && items.isNotEmpty) {
+          if (updatedData.id.isNotEmpty) {
+            final itemsSaved =
+                await _insertItemsForRequest(updatedData.id, items);
+            if (!itemsSaved) {
+              _showWarning(
+                'Request created, but its items could not be saved. '
+                'Please contact support to attach the items.',
+              );
+            }
+          } else {
+            _showWarning(
+              'Request created, but the server did not return its ID — '
+              'items were not saved.',
+            );
+          }
         }
 
         // Save to local DB with the correct ID
@@ -320,6 +364,30 @@ class AirSeaRepository extends GetxController {
       } else {
         _showError('An error occurred: $e');
       }
+    }
+  }
+
+  /// Posts scanned items for a freshly created request to the shared Item
+  /// endpoint (the same one Pull Out uses). True when the server accepted
+  /// them. Request ids are unique across all request types, so Air/Sea items
+  /// cannot mix with another request's.
+  Future<bool> _insertItemsForRequest(
+      String requestId, List<InventoryItemModel> items) async {
+    try {
+      final url = _uri('/api4/Item/request/$requestId');
+      final response = await _postJson(
+          url, jsonEncode(items.map((e) => e.toJson()).toList()));
+      if (response.statusCode == 200) {
+        logDebug(
+            'AirSeaRepository: Saved ${items.length} items for request $requestId');
+        return true;
+      }
+      logDebug(
+          'AirSeaRepository: Item insert failed (${response.statusCode}): ${response.body}');
+      return false;
+    } catch (e) {
+      logDebug('AirSeaRepository._insertItemsForRequest error: $e');
+      return false;
     }
   }
 

@@ -6,6 +6,7 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/scanner/scanned_items_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/shipping_methods.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
@@ -109,6 +110,27 @@ class AirSeaForm extends StatelessWidget {
                           /// Document Reference
                           const BDocumentReference(),
                           const SizedBox(height: BSizes.sm),
+
+                          /// Add Item (scanner): the same shared list as
+                          /// Standard Delivery and Pull Out; saved with the
+                          /// request (plan LOGISTICS_AIR_SEA_ITEMS_PLAN.md).
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Obx(() {
+                              final count = stdController
+                                  .formState.scannedInventoryItems.length;
+                              return TextButton.icon(
+                                key: const Key('airSeaAddItem'),
+                                onPressed: () => Get.to(() =>
+                                    ScannedItemsScreen(
+                                        controller: stdController)),
+                                icon: const Icon(Iconsax.add, size: 16),
+                                label: Text(count > 0
+                                    ? 'Add Item ($count)'
+                                    : 'Add Item'),
+                              );
+                            }),
+                          ),
                         ],
                       ),
 
