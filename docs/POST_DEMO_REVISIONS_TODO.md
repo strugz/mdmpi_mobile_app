@@ -36,7 +36,9 @@
 - [x] 25. SMS: include the **waybill number** in the Drop Off message — `S` (done app-only; Drop Off split out of the shared template branch, waybill printed when present, base and HD alike)
 - [x] 26. Users **LNA** and **BON**: add the **Courier** role — ops/config, no code (done 2026-09-18 in Firebase)
 - [x] 27. SMS: a failed write must not text the recipient — the SMS went out even when the request was never saved — `M` (done app-only for Standard Delivery / Hotline Direct create, status update and cancel; the other four logistics forms were audited and already correct; QA + two optional hardening follow-ups still open)
-- [ ] 28. Standard Delivery: one-scan fill — a single photo of the SI/DR fills Client (OCR + fuzzy match against the local client list, learned aliases), Document References (existing extractor) and Items (existing Gemini scan); **additive only**: a new Scan Document button, every existing client / reference / item control stays as is — `L` (planned for 2026-10-12 → 10-16; full plan in [application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md](application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md))
+- [ ] 28. Standard Delivery: one-scan fill — a single photo of the SI/DR fills Client (OCR + fuzzy match against the local client list, learned aliases), Document References (existing extractor) and Items (on-device OCR table parsing; **OCR only, no Gemini**); **additive only**: a new Scan Document button, every existing client / reference / item control stays as is; plus a backend `deliveryaddress` column on the standard-delivery request (migration before the backend deploy) so a scanned fallback address persists — `L` (built 2026-10-15 on branch feature/one-scan-delivery, app and backend code, analyze/test green; not yet run on a device, migration not run, nothing deployed; remaining steps in §6 of the plan; full plan in [application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md](application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md))
+- [ ] 29. Air / Sea / Land (and HD): items on the request — Add Item on the Air/Sea form, items saved with a second call to the existing `/api4/Item/request/{id}` (as Pull Out does), View Items in the Air/Sea modal, one-scan keeps items for Air/Sea; **app only, no backend change, no migration, no effect on clients in the field** — `M` (built 2026-10-15, app only, uncommitted; New Request SMS lists the items; device QA pending; plan in [application/LOGISTICS_AIR_SEA_ITEMS_PLAN.md](application/LOGISTICS_AIR_SEA_ITEMS_PLAN.md))
+- [ ] 30. One-scan: scan on the phone every document type not yet tried (Delivery Receipt, Stock Issue Slip, Goods Issue, Acknowledgement Receipt, Reagents Issue Slip, Materials Issuance Slip, Return / Pull Out Slip, a service-row Sales Invoice, a sideways photo), plus re-scan the IT and ITR with the new **Scan document** option; fix what comes out wrong from each OCR dump — `M` (raised 2026-10-15; only the PRC Sales Invoice, the ITR and the IT have been scanned on a phone so far; see §30)
 
 ---
 
@@ -1281,6 +1283,42 @@ for `RequestPickUpController`, `RequestPullOutReturnPickUpController` and
   offline rows through `updateDelivery` and now discard the returned `bool`, so a
   row the server refuses is still reported as "uploaded successfully". Worth
   counting failures and naming them in the snackbar.
+
+---
+
+## 30. One-scan — scan the documents not yet tried on a phone
+
+**Requirement (raised 2026-10-15).** Every document type the one-scan recognises must be
+scanned on a phone with the app (Home > Scan Document), not only checked against
+hand-made OCR lines. Each run either passes or gives an OCR dump to fix from.
+
+**Status so far.** Scanned on a phone: the PRC **Sales Invoice** (700014771, items and
+batches), the **Inventory Transfer Request** (810003448: ITR No. and the wrapped item fixed
+2026-10-15) and the **Inventory Transfer** (750005578: references fixed; client still not
+found on the curved photo, header fallback added, not re-scanned yet). Everything else
+passes tests built from the sample photos (plan §1, S1–S10) but has never been scanned with
+the app.
+
+**To scan** (use **Scan document**, the new Android option that flattens the page):
+
+| # | Document | What to check | Known gap |
+|---|---|---|---|
+| [ ] | Inventory Transfer (re-scan) | Client found (Galinato), only IT No. + ITR No., 1 item | Client was missed on the curved photo |
+| [ ] | Inventory Transfer Request (re-scan) | ITR No. read, 1 item with the full wrapped description | — |
+| [ ] | Delivery Receipt | Client + address, DR / SI / PO, items (qty 1, flagged: no Qty column) | — |
+| [ ] | Sales Invoice with service rows (S8, University of Cebu) | Wrapped description and account name, 3 items | Only the PRC invoice tried |
+| [ ] | Stock Issue Slip | `DELIVERED TO`, SIS# (red No.), typed **and handwritten** rows | Handwriting reads worst |
+| [ ] | Goods Issue | GI No. + IT No., items | No client on the form (search by hand) |
+| [ ] | Acknowledgement Receipt | `CUSTOMER NAME`, AR number, the item | No address on the form |
+| [ ] | Reagents Issue Slip | Handwritten `ISSUED TO`, IS number, handwritten rows | Handwriting |
+| [ ] | Materials Issuance Slip | Handwritten items | No client, no reference on the form |
+| [ ] | Return / Pull Out Slip | Slip no., SIS#, 7 items, opens Pull Out | **Client under "Returned by:" in a table is not read yet**; the header fallback may find it, untested |
+| [ ] | Any document photographed **sideways** | Rotation retry finds it once | The retry has never run on a real photo |
+
+**For each one that comes out wrong:** Settings > Developer Tools > Dump OCR lines >
+Save the last scan, then copy the JSON to `test/fixtures/one_scan/` (git-ignored, customer
+data), fill in its `expected` block, and fix the reader against it. Add a committed
+regression test with private text replaced, as for the PRC capture.
 
 ---
 
