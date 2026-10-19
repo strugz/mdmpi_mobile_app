@@ -340,9 +340,14 @@ class BFullScreenLoader {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Expanded(
-                  child: Obx(
-                    () => ListView(
-                      children: controller.roles.value.map(
+                  child: Obx(() {
+                    final roles = controller.filteredRoles;
+                    if (roles.isEmpty) {
+                      return const Center(
+                          child: Text('No roles for this department yet.'));
+                    }
+                    return ListView(
+                      children: roles.map(
                         (role) {
                           return CheckboxListTile(
                             value: role.status,
@@ -355,8 +360,8 @@ class BFullScreenLoader {
                           );
                         },
                       ).toList(),
-                    ),
-                  ),
+                    );
+                  }),
                 ),
               ],
             ),

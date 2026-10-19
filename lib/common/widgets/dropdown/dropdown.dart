@@ -12,13 +12,17 @@ class BDropdown extends StatelessWidget {
       required this.dropdownList,
       this.icon = Iconsax.airplane,
       required this.controller,
-      this.validator});
+      this.validator,
+      this.onChanged});
 
   final String label;
   final List<String> dropdownList;
   final IconData icon;
   final TextEditingController controller;
   final String? Function(dynamic)? validator;
+
+  /// Called after [controller] takes the new value.
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +47,7 @@ class BDropdown extends StatelessWidget {
                   : controller.text,
               onChanged: (value) {
                 controller.text = value!;
+                onChanged?.call(value);
               },
               validator: validator,
               decoration: InputDecoration(

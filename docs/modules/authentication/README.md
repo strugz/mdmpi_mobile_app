@@ -131,3 +131,4 @@ Get.lazyPut(() => ForgetPasswordController(), fenix: true);
 - `SignupController` is registered with `Get.lazyPut(fenix: true)` (`general_bindings.dart:200`). It was previously `Get.put`; the change avoids building Firebase-backed repositories at startup on platforms without Firebase — see the comment above the registration.
 - `AuthenticationRepository` is registered early in `lib/base/utils/platform_init.dart:96` via `Get.put` for pre-app-start initialization (not in `main.dart`), and also via `GeneralBindings` using the interface.
 - Post-auth routing is handled by `AppRouter` which checks `GetStorage` for department and onboarding status.
+- Sign-up is department-aware (role list filtered per department, optional Head for Collection) — see [department_aware_signup_plan.md](department_aware_signup_plan.md).
