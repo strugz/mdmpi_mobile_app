@@ -52,9 +52,8 @@ void main() {
         onStatus(SendStatus.SENT);
       },
       report: (_, __, ___) {},
-      openProgress: (_) {},
-      closeProgress: () {},
-      showSent: () async {},
+      outbox: () async => null,
+      timers: false,
       betweenRecipients: Duration.zero,
       initials: () => 'JCA',
     ));

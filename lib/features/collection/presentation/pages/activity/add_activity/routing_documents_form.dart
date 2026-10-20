@@ -4,7 +4,6 @@ import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
-import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
@@ -51,10 +50,8 @@ class _RoutingDocumentsFormScreenState
     );
 
     Get.back();
-    if (!CollectionSmsService.smsFollows()) {
-      BLoaders.successSnackBar(
-          title: 'Recorded', message: 'Routing of Documents saved.');
-    }
+    BLoaders.successSnackBar(
+        title: 'Recorded', message: 'Routing of Documents saved.');
   }
 
   @override

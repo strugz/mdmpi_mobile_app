@@ -1,4 +1,3 @@
-import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:get/get.dart';
@@ -198,23 +197,20 @@ class _CollectionActivityAccountInvoicesScreenState
 
     Get.back(); // Return to Activity list
 
-    if (!CollectionSmsService.smsFollows()) {
-      BLoaders.successSnackBar(
-        title: 'Account Released',
-        message: '${widget.client.name} moved back to bucket.',
-      );
-    }
+    // The SMS goes out in the background (SMS Outbox).
+    BLoaders.successSnackBar(
+      title: 'Account Released',
+      message: '${widget.client.name} moved back to bucket.',
+    );
   }
 
   void _clearEngagement() {
     controller.unclaimAccount(widget.client.id);
     Get.back();
-    if (!CollectionSmsService.smsFollows()) {
-      BLoaders.successSnackBar(
-        title: 'Engagement done',
-        message: '${widget.client.name} is no longer assigned to you.',
-      );
-    }
+    BLoaders.successSnackBar(
+      title: 'Engagement done',
+      message: '${widget.client.name} is no longer assigned to you.',
+    );
   }
 
   /// Closing out the account: both actions release it, so neither is

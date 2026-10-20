@@ -740,6 +740,27 @@ Future<void> ensureReconciliationTables(Database db) async {
     CREATE INDEX IF NOT EXISTS idx_collection_recon_attachment_status
       ON a_tblCollectionReconAttachment (status)
   ''');
+  // The SMS Outbox: every Collection SMS is saved here and sent from here in
+  // the background (Settings → SMS Outbox). recipients is a JSON list of
+  // {number, result}; sent rows are cleared at midnight, unsent ones stay.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionSmsOutbox (
+      id            TEXT PRIMARY KEY,
+      createdAt     TEXT NOT NULL,
+      kind          TEXT NOT NULL DEFAULT '',
+      message       TEXT NOT NULL,
+      headOnly      INTEGER NOT NULL DEFAULT 0,
+      status        TEXT NOT NULL DEFAULT 'Pending',
+      recipients    TEXT NOT NULL DEFAULT '[]',
+      attempts      INTEGER NOT NULL DEFAULT 0,
+      lastError     TEXT,
+      lastAttemptAt TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_sms_outbox_status
+      ON a_tblCollectionSmsOutbox (status, createdAt)
+  ''');
 }
 
 /// Every table this app made, newest schema included, in name order.

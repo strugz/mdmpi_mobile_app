@@ -334,10 +334,10 @@ void main() {
     });
   });
 
-  group('delivery', () {
+  group('delivery (in the background, nothing on screen)', () {
     late List<(String, String)> sent;
-    late List<(List<String>, String)> handedOff;
     late bool granted;
+    late int permissionAsked;
     late bool android;
     late String? networkIssue;
     late HeadContact? head;
@@ -345,42 +345,37 @@ void main() {
     late Set<String> failFor;
     late Set<String> silentFor;
     late List<(CollectionSmsOutcome, int, String?)> reported;
-    late List<String> progress;
-    late int progressClosed;
-    late int sentViews;
     late String initials;
 
+    // No outbox here (its own tests are in sms_outbox_test.dart): a message
+    // is sent once, quietly, as the service does when it has none.
     CollectionSmsService build() => CollectionSmsService(
           report: (o, n, r) => reported.add((o, n, r)),
-          openProgress: (text) => progress.add(text.value),
-          closeProgress: () => progressClosed++,
-          showSent: () async => sentViews++,
           networkIssue: () async => networkIssue,
           betweenRecipients: Duration.zero,
+          confirmTimeout: const Duration(milliseconds: 100),
           head: () async => head,
           contacts: () async => contacts,
-          permission: () async => granted,
+          permission: () async {
+            permissionAsked++;
+            return granted;
+          },
           send: (to, message, onStatus) async {
             if (failFor.contains(to)) throw Exception('no signal');
             sent.add((to, message));
             // The radio reports SENT unless this number is "silent".
             if (!silentFor.contains(to)) onStatus(SendStatus.SENT);
           },
-          handOff: (to, message) async {
-            handedOff.add((to, message));
-            return true;
-          },
           smsAvailable: () => android,
           initials: () => initials,
+          outbox: () async => null,
+          timers: false,
         );
 
     setUp(() {
       sent = [];
-      handedOff = [];
       reported = [];
-      progress = [];
-      progressClosed = 0;
-      sentViews = 0;
+      permissionAsked = 0;
       initials = 'MAR';
       granted = true;
       android = true;
@@ -416,21 +411,15 @@ void main() {
           ['0917 000 0001', '0918 000 0002', '0919 000 0003']);
     });
 
-    test(
-        'a message reaches everyone behind the sending view, then Message Sent',
-        () async {
+    test('a message reaches everyone, one after another, signed', () async {
       final r =
           await build().notifyEngagementCleared(clientName: 'Metro Globe');
       expect(r, CollectionSmsOutcome.sent);
       expect(sent.map((s) => s.$1),
           ['0917 000 0001', '0918 000 0002', '0919 000 0003']);
       expect(sent.first.$2, 'Done: Metro Globe\n- MAR');
-      expect(progress, ['Please wait message sending... (0/3)'],
-          reason: 'the full-screen view opens once, before the first send');
-      expect(progressClosed, 1, reason: 'and always comes down');
       expect(reported.single.$1, CollectionSmsOutcome.sent);
       expect(reported.single.$2, 3);
-      expect(sentViews, 1);
     });
 
     test('no Head: the contacts still get it; nobody at all: noRecipients',
@@ -444,12 +433,10 @@ void main() {
       expect(await build().hasHead(), isFalse);
 
       contacts = [];
-      progress = [];
       expect(await build().notifyCwtPickup(clientName: 'X', remarks: 'r'),
           CollectionSmsOutcome.noRecipients);
-      expect(reported.last.$1, CollectionSmsOutcome.noRecipients,
-          reason: 'the collector is told why nothing went out');
-      expect(progress, isEmpty, reason: 'nothing was sending');
+      expect(reported.last.$1, CollectionSmsOutcome.noRecipients);
+      expect(reported.last.$3, isNotNull, reason: 'the outbox says why');
     });
 
     test('a Head without a number counts as no Head', () async {
@@ -464,19 +451,20 @@ void main() {
       expect(await build().notifyDepositAdded(bankName: 'BDO', amount: 1),
           CollectionSmsOutcome.unavailable);
       expect(sent, isEmpty);
-      expect(progress, isEmpty);
     });
 
-    test('permission refused: the Messages app opens with everyone', () async {
+    test('permission refused: failed, nothing sent, and asked once per run',
+        () async {
       granted = false;
-      expect(await build().notifyAccountDeferred(clientName: 'X', remarks: 'r'),
-          CollectionSmsOutcome.handedOff);
+      final svc = build();
+      expect(await svc.notifyAccountDeferred(clientName: 'X', remarks: 'r'),
+          CollectionSmsOutcome.failed);
+      expect(await svc.notifyAccountDeferred(clientName: 'Y', remarks: 'r'),
+          CollectionSmsOutcome.failed);
       expect(sent, isEmpty);
-      expect(handedOff.single.$1,
-          ['0917 000 0001', '0918 000 0002', '0919 000 0003']);
-      expect(handedOff.single.$2, 'Postponed: X\nReason: r\n- MAR',
-          reason: 'the Messages app gets the signed text too');
-      expect(progress, isEmpty, reason: 'no radio send, no sending view');
+      expect(permissionAsked, 1,
+          reason: 'no prompt after prompt while sending in the background');
+      expect(reported.last.$3, CollectionSmsService.permissionOffReason);
     });
 
     test('no SIM or service: failed with the reason, before any send',
@@ -485,7 +473,6 @@ void main() {
       expect(await build().notifyCwtPickup(clientName: 'X', remarks: 'r'),
           CollectionSmsOutcome.failed);
       expect(sent, isEmpty);
-      expect(progress, isEmpty);
       expect(reported.single.$3, contains('SIM is not ready'));
     });
 
@@ -498,9 +485,8 @@ void main() {
             SmsAccountLine(clientName: 'X', poNumbers: [], invoiceIds: ['S1'])
           ]),
           CollectionSmsOutcome.unconfirmed,
-          reason: 'two of three went out: a warning, not Message Sent');
+          reason: 'two of three went out');
       expect(sent.length, 2);
-      expect(progressClosed, 1);
 
       sent = [];
       failFor = {'0917 000 0001', '0918 000 0002', '0919 000 0003'};
@@ -509,26 +495,13 @@ void main() {
             SmsAccountLine(clientName: 'X', poNumbers: [], invoiceIds: ['S1'])
           ]),
           CollectionSmsOutcome.failed);
-      expect(progressClosed, 2, reason: 'the view comes down on failure too');
-      expect(sentViews, 0, reason: 'neither run was fully confirmed');
     });
 
-    test(
-        'a missing SENT report is a warning, not Message Sent, and cannot '
-        'hold the view', () async {
+    test('a missing SENT report is "not confirmed", after the wait', () async {
       silentFor = {'0917 000 0001'};
       contacts = [];
-      final started = DateTime.now();
       expect(await build().notifyCwtPickup(clientName: 'X', remarks: 'r'),
           CollectionSmsOutcome.unconfirmed);
-      expect(
-          DateTime.now().difference(started),
-          lessThan(CollectionSmsService.sentConfirmationTimeout +
-              const Duration(seconds: 2)));
-      expect(progressClosed, 1);
-      expect(sentViews, 0,
-          reason: 'Logistics shows Message Sent only when '
-              'every recipient is confirmed');
       expect(reported.single.$3, contains('SIM load'));
     });
 
@@ -537,76 +510,30 @@ void main() {
       final events = <String>[];
       final svc = CollectionSmsService(
         report: (_, __, ___) {},
-        openProgress: (_) => events.add('open'),
-        closeProgress: () => events.add('close'),
-        showSent: () async {
-          events.add('sent view');
-          await Future<void>.delayed(const Duration(milliseconds: 20));
-          events.add('sent view closed');
-        },
         networkIssue: () async => null,
         betweenRecipients: Duration.zero,
         head: () async => head,
         contacts: () async => contacts,
         permission: () async => true,
         send: (to, message, onStatus) async {
-          events.add(message);
+          events.add('start $message');
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          events.add('end $message');
           onStatus(SendStatus.SENT);
         },
         smsAvailable: () => true,
         initials: () => '',
+        outbox: () async => null,
+        timers: false,
       );
       final outcomes = await Future.wait([
         svc.notifyEngagementCleared(clientName: 'A'),
         svc.notifyEngagementCleared(clientName: 'B'),
       ]);
       expect(outcomes, everyElement(CollectionSmsOutcome.sent));
-      // The outcome does not wait for the last "Message Sent!" to close.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(
-          events,
-          [
-            'open',
-            'Done: A',
-            'close',
-            'sent view',
-            'sent view closed',
-            'open',
-            'Done: B',
-            'close',
-            'sent view',
-            'sent view closed',
-          ],
-          reason:
-              'B opens nothing until A, its Message Sent included, is done');
-    });
-
-    test('one confirmed and one silent is unconfirmed', () async {
-      silentFor = {'0918 000 0002'};
-      contacts = ['0918 000 0002'];
-      expect(await build().notifyCwtPickup(clientName: 'X', remarks: 'r'),
-          CollectionSmsOutcome.unconfirmed);
-      expect(sent.length, 2);
-      expect(sentViews, 0);
-    });
-
-    test('willSend: a screen knows ahead whether the sending view follows',
-        () async {
-      final svc = build();
-      await svc.recipients();
-      expect(svc.willSend(), isTrue);
-      expect(svc.willSend(status: 'Collected'), isTrue);
-      expect(svc.willSend(status: 'Partially Collected'), isTrue);
-      expect(svc.willSend(status: 'Pre-Collection'), isFalse,
-          reason: 'no SMS for that outcome, so the screen keeps its snackbar');
-
-      head = null;
-      contacts = [];
-      await svc.recipients();
-      expect(svc.willSend(), isFalse, reason: 'nobody to text');
-
-      android = false;
-      expect(build().willSend(), isFalse);
+      expect(events,
+          ['start Done: A', 'end Done: A', 'start Done: B', 'end Done: B'],
+          reason: 'B does not start until A is done');
     });
 
     test('an outcome that is not Collected or Partial sends nothing', () async {
@@ -630,9 +557,6 @@ void main() {
       final sent = <String>[];
       Get.put(CollectionSmsService(
         report: (_, __, ___) {},
-        openProgress: (_) {},
-        closeProgress: () {},
-        showSent: () async {},
         networkIssue: () async => null,
         head: () async =>
             const HeadContact(key: 'MDD', name: 'M', phone: '0917'),
@@ -643,6 +567,8 @@ void main() {
           onStatus(SendStatus.SENT);
         },
         smsAvailable: () => true,
+        outbox: () async => null,
+        timers: false,
       ));
       expect(await c.notifyEngagementCleared(clientName: 'Metro Globe'),
           CollectionSmsOutcome.sent);

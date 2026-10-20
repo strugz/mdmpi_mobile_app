@@ -33,6 +33,7 @@ class BRoutes{
   // Collection - total collected
   static const totalCollected = '/collection/total-collected';
   static const collectionUploadOutbox = '/collection/upload-outbox';
+  static const collectionSmsOutbox = '/collection/sms-outbox';
   static const myHead = '/settings/my-head';
   static const teamActivity = '/collection/team-activity';
   static const collectionStorage = '/settings/collection-storage';

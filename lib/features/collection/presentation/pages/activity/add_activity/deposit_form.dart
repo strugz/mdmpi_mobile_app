@@ -1,4 +1,3 @@
-import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -158,7 +157,6 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
     );
 
     Get.back();
-    if (CollectionSmsService.smsFollows()) return;
     BLoaders.successSnackBar(
         title: 'Deposit recorded',
         message: 'Saved as your activity. It does not count toward Actual '

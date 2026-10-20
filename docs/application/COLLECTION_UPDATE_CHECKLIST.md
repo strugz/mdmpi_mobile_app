@@ -25,11 +25,11 @@
 
 | Status | Count |
 |---|---|
-| Done | 13 |
+| Done | 14 |
 | Already in the app before this round | 3 |
 | Partly done | 2 |
 | Held back | 1 |
-| Not started | 14 |
+| Not started | 13 |
 | **Total** | **33** |
 
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (13)
+### Done (14)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -57,6 +57,7 @@ sections below, where its details are. Keep both views in step when an item move
 | 8 | Card for pre-collection | Pre-collection | `4cda9c8`, `94da5f0` + MDMPI.App `052a37a` |
 | 12 | Account selected by search | Deposit | Deposit accounts commit |
 | 13 | Remarks format, one per line: Account - Amount | Deposit | Deposit accounts commit |
+| 29 | Outbox SMS sending in Settings | SMS | SMS Outbox commit |
 
 ### Already in the app before this round (3)
 
@@ -79,7 +80,7 @@ sections below, where its details are. Keep both views in step when an item move
 |---|---|---|---|
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Only way to acquire reconciliation accounts; goes with 22 |
 
-### Not started (14)
+### Not started (13)
 
 | # | Item | Area |
 |---|---|---|
@@ -95,7 +96,6 @@ sections below, where its details are. Keep both views in step when an item move
 | 23 | Log activities on other invoices and some reconciled ones | Reconciliation |
 | 24 | Reconciled invoices pickable by specific invoice | Reconciliation |
 | 26 | Reconciled list: "Cleared" / "Open" instead of "Closed" | Reconciliation |
-| 29 | Outbox SMS sending in Settings | SMS |
 | 30 | Add Sir Alex to the contact directory (details pending) | Contact Directory |
 
 ## Web App
@@ -243,9 +243,38 @@ sections below, where its details are. Keep both views in step when an item move
       their amounts; several acquired accounts are numbered with a Total. Line breaks are
       GSM-7, so each part stays 160 characters. Builders: `collection_sms_service.dart`.
       See [SMS formats](#sms-formats) for every message.
-- [ ] 29. Add Outbox SMS sending in Settings. There is no SMS outbox today; sends go through
-      an in-memory queue in `collection_sms_service.dart`. Settings already has the
-      Signature, Image and Collection Upload outboxes.
+- [x] 29. Add Outbox SMS sending in Settings. **Committed (SMS Outbox commit).** Revised on
+      2026-10-20 to background sending (feature request "Background Automated SMS Delivery &
+      Daily Outbox Reset"):
+  - Every Collection SMS is saved to the SMS Outbox (`a_tblCollectionSmsOutbox`,
+    `collection_sms_outbox_dao.dart`) and sent from it **in the background, one message and
+    one recipient at a time**. No sending view, no "Message Sent!", no warning dialogs, no
+    Messages-app hand-off: the collector's screen closes with its usual "Saved" message and
+    the work goes on.
+  - **Retries by itself:** a message the phone could not send (no signal, no SIM, SMS
+    permission off) is tried again after 1, 2, 5, 10, then every 15 minutes, up to 10 tries,
+    while the app runs; anything left waiting goes out when the app next opens or comes back
+    to the front. A message the phone accepted but never confirmed is **not** sent again by
+    itself (it could text the Head twice); the phone now has 30 seconds to confirm (it was 3
+    while the screen waited).
+  - **SMS permission:** Android's own prompt, at most once per app run (again when the app
+    comes back to the front). Refused, the messages wait in the Outbox with "SMS permission
+    is off".
+  - **Daily reset:** the Outbox shows the day's messages. At 00:00 (and at start-up) the
+    previous days' sent messages are cleared; ones not sent yet stay until they go out or
+    are discarded.
+  - Settings → **SMS Outbox** (Android): "Not sent yet" first (Sending, Retrying · try N,
+    Failed, Not confirmed, Nobody to text) with **Send now** (every original number not
+    confirmed) and **Discard**, and **Send all now**; then "Sent today". The Settings row
+    says how many are not sent yet.
+  - **Resend a sent SMS:** each message under "Sent today" has **Resend**. After asking, it
+    sends the same text again to all its original recipients, in the background (e.g. the
+    Head says it never arrived); a number that fails this time is retried by itself. Shows
+    "Last sent" once a message has gone more than once.
+  - The outbox can never stop a message: if it cannot be written, the SMS is sent once,
+    quietly, as before.
+  - Limit: sending runs while the app is running (open or in the background); a phone that
+    has closed the app sends what is waiting the next time it opens.
 
 ## Contact Directory
 

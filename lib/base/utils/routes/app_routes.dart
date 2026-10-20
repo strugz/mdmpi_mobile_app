@@ -28,6 +28,7 @@ import '../../../features/logistics/screens/data_test/local_storage_data_viewer.
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reports/collection_reports_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/upload/collection_upload_outbox_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/sms/sms_outbox_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/my_head_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/team/team_activity_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_storage_screen.dart';
@@ -79,6 +80,7 @@ class AppRoutes {
     ),
     GetPage(name: BRoutes.totalCollected, page: () => const MonthlySummaryScreen(type: 'Collection')),
     GetPage(name: BRoutes.collectionUploadOutbox, page: () => const CollectionUploadOutboxScreen()),
+    GetPage(name: BRoutes.collectionSmsOutbox, page: () => const CollectionSmsOutboxScreen()),
     GetPage(name: BRoutes.myHead, page: () => const MyHeadScreen()),
     GetPage(name: BRoutes.teamActivity, page: () => const TeamActivityScreen()),
     GetPage(name: BRoutes.collectionStorage, page: () => const CollectionStorageScreen()),
