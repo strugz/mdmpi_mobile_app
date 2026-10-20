@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The month's ledger: what was collected, or posted as Actual Collection,
@@ -195,6 +196,10 @@ class _MonthHeader extends StatelessWidget {
                 ),
               ],
             ),
+            // With a default area set: that area's Actual Collection and
+            // target, or every area's (update checklist items 3 and 5).
+            if (isActual && controller.canPickArea)
+              _AreaSwitch(controller: controller),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
               child: AnimatedSwitcher(
@@ -211,7 +216,7 @@ class _MonthHeader extends StatelessWidget {
                   children: [
                     Text(
                       isActual
-                          ? 'Team · posted by the office'
+                          ? '${controller.actualScopeLabel} · posted by the office'
                           : all
                               ? 'Collected · all collectors'
                               : 'Collected',
@@ -389,6 +394,45 @@ class _CollectorBreakdown extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+/// "All areas" or the collector's default area, for Actual Collection and its
+/// target. Shown only with a default area set (Settings).
+class _AreaSwitch extends StatelessWidget {
+  const _AreaSwitch({required this.controller});
+
+  final TotalCollectedController controller;
+
+  @override
+  Widget build(BuildContext context) => Obx(() {
+        final mine = controller.defaultArea;
+        final selected = controller.actualArea.value;
+        return _chips(mine, selected);
+      });
+
+  Widget _chips(String mine, String selected) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          BSizes.sm, 0, BSizes.sm, BSizes.spaceBtwItemsLight),
+      child: Wrap(
+        spacing: BSizes.sm,
+        children: [
+          ChoiceChip(
+            key: const ValueKey('actual-area-mine'),
+            label: Text(BCollectionArea.labelFor(mine)),
+            selected: selected == mine,
+            onSelected: (_) => controller.setActualArea(mine),
+          ),
+          ChoiceChip(
+            key: const ValueKey('actual-area-all'),
+            label: const Text('All areas'),
+            selected: selected.isEmpty,
+            onSelected: (_) => controller.setActualArea(''),
+          ),
+        ],
+      ),
+    );
   }
 }
 

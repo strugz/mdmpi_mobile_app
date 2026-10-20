@@ -168,6 +168,11 @@ class CollectionRepository extends GetxController {
     await (await helper.collectionAccountHistoryDao)
         .replaceAll(ws.accountHistory);
     await (await helper.collectionTargetDao).replaceAll(ws.targets);
+    // Per-area targets only when this server sends them (an older one does
+    // not, and that is not the office clearing them).
+    if (ws.hasAreaTargets) {
+      await (await helper.collectionTargetDao).replaceAreas(ws.areaTargets);
+    }
     // Actual Collection is the office's list and wins outright, empty or not
     // — but only when this server sent one. An older server leaves the key
     // out, and that is not the office deleting every entry.
@@ -1588,6 +1593,18 @@ class CollectionRepository extends GetxController {
       return await tDao.get(yearMonth);
     } catch (e) {
       logDebug('CollectionRepository.getTarget error: $e');
+      return null;
+    }
+  }
+
+  /// [area]'s target for [yearMonth] (yyyy-MM), as the office set it on the
+  /// admin web; null when none is set for that area.
+  Future<double?> getAreaTarget(String yearMonth, String area) async {
+    try {
+      final tDao = await DatabaseHelper.instance.collectionTargetDao;
+      return await tDao.getArea(yearMonth, area);
+    } catch (e) {
+      logDebug('CollectionRepository.getAreaTarget error: $e');
       return null;
     }
   }

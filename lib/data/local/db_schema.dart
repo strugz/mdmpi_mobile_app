@@ -525,6 +525,7 @@ Future<void> ensureCollectionTables(Database db) async {
       collectionDate TEXT,
       amount REAL DEFAULT 0,
       referenceNo TEXT,
+      area TEXT,
       remarks TEXT,
       postedBy TEXT,
       createdAt TEXT,
@@ -535,6 +536,20 @@ Future<void> ensureCollectionTables(Database db) async {
   await db.execute('''
     CREATE INDEX IF NOT EXISTS idx_collection_actual_date
       ON a_tblCollectionActual (collectionDate)
+  ''');
+  // The area an entry counts toward (update checklist item 3); '' = the team.
+  await _addColumnIfMissing(db, 'a_tblCollectionActual', 'area', 'TEXT');
+
+  // Table: a_tblCollectionAreaTarget (the office's targets per month and area;
+  // a_tblCollectionTarget keeps the month's sum). A cache of the server's
+  // list, replaced on each download that carries it.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionAreaTarget (
+      yearMonth TEXT NOT NULL,
+      area TEXT NOT NULL DEFAULT '',
+      amount REAL DEFAULT 0,
+      PRIMARY KEY (yearMonth, area)
+    )
   ''');
 
   // Table: a_tblCollectionEngagement (the collector's own field-work archive)
