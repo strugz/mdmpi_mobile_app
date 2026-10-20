@@ -25,22 +25,23 @@
 
 | Status | Count |
 |---|---|
-| Done | 20 |
+| Done | 29 |
 | Already in the app before this round | 3 |
 | Partly done | 1 |
 | Held back | 0 |
-| Not started | 9 |
+| Not started | 0 |
 | **Total** | **33** |
 
-Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
-and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checklist)).
+Plus changes not on the checklist: reconciliation invoices stuck outside the Tracker,
+reconciliation fixes from the phone check, a loading overlay when opening a case, and a
+Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checklist)).
 
 ## By status
 
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (20)
+### Done (29)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -64,6 +65,15 @@ sections below, where its details are. Keep both views in step when an item move
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Reconciliation bucket commit |
 | 25 | Collected through the bucket: move to Settled, remove from Reconciliation | Reconciliation | Reconciliation settled commit |
 | 24 | Reconciled invoices pickable by specific invoice | Reconciliation | Pick invoices commit |
+| 20 | Individual remarks per invoice | Reconciliation | Built, not yet committed |
+| 23 | Log activities on other invoices and some reconciled ones | Reconciliation | Covered by 22 + 24 (no new code) |
+| 30 | Add Sir Alex to the contact directory | Contact Directory | Added in the app (no code) |
+| 1 | Actual Collection: daily entry in Post Actual Collection | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
+| 2 | Actual Collection: Reference no. optional | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
+| 3 | Targets: different target amount per area | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
+| 4 | Dashboard for reviewing all data | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
+| 5 | Dashboard: actual target for a selected area | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
+| 6 | Dashboard: actual target for all areas combined | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
 
 ### Already in the app before this round (3)
 
@@ -83,38 +93,55 @@ sections below, where its details are. Keep both views in step when an item move
 
 None. Item 27 was held until 22; both are done.
 
-### Not started (9)
+### Not started (0)
 
-| # | Item | Area |
-|---|---|---|
-| 1 | Actual Collection: daily entry in Post Actual Collection | Web App |
-| 2 | Actual Collection: Reference no. optional | Web App |
-| 3 | Targets: different target amount per area | Web App |
-| 4 | Dashboard for reviewing all data | Web App |
-| 5 | Dashboard: actual target for a selected area | Web App |
-| 6 | Dashboard: actual target for all areas combined | Web App |
-| 20 | Individual remarks per invoice | Reconciliation |
-| 23 | Log activities on other invoices and some reconciled ones | Reconciliation |
-| 30 | Add Sir Alex to the contact directory (details pending) | Contact Directory |
+None.
 
 ## Web App
 
-- [ ] 1. Actual Collection: add a daily entry in Post Actual Collection. Today the server
-      stamps the entry with today's date (`CollectionActualRepository.cs:58`) and there is
-      no date field. Needs DTO, repository and view changes (`views/ActualCollectionView.vue`).
-- [ ] 2. Actual Collection: make Reference no. optional. It is required in three places: the
-      web rule (`ActualCollectionView.vue:195-201`), the backend `Validate`
-      (`CollectionActualRepository.cs:180-181`), and the database (`referenceno` NOT NULL plus
-      a unique index). Needs a migration, and the duplicate check must skip blanks.
-- [ ] 3. Targets: support a different target amount per area. Today there is one team target
-      per month (`PUT /targets`, `TeamTargetDto`). Areas exist only on mobile, as client-code
-      prefixes (`collection_area.dart`). Needs an area column on targets and on actuals.
-- [ ] 4. Dashboard: build a dashboard for reviewing all data. None exists; the closest is
-      `ReportsView.vue`.
-- [ ] 5. Dashboard: when a specific area is set, show the actual target for that area.
-      Depends on 3.
-- [ ] 6. Dashboard: add an option to view the actual target as a whole (all areas
-      combined). Depends on 3.
+Built 2026-10-20 in **MDMPI.App** (branch `collection/routing-documents`) and the admin web
+app **`mdmpi_collection_web`** (branch `deploy/render`): MDMPI.App `76fcdd2`, web `24bb0dc`.
+**Committed, not pushed, not deployed.**
+Deploy order: run `migration_20261020_collection_actual_day_reference_area.sql`, deploy the
+backend, then the web app (the new web reads `GET /targets/areas`, which an older backend
+does not have). The phone needs no change: it still reads one target per month, now the sum
+of the areas.
+
+- [x] 1. Actual Collection: add a daily entry in Post Actual Collection. **Done (built).**
+      Post / Edit Actual Collection has a "Date collected" field, today (Manila) by default,
+      never a future day; the table and the month follow it. An edit can move an entry to
+      another day; an edit that sends no day keeps the one it has
+      (`CollectionActualRepository.Validate`, `ActualCollectionView.vue`).
+- [x] 2. Actual Collection: make Reference no. optional. **Done (built).** Blank is allowed
+      in the web form and the backend; a reference that is given is still posted once
+      (case- and space-insensitive), blanks are never compared. The migration drops NOT NULL
+      on `referenceno` and limits the unique index to non-blank references. The web shows
+      "No reference", as the phone already did.
+- [x] 3. Targets: support a different target amount per area. **Done (built).** Targets are
+      set per month and area (NLN, SLN, CLN, NCR, VIS, MIN, RAD, Others) in the Set target
+      dialog; a target set without an area (every target set before this) counts for the
+      whole team. The month's whole-team target is the sum, which `GET /targets`, the
+      monthly report and the phone's workspace return. Each Actual Collection entry can
+      name the area it counts toward. New `GET /api4/Collection/targets/areas`;
+      `a_tblcollectionteamtarget` keyed by (month, area); `area` column on
+      `a_tblcollectionactual` and its history.
+- [x] 4. Dashboard: build a dashboard for reviewing all data. **Done (built).** New
+      Dashboard tab (every signed-in user, read-only): month and area pickers; Actual
+      Collection, target, achievement and still to collect; a By area table; day by day
+      postings; each collector's collected and deposited (whole team); the latest entries
+      (`DashboardView.vue`).
+- [x] 5. Dashboard: when a specific area is set, show the actual target for that area.
+      **Done (built).** Picking an area (or clicking its row) shows that area's Actual
+      Collection against its own target.
+- [x] 6. Dashboard: add an option to view the actual target as a whole (all areas
+      combined). **Done (built).** "All areas" (the default, and the table's total row)
+      shows every entry against the month's whole target.
+
+Not checked in a browser: signing in needs a real account, and the new endpoints exist only
+on a backend with this build. MDMPI.App tests: the Collection tests pass (new ones for the
+day, optional reference, areas and per-area targets); two Logistics tests
+(`RequestRepositoryUpdateValidationTests`) fail on the other session's uncommitted
+Logistics changes, not on this work.
 
 ## New Activity: Routing of Documents
 
@@ -219,12 +246,22 @@ None. Item 27 was held until 22; both are done.
 - [~] 19. Forms: allow multiple pictures in the photo section. **Already in** the Log a step
       sheet. The Deposit, Advanced Payment and CWT forms have no photo section; confirm
       whether they need one.
-- [ ] 20. Update invoices: individual remarks per invoice. The batch update already has a
-      remark per invoice; a reconciliation log step has one remark shared by every invoice.
+- [x] 20. Update invoices: individual remarks per invoice. **Done (2026-10-20, built, not
+      yet committed).** The batch update already had a remark per invoice. The reconciliation
+      Log a step sheet now offers "A remark for each invoice" once two or more invoices are
+      ticked: one field per invoice, plus "Remarks for all". The step stays one step naming
+      every ticked invoice; its remark is written one per line, the remark for all first, then
+      `SI 700009771 - Paid by check` per invoice, and shows that way on the case timeline
+      (`BReconRemarks` in `helpers/reconciliation/recon_remarks.dart`). The server keeps up to
+      1,000 characters of remarks per step; the sheet stops at that limit and says so. No
+      MDMPI.App change.
 - [~] 21. Add log step "Settled", after which the user chooses an invoice. **Partly:** a
       paid-off invoice gets a "Settled · Tracker" line on its case timeline, worked out on
-      the phone (see Outside the checklist). There is no step the collector picks by hand,
-      because the server rejects unknown step types; a hand-picked step needs a backend change.
+      the phone (see Outside the checklist), and Proof validated → Valid on chosen invoices
+      settles them by hand, but only after Claims paid and Proof sent (checked 2026-10-20).
+      There is no single "Settled" step the collector picks: the server rejects unknown step
+      types, so it needs a new step type in MDMPI.App (`ReconRules.cs`) and on the phone
+      (`recon_enums.dart`, `recon_rules.dart`, the Log a step sheet).
 - [x] 22. Keep reconciled accounts in the collection bucket (reconciliation works like a
       status, not a removal). **Done (2026-10-20, Reconciliation bucket commit).** An invoice marked Reconciliation
       stays in the bucket with its account, with its "Reconciliation" badge, and counts in
@@ -234,8 +271,15 @@ None. Item 27 was held until 22; both are done.
       account's open case along: taken over from whoever held it, or opened when there is
       none. An invoice whose case ended unpaid (escalated, not completed) is an ordinary
       bucket invoice again; ended cases are not reopened.
-- [ ] 23. Let collectors log activities on other invoices plus some of the reconciled
-      invoices. Today only the case holder logs (`canLog` in `reconciliation_controller.dart`).
+- [x] 23. Let collectors log activities on other invoices plus some of the reconciled
+      invoices. **Done (checked 2026-10-20), no new code:** items 22 and 24 cover it. A
+      collector picks some of an account's reconciled invoices, with or without its other
+      invoices, from the bucket (item 24); a reconciled one among them brings the case along
+      (`claimInvoices` → `acquireCasesFor`). They log field activities on the other invoices
+      as usual, and steps on the case: the phone lets anyone holding one of the case's
+      invoices log (`holds` / `canLog` in `reconciliation_controller.dart`), and MDMPI.App
+      accepts a step from anyone holding one of them and moves the case to them
+      (`AppendReconActivityAsync` in `CollectionInvoiceRepository.Reconciliation.cs`).
 - [x] 24. Keep reconciled invoices pickable by specific invoice. **Done (2026-10-20, Pick invoices
       commit).** On an account's page in the bucket, a long press on an invoice
       starts picking and a tap adds or removes one; the button then reads "Claim N
@@ -312,8 +356,8 @@ None. Item 27 was held until 22; both are done.
 
 ## Contact Directory
 
-- [ ] 30. Add Sir Alex to the contact directory. **Need:** contact details. Contacts are
-      added in the app (Settings → Contact Directory); this may need no code.
+- [x] 30. Add Sir Alex to the contact directory. **Done (reported 2026-10-20), no code:**
+      added in the app through Settings → Contact Directory.
 
 ## Bug Fixes
 
@@ -349,6 +393,18 @@ None. Item 27 was held until 22; both are done.
   - **Open:** if the production server lacks the Tracker tables
     (`migration_20260928_add_collection_reconciliation.sql`), it holds every case back
     ("Reconciliation is not available on the server yet"). Check that it ran.
+- [x] Reconciliation fixes from the phone check (2026-10-20, `59d9b50`):
+  - Open Reconciliation Case form: an account already in an open case shows "Already under
+    reconciliation" with "Go to the case" instead of its invoices; invoices in a case or
+    already marked are not offered (they used to be, and the save was then refused).
+  - Done Engagement keeps the account's reconciliation case with the collector (in Mine,
+    still loggable); only Defer releases it. It used to release the case to Team.
+  - Case screen: a case someone else holds, or nobody does, offers "Acquire this account?",
+    which takes the account's bucket invoices and the case.
+- [x] Opening a reconciliation case shows a covering overlay (2026-10-20, built, not yet
+      committed): "Opening reconciliation case" with the step it is on (opening the case,
+      marking the invoices, saving the remarks). Taps and Back are held until it is done or
+      fails (`OpeningCaseOverlay` in `reconciliation_form.dart`).
 - [x] Light/Dark toggle on Collection Home (requested 2026-10-20, `63c6d70`). A sun/moon
       button in the Home header's upper right (`theme_mode_toggle.dart`). The choice is kept
       on the phone (`collection.themeMode`) and beats the phone's setting; until the collector
