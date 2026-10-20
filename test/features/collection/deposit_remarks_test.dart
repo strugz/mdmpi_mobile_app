@@ -57,7 +57,7 @@ void main() {
               'Note: Morning run',
         ),
         'Deposited: PHP 30,000.00\n'
-        'Bank: BDO\n'
+        'Deposited At Bank: BDO\n'
         'Check: 1254897\n'
         'Antipolo Doctors Hospital - PHP 25,000.00\n'
         'Ace Diagnostics Corp. - PHP 5,000.00\n'
@@ -69,7 +69,7 @@ void main() {
       expect(
         CollectionSmsService.depositAdded(
             bankName: 'BDO', amount: 1, remarks: 'Morning run'),
-        'Deposited: PHP 1.00\nBank: BDO\nNote: Morning run',
+        'Deposited: PHP 1.00\nDeposited At Bank: BDO\nNote: Morning run',
       );
     });
 

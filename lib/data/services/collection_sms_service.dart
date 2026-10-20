@@ -451,7 +451,7 @@ class CollectionSmsService extends GetxController {
   /// 5. Adding Deposit; the optional lines left out when blank:
   ///
   ///     Deposited: PHP 30,000.00
-  ///     Bank: BDO
+  ///     Deposited At Bank: BDO
   ///     Check: 1254897
   ///     Antipolo Doctors Hospital - PHP 25,000.00
   ///     Ace Diagnostics Corp. - PHP 5,000.00
@@ -468,7 +468,7 @@ class CollectionSmsService extends GetxController {
   }) =>
       _lines([
         'Deposited: ${_peso(amount)}',
-        _note('Bank', bankName),
+        _note('Deposited At Bank', bankName),
         _note('Check', checkNumber),
         ..._depositRemarks(remarks),
       ]);

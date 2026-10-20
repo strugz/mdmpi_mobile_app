@@ -368,7 +368,7 @@ Every message goes to the Head and the Collection contacts, except Reconciliatio
 
    ```
    Deposited: PHP 30,000.00
-   Bank: BDO
+   Deposited At Bank: BDO
    Check: 1254897
    Antipolo Doctors Hospital - PHP 25,000.00
    Ace Diagnostics Corp. - PHP 5,000.00

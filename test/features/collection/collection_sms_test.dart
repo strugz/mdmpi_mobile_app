@@ -288,13 +288,13 @@ void main() {
             checkNumber: '1254897',
             remarks: 'Morning run'),
         'Deposited: PHP 526,664.00\n'
-        'Bank: BDO\n'
+        'Deposited At Bank: BDO\n'
         'Check: 1254897\n'
         'Note: Morning run',
       );
       expect(
         CollectionSmsService.depositAdded(bankName: 'BPI', amount: 2500),
-        'Deposited: PHP 2,500.00\nBank: BPI',
+        'Deposited: PHP 2,500.00\nDeposited At Bank: BPI',
       );
       expect(
         CollectionSmsService.depositAdded(
