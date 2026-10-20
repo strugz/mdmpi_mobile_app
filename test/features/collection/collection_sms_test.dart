@@ -17,6 +17,10 @@ void main() {
   tearDown(Get.reset);
 
   group('templates', () {
+    // One fact per line, each number behind its label: the one-sentence
+    // messages ran invoice numbers, amounts, POs and check numbers together
+    // and the Head could not tell which number was which.
+
     test('7. Reconciliation escalated', () {
       expect(
         CollectionSmsService.reconEscalated(
@@ -25,19 +29,16 @@ void main() {
             openAmount: 276995,
             remarks: 'No proof after three follow-ups'),
         'Reconciliation escalated: Allied Care Experts (ACE) Medical Center - '
-        'Bohol, Inc. 1 open invoice, PHP 276,995.00. Reason: No proof after '
-        'three follow-ups.',
+        'Bohol, Inc.\n'
+        'Open: 1 invoice, PHP 276,995.00\n'
+        'Reason: No proof after three follow-ups',
       );
       expect(
         CollectionSmsService.reconEscalated(
             clientName: 'Metro Globe', openInvoices: 2, openAmount: 100),
-        'Reconciliation escalated: Metro Globe. 2 open invoices, PHP 100.00.',
+        'Reconciliation escalated: Metro Globe\n'
+        'Open: 2 invoices, PHP 100.00',
       );
-      expect(
-          RegExp(r'^[\x20-\x7E]*$').hasMatch(CollectionSmsService.reconEscalated(
-              clientName: 'X', openInvoices: 1, openAmount: 1)),
-          isTrue,
-          reason: 'plain SMS text');
     });
 
     test('1. Acquiring Account', () {
@@ -47,7 +48,9 @@ void main() {
             poNumbers: ['230736'],
             invoiceIds: ['270000031'],
             amount: 112000),
-        'Now handling Abbott Laboratories. 1 PO, 1 invoice, PHP 112,000.00.',
+        'Now handling: Abbott Laboratories\n'
+        '1 PO, 1 invoice\n'
+        'Balance: PHP 112,000.00',
       );
       expect(
         CollectionSmsService.acquiringAccount(
@@ -55,26 +58,28 @@ void main() {
             poNumbers: ['PO-88', '', 'PO-89', 'PO-88'],
             invoiceIds: ['700011347', '700011348'],
             amount: 6251.5),
-        'Now handling Metro Globe. 2 POs, 2 invoices, PHP 6,251.50.',
+        'Now handling: Metro Globe\n'
+        '2 POs, 2 invoices\n'
+        'Balance: PHP 6,251.50',
       );
       expect(
         CollectionSmsService.acquiringAccount(
             clientName: 'Metro Globe', poNumbers: [], invoiceIds: ['S1']),
-        'Now handling Metro Globe. 1 invoice.',
+        'Now handling: Metro Globe\n1 invoice',
       );
     });
 
-    test(
-        '2. Saving Engagement: the amount leads, the PO only when there is one',
-        () {
+    test('2. Saving Engagement: each number on its own labelled line', () {
       expect(
         CollectionSmsService.engagementSaved(
             clientName: 'Accusure Medical Enterprises',
             poNumbers: ['2026-0309'],
             invoices: const [SmsInvoiceLine(id: '700013391', amount: 24281.25)],
             status: 'Collected'),
-        'Collected PHP 24,281.25 from Accusure Medical Enterprises. '
-        'Invoice 700013391 (PO 2026-0309).',
+        'Collected: Accusure Medical Enterprises\n'
+        'Amount: PHP 24,281.25\n'
+        'Invoice: 700013391\n'
+        'PO: 2026-0309',
       );
       expect(
         CollectionSmsService.engagementSaved(
@@ -85,8 +90,12 @@ void main() {
               SmsInvoiceLine(id: '700011348', amount: 250.5),
             ],
             status: 'Partial'),
-        'Partial payment of PHP 6,251.50 from Metro Globe. Invoices '
-        '700011347 PHP 6,001.00, 700011348 PHP 250.50 (PO PO-88).',
+        'Partial payment: Metro Globe\n'
+        'Amount: PHP 6,251.50\n'
+        'Invoices:\n'
+        '700011347 - PHP 6,001.00\n'
+        '700011348 - PHP 250.50\n'
+        'PO: PO-88',
       );
       expect(
         CollectionSmsService.engagementSaved(
@@ -94,11 +103,12 @@ void main() {
             poNumbers: [''],
             invoices: const [SmsInvoiceLine(id: 'S1', amount: 900)],
             status: 'Collected'),
-        'Collected PHP 900.00 from Metro Globe. Invoice S1.',
+        'Collected: Metro Globe\nAmount: PHP 900.00\nInvoice: S1',
+        reason: 'no PO line when there is none',
       );
     });
 
-    test('1. an account taken on for reconciliation says so', () {
+    test('1. an account taken on for reconciliation lists every number', () {
       expect(
         CollectionSmsService.acquiringAccounts(const [
           SmsAccountLine(
@@ -108,8 +118,10 @@ void main() {
               amount: 118139.87,
               reconciliation: true),
         ]),
-        'Now handling Amka Trading for reconciliation. POs 1, 2, 3, 4, 5. '
-        'Invoices a, b, c, d, e. PHP 118,139.87.',
+        'Now handling for reconciliation: Amka Trading\n'
+        'POs: 1, 2, 3, 4, 5\n'
+        'Invoices: a, b, c, d, e\n'
+        'Balance: PHP 118,139.87',
       );
       expect(
         CollectionSmsService.acquiringAccounts(const [
@@ -125,13 +137,19 @@ void main() {
               invoiceIds: ['b'],
               amount: 50),
         ]),
-        'Now handling 2 accounts: Amka Trading (reconciliation: POs 1; '
-        'invoices a; PHP 100.00); Metro Globe (1 PO, 1 invoice, PHP 50.00). '
-        'Total PHP 150.00.',
+        'Now handling 2 accounts\n'
+        '1. Amka Trading (reconciliation)\n'
+        'PO: 1\n'
+        'Invoice: a\n'
+        'Balance: PHP 100.00\n'
+        '2. Metro Globe\n'
+        '1 PO, 1 invoice, PHP 50.00\n'
+        'Total: PHP 150.00',
       );
     });
 
-    test('1. several accounts acquired together make one message', () {
+    test('1. several accounts acquired together make one numbered message',
+        () {
       expect(
         CollectionSmsService.acquiringAccounts(const [
           SmsAccountLine(
@@ -150,10 +168,14 @@ void main() {
               invoiceIds: ['1', '2', '3', '4', '5', '6'],
               amount: 155972.41),
         ]),
-        'Now handling 3 accounts: Alexis Yu Best Care Pharmacy (5 POs, '
-        '6 invoices, PHP 95,198.18); Ace Diagnostics Corp. (1 PO, 1 invoice, '
-        'PHP 20,000.00); Accuteqs Diagnostics Corp. (4 POs, 6 invoices, '
-        'PHP 155,972.41). Total PHP 271,170.59.',
+        'Now handling 3 accounts\n'
+        '1. Alexis Yu Best Care Pharmacy\n'
+        '5 POs, 6 invoices, PHP 95,198.18\n'
+        '2. Ace Diagnostics Corp.\n'
+        '1 PO, 1 invoice, PHP 20,000.00\n'
+        '3. Accuteqs Diagnostics Corp.\n'
+        '4 POs, 6 invoices, PHP 155,972.41\n'
+        'Total: PHP 271,170.59',
       );
       expect(
         CollectionSmsService.acquiringAccounts(const [
@@ -163,12 +185,12 @@ void main() {
               invoiceIds: ['S1'],
               amount: 900),
         ]),
-        'Now handling Metro Globe. 1 PO, 1 invoice, PHP 900.00.',
-        reason: 'one account reads as before',
+        'Now handling: Metro Globe\n1 PO, 1 invoice\nBalance: PHP 900.00',
+        reason: 'one account reads as a single acquire',
       );
     });
 
-    test('2. Saving Engagement paid by check carries the check details', () {
+    test('2. Saving Engagement paid by check carries a check line', () {
       String saved({String? bank, String? no, String? date}) =>
           CollectionSmsService.engagementSaved(
               clientName: 'Accusure Medical Enterprises',
@@ -180,20 +202,22 @@ void main() {
               bankName: bank,
               checkNumber: no,
               checkDate: date);
-      const base = 'Collected PHP 121,208.04 from Accusure Medical '
-          'Enterprises. Invoice 700013392 (PO 2026-0328).';
+      const base = 'Collected: Accusure Medical Enterprises\n'
+          'Amount: PHP 121,208.04\n'
+          'Invoice: 700013392\n'
+          'PO: 2026-0328';
       expect(saved(bank: 'BDO', no: '4588255', date: '09-28-2026'),
-          '$base Check BDO 4588255, dated 09-28-2026.');
-      expect(saved(bank: 'BDO', no: '4588255'), '$base Check BDO 4588255.');
-      expect(saved(date: '09-28-2026'), '$base Check dated 09-28-2026.');
+          '$base\nCheck: BDO 4588255, dated 09-28-2026');
+      expect(saved(bank: 'BDO', no: '4588255'), '$base\nCheck: BDO 4588255');
+      expect(saved(date: '09-28-2026'), '$base\nCheck: dated 09-28-2026');
       expect(saved(bank: ' ', no: '', date: null), base,
-          reason: 'cash: no check part at all');
+          reason: 'cash: no check line at all');
     });
 
     test('every template stays in plain SMS text (no peso sign)', () {
       // One character outside GSM-7 (the peso sign was one) makes the whole
       // message UCS-2, 70 characters per SMS: the phone refused the Saving
-      // Engagement text outright on 2026-09-28.
+      // Engagement text outright on 2026-09-28. A line break is GSM-7.
       final messages = [
         CollectionSmsService.acquiringAccount(
             clientName: 'Accusure Medical Enterprises',
@@ -202,16 +226,25 @@ void main() {
         CollectionSmsService.engagementSaved(
             clientName: 'Accusure Medical Enterprises',
             poNumbers: ['2026-0323'],
-            invoices: const [SmsInvoiceLine(id: '700013390', amount: 37759.82)],
-            status: 'Collected'),
+            invoices: const [
+              SmsInvoiceLine(id: '700013390', amount: 37759.82),
+              SmsInvoiceLine(id: '700013391', amount: 1),
+            ],
+            status: 'Collected',
+            bankName: 'BDO',
+            checkNumber: '1'),
         CollectionSmsService.accountDeferred(clientName: 'X', remarks: 'r'),
         CollectionSmsService.engagementCleared(clientName: 'X'),
         CollectionSmsService.depositAdded(bankName: 'BDO', amount: 526664),
         CollectionSmsService.cwtPickup(clientName: 'X', remarks: 'r'),
+        CollectionSmsService.reconEscalated(
+            clientName: 'X', openInvoices: 1, openAmount: 1, remarks: 'r'),
         CollectionSmsService.signed('m', 'MAR'),
       ];
       for (final m in messages) {
-        expect(RegExp(r'^[\x20-\x7E]*$').hasMatch(m), isTrue, reason: m);
+        expect(RegExp(r'^[\x20-\x7E\n]*$').hasMatch(m), isTrue, reason: m);
+        expect(m.split('\n'), everyElement(isNot(isEmpty)),
+            reason: 'no blank lines: $m');
       }
     });
 
@@ -232,38 +265,41 @@ void main() {
       expect(
         CollectionSmsService.accountDeferred(
             clientName: 'Metro Globe', remarks: 'Follow Up - Signatory  out'),
-        'Postponed Metro Globe. Reason: Follow Up - Signatory out.',
+        'Postponed: Metro Globe\nReason: Follow Up - Signatory out',
       );
       expect(
         CollectionSmsService.accountDeferred(clientName: 'X', remarks: '  '),
-        'Postponed X.',
+        'Postponed: X',
       );
     });
 
     test('4. Clear Engagement', () {
       expect(
         CollectionSmsService.engagementCleared(clientName: 'Metro Globe'),
-        'Done with Metro Globe.',
+        'Done: Metro Globe',
       );
     });
 
-    test('5. Adding Deposit, optional parts left out when blank', () {
+    test('5. Adding Deposit, optional lines left out when blank', () {
       expect(
         CollectionSmsService.depositAdded(
             bankName: 'BDO',
             amount: 526664,
             checkNumber: '1254897',
             remarks: 'Morning run'),
-        'Deposited PHP 526,664.00 at BDO. Check 1254897. Note: Morning run.',
+        'Deposited: PHP 526,664.00\n'
+        'Bank: BDO\n'
+        'Check: 1254897\n'
+        'Note: Morning run',
       );
       expect(
         CollectionSmsService.depositAdded(bankName: 'BPI', amount: 2500),
-        'Deposited PHP 2,500.00 at BPI.',
+        'Deposited: PHP 2,500.00\nBank: BPI',
       );
       expect(
         CollectionSmsService.depositAdded(
             bankName: '', amount: 1, checkNumber: ' ', remarks: ''),
-        'Deposited PHP 1.00.',
+        'Deposited: PHP 1.00',
       );
     });
 
@@ -271,37 +307,30 @@ void main() {
       expect(
         CollectionSmsService.cwtPickup(
             clientName: 'Bacolod Adventist', remarks: '2307 picked up'),
-        'Picked up CWT from Bacolod Adventist. Note: 2307 picked up.',
+        'Picked up CWT: Bacolod Adventist\nNote: 2307 picked up',
       );
       expect(CollectionSmsService.cwtPickup(clientName: 'X', remarks: ''),
-          'Picked up CWT from X.');
+          'Picked up CWT: X');
     });
 
-    test('a name or remark that ends with a period is not doubled', () {
+    test('a name keeps "Corp." but loses a stray closing period', () {
       expect(
           CollectionSmsService.engagementCleared(
               clientName: 'Accuteqs Diagnostics Corp.'),
-          'Done with Accuteqs Diagnostics Corp.');
+          'Done: Accuteqs Diagnostics Corp.');
       expect(
-          CollectionSmsService.acquiringAccount(
-              clientName: 'Accuteqs Diagnostics Corp.',
-              poNumbers: [],
-              invoiceIds: ['S1']),
-          'Now handling Accuteqs Diagnostics Corp. 1 invoice.');
+          CollectionSmsService.engagementCleared(clientName: 'Metro Globe.'),
+          'Done: Metro Globe');
       expect(
           CollectionSmsService.cwtPickup(
               clientName: 'Accuteqs Diagnostics Corp.', remarks: 'Signed.'),
-          'Picked up CWT from Accuteqs Diagnostics Corp. Note: Signed.');
-      expect(
-          CollectionSmsService.depositAdded(
-              bankName: 'BDO', amount: 1, remarks: 'Done.'),
-          'Deposited PHP 1.00 at BDO. Note: Done.');
+          'Picked up CWT: Accuteqs Diagnostics Corp.\nNote: Signed.');
     });
 
-    test("the collector's initials close every message", () {
-      expect(CollectionSmsService.signed('Released X.', 'MAR'),
-          'Released X. - MAR');
-      expect(CollectionSmsService.signed('Released X.', ' '), 'Released X.');
+    test("the collector's initials close every message, on their own line",
+        () {
+      expect(CollectionSmsService.signed('Done: X', 'MAR'), 'Done: X\n- MAR');
+      expect(CollectionSmsService.signed('Done: X', ' '), 'Done: X');
     });
   });
 
@@ -369,7 +398,7 @@ void main() {
           clientName: 'Metro Globe', openInvoices: 1, openAmount: 100);
       expect(r, CollectionSmsOutcome.sent);
       expect(sent.map((s) => s.$1), ['0917 000 0001']);
-      expect(sent.single.$2, endsWith(' - MAR'));
+      expect(sent.single.$2, endsWith('\n- MAR'));
 
       head = null;
       sent = [];
@@ -395,7 +424,7 @@ void main() {
       expect(r, CollectionSmsOutcome.sent);
       expect(sent.map((s) => s.$1),
           ['0917 000 0001', '0918 000 0002', '0919 000 0003']);
-      expect(sent.first.$2, 'Done with Metro Globe. - MAR');
+      expect(sent.first.$2, 'Done: Metro Globe\n- MAR');
       expect(progress, ['Please wait message sending... (0/3)'],
           reason: 'the full-screen view opens once, before the first send');
       expect(progressClosed, 1, reason: 'and always comes down');
@@ -445,7 +474,7 @@ void main() {
       expect(sent, isEmpty);
       expect(handedOff.single.$1,
           ['0917 000 0001', '0918 000 0002', '0919 000 0003']);
-      expect(handedOff.single.$2, 'Postponed X. Reason: r. - MAR',
+      expect(handedOff.single.$2, 'Postponed: X\nReason: r\n- MAR',
           reason: 'the Messages app gets the signed text too');
       expect(progress, isEmpty, reason: 'no radio send, no sending view');
     });
@@ -538,12 +567,12 @@ void main() {
           events,
           [
             'open',
-            'Done with A.',
+            'Done: A',
             'close',
             'sent view',
             'sent view closed',
             'open',
-            'Done with B.',
+            'Done: B',
             'close',
             'sent view',
             'sent view closed',
@@ -617,7 +646,7 @@ void main() {
       ));
       expect(await c.notifyEngagementCleared(clientName: 'Metro Globe'),
           CollectionSmsOutcome.sent);
-      expect(sent.single, 'Done with Metro Globe.',
+      expect(sent.single, 'Done: Metro Globe',
           reason: 'no signed-in user in the test, so no initials');
     });
   });

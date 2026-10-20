@@ -233,11 +233,11 @@ class CollectionSmsService extends GetxController {
     ];
   }
 
-  /// "PO 230736" / "POs 2026-0323, 2026-0309"; '' when there are none.
+  /// "PO: 230736" / "POs: 2026-0323, 2026-0309"; '' when there are none.
   static String _labelled(String one, String many, Iterable<String> values) {
     final items = _items(values);
     if (items.isEmpty) return '';
-    return '${items.length == 1 ? one : many} ${items.join(', ')}';
+    return '${items.length == 1 ? one : many}: ${items.join(', ')}';
   }
 
   /// "PHP 37,759.82", not "₱37,759.82": the peso sign is outside the GSM-7
@@ -246,27 +246,53 @@ class CollectionSmsService extends GetxController {
   static String _peso(double amount) =>
       'PHP ${BFormatter.formatPesoCurrency(amount, includeSymbol: false).trim()}';
 
-  /// " Note: [text]." or '' when blank.
+  /// "Note: [text]" or '' when blank.
   static String _note(String label, String? value) {
     final t = _text(value, none: '');
-    return t.isEmpty ? '' : ' $label: ${_end(t)}';
+    return t.isEmpty ? '' : '$label: $t';
   }
 
-  /// [value] closed with one period: "Accuteqs Diagnostics Corp." already
-  /// ends a sentence, and another would read "Corp..".
-  static String _end(String value) {
-    final v = value.trim();
-    return v.endsWith('.') ? v : '$v.';
+  /// One fact per line, blank parts left out.
+  ///
+  /// The messages used to be one run of sentences, and with invoice numbers,
+  /// amounts, POs, check numbers and dates side by side the Head could not
+  /// tell which number was which. Now each number sits on its own line
+  /// behind a label. A line break is in the GSM-7 alphabet, so it costs one
+  /// character, like the ". " it replaces.
+  static String _lines(Iterable<String> lines) =>
+      lines.map((l) => l.trim()).where((l) => l.isNotEmpty).join('\n');
+
+  /// [name] tidied for the end of a line: a stray closing period goes, but
+  /// "Corp." or "Inc." keeps its own.
+  static String _name(String name) {
+    final n = _text(name, none: '');
+    if (_abbrev.hasMatch(n)) return n;
+    return n.replaceFirst(RegExp(r'\.+$'), '');
   }
 
-  // Each message leads with what happened, so the notification preview alone
-  // tells the Head. The collector's initials are added by [send].
+  static final RegExp _abbrev =
+      RegExp(r'\b(Corp|Inc|Co|Ltd|Bros|Jr|Sr)\.$', caseSensitive: false);
 
-  /// 1. "Now handling [Client]. 5 POs, 6 invoices, PHP 95,198.18."
-  /// Reconciliation lists every number: "Now handling [Client] for
-  /// reconciliation. POs A, B. Invoices X, Y. PHP 118,139.87."
+  // Each message leads with what happened and to whom, on the first line,
+  // so the notification preview alone tells the Head. The details follow,
+  // one labelled line each. The collector's initials are added by [send].
+
+  /// 1. Acquiring Account:
+  ///
+  ///     Now handling: Abbott Laboratories
+  ///     1 PO, 1 invoice
+  ///     Balance: PHP 112,000.00
+  ///
   /// Counts, not the numbers themselves: an account can carry dozens of
-  /// invoices. [amount] is the balance taken on; left out when null.
+  /// invoices. Reconciliation lists every number, because the Head checks
+  /// them one by one against the office's records:
+  ///
+  ///     Now handling for reconciliation: Amka Trading
+  ///     POs: 1, 2
+  ///     Invoices: a, b
+  ///     Balance: PHP 118,139.87
+  ///
+  /// [amount] is the balance taken on; left out when null.
   static String acquiringAccount({
     required String clientName,
     required Iterable<String> poNumbers,
@@ -274,31 +300,38 @@ class CollectionSmsService extends GetxController {
     double? amount,
     bool reconciliation = false,
   }) {
+    final name = _name(clientName);
     if (reconciliation) {
-      // Reconciliation names every PO and invoice: the Head checks them
-      // one by one against the office's records.
-      final parts = [
+      return _lines([
+        'Now handling for reconciliation: $name',
         _labelled('PO', 'POs', poNumbers),
         _labelled('Invoice', 'Invoices', invoiceIds),
-        if (amount != null) _peso(amount),
-      ].where((s) => s.isNotEmpty).map(_end);
-      return [
-        'Now handling ${clientName.trim()} for reconciliation.',
-        ...parts,
-      ].join(' ');
+        if (amount != null) 'Balance: ${_peso(amount)}',
+      ]);
     }
-    final details = [
-      _count(_items(poNumbers).length, 'PO', 'POs'),
-      _count(_items(invoiceIds).length, 'invoice', 'invoices'),
-      if (amount != null) _peso(amount),
-    ].where((s) => s.isNotEmpty).join(', ');
-    return 'Now handling ${_end(clientName)}'
-        '${details.isEmpty ? '' : ' ${_end(details)}'}';
+    return _lines([
+      'Now handling: $name',
+      _counts(poNumbers, invoiceIds),
+      if (amount != null) 'Balance: ${_peso(amount)}',
+    ]);
   }
 
-  /// 1, for one acquire of several accounts: ONE message, not one each.
-  /// "Now handling 3 accounts: A (5 POs, 6 invoices, PHP 95,198.18); B (…).
-  /// Total PHP 271,170.59." One account reads as [acquiringAccount].
+  /// "5 POs, 6 invoices"; '' when there are neither.
+  static String _counts(Iterable<String> pos, Iterable<String> invoices) => [
+        _count(_items(pos).length, 'PO', 'POs'),
+        _count(_items(invoices).length, 'invoice', 'invoices'),
+      ].where((s) => s.isNotEmpty).join(', ');
+
+  /// 1, for one acquire of several accounts: ONE message, not one each,
+  /// numbered so each account's figures stay with its name:
+  ///
+  ///     Now handling 3 accounts
+  ///     1. Alexis Yu Best Care Pharmacy
+  ///     5 POs, 6 invoices, PHP 95,198.18
+  ///     2. ...
+  ///     Total: PHP 271,170.59
+  ///
+  /// One account reads as [acquiringAccount].
   static String acquiringAccounts(List<SmsAccountLine> accounts) {
     if (accounts.length == 1) {
       final a = accounts.single;
@@ -309,30 +342,33 @@ class CollectionSmsService extends GetxController {
           amount: a.amount,
           reconciliation: a.reconciliation);
     }
-    final lines = accounts.map((a) {
-      final name = a.clientName.trim();
+    final lines = <String>['Now handling ${accounts.length} accounts'];
+    for (final (i, a) in accounts.indexed) {
+      final name = _name(a.clientName);
       if (a.reconciliation) {
-        // Every PO and invoice, as for one account; ';' between the lists
-        // because the numbers themselves are separated by ','.
-        final parts = [
-          _labelled('POs', 'POs', a.poNumbers),
-          _labelled('invoices', 'invoices', a.invoiceIds),
-          if (a.amount != null) _peso(a.amount!),
-        ].where((s) => s.isNotEmpty).join('; ');
-        return '$name (reconciliation${parts.isEmpty ? '' : ': $parts'})';
+        // Every PO and invoice, as for one account.
+        lines.addAll([
+          '${i + 1}. $name (reconciliation)',
+          _labelled('PO', 'POs', a.poNumbers),
+          _labelled('Invoice', 'Invoices', a.invoiceIds),
+          if (a.amount != null) 'Balance: ${_peso(a.amount!)}',
+        ]);
+      } else {
+        lines.addAll([
+          '${i + 1}. $name',
+          [
+            _counts(a.poNumbers, a.invoiceIds),
+            if (a.amount != null) _peso(a.amount!),
+          ].where((s) => s.isNotEmpty).join(', '),
+        ]);
       }
-      final details = [
-        _count(_items(a.poNumbers).length, 'PO', 'POs'),
-        _count(_items(a.invoiceIds).length, 'invoice', 'invoices'),
-        if (a.amount != null) _peso(a.amount!),
-      ].where((s) => s.isNotEmpty).join(', ');
-      return details.isEmpty ? name : '$name ($details)';
-    }).join('; ');
+    }
     final amounts = accounts.map((a) => a.amount).whereType<double>();
-    final total = amounts.isEmpty
-        ? ''
-        : ' Total ${_peso(amounts.fold<double>(0, (sum, v) => sum + v))}.';
-    return 'Now handling ${accounts.length} accounts: ${_end(lines)}$total';
+    if (amounts.isNotEmpty) {
+      lines.add(
+          'Total: ${_peso(amounts.fold<double>(0, (sum, v) => sum + v))}');
+    }
+    return _lines(lines);
   }
 
   /// "1 PO" / "5 POs"; '' for none.
@@ -340,7 +376,7 @@ class CollectionSmsService extends GetxController {
       n == 0 ? '' : '$n ${n == 1 ? one : many}';
 
   /// The status word for an outcome, or null when that outcome sends
-  /// nothing (Pre-Collection, Follow Up, …).
+  /// nothing (Pre-Collection, Follow Up, ...).
   static String? collectionStatusWord(String status) {
     final s = status.trim().toLowerCase();
     if (s == CollectionStatusColors.statusCollected.toLowerCase()) {
@@ -354,11 +390,17 @@ class CollectionSmsService extends GetxController {
     return null;
   }
 
-  /// 2. "Collected PHP [total] from [Client]. Invoice [Invoice] (PO [PO]).
-  /// Check [Bank] [No.], dated [Date]." The check part only when paid by
-  /// check (any of bank, number or date given).
-  /// Partial: "Partial payment of PHP [total] from [Client]. …". Several
-  /// invoices list each with its amount after the total.
+  /// 2. Saving Engagement:
+  ///
+  ///     Collected: Accusure Medical Enterprises
+  ///     Amount: PHP 24,281.25
+  ///     Invoice: 700013391
+  ///     PO: 2026-0309
+  ///     Check: BDO 4588255, dated 09-28-2026
+  ///
+  /// Partial reads "Partial payment: ...". Several invoices list each with
+  /// its amount, one per line, under "Invoices:". The check line only when
+  /// paid by check (any of bank, number or date given).
   static String engagementSaved({
     required String clientName,
     required Iterable<String> poNumbers,
@@ -370,26 +412,21 @@ class CollectionSmsService extends GetxController {
   }) {
     final lines = invoices.where((i) => i.id.trim().isNotEmpty).toList();
     final total = lines.fold<double>(0, (sum, i) => sum + i.amount);
-    final lead = status == 'Partial'
-        ? 'Partial payment of ${_peso(total)} from ${_end(clientName)}'
-        : 'Collected ${_peso(total)} from ${_end(clientName)}';
-    final invoicePart = switch (lines.length) {
-      0 => '',
-      1 => 'Invoice ${lines.single.id.trim()}',
-      _ =>
-        'Invoices ${lines.map((i) => '${i.id.trim()} ${_peso(i.amount)}').join(', ')}',
-    };
-    final pos = _labelled('PO', 'POs', poNumbers);
-    final detail = [
-      if (invoicePart.isNotEmpty) invoicePart,
-      if (pos.isNotEmpty) '($pos)',
-    ].join(' ');
-    final message = detail.isEmpty ? lead : '$lead $detail.';
-    final check = _checkDetails(bankName, checkNumber, checkDate);
-    return check.isEmpty ? message : '$message $check';
+    return _lines([
+      '${status == 'Partial' ? 'Partial payment' : 'Collected'}: '
+          '${_name(clientName)}',
+      'Amount: ${_peso(total)}',
+      if (lines.length == 1) 'Invoice: ${lines.single.id.trim()}',
+      if (lines.length > 1) ...[
+        'Invoices:',
+        for (final i in lines) '${i.id.trim()} - ${_peso(i.amount)}',
+      ],
+      _labelled('PO', 'POs', poNumbers),
+      _checkDetails(bankName, checkNumber, checkDate),
+    ]);
   }
 
-  /// "Check BDO 4588255, dated 09-28-2026."; '' when nothing is given.
+  /// "Check: BDO 4588255, dated 09-28-2026"; '' when nothing is given.
   static String _checkDetails(
       String? bankName, String? checkNumber, String? checkDate) {
     final what = [_text(bankName, none: ''), _text(checkNumber, none: '')]
@@ -397,60 +434,67 @@ class CollectionSmsService extends GetxController {
         .join(' ');
     final date = _text(checkDate, none: '');
     if (what.isEmpty && date.isEmpty) return '';
-    if (date.isEmpty) return 'Check ${_end(what)}';
-    return what.isEmpty
-        ? 'Check dated ${_end(date)}'
-        : 'Check $what, dated ${_end(date)}';
+    if (date.isEmpty) return 'Check: $what';
+    return what.isEmpty ? 'Check: dated $date' : 'Check: $what, dated $date';
   }
 
-  /// 3. "Postponed [Client]. Reason: [Remarks]."
+  /// 3. "Postponed: [Client]" / "Reason: [Remarks]".
   static String accountDeferred(
           {required String clientName, required String remarks}) =>
-      'Postponed ${_end(clientName)}${_note('Reason', remarks)}';
+      _lines(['Postponed: ${_name(clientName)}', _note('Reason', remarks)]);
 
-  /// 4. "Done with [Client]."
+  /// 4. "Done: [Client]".
   static String engagementCleared({required String clientName}) =>
-      'Done with ${_end(clientName)}';
+      'Done: ${_name(clientName)}';
 
-  /// 5. "Deposited PHP [Amount] at [Bank]. Check [No.]. Note: [Remarks]."
-  /// The optional parts are left out when blank.
+  /// 5. Adding Deposit; the optional lines left out when blank:
+  ///
+  ///     Deposited: PHP 526,664.00
+  ///     Bank: BDO
+  ///     Check: 1254897
+  ///     Note: Morning run
   static String depositAdded({
     required String bankName,
     required double amount,
     String? checkNumber,
     String? remarks,
-  }) {
-    final bank = _text(bankName, none: '');
-    final check = _text(checkNumber, none: '');
-    return _end(
-            'Deposited ${_peso(amount)}${bank.isEmpty ? '' : ' at $bank'}') +
-        (check.isEmpty ? '' : ' Check ${_end(check)}') +
-        _note('Note', remarks);
-  }
+  }) =>
+      _lines([
+        'Deposited: ${_peso(amount)}',
+        _note('Bank', bankName),
+        _note('Check', checkNumber),
+        _note('Note', remarks),
+      ]);
 
-  /// 6. "Picked up CWT from [Client]. Note: [Remarks]."
+  /// 6. "Picked up CWT: [Client]" / "Note: [Remarks]".
   static String cwtPickup(
           {required String clientName, required String remarks}) =>
-      'Picked up CWT from ${_end(clientName)}${_note('Note', remarks)}';
+      _lines(['Picked up CWT: ${_name(clientName)}', _note('Note', remarks)]);
 
   /// 7. Reconciliation escalated (Reconciliation Tracker, to the Head only):
-  /// "Reconciliation escalated: [Client]. 2 open invoices, PHP 276,995.00.
-  /// Reason: [Remarks]."
+  ///
+  ///     Reconciliation escalated: [Client]
+  ///     Open: 2 invoices, PHP 276,995.00
+  ///     Reason: [Remarks]
   static String reconEscalated({
     required String clientName,
     required int openInvoices,
     required double openAmount,
     String remarks = '',
   }) =>
-      'Reconciliation escalated: ${_end(clientName)} '
-      '$openInvoices open ${openInvoices == 1 ? 'invoice' : 'invoices'}, '
-      '${_end(_peso(openAmount))}${_note('Reason', remarks)}';
+      _lines([
+        'Reconciliation escalated: ${_name(clientName)}',
+        'Open: $openInvoices ${openInvoices == 1 ? 'invoice' : 'invoices'}, '
+            '${_peso(openAmount)}',
+        _note('Reason', remarks),
+      ]);
 
-  /// "[message] - MAR": who sent it, since the Head hears from every
-  /// collector. A plain hyphen, not a dash: a dash is outside GSM-7 too.
+  /// The message with "- MAR" on its own last line: who sent it, since the
+  /// Head hears from every collector. A plain hyphen, not a dash: a dash is
+  /// outside GSM-7 too.
   static String signed(String message, String initials) {
     final i = initials.trim();
-    return i.isEmpty ? message : '$message - $i';
+    return i.isEmpty ? message : '$message\n- $i';
   }
 
   static String _text(String? value, {String none = 'none'}) {
