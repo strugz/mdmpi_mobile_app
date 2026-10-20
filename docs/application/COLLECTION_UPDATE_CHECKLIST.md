@@ -154,6 +154,11 @@ sections below, where its details are. Keep both views in step when an item move
     back in the bucket, following Filter by Area (an invoice marked for reconciliation is
     left to that card). Tapping it lists the accounts like Past Due; each invoice shows
     "Next collection: ₱50,000.00 · Check BDO 1234567, dated 10-25-2026".
+  - Acquiring: an account with a Pre-Collection invoice back in the bucket shows
+    **Acquire Account** on the Pre-Collection page; it takes the account as the bucket's own
+    Acquire does (its open invoices, with the Acquiring SMS). In the Collection Bucket a
+    Pre-Collection invoice is a regular one, so it is listed and bulk-acquired with the
+    ticked accounts as before.
   - Limits: a deferral replaces the outcome on the server, so a deferred invoice leaves the
     card at the next download, not at once. Pre-Collections saved before this change that
     carried an amount already have a payment on the server; the phone no longer counts them

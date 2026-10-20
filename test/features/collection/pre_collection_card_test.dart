@@ -12,9 +12,16 @@ import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 /// listed by account like Past Due.
 
 class _Activity extends CollectionActivityController {
+  final claimed = <String>[];
+
   @override
   // ignore: must_call_super
   void onInit() {}
+
+  @override
+  Future<void> claimItemsByIds(List<String> ids,
+          {void Function(int done, int total)? onProgress}) async =>
+      claimed.addAll(ids);
 }
 
 ClientModel _client(String id, String name) => ClientModel(
@@ -97,5 +104,50 @@ void main() {
     expect(find.text('Ace Diagnostics Corp.'), findsOneWidget);
     expect(find.text('No accounts found for this category.'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  group('acquiring', () {
+    Future<_Activity> openPage(WidgetTester tester) async {
+      final c = _seeded();
+      await tester.pumpWidget(GetMaterialApp(
+        theme: BCollectionTheme.light,
+        home: CategoryDetailScreen(
+            title: CollectionStatusColors.statusPreCollection,
+            color: BCollectionColors.primary),
+      ));
+      await tester.pumpAndSettle();
+      return c;
+    }
+
+    testWidgets('an account with a Pre-Collection in the bucket can be acquired',
+        (tester) async {
+      final c = await openPage(tester);
+      // Amka's P1 is in the bucket; Ace's only Pre-Collection (P4) is held.
+      expect(find.text('Acquire Account'), findsOneWidget);
+      await tester.tap(find.text('Acquire Account'));
+      await tester.pumpAndSettle();
+
+      expect(c.claimed, ['P1'],
+          reason: 'the account as the bucket acquires it: its open regular '
+              'invoices, not the paid or reconciliation ones');
+    });
+
+    test('nothing in the bucket to take: no button', () {
+      final c = _seeded();
+      expect(c.hasPreCollectionInBucket(_amka.id), isTrue);
+      expect(c.hasPreCollectionInBucket(_ace.id), isFalse,
+          reason: 'its Pre-Collection is already held');
+    });
+
+    test('the Collection Bucket lists and bulk-acquires them too', () async {
+      final c = _seeded();
+      expect(c.bucketAccounts.map((a) => a.name),
+          containsAll(['Amka Trading', 'Ace Diagnostics Corp.']));
+      c.toggleAccountSelection(_amka.id);
+      c.toggleAccountSelection(_ace.id);
+      await c.claimSelectedAccounts();
+      expect(c.claimed.toSet(), {'P1', 'F1'},
+          reason: 'a Pre-Collection is a regular bucket invoice');
+    });
   });
 }

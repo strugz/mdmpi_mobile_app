@@ -259,7 +259,15 @@ class CategoryDetailScreen extends StatelessWidget {
                         CollectionAccountInformationScreen(client: client)),
                     onClaimTap: title == 'Reconciliation'
                         ? () => controller.claimReconciliation(client.id)
-                        : null,
+                        // Acquired here as from the bucket: the account's
+                        // open invoices, Pre-Collection ones among them.
+                        : title ==
+                                    CollectionStatusColors
+                                        .statusPreCollection &&
+                                controller
+                                    .hasPreCollectionInBucket(client.id)
+                            ? () => controller.claimAccount(client.id)
+                            : null,
                   );
                 },
               );

@@ -1590,6 +1590,15 @@ class CollectionActivityController extends GetxController {
     return byId.values.toList();
   }
 
+  /// Whether [clientId] still has a Pre-Collection invoice in the bucket:
+  /// what the Pre-Collection page's Acquire Account takes (with the rest of
+  /// the account's open invoices, as the bucket's own Acquire does).
+  bool hasPreCollectionInBucket(String clientId) => bucketItems.any((item) =>
+      item.client.id == clientId &&
+      isRegularBucketInvoice(item) &&
+      (item.lastOutcome ?? '').trim() ==
+          CollectionStatusColors.statusPreCollection);
+
   List<CollectionItemModel> getPreCollectionInvoicesByAccount(
           String clientId) =>
       preCollectionItems.where((i) => i.client.id == clientId).toList();
