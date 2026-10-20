@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart'
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -182,8 +183,11 @@ class CategoryDetailScreen extends StatelessWidget {
                                   ?.name ??
                               (pay['clientName'] as String? ?? ''),
                           accent: color,
+                          temporary: CollectionActivityController
+                              .isOnTemporaryAccount(pay),
                           onApply: () =>
                               _showPaymentDetailSheet(context, controller, pay),
+                          onLink: () => _linkAdvance(context, controller, pay),
                         ),
                         const SizedBox(height: BSizes.spaceBtwItemsLight),
                       ],
@@ -278,6 +282,26 @@ class CategoryDetailScreen extends StatelessWidget {
     );
   }
 
+  /// A temporary account's advance: find the real account and move it there.
+  Future<void> _linkAdvance(BuildContext context,
+      CollectionActivityController controller, Map<String, dynamic> pay) async {
+    final client = await ClientPickerSheet.show(
+      context,
+      search: controller.searchClientRegistry,
+      searchKnown: controller.searchKnownAccounts,
+    );
+    if (client == null) return;
+    final ok = await controller.linkAdvance(pay['id'] as String, client);
+    if (ok) {
+      BLoaders.successSnackBar(
+          title: 'Advance linked',
+          message: 'Moved to ${client.name}. You can apply it to an invoice now.');
+    } else {
+      BLoaders.errorSnackBar(
+          title: 'Not linked', message: 'Pick an account from the registry.');
+    }
+  }
+
   void _showPaymentDetailSheet(BuildContext context,
       CollectionActivityController controller, Map<String, dynamic> payment) {
     Get.bottomSheet(
@@ -368,6 +392,8 @@ class _AdvanceCard extends StatelessWidget {
     required this.accountName,
     required this.accent,
     required this.onApply,
+    this.temporary = false,
+    this.onLink,
   });
 
   final Map<String, dynamic> payment;
@@ -375,14 +401,20 @@ class _AdvanceCard extends StatelessWidget {
   final Color accent;
   final VoidCallback onApply;
 
+  /// On a temporary account: it is linked to the real account before it can
+  /// be applied, so the card offers Link to account instead.
+  final bool temporary;
+  final VoidCallback? onLink;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final amount = (payment['amount'] as num?)?.toDouble() ?? 0;
     final remarks = (payment['remarks'] as String? ?? '').trim();
 
+    final action = temporary ? (onLink ?? () {}) : onApply;
     return BPressableScale(
-      onTap: onApply,
+      onTap: action,
       pressedScale: 0.98,
       child: Container(
         padding: const EdgeInsets.all(BSizes.md),
@@ -459,7 +491,10 @@ class _AdvanceCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
                 ),
                 child: Text(
-                  'Float · awaiting invoice',
+                  temporary
+                      ? 'Temporary account · link to apply'
+                      : 'Float · awaiting invoice',
+                  key: ValueKey('advance-state-${payment['id']}'),
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: accent, fontWeight: FontWeight.w700),
                 ),
@@ -469,9 +504,11 @@ class _AdvanceCard extends StatelessWidget {
             // No fixed height and the theme's tall padding replaced, so the
             // label always has room and grows with the system font size.
             ElevatedButton.icon(
-              onPressed: onApply,
-              icon: const Icon(Iconsax.receipt_add, size: 18),
-              label: const Text('Apply to invoice'),
+              key: ValueKey('advance-action-${payment['id']}'),
+              onPressed: action,
+              icon: Icon(temporary ? Iconsax.link : Iconsax.receipt_add,
+                  size: 18),
+              label: Text(temporary ? 'Link to account' : 'Apply to invoice'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                     horizontal: BSizes.md, vertical: BSizes.sm + 2),

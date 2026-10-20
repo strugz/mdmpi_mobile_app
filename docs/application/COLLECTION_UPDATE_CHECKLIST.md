@@ -25,11 +25,11 @@
 
 | Status | Count |
 |---|---|
-| Done | 14 |
+| Done | 15 |
 | Already in the app before this round | 3 |
 | Partly done | 2 |
 | Held back | 1 |
-| Not started | 13 |
+| Not started | 12 |
 | **Total** | **33** |
 
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (14)
+### Done (15)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -58,6 +58,7 @@ sections below, where its details are. Keep both views in step when an item move
 | 12 | Account selected by search | Deposit | Deposit accounts commit |
 | 13 | Remarks format, one per line: Account - Amount | Deposit | Deposit accounts commit |
 | 29 | Outbox SMS sending in Settings | SMS | SMS Outbox commit |
+| 16 | Temporary account for advanced payments | Advanced Payments | Temporary account commit + MDMPI.App `5c6e092` |
 
 ### Already in the app before this round (3)
 
@@ -80,7 +81,7 @@ sections below, where its details are. Keep both views in step when an item move
 |---|---|---|---|
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Only way to acquire reconciliation accounts; goes with 22 |
 
-### Not started (13)
+### Not started (12)
 
 | # | Item | Area |
 |---|---|---|
@@ -90,7 +91,6 @@ sections below, where its details are. Keep both views in step when an item move
 | 4 | Dashboard for reviewing all data | Web App |
 | 5 | Dashboard: actual target for a selected area | Web App |
 | 6 | Dashboard: actual target for all areas combined | Web App |
-| 16 | Temporary account for advanced payments | Advanced Payments |
 | 20 | Individual remarks per invoice | Reconciliation |
 | 22 | Keep reconciled accounts in the collection bucket | Reconciliation |
 | 23 | Log activities on other invoices and some reconciled ones | Reconciliation |
@@ -194,8 +194,19 @@ sections below, where its details are. Keep both views in step when an item move
       workspace returns every unallocated advance, whoever recorded it
       (`CollectionInvoiceRepository.cs:996-1045`). Other phones see a new one only after it
       is uploaded and they download again.
-- [ ] 16. Allow users to add a temporary account for advanced payments. The picker selects
-      only existing registry clients today.
+- [x] 16. Allow users to add a temporary account for advanced payments. **Done (2026-10-20): phone
+      temporary account commit + MDMPI.App `5c6e092`; needs MDMPI.App deployed.** On Record Advanced Payment, "Not in the
+      list? Use a temporary account" asks for the account's name (name only) and records the
+      advance under a phone-made code `TMP-<collector>-<yyyyMMddHHmmss>`
+      (`temporary_account.dart`). The server registers it under that name. On Home → Advanced
+      Payment the advance reads "Temporary account · link to apply" and offers **Link to
+      account** instead of Apply: the collector picks the real account by search and the
+      advance moves there (phone now; server with the next upload, `LINK_ADVANCE`). It cannot
+      be applied to an invoice until linked (blocked on the phone; the server refuses it
+      too), and an applied advance can no longer move. A temporary account has no area, so
+      it shows under every area. MDMPI.App: `ClientName` on the upload change,
+      `LINK_ADVANCE`, `IsTemporaryAccount` (`CollectionInvoiceRepository.cs`); an older
+      server answers "Unknown operation" to a link and keeps it in the outbox.
 
 ## Reconciliation
 

@@ -798,6 +798,8 @@ String _operationLabel(String operation) {
       return 'Advanced payment';
     case 'ASSIGN_ADVANCE':
       return 'Advance assigned to invoice';
+    case 'LINK_ADVANCE':
+      return 'Advance linked to its account';
     case 'SET_TARGET':
       return 'Monthly target';
     case 'DEFER':

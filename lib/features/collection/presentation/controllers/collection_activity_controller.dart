@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/temporary_account.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/invoice_search.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
@@ -1619,10 +1620,12 @@ class CollectionActivityController extends GetxController {
     }).toList();
   }
 
-  /// Advanced Payment: unassigned payments, filtered by area (based on client code)
+  /// Advanced Payment: unassigned payments, filtered by area (based on client
+  /// code). A temporary account has no area yet, so it shows under every one.
   List<Map<String, dynamic>> get filteredUnassignedAdvancedPayments {
     return unassignedAdvancedPayments.where((entry) {
       final clientId = entry['clientId'];
+      if (BTemporaryAccount.isTemporary(clientId as String?)) return true;
       final client = masterAccountList.firstWhere((c) => c.id == clientId,
           orElse: () => ClientModel.empty());
       if (!_matchesArea(client.code)) return false;
@@ -1750,6 +1753,40 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Saved Advanced Payment ${record.externalRef} for $clientId: ₱$amount');
   }
 
+  /// A temporary account named [name] for an advanced payment, when the
+  /// account is not in the client registry yet (update checklist item 16).
+  ClientModel newTemporaryAccount(String name) => BTemporaryAccount.create(
+        name: name,
+        collectorCode: repository.collectorCode,
+        now: DateTime.now(),
+      );
+
+  /// Whether advance [payment] is still on a temporary account: it must be
+  /// linked to the real account before it can be applied to an invoice.
+  static bool isOnTemporaryAccount(Map<String, dynamic> payment) =>
+      BTemporaryAccount.isTemporary(payment['clientId'] as String?);
+
+  /// Moves advance [paymentId] from its temporary account to [client], the
+  /// real account found in the registry. False when it could not be saved.
+  Future<bool> linkAdvance(String paymentId, ClientModel client) async {
+    final idx = unassignedAdvancedPayments.indexWhere((e) => e['id'] == paymentId);
+    if (idx == -1 || BTemporaryAccount.isTemporary(client.id)) return false;
+    final ok = await repository.linkAdvance(
+      externalRef: paymentId,
+      clientId: client.id,
+      clientName: client.name,
+    );
+    if (!ok) return false;
+    unassignedAdvancedPayments[idx] = {
+      ...unassignedAdvancedPayments[idx],
+      'clientId': client.id,
+      'clientName': client.name,
+    };
+    logDebug('[CollectionActivityController] Advance $paymentId linked to '
+        '${client.id}');
+    return true;
+  }
+
   /// The engagement stamp for a collection the collector dated themselves:
   /// the day from [day], the time of day from [clock]. ISO, like every other
   /// archive stamp, so it files under [day] in its month.
@@ -1791,6 +1828,13 @@ class CollectionActivityController extends GetxController {
     if (paymentIdx == -1) return 0;
 
     final payment = unassignedAdvancedPayments[paymentIdx];
+    // Linked first: the invoice would be made under the temporary account
+    // and never meet the real account's (the server refuses it too).
+    if (isOnTemporaryAccount(payment)) {
+      errorMessage.value =
+          'Link this advance to its account before applying it to an invoice.';
+      return payment['amount'] as double;
+    }
     final clientId = payment['clientId'] as String;
     final paidAmount = payment['amount'] as double;
     final client = masterAccountList.firstWhere((c) => c.id == clientId,

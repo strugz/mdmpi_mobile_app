@@ -1461,6 +1461,9 @@ class CollectionRepository extends GetxController {
 
       await _queueChange('ADVANCED_PAYMENT', record.externalRef, {
         'ClientCode': clientId,
+        // For an account the server does not know yet (a temporary account),
+        // the name it is registered under.
+        'ClientName': clientName,
         'ExternalRef': record.externalRef,
         'EngagementDate': now,
         'AmountCollected': amount,
@@ -1473,6 +1476,31 @@ class CollectionRepository extends GetxController {
     } catch (e) {
       logDebug('CollectionRepository.saveAdvance error: $e');
       return null;
+    }
+  }
+
+  /// A temporary account's advance moves to the real account [clientId]
+  /// (update checklist item 16): on the phone now, on the server with the
+  /// next upload (LINK_ADVANCE). Only an advance not yet applied.
+  Future<bool> linkAdvance({
+    required String externalRef,
+    required String clientId,
+    required String clientName,
+  }) async {
+    try {
+      final advDao = await DatabaseHelper.instance.collectionAdvanceDao;
+      await advDao.moveToClient(externalRef, clientId, clientName);
+      await _queueChange('LINK_ADVANCE', 'LINK-$externalRef', {
+        'ExternalRef': externalRef,
+        'ClientCode': clientId,
+        'ClientName': clientName,
+        'EngagementDate': _nowStamp(),
+      });
+      logDebug('CollectionRepository: advance $externalRef linked to $clientId');
+      return true;
+    } catch (e) {
+      logDebug('CollectionRepository.linkAdvance error: $e');
+      return false;
     }
   }
 
