@@ -25,11 +25,11 @@
 
 | Status | Count |
 |---|---|
-| Done | 19 |
+| Done | 20 |
 | Already in the app before this round | 3 |
 | Partly done | 1 |
 | Held back | 0 |
-| Not started | 10 |
+| Not started | 9 |
 | **Total** | **33** |
 
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (19)
+### Done (20)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -63,6 +63,7 @@ sections below, where its details are. Keep both views in step when an item move
 | 22 | Keep reconciled accounts in the collection bucket | Reconciliation | Reconciliation bucket commit |
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Reconciliation bucket commit |
 | 25 | Collected through the bucket: move to Settled, remove from Reconciliation | Reconciliation | Reconciliation settled commit |
+| 24 | Reconciled invoices pickable by specific invoice | Reconciliation | Pick invoices commit |
 
 ### Already in the app before this round (3)
 
@@ -82,7 +83,7 @@ sections below, where its details are. Keep both views in step when an item move
 
 None. Item 27 was held until 22; both are done.
 
-### Not started (10)
+### Not started (9)
 
 | # | Item | Area |
 |---|---|---|
@@ -94,7 +95,6 @@ None. Item 27 was held until 22; both are done.
 | 6 | Dashboard: actual target for all areas combined | Web App |
 | 20 | Individual remarks per invoice | Reconciliation |
 | 23 | Log activities on other invoices and some reconciled ones | Reconciliation |
-| 24 | Reconciled invoices pickable by specific invoice | Reconciliation |
 | 30 | Add Sir Alex to the contact directory (details pending) | Contact Directory |
 
 ## Web App
@@ -236,8 +236,15 @@ None. Item 27 was held until 22; both are done.
       bucket invoice again; ended cases are not reopened.
 - [ ] 23. Let collectors log activities on other invoices plus some of the reconciled
       invoices. Today only the case holder logs (`canLog` in `reconciliation_controller.dart`).
-- [ ] 24. Keep reconciled invoices pickable by specific invoice. Today acquiring takes every
-      reconciliation invoice of the account (`claimReconciliation`).
+- [x] 24. Keep reconciled invoices pickable by specific invoice. **Done (2026-10-20, Pick invoices
+      commit).** On an account's page in the bucket, a long press on an invoice
+      starts picking and a tap adds or removes one; the button then reads "Claim N
+      Invoices" and takes only those, leaving the rest in the bucket ("Clear" goes back to
+      the whole account). A reconciled invoice among the picks brings the account's case
+      along, as acquiring the whole account does (`claimInvoices` in
+      `collection_activity_controller.dart`). The server already claims per invoice, so
+      MDMPI.App needs no change. (`claimReconciliation` is no longer reached from any
+      screen since item 22 moved Home → Reconciliation to the Tracker.)
 - [x] 25. When a reconciled invoice is collected through the collection bucket, move it to
       Settled and remove it from Reconciliation. **Done (2026-10-20, Reconciliation
       settled commit).** Paid in full through the bucket (one invoice or a batch), it becomes

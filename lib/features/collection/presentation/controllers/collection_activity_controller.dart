@@ -2091,6 +2091,25 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Account $clientId claimed (${items.length} invoices)');
   }
 
+  /// Acquire only the picked invoices of an account from the bucket (update
+  /// checklist item 24): some of its reconciled invoices, say, with or
+  /// without the rest. A reconciliation invoice among them brings the
+  /// account's case along, as acquiring the whole account does; the invoices
+  /// left behind stay in the bucket for anyone. Returns how many were taken.
+  Future<int> claimInvoices(Iterable<String> ids) async {
+    final wanted = ids.toSet();
+    final items = bucketItems
+        .where((item) =>
+            wanted.contains(item.id) && isRegularBucketInvoice(item))
+        .toList();
+    if (items.isEmpty) return 0;
+    await claimItemsByIds(items.map((e) => e.id).toList());
+    await _takeOverReconCases(items);
+    logDebug('[CollectionActivityController] Claimed ${items.length} picked '
+        'invoices');
+    return items.length;
+  }
+
   /// Acquire an account from its reconciliation case screen: every open
   /// invoice of it in the bucket, and the case itself, marked invoices or
   /// not. Fails when the bucket holds none of its invoices (someone else has
