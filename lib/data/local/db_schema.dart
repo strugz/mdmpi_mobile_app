@@ -115,7 +115,9 @@ Future<void> createAllTables(Database db) async {
       PhoneNumber TEXT,
       Username TEXT,
       ProfilePicture TEXT,
-      Status BOOLEAN
+      Status BOOLEAN,
+      HeadKey TEXT,
+      HeadName TEXT
     )
   ''');
 
