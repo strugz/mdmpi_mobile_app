@@ -91,7 +91,8 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 21,
+      // 22: Users gained HeadKey / HeadName (My Head setting).
+      version: 22,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
