@@ -471,6 +471,11 @@ class CollectionSmsService extends GetxController {
           {required String clientName, required String remarks}) =>
       _lines(['Picked up CWT: ${_name(clientName)}', _note('Note', remarks)]);
 
+  /// 8. "Routed documents: [Client]" / "Note: [Remarks]".
+  static String documentsRouted(
+          {required String clientName, required String remarks}) =>
+      _lines(['Routed documents: ${_name(clientName)}', _note('Note', remarks)]);
+
   /// 7. Reconciliation escalated (Reconciliation Tracker, to the Head only):
   ///
   ///     Reconciliation escalated: [Client]
@@ -559,6 +564,10 @@ class CollectionSmsService extends GetxController {
   Future<CollectionSmsOutcome> notifyCwtPickup(
           {required String clientName, required String remarks}) =>
       send(cwtPickup(clientName: clientName, remarks: remarks));
+
+  Future<CollectionSmsOutcome> notifyDocumentsRouted(
+          {required String clientName, required String remarks}) =>
+      send(documentsRouted(clientName: clientName, remarks: remarks));
 
   /// A case escalated to the Head: the Head alone is told, not the
   /// Collection contacts; an escalation is theirs to take on.

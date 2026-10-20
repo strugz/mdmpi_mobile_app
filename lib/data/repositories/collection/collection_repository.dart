@@ -1382,7 +1382,7 @@ class CollectionRepository extends GetxController {
         }
       }
 
-      await _queueChange(_operationForActivity(type), localRef, {
+      await _queueChange(operationForActivity(type), localRef, {
         'ClientCode': clientId,
         'ActivityType': type,
         'EngagementDate': now,
@@ -1401,7 +1401,9 @@ class CollectionRepository extends GetxController {
     }
   }
 
-  String _operationForActivity(String type) {
+  /// The upload operation for an office activity's type. Public so a test
+  /// can check the mapping without a database.
+  static String operationForActivity(String type) {
     switch (type.trim().toLowerCase()) {
       case 'deposit':
         return 'DEPOSIT';
@@ -1410,6 +1412,10 @@ class CollectionRepository extends GetxController {
         return 'CWT_PICKUP';
       case 'reconciliation':
         return 'RECONCILIATION';
+      // Account-level, like CWT: an older server answers "Unknown
+      // operation" and the row waits in the outbox until MDMPI.App has it.
+      case 'routing of documents':
+        return 'ROUTING_DOCUMENTS';
       default:
         return 'OFFICE_ACTIVITY';
     }

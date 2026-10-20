@@ -21,11 +21,12 @@ class CollectionOutcome {
 
   /// Whether an engagement's amount is money collected from an account.
   ///
-  /// Four activities are not collections, whatever amount they carry: an
+  /// Five activities are not collections, whatever amount they carry: an
   /// Advanced Payment is float until applied to an invoice (the applied row
   /// is the collection); a For Deposit banks money already counted when it
   /// was collected; a CWT Pick-up collects a tax certificate; a
-  /// Reconciliation reviews a disputed balance. They are the collector's
+  /// Reconciliation reviews a disputed balance; a Routing of Documents
+  /// takes documents to or from an account. They are the collector's
   /// activities, shown in the history and the calendar, and add nothing to a
   /// money total. One rule, so Collected this Month, the calendar's visit
   /// totals and the history cards cannot disagree. [kind] is the archive's
@@ -54,5 +55,6 @@ class CollectionOutcome {
     CollectionStatusColors.statusDeposit,
     CollectionStatusColors.statusCWTPickup,
     CollectionStatusColors.statusReconciliation,
+    CollectionStatusColors.statusRoutingDocuments,
   };
 }

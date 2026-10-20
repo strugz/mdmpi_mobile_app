@@ -48,6 +48,11 @@ class ActivityTypeModal extends StatelessWidget {
       status: CollectionStatusColors.statusCWTPickup,
     ),
     EngagementType(
+      title: CollectionStatusColors.statusRoutingDocuments,
+      subtitle: 'Documents taken to or from an account',
+      status: CollectionStatusColors.statusRoutingDocuments,
+    ),
+    EngagementType(
       title: CollectionStatusColors.statusReconciliation,
       subtitle: 'Set invoices aside to reconcile',
       status: CollectionStatusColors.statusReconciliation,
@@ -76,6 +81,8 @@ class ActivityTypeModal extends StatelessWidget {
           BRoutes.collectionCwtPickupForm,
         CollectionStatusColors.statusReconciliation =>
           BRoutes.collectionReconciliationForm,
+        CollectionStatusColors.statusRoutingDocuments =>
+          BRoutes.collectionRoutingDocumentsForm,
         _ => BRoutes.collectionAdvancedPaymentForm,
       };
 

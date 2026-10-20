@@ -786,6 +786,8 @@ String _operationLabel(String operation) {
       return 'Deposit';
     case 'CWT_PICKUP':
       return 'CWT Pick-up';
+    case 'ROUTING_DOCUMENTS':
+      return 'Routing of Documents';
     case 'RECONCILIATION':
       return 'Reconciliation';
     case 'RECON_OPEN_CASE':

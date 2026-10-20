@@ -2563,7 +2563,7 @@ class CollectionActivityController extends GetxController {
     globalActivities.refresh();
     logDebug('[CollectionActivityController] Global activity saved: $type');
 
-    // SMS triggers 5 and 6.
+    // SMS triggers 5, 6 and 8.
     final kind = type.trim().toLowerCase();
     if (kind == 'deposit') {
       _notifySms((sms) => sms.notifyDepositAdded(
@@ -2574,6 +2574,12 @@ class CollectionActivityController extends GetxController {
           ));
     } else if (kind == 'cwt pick-up' || kind == 'cwt pickup') {
       _notifySms((sms) => sms.notifyCwtPickup(
+            clientName: accountName,
+            remarks: remarks,
+          ));
+    } else if (kind ==
+        CollectionStatusColors.statusRoutingDocuments.toLowerCase()) {
+      _notifySms((sms) => sms.notifyDocumentsRouted(
             clientName: accountName,
             remarks: remarks,
           ));

@@ -41,6 +41,8 @@ class BRoutes{
   // Collection - engagement forms (opened from the activity type sheet)
   static const collectionDepositForm = '/collection/engagement/deposit';
   static const collectionCwtPickupForm = '/collection/engagement/cwt-pickup';
+  static const collectionRoutingDocumentsForm =
+      '/collection/engagement/routing-documents';
   static const collectionReconciliationForm =
       '/collection/engagement/reconciliation';
   static const collectionAdvancedPaymentForm =

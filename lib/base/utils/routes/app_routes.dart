@@ -35,6 +35,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/settings/about
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/add_to_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/advanced_payment_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/routing_documents_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/deposit_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/reconciliation_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/recon_case_screen.dart';
@@ -87,6 +88,7 @@ class AppRoutes {
     // selection from CollectionActivityController.
     GetPage(name: BRoutes.collectionDepositForm, page: () => const DepositFormScreen()),
     GetPage(name: BRoutes.collectionCwtPickupForm, page: () => const CWTPickupFormScreen()),
+    GetPage(name: BRoutes.collectionRoutingDocumentsForm, page: () => const RoutingDocumentsFormScreen()),
     GetPage(name: BRoutes.collectionReconciliationForm, page: () => const ReconciliationFormScreen()),
     GetPage(name: BRoutes.reconciliationCases, page: () => const ReconDashboardScreen()),
     GetPage(name: BRoutes.reconciliationReports, page: () => const ReconReportsScreen()),

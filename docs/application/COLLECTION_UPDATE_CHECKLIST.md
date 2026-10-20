@@ -25,11 +25,11 @@
 
 | Status | Count |
 |---|---|
-| Done | 9 |
+| Done | 10 |
 | Already in the app before this round | 3 |
 | Partly done | 2 |
 | Held back | 1 |
-| Not started | 18 |
+| Not started | 17 |
 | **Total** | **33** |
 
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (9)
+### Done (10)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -53,6 +53,7 @@ sections below, where its details are. Keep both views in step when an item move
 | 31 | Dark mode in Collection | Bug Fixes | `63c6d70` |
 | 32 | Printer for users | Bug Fixes | `32b50ce` |
 | 33 | Debug advanced payment | Bug Fixes | — |
+| 7 | Routing of Documents: Accounts and Remarks flow | New Activity | Routing commits (phone + MDMPI.App) |
 
 ### Already in the app before this round (3)
 
@@ -75,7 +76,7 @@ sections below, where its details are. Keep both views in step when an item move
 |---|---|---|---|
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Only way to acquire reconciliation accounts; goes with 22 |
 
-### Not started (18)
+### Not started (17)
 
 | # | Item | Area |
 |---|---|---|
@@ -85,7 +86,6 @@ sections below, where its details are. Keep both views in step when an item move
 | 4 | Dashboard for reviewing all data | Web App |
 | 5 | Dashboard: actual target for a selected area | Web App |
 | 6 | Dashboard: actual target for all areas combined | Web App |
-| 7 | Routing of Documents: Accounts and Remarks flow | New Activity |
 | 8 | Card for pre-collection | Pre-collection |
 | 12 | Account selected by search | Deposit |
 | 13 | Remarks format, one per line: Account - Amount | Deposit |
@@ -119,9 +119,17 @@ sections below, where its details are. Keep both views in step when an item move
 
 ## New Activity: Routing of Documents
 
-- [ ] 7. Set up flow: Accounts and Remarks (for tracking of activity only). Add it to the
-      activity picker (`activity_type_modal.dart`); it can reuse `ClientPickerField`. Likely
-      needs a new upload change type, or an extension of `OFFICE_ACTIVITY`, on the backend.
+- [x] 7. Set up flow: Accounts and Remarks (for tracking of activity only). **Committed (phone and
+      MDMPI.App); needs the MDMPI.App change deployed first.** "Routing of Documents" is on
+      the Add field engagement sheet (`routing_documents_form.dart`): one account picked
+      from the registry and required Remarks. It is the collector's activity (never counted
+      as collected), listed under its own history filter, and texts the Head and Collection
+      contacts: "Routed documents: [Account]" / "Note: [Remarks]". It uploads as
+      `ROUTING_DOCUMENTS`, an account-level operation added to MDMPI.App (branch
+      `collection/routing-documents`): saved as an activity like CWT Pick-up, returned in the
+      workspace, activity-only in team reports, and its own legend on the printed calendar.
+      An older server answers "Unknown operation" and the row waits in the outbox, so deploy
+      MDMPI.App before releasing the app.
 
 ## Pre-collection
 
@@ -342,6 +350,14 @@ Every message goes to the Head and the Collection contacts, except Reconciliatio
    Reconciliation escalated: Allied Care Experts (ACE) Medical Center - Bohol, Inc.
    Open: 1 invoice, PHP 276,995.00
    Reason: No proof after three follow-ups
+   - MAR
+   ```
+
+8. **Routing of Documents:**
+
+   ```
+   Routed documents: Antipolo Doctors Hospital
+   Note: SOA and 2307 delivered
    - MAR
    ```
 
