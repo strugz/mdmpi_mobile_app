@@ -397,11 +397,12 @@ class CollectionSmsService extends GetxController {
   ///     Amount: PHP 24,281.25
   ///     Invoice: 700013391
   ///     PO: 2026-0309
-  ///     Check: BDO 4588255, dated 09-28-2026
+  ///     Check: BDO 4588255
+  ///     Check Date: 09-28-2026
   ///
   /// Partial reads "Partial payment: ...". Several invoices list each with
-  /// its amount, one per line, under "Invoices:". The check line only when
-  /// paid by check (any of bank, number or date given).
+  /// its amount, one per line, under "Invoices:". The check lines only when
+  /// paid by check: the bank and number, and the date on its own line.
   static String engagementSaved({
     required String clientName,
     required Iterable<String> poNumbers,
@@ -423,20 +424,23 @@ class CollectionSmsService extends GetxController {
         for (final i in lines) '${i.id.trim()} - ${_peso(i.amount)}',
       ],
       _labelled('PO', 'POs', poNumbers),
-      _checkDetails(bankName, checkNumber, checkDate),
+      ..._checkDetails(bankName, checkNumber, checkDate),
     ]);
   }
 
-  /// "Check: BDO 4588255, dated 09-28-2026"; '' when nothing is given.
-  static String _checkDetails(
+  /// "Check: BDO 4588255" and "Check Date: 09-28-2026", each only when
+  /// given; none for cash. The date has its own line and label: run on
+  /// after the check number as ", dated …" it read as more of the number.
+  static List<String> _checkDetails(
       String? bankName, String? checkNumber, String? checkDate) {
     final what = [_text(bankName, none: ''), _text(checkNumber, none: '')]
         .where((s) => s.isNotEmpty)
         .join(' ');
     final date = _text(checkDate, none: '');
-    if (what.isEmpty && date.isEmpty) return '';
-    if (date.isEmpty) return 'Check: $what';
-    return what.isEmpty ? 'Check: dated $date' : 'Check: $what, dated $date';
+    return [
+      if (what.isNotEmpty) 'Check: $what',
+      if (date.isNotEmpty) 'Check Date: $date',
+    ];
   }
 
   /// 3. "Postponed: [Client]" / "Reason: [Remarks]".

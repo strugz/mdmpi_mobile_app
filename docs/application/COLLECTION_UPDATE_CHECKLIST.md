@@ -335,7 +335,8 @@ Every message goes to the Head and the Collection contacts, except Reconciliatio
    Amount: PHP 121,208.04
    Invoice: 700013392
    PO: 2026-0328
-   Check: BDO 4588255, dated 09-28-2026
+   Check: BDO 4588255
+   Check Date: 09-28-2026
    - MAR
    ```
 

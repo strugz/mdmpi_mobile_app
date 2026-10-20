@@ -207,9 +207,9 @@ void main() {
           'Invoice: 700013392\n'
           'PO: 2026-0328';
       expect(saved(bank: 'BDO', no: '4588255', date: '09-28-2026'),
-          '$base\nCheck: BDO 4588255, dated 09-28-2026');
+          '$base\nCheck: BDO 4588255\nCheck Date: 09-28-2026');
       expect(saved(bank: 'BDO', no: '4588255'), '$base\nCheck: BDO 4588255');
-      expect(saved(date: '09-28-2026'), '$base\nCheck: dated 09-28-2026');
+      expect(saved(date: '09-28-2026'), '$base\nCheck Date: 09-28-2026');
       expect(saved(bank: ' ', no: '', date: null), base,
           reason: 'cash: no check line at all');
     });
