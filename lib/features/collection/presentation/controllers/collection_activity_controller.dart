@@ -65,6 +65,22 @@ class CollectionActivityController extends GetxController {
   static bool isReconciliation(CollectionItemModel item) =>
       item.status == CollectionStatusColors.statusReconciliation;
 
+  /// What the Open Reconciliation Case form may put in a new case: open
+  /// invoices in no open case ([inOpenCase]), and not already marked for
+  /// reconciliation, unless their case has ended ([inEndedCase]), which
+  /// makes them ordinary bucket invoices again (item 22).
+  static List<CollectionItemModel> openableForReconciliation(
+    Iterable<CollectionItemModel> invoices, {
+    Set<String> inOpenCase = const {},
+    Set<String> inEndedCase = const {},
+  }) =>
+      invoices
+          .where((i) =>
+              i.toBeCollected > 0 &&
+              !inOpenCase.contains(i.id) &&
+              (!isReconciliation(i) || inEndedCase.contains(i.id)))
+          .toList();
+
   /// Open and in the bucket: what the bucket lists, counts and acquires.
   /// Reconciliation invoices among them (item 22).
   static bool isRegularBucketInvoice(CollectionItemModel item) =>
@@ -1935,9 +1951,10 @@ class CollectionActivityController extends GetxController {
     logDebug(
         '[CollectionActivityController] Account $clientId unclaimed (${invoices.length} invoices)');
 
-    // The account's reconciliation case is released with it.
-    await _recon(
-        (r) => r.releaseCasesFor(clientId, remarks: 'Done Engagement'));
+    // The account's reconciliation case stays with the collector: it stays
+    // in Mine and they go on logging its steps (follow-ups outlast the
+    // visit). Only Defer releases it; another collector acquiring the
+    // account takes it over.
 
     // SMS trigger 4, Clear Engagement. After the release is saved, never
     // blocking it.
@@ -2072,6 +2089,27 @@ class CollectionActivityController extends GetxController {
     await _takeOverReconCases(items);
     logDebug(
         '[CollectionActivityController] Account $clientId claimed (${items.length} invoices)');
+  }
+
+  /// Acquire an account from its reconciliation case screen: every open
+  /// invoice of it in the bucket, and the case itself, marked invoices or
+  /// not. Fails when the bucket holds none of its invoices (someone else has
+  /// them, or none are open), since the server only hands a case to the
+  /// collector holding the account.
+  Future<Result<int>> acquireForCase(String clientId) async {
+    final items = bucketItems
+        .where((item) =>
+            item.client.id == clientId && isRegularBucketInvoice(item))
+        .toList();
+    if (items.isEmpty) {
+      return Result.failure(
+          'None of this account\'s invoices are in the bucket to acquire.');
+    }
+    await claimItemsByIds(items.map((e) => e.id).toList());
+    await _recon((r) => r.acquireCasesFor(clientId));
+    logDebug('[CollectionActivityController] Account $clientId claimed from '
+        'its case (${items.length} invoices)');
+    return Result.success(items.length);
   }
 
   /// Acquired invoices marked for reconciliation bring their account's case:
@@ -2280,13 +2318,10 @@ class CollectionActivityController extends GetxController {
           (oldItem.toBeCollected - applied).clamp(0, double.infinity);
 
       final bool isFullyPaid = updatedToBeCollected == 0;
-      final bool wasReconciliation =
-          oldItem.status == CollectionStatusColors.statusReconciliation;
-      final String finalStatus = isFullyPaid
-          ? CollectionStatusColors.statusCollected
-          : (wasReconciliation
-              ? CollectionStatusColors.statusReconciliation
-              : '');
+      // Paid in full leaves Reconciliation; partly paid keeps it (item 25).
+      final String finalStatus = CollectionOutcome.statusAfterPayment(
+          oldItem.status,
+          fullyPaid: isFullyPaid);
 
       final historyEntry = CollectionHistoryModel(
         date: now,
@@ -2459,15 +2494,9 @@ class CollectionActivityController extends GetxController {
             (item.toBeCollected - applied).clamp(0, double.infinity);
 
         final bool isFullyPaid = updatedToBeCollected == 0;
-        final bool wasReconciliation =
-            item.status == CollectionStatusColors.statusReconciliation;
-
         final String itemStatus = statuses[item.id] ??
-            (isFullyPaid
-                ? CollectionStatusColors.statusCollected
-                : (wasReconciliation
-                    ? CollectionStatusColors.statusReconciliation
-                    : ''));
+            CollectionOutcome.statusAfterPayment(item.status,
+                fullyPaid: isFullyPaid);
 
         final historyEntry = CollectionHistoryModel(
           date: now,
@@ -2482,11 +2511,9 @@ class CollectionActivityController extends GetxController {
         );
 
         final updatedItem = item.copyWith(
-          status: isFullyPaid
-              ? CollectionStatusColors.statusCollected
-              : (wasReconciliation
-                  ? CollectionStatusColors.statusReconciliation
-                  : ''),
+          // Paid in full leaves Reconciliation; partly paid keeps it.
+          status: CollectionOutcome.statusAfterPayment(item.status,
+              fullyPaid: isFullyPaid),
           lastOutcome: itemStatus,
           remarks: itemRemarks,
           toBeCollected: updatedToBeCollected,

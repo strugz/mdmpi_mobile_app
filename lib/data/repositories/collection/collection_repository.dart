@@ -397,8 +397,12 @@ class CollectionRepository extends GetxController {
       );
 
       // Update item
+      // Paid in full leaves Reconciliation (item 25); partly paid keeps it,
+      // as the controller does in memory. Clearing it here lost the badge on
+      // the next reload.
       final updatedItem = item.copyWith(
-        status: isFullyPaid ? 'Collected' : '',
+        status: CollectionOutcome.statusAfterPayment(item.status,
+            fullyPaid: isFullyPaid),
         lastOutcome: status,
         remarks: remarks,
         toBeCollected: updatedToBeCollected,
@@ -531,7 +535,8 @@ class CollectionRepository extends GetxController {
         );
 
         final updatedItem = item.copyWith(
-          status: isFullyPaid ? 'Collected' : '',
+          status: CollectionOutcome.statusAfterPayment(item.status,
+              fullyPaid: isFullyPaid),
           lastOutcome: itemStatus,
           remarks: itemRemarks,
           toBeCollected: updatedToBeCollected,

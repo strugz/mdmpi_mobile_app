@@ -31,6 +31,20 @@ class CollectionOutcome {
   static double appliedAmount(String status, double amount) =>
       isPreCollection(status) ? 0 : amount;
 
+  /// The invoice's status after a collection on it.
+  ///
+  /// Paid in full: Collected, which also takes a reconciliation invoice out
+  /// of Reconciliation (update checklist item 25), as the server does when
+  /// its balance reaches zero. Partly paid: a reconciliation invoice stays
+  /// one, anything else goes back to plain open. One rule, so the screen and
+  /// the copy saved on the phone cannot disagree after a reload.
+  static String statusAfterPayment(String previous, {required bool fullyPaid}) {
+    if (fullyPaid) return CollectionStatusColors.statusCollected;
+    return previous == CollectionStatusColors.statusReconciliation
+        ? CollectionStatusColors.statusReconciliation
+        : '';
+  }
+
   /// Whether an engagement's amount is money collected from an account.
   ///
   /// Six outcomes are not collections, whatever amount they carry: an

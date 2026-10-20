@@ -30,7 +30,14 @@ class _Tracker extends ReconciliationController {
   _Tracker() : super(collectorCode: () => 'JCA', heldInvoiceIds: () => {});
 
   final logged = <_Logged>[];
+  final acquired = <String>[];
   String? refuse;
+
+  @override
+  Future<Result<void>> acquireAccountOf(ReconCaseView c) async {
+    acquired.add(c.caseId);
+    return Result.success(null);
+  }
 
   @override
   // ignore: must_call_super
@@ -417,12 +424,18 @@ void main() {
       expect(find.text('Case escalated'), findsOneWidget);
     });
 
-    testWidgets("someone else's case is read-only until acquired",
+    testWidgets("someone else's case is acquired, not logged on",
         (tester) async {
-      await _pump(tester, const ReconCaseScreen(caseId: 'RC-4'));
-      final button = tester
-          .widget<ButtonStyleButton>(find.byKey(const ValueKey('recon-log')));
-      expect(button.onPressed, isNull);
+      final tracker =
+          await _pump(tester, const ReconCaseScreen(caseId: 'RC-4'));
+      await tester.tap(find.byKey(const ValueKey('recon-log')));
+      await tester.pumpAndSettle();
+      expect(find.text('Acquire this account?'), findsOneWidget,
+          reason: 'asks first: the account moves to this collector');
+      await tester.tap(find.byKey(const ValueKey('recon-acquire-confirm')));
+      await tester.pumpAndSettle();
+      expect(tracker.acquired, ['RC-4']);
+      expect(tracker.logged, isEmpty);
       expect(
           tester
               .widget<Text>(find.byKey(const ValueKey('recon-log-label')))
@@ -452,6 +465,10 @@ void main() {
               .widget<Text>(find.byKey(const ValueKey('recon-log-label')))
               .data,
           'Acquire the account to log a step');
+      final button = tester
+          .widget<ButtonStyleButton>(find.byKey(const ValueKey('recon-log')));
+      expect(button.onPressed, isNotNull,
+          reason: 'the button the label points at works');
     });
 
     testWidgets('an unknown case says so', (tester) async {

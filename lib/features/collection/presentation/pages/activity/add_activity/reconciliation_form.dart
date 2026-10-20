@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
@@ -36,6 +37,29 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
 
   bool _saving = false;
 
+  ReconciliationController? get _tracker =>
+      Get.isRegistered<ReconciliationController>()
+          ? ReconciliationController.instance
+          : null;
+
+  /// The account's open case: an account has at most one, so the form sends
+  /// the collector there instead of offering its invoices again.
+  ReconCaseView? get _openCase => selectedAccount == null
+      ? null
+      : _tracker?.openCaseOf(selectedAccount!.id);
+
+  /// The account's invoices a new case may take: none already in an open
+  /// case or marked for reconciliation (unless their case has ended).
+  List<CollectionItemModel> _openable(CollectionActivityController controller) {
+    if (selectedAccount == null) return const [];
+    final tracker = _tracker;
+    return CollectionActivityController.openableForReconciliation(
+      controller.getInvoicesByAccount(selectedAccount!.id),
+      inOpenCase: tracker?.openCaseInvoiceIds ?? const {},
+      inEndedCase: tracker?.endedCaseInvoiceIds ?? const {},
+    );
+  }
+
   /// Opens a Reconciliation Tracker case for the account over the picked
   /// invoices, marks them for reconciliation as before, and goes to the case,
   /// where the next step (usually the SOA) is logged.
@@ -44,6 +68,13 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
     if (selectedAccount == null) {
       BLoaders.errorSnackBar(
           title: 'Error', message: 'Please select an account');
+      return;
+    }
+    final existing = _openCase;
+    if (existing != null) {
+      BLoaders.errorSnackBar(
+          title: 'Case already open',
+          message: 'This account is already in case ${existing.caseId}.');
       return;
     }
     if (selectedInvoiceIds.isEmpty) {
@@ -65,15 +96,13 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
       clientName: account.name,
       invoices: [
         for (final id in selectedInvoiceIds)
-          ReconCaseInvoice(
-              invoiceNo: id, amount: byId[id]?.toBeCollected ?? 0),
+          ReconCaseInvoice(invoiceNo: id, amount: byId[id]?.toBeCollected ?? 0),
       ],
     );
     if (!mounted) return;
     if (opened.isFailure) {
       setState(() => _saving = false);
-      BLoaders.errorSnackBar(
-          title: 'Case not opened', message: opened.error);
+      BLoaders.errorSnackBar(title: 'Case not opened', message: opened.error);
       return;
     }
 
@@ -97,6 +126,10 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
   @override
   Widget build(BuildContext context) {
     final controller = CollectionActivityController.instance;
+    final openCase = _openCase;
+    final invoices = _openable(controller);
+    final canOpen =
+        selectedAccount != null && openCase == null && invoices.isNotEmpty;
 
     return Scaffold(
       appBar: const BAppBar(
@@ -137,24 +170,31 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
                       : Padding(
                           padding: const EdgeInsets.only(
                               bottom: BSizes.spaceBtwInputFields),
-                          child: EngagementInvoicePicker(
-                            invoices: controller
-                                .getInvoicesByAccount(selectedAccount!.id),
-                            selectedIds: selectedInvoiceIds,
-                            onToggle: (id, selected) => setState(() {
-                              selected
-                                  ? selectedInvoiceIds.add(id)
-                                  : selectedInvoiceIds.remove(id);
-                            }),
-                            onToggleAll: (all) => setState(() {
-                              selectedInvoiceIds.clear();
-                              if (all) {
-                                selectedInvoiceIds.addAll(controller
-                                    .getInvoicesByAccount(selectedAccount!.id)
-                                    .map((inv) => inv.id));
-                              }
-                            }),
-                          ),
+                          child: openCase != null
+                              ? _AlreadyOpenNotice(
+                                  caseId: openCase.caseId,
+                                  onOpen: () => Get.offNamed(
+                                      BRoutes.reconciliationCase,
+                                      arguments: openCase.caseId),
+                                )
+                              : invoices.isEmpty
+                                  ? const _NothingToReconcile()
+                                  : EngagementInvoicePicker(
+                                      invoices: invoices,
+                                      selectedIds: selectedInvoiceIds,
+                                      onToggle: (id, selected) => setState(() {
+                                        selected
+                                            ? selectedInvoiceIds.add(id)
+                                            : selectedInvoiceIds.remove(id);
+                                      }),
+                                      onToggleAll: (all) => setState(() {
+                                        selectedInvoiceIds.clear();
+                                        if (all) {
+                                          selectedInvoiceIds.addAll(
+                                              invoices.map((inv) => inv.id));
+                                        }
+                                      }),
+                                    ),
                         ),
                 ),
                 TextFormField(
@@ -168,7 +208,7 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
                 ElevatedButton(
-                  onPressed: _saving ? null : _save,
+                  onPressed: _saving || !canOpen ? null : _save,
                   style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, 48)),
                   child: const Text('Open reconciliation case'),
@@ -178,6 +218,61 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The picked account is already in an open case: its invoices are worked
+/// there, and a second case would be refused on save.
+class _AlreadyOpenNotice extends StatelessWidget {
+  const _AlreadyOpenNotice({required this.caseId, required this.onOpen});
+
+  final String caseId;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(BSizes.md),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Already under reconciliation',
+              style: theme.textTheme.titleSmall),
+          const SizedBox(height: BSizes.xs),
+          Text(
+            'This account has an open case ($caseId). Log its next step '
+            'there; a new case can be opened once it ends.',
+            style: theme.textTheme.bodySmall,
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: onOpen,
+              child: const Text('Go to the case'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Every open invoice of the account is already in a case, or marked.
+class _NothingToReconcile extends StatelessWidget {
+  const _NothingToReconcile();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'No invoices left to reconcile for this account.',
+      style: Theme.of(context).textTheme.bodyMedium,
     );
   }
 }

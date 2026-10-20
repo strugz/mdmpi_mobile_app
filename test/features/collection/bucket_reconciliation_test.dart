@@ -98,6 +98,19 @@ void main() {
     expect(c.claimed.toSet(), {'a1', 'a2', 'r1', 'r2'});
   });
 
+  test('acquiring from the case screen takes the whole account', () async {
+    final c = _seeded();
+    await c.acquireForCase(_amka.id);
+    expect(c.claimed, ['a1', 'a2', 'r1']);
+  });
+
+  test('acquiring from the case screen with nothing in the bucket claims '
+      'nothing', () async {
+    final c = _seeded();
+    await c.acquireForCase('no-such-account');
+    expect(c.claimed, isEmpty);
+  });
+
   test('acquiring from Reconciliation takes only the marked invoices', () {
     final c = _seeded();
     c.claimReconciliation(_amka.id);

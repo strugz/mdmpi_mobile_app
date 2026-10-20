@@ -25,9 +25,9 @@
 
 | Status | Count |
 |---|---|
-| Done | 18 |
+| Done | 19 |
 | Already in the app before this round | 3 |
-| Partly done | 2 |
+| Partly done | 1 |
 | Held back | 0 |
 | Not started | 10 |
 | **Total** | **33** |
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (18)
+### Done (19)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -62,6 +62,7 @@ sections below, where its details are. Keep both views in step when an item move
 | 26 | Reconciled list: "Cleared" / "Open" instead of "Closed" | Reconciliation | Reconciliation bucket commit |
 | 22 | Keep reconciled accounts in the collection bucket | Reconciliation | Reconciliation bucket commit |
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Reconciliation bucket commit |
+| 25 | Collected through the bucket: move to Settled, remove from Reconciliation | Reconciliation | Reconciliation settled commit |
 
 ### Already in the app before this round (3)
 
@@ -71,12 +72,11 @@ sections below, where its details are. Keep both views in step when an item move
 | 15 | Advanced payments visible to all users | Advanced Payments |
 | 19 | Multiple pictures in the photo section (Log a step sheet) | Reconciliation |
 
-### Partly done (2)
+### Partly done (1)
 
 | # | Item | Area | What is missing |
 |---|---|---|---|
 | 21 | Log step "Settled", then the user chooses an invoice | Reconciliation | A step the collector picks by hand (needs a backend change) |
-| 25 | Collected through the bucket: move to Settled, remove from Reconciliation | Reconciliation | Removing it from Reconciliation |
 
 ### Held back (0)
 
@@ -238,10 +238,18 @@ None. Item 27 was held until 22; both are done.
       invoices. Today only the case holder logs (`canLog` in `reconciliation_controller.dart`).
 - [ ] 24. Keep reconciled invoices pickable by specific invoice. Today acquiring takes every
       reconciliation invoice of the account (`claimReconciliation`).
-- [~] 25. When a reconciled invoice is collected through the collection bucket, move it to
-      Settled and remove it from Reconciliation. **Partly:** it gets the Settled line on the
-      timeline, and the case completes when every invoice is paid. It is not yet removed
-      from Reconciliation.
+- [x] 25. When a reconciled invoice is collected through the collection bucket, move it to
+      Settled and remove it from Reconciliation. **Done (2026-10-20, Reconciliation
+      settled commit).** Paid in full through the bucket (one invoice or a batch), it becomes
+      Collected: no Reconciliation badge, out of the Reconciliation list and the Home
+      count, back in the bucket as settled, with the "Settled · Tracker" line on its case
+      timeline; the case completes when every invoice is paid. Partly paid, it stays a
+      Reconciliation invoice. One rule decides this for the screen and the copy saved on the
+      phone (`CollectionOutcome.statusAfterPayment`); the saved copy used to drop the
+      Reconciliation mark on a partial payment, so the badge vanished after a reload.
+      MDMPI.App needs no change: its upload recomputes the balance and sets the invoice to
+      Collected when it reaches zero, so the next download does not bring "Reconciliation"
+      back.
 - [x] 26. In the reconciled list, show settled invoices as "Cleared" (not "Closed") and the
       rest as Open (e.g., 3 invoices, 1 settled: 1 Cleared, 2 Open). **Done (2026-10-20, Reconciliation bucket
       commit).** Each case card on the Reconciliation dashboard now counts its invoices as

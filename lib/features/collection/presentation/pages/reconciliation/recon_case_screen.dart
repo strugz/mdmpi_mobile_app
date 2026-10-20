@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_clock.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_status_style.dart';
@@ -46,6 +47,34 @@ class ReconCaseScreen extends StatelessWidget {
         1 => 'yesterday',
         _ => '$days days ago',
       };
+
+  /// Takes the account (its bucket invoices and this case) after the
+  /// collector confirms, so the next step can be logged here.
+  static Future<void> _acquire(BuildContext context,
+      ReconciliationController controller, ReconCaseView view) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Acquire this account?'),
+        content: Text('${view.reconCase.clientName} and this case become '
+            'yours, so you can log its next step.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              key: const ValueKey('recon-acquire-confirm'),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Acquire')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final r = await controller.acquireAccountOf(view);
+    if (r.isFailure) {
+      BLoaders.errorSnackBar(title: 'Not acquired', message: r.error);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +122,11 @@ class ReconCaseScreen extends StatelessWidget {
             ),
             child: ElevatedButton.icon(
               key: const ValueKey('recon-log'),
-              onPressed: canLog ? () => ReconLogActivitySheet.show(view) : null,
+              onPressed: canLog
+                  ? () => ReconLogActivitySheet.show(view)
+                  : controller.canAcquire(view)
+                      ? () => _acquire(context, controller, view)
+                      : null,
               icon: Icon(
                   e.isClosed
                       ? Iconsax.lock
