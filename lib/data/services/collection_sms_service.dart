@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:another_telephony/telephony.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/deposit_remarks.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
@@ -449,10 +450,16 @@ class CollectionSmsService extends GetxController {
 
   /// 5. Adding Deposit; the optional lines left out when blank:
   ///
-  ///     Deposited: PHP 526,664.00
+  ///     Deposited: PHP 30,000.00
   ///     Bank: BDO
   ///     Check: 1254897
+  ///     Antipolo Doctors Hospital - PHP 25,000.00
+  ///     Ace Diagnostics Corp. - PHP 5,000.00
   ///     Note: Morning run
+  ///
+  /// The remarks are the deposit's accounts, "Account - Amount" one per line
+  /// ([BDepositRemarks]), and its note: each keeps its own line. Remarks
+  /// written before that format read as one "Note:" line, as they did.
   static String depositAdded({
     required String bankName,
     required double amount,
@@ -463,8 +470,29 @@ class CollectionSmsService extends GetxController {
         'Deposited: ${_peso(amount)}',
         _note('Bank', bankName),
         _note('Check', checkNumber),
-        _note('Note', remarks),
+        ..._depositRemarks(remarks),
       ]);
+
+  static List<String> _depositRemarks(String? remarks) {
+    final lines = (remarks ?? '')
+        .split('\n')
+        .map((l) => _text(l, none: ''))
+        .where((l) => l.isNotEmpty)
+        .toList();
+    final structured = lines.any((l) =>
+        BDepositRemarks.parseLine(l) != null || l.startsWith('Note:'));
+    if (!structured) {
+      final note = _note('Note', lines.join(' '));
+      return note.isEmpty ? const [] : [note];
+    }
+    return [
+      for (final l in lines)
+        switch (BDepositRemarks.parseLine(l)) {
+          final p? => '${p.account} - PHP ${p.amount}',
+          null => l,
+        },
+    ];
+  }
 
   /// 6. "Picked up CWT: [Client]" / "Note: [Remarks]".
   static String cwtPickup(

@@ -25,11 +25,11 @@
 
 | Status | Count |
 |---|---|
-| Done | 11 |
+| Done | 13 |
 | Already in the app before this round | 3 |
 | Partly done | 2 |
 | Held back | 1 |
-| Not started | 16 |
+| Not started | 14 |
 | **Total** | **33** |
 
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (11)
+### Done (13)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -55,6 +55,8 @@ sections below, where its details are. Keep both views in step when an item move
 | 33 | Debug advanced payment | Bug Fixes | — |
 | 7 | Routing of Documents: Accounts and Remarks flow | New Activity | `e0810f1` + MDMPI.App `1ed776e` |
 | 8 | Card for pre-collection | Pre-collection | `4cda9c8`, `94da5f0` + MDMPI.App `052a37a` |
+| 12 | Account selected by search | Deposit | Deposit accounts commit |
+| 13 | Remarks format, one per line: Account - Amount | Deposit | Deposit accounts commit |
 
 ### Already in the app before this round (3)
 
@@ -77,7 +79,7 @@ sections below, where its details are. Keep both views in step when an item move
 |---|---|---|---|
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Only way to acquire reconciliation accounts; goes with 22 |
 
-### Not started (16)
+### Not started (14)
 
 | # | Item | Area |
 |---|---|---|
@@ -87,8 +89,6 @@ sections below, where its details are. Keep both views in step when an item move
 | 4 | Dashboard for reviewing all data | Web App |
 | 5 | Dashboard: actual target for a selected area | Web App |
 | 6 | Dashboard: actual target for all areas combined | Web App |
-| 12 | Account selected by search | Deposit |
-| 13 | Remarks format, one per line: Account - Amount | Deposit |
 | 16 | Temporary account for advanced payments | Advanced Payments |
 | 20 | Individual remarks per invoice | Reconciliation |
 | 22 | Keep reconciled accounts in the collection bucket | Reconciliation |
@@ -171,9 +171,19 @@ sections below, where its details are. Keep both views in step when an item move
       leaves a blank cheque out. (`63c6d70`)
 - [x] 11. Make Remarks required. "Remarks are required"; blank or spaces-only is refused.
       (`63c6d70`)
-- [ ] 12. Account is selected by search. The deposit has no account today (`clientId: ''`);
-      `ClientPickerField` can be reused.
-- [ ] 13. Remarks format, one per line: Account - Amount. Today Remarks is free text.
+- [x] 12. Account is selected by search. **Committed (Deposit accounts change).** Record Deposit has an
+      Accounts section: "Add account" opens the client search; each pick adds a line with its
+      own amount (an account is listed once; × removes it). At least one account is required.
+      The Amount fills with the lines' total until typed by hand; if it then differs, the form
+      says what the accounts add up to. The deposit is still recorded against no account and
+      settles no invoice (no server change).
+- [x] 13. Remarks format, one per line: Account - Amount. **Committed (Deposit accounts
+      change).** The
+      remarks are written from the lines (`BDepositRemarks`, `deposit_remarks.dart`), shown on
+      the form as they will be saved, with an optional note last:
+      `Antipolo Doctors Hospital - 25,000.00` / `Ace Diagnostics Corp. - 5,000.00` /
+      `Note: Morning run`. The form refuses more than the 500 characters the server keeps
+      (about a dozen accounts). The deposit SMS shows each line, in PHP.
 
 ## Advanced Payments
 
@@ -354,12 +364,14 @@ Every message goes to the Head and the Collection contacts, except Reconciliatio
    - MAR
    ```
 
-5. **Adding Deposit** (Check and Note lines left out when blank):
+5. **Adding Deposit** (each account on its own line; Check and Note left out when blank):
 
    ```
-   Deposited: PHP 526,664.00
+   Deposited: PHP 30,000.00
    Bank: BDO
    Check: 1254897
+   Antipolo Doctors Hospital - PHP 25,000.00
+   Ace Diagnostics Corp. - PHP 5,000.00
    Note: Morning run
    - MAR
    ```
