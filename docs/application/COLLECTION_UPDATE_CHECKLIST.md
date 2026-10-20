@@ -54,7 +54,7 @@ sections below, where its details are. Keep both views in step when an item move
 | 32 | Printer for users | Bug Fixes | `32b50ce` |
 | 33 | Debug advanced payment | Bug Fixes | — |
 | 7 | Routing of Documents: Accounts and Remarks flow | New Activity | `e0810f1` + MDMPI.App `1ed776e` |
-| 8 | Card for pre-collection | Pre-collection | not yet committed |
+| 8 | Card for pre-collection | Pre-collection | `4cda9c8`, `94da5f0` + MDMPI.App `052a37a` |
 
 ### Already in the app before this round (3)
 
@@ -133,9 +133,9 @@ sections below, where its details are. Keep both views in step when an item move
 
 ## Pre-collection
 
-- [x] 8. Create a card for pre-collection. **Built, not yet committed; needs
-      `migration_20261020_add_collection_engagement_check.sql` run on the server BEFORE the
-      MDMPI.App build is deployed.**
+- [x] 8. Create a card for pre-collection. **Done (confirmed 2026-10-20): phone `4cda9c8`,
+      `94da5f0`; MDMPI.App `052a37a`.** `migration_20261020_add_collection_engagement_check.sql`
+      must run on the server BEFORE the MDMPI.App build with `052a37a` is deployed.
   - What Pre-Collection is: information for the next scheduled collection. The collector
     records the amount to collect and, when it is a check, the bank, check number and check
     date (the check date is when to collect). It settles nothing: the balance stays, nothing
