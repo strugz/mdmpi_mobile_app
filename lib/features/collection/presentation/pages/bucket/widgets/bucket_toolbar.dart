@@ -180,7 +180,7 @@ class _AreaChip extends StatelessWidget {
                 GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: onClear,
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(BSizes.xs),
                     child: Icon(Iconsax.close_circle5,
                         size: 16, color: BCollectionColors.primary),

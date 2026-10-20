@@ -241,7 +241,7 @@ class _CollectionActivityAccountInvoicesScreenState
             BSizes.defaultSpace,
             BSizes.spaceBtwItemsLight,
           ),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: BCollectionColors.surface,
             border: Border(top: BorderSide(color: BCollectionColors.outline)),
           ),
@@ -277,7 +277,7 @@ class _CollectionActivityAccountInvoicesScreenState
           BSizes.defaultSpace,
           BSizes.spaceBtwItemsLight,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),
@@ -290,7 +290,7 @@ class _CollectionActivityAccountInvoicesScreenState
                   minimumSize: const Size(0, 48),
                   shape: shape,
                   foregroundColor: BCollectionColors.inkSecondary,
-                  side: const BorderSide(color: BCollectionColors.outline),
+                  side: BorderSide(color: BCollectionColors.outline),
                 ),
                 child: const Text('Defer', maxLines: 1),
               ),
@@ -507,7 +507,7 @@ class _CollectionActivityAccountInvoicesScreenState
                 key: const ValueKey('voucher-scan'),
                 tooltip: 'Scan a voucher',
                 icon:
-                    const Icon(Iconsax.scan, color: BCollectionColors.onHeader),
+                    Icon(Iconsax.scan, color: BCollectionColors.onHeader),
                 onPressed:
                     _scan?.isAnalyzing.value == true ? null : _scanVoucher,
               ),
@@ -520,7 +520,7 @@ class _CollectionActivityAccountInvoicesScreenState
                     controller.isAllVisibleSelected(widget.client.id)
                         ? 'Deselect All'
                         : 'Select All',
-                    style: const TextStyle(color: BCollectionColors.onHeader),
+                    style: TextStyle(color: BCollectionColors.onHeader),
                   ),
                 ),
             ],
@@ -696,7 +696,7 @@ class _RereadBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Iconsax.magic_star,
+          Icon(Iconsax.magic_star,
               size: 18, color: BCollectionColors.primary),
           const SizedBox(width: BSizes.sm),
           Expanded(
@@ -763,7 +763,7 @@ class _SelectedGroup extends StatelessWidget {
                   horizontal: BSizes.md, vertical: BSizes.spaceBtwItemsLight),
               child: Row(
                 children: [
-                  const Icon(Iconsax.tick_square,
+                  Icon(Iconsax.tick_square,
                       size: 20, color: BCollectionColors.primary),
                   const SizedBox(width: BSizes.sm),
                   Expanded(
@@ -880,7 +880,7 @@ class _ReviewInvoiceButton extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Iconsax.receipt_item,
+              Icon(Iconsax.receipt_item,
                   size: 18, color: BCollectionColors.onPrimary),
               const SizedBox(width: BSizes.sm),
               Flexible(

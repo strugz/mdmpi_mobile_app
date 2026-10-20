@@ -283,7 +283,7 @@ class _UploadBannerCard extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Iconsax.refresh,
+                              Icon(Iconsax.refresh,
                                   size: 16, color: BCollectionColors.onPrimary),
                               const SizedBox(width: BSizes.xs),
                               Text('Retry',
@@ -301,7 +301,7 @@ class _UploadBannerCard extends StatelessWidget {
               IconButton(
                 tooltip: 'Dismiss',
                 visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close,
+                icon: Icon(Icons.close,
                     size: 18, color: BCollectionColors.inkMuted),
                 onPressed: onDismiss,
               ),
@@ -406,7 +406,7 @@ class _ProgressPanel extends StatelessWidget {
         children: [
           Row(
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
@@ -602,7 +602,7 @@ class _PendingRow extends StatelessWidget {
           IconButton(
             tooltip: 'Discard',
             visualDensity: VisualDensity.compact,
-            icon: const Icon(Iconsax.close_circle,
+            icon: Icon(Iconsax.close_circle,
                 size: 20, color: BCollectionColors.inkMuted),
             onPressed: onDiscard,
           ),
@@ -641,7 +641,7 @@ class _UploadAllButton extends StatelessWidget {
             key: const ValueKey('busy'),
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
@@ -732,7 +732,7 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Iconsax.tick_circle,
+          Icon(Iconsax.tick_circle,
               size: 56, color: BCollectionColors.success),
           const SizedBox(height: BSizes.sm),
           Text(

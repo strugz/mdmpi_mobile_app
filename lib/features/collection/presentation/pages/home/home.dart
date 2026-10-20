@@ -22,6 +22,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/wid
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_sync_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_totals_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/home_skeleton.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/theme_mode_toggle.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
@@ -71,11 +72,13 @@ class CollectionHomeScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         // Header
-                        const BPrimaryHeaderContainer(
+                        BPrimaryHeaderContainer(
                           color: BCollectionColors.headerBackground,
                           child: Column(
                             children: [
-                              BHomeAppBar(),
+                              BHomeAppBar(actions: [
+                                CollectionThemeModeToggle(),
+                              ]),
                               SizedBox(height: BSizes.spaceBtwSections),
                             ],
                           ),
@@ -292,7 +295,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                 MainAxisAlignment
                                                                     .center,
                                                             children: [
-                                                              const Icon(
+                                                              Icon(
                                                                   Iconsax.clock,
                                                                   size: 48,
                                                                   color: BCollectionColors

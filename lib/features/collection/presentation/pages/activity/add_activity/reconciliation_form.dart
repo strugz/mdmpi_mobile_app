@@ -146,6 +146,14 @@ class _ReconciliationFormScreenState extends State<ReconciliationFormScreen> {
                                   ? selectedInvoiceIds.add(id)
                                   : selectedInvoiceIds.remove(id);
                             }),
+                            onToggleAll: (all) => setState(() {
+                              selectedInvoiceIds.clear();
+                              if (all) {
+                                selectedInvoiceIds.addAll(controller
+                                    .getInvoicesByAccount(selectedAccount!.id)
+                                    .map((inv) => inv.id));
+                              }
+                            }),
                           ),
                         ),
                 ),

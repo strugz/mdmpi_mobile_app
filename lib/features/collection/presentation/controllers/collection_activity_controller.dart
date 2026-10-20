@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -11,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.
 import 'package:mdmpi_mobile_app/features/collection/helpers/invoice_search.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_case.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/sync_manager.dart';
@@ -390,6 +393,7 @@ class CollectionActivityController extends GetxController {
       _loadPersistedExtras();
       final items = await repository.getLocalCollectionItems();
       _setItems(items);
+      unawaited(openMissingReconCases());
       // A download is when the collector expects fresh data: the client
       // list comes along, behind them.
       loadClientRegistry(force: true);
@@ -409,6 +413,7 @@ class CollectionActivityController extends GetxController {
 
       final items = await repository.getAll();
       _setItems(items);
+      unawaited(openMissingReconCases());
 
       logDebug(
           '[CollectionActivityController] Loaded ${items.length} bucket items');
@@ -452,6 +457,7 @@ class CollectionActivityController extends GetxController {
 
       final items = await repository.refreshFromApi();
       _setItems(items);
+      unawaited(openMissingReconCases());
       lastDownloadedCount.value = items.length;
 
       logDebug(
@@ -1856,6 +1862,35 @@ class CollectionActivityController extends GetxController {
     notifyEngagementCleared(clientName: invoices.first.client.name);
   }
 
+  /// One run at a time: a load, a download and an acquire can all ask at
+  /// once, and two runs would each open a case for the same account.
+  Future<void> _missingReconCases = Future.value();
+
+  /// Gives every invoice this collector holds that is marked for
+  /// reconciliation, but in no case, a case of its own account: the Tracker
+  /// lists cases, so without one the invoice is in neither the bucket nor
+  /// the Tracker. Only held invoices, so one phone opens the case, not every
+  /// phone that downloaded the account.
+  Future<void> openMissingReconCases() {
+    final run = _missingReconCases.then((_) async {
+      final held = activityItems
+          .where((i) => isReconciliation(i) && i.toBeCollected > 0)
+          .toList();
+      if (held.isEmpty) return;
+      await _recon((r) => r.openMissingCases([
+            for (final i in held)
+              (
+                clientCode: i.client.id,
+                clientName: i.client.name,
+                invoice: ReconCaseInvoice(
+                    invoiceNo: i.id, amount: i.toBeCollected),
+              ),
+          ]));
+    });
+    _missingReconCases = run;
+    return run;
+  }
+
   /// Runs [action] on the Reconciliation Tracker when it is registered (it is
   /// not in some tests); its failure is logged and never undoes the
   /// collection work that triggered it.
@@ -1974,6 +2009,9 @@ class CollectionActivityController extends GetxController {
     // is taken over (both go out in the same upload, in this order).
     await claimItemsByIds(ids);
     await _recon((r) => r.acquireCasesFor(clientId));
+    // No case to take over (marked before the Tracker, or its case never
+    // reached the server): open one, so the account lands on a case.
+    await openMissingReconCases();
     logDebug(
         '[CollectionActivityController] Account $clientId claimed (${ids.length} reconciliation invoices)');
   }

@@ -355,7 +355,7 @@ class _AdvanceCard extends StatelessWidget {
             const SizedBox(height: BSizes.xs),
             Row(
               children: [
-                const Icon(Iconsax.calendar_1,
+                Icon(Iconsax.calendar_1,
                     size: 14, color: BCollectionColors.inkMuted),
                 const SizedBox(width: BSizes.xs),
                 Flexible(

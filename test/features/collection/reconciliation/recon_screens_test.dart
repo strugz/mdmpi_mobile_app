@@ -331,6 +331,50 @@ void main() {
       expect(claim, lessThan(soa));
     });
 
+    testWidgets('a paid-off invoice shows Settled on the timeline',
+        (tester) async {
+      final bundle = ReconCaseBundle(
+        reconCase: const ReconCase(
+            caseId: 'RC-9',
+            clientCode: 'C-RC-9',
+            clientName: 'Paid Off Inc.',
+            collectorCode: 'JCA',
+            collectorName: 'Jay',
+            dateOpened: '2026-09-14T09:00:00'),
+        invoices: const [
+          ReconCaseInvoice(
+              invoiceNo: '700009771',
+              amount: 21048.87,
+              currentBalance: 0,
+              clearedAt: '2026-09-20T15:00:00'),
+          ReconCaseInvoice(invoiceNo: '700009347', amount: 6570.80),
+        ],
+        activities: [
+          _step('RA-1', ReconActivityType.soaSent, '2026-09-15T09:30:00'),
+          _step('RA-2', ReconActivityType.followUp, '2026-09-25T09:30:00'),
+        ],
+      );
+      final view = ReconCaseView(bundle, bundle.evaluate(now: _now));
+      await _pump(tester, const ReconCaseScreen(caseId: 'RC-9'),
+          cases: [view]);
+
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('recon-settled-700009771')), 200);
+      expect(find.text('Timeline (3)'), findsOneWidget);
+      expect(find.text('Settled · Tracker'), findsOneWidget);
+      expect(find.text('Invoice 700009771 · Cleared'), findsOneWidget,
+          reason: 'the list still reads Cleared');
+      expect(find.byKey(const ValueKey('recon-settled-700009347')),
+          findsNothing, reason: 'still open');
+
+      // Newest first: the follow up (25th), Settled (20th), the SOA (15th).
+      final entries = timelineEntries(bundle.activities, view.evaluation);
+      expect(
+          entries.map((t) =>
+              t.activity?.type.label ?? 'Settled ${t.settled!.invoiceNo}'),
+          ['Follow up', 'Settled 700009771', 'SOA sent']);
+    });
+
     testWidgets('an ended case cannot be logged on', (tester) async {
       await _pump(tester, const ReconCaseScreen(caseId: 'RC-3'));
       final button = tester
@@ -400,14 +444,15 @@ void main() {
 
   group('log sheet', () {
     Future<_Tracker> openSheet(WidgetTester tester, ReconCaseView view,
-        {ReconPhotoPicker? picker}) async {
+        {ReconPhotoPicker? picker,
+        String Function(String invoiceNo)? poFor}) async {
       final tracker = await _pump(
           tester,
           Scaffold(
             body: Builder(
               builder: (context) => TextButton(
                 onPressed: () => ReconLogActivitySheet.show(view,
-                    pickPhoto: picker, cameraAvailable: true),
+                    pickPhoto: picker, cameraAvailable: true, poFor: poFor),
                 child: const Text('open'),
               ),
             ),
@@ -453,6 +498,38 @@ void main() {
       expect(tracker.logged.single.type, ReconActivityType.paidClaim);
       expect(tracker.logged.single.invoices, ['700009347']);
       expect(find.text('Log a step'), findsNothing, reason: 'the sheet closed');
+    });
+
+    testWidgets('Select all names every invoice the step can name',
+        (tester) async {
+      final tracker = await openSheet(tester, _stale);
+      await tester.tap(find.byKey(const ValueKey('recon-type-PAID_CLAIM')));
+      await tester.pumpAndSettle();
+
+      final selectAll =
+          find.byKey(const ValueKey('recon-invoices-select-all'));
+      await tester.ensureVisible(selectAll);
+      await tester.tap(selectAll);
+      await tester.pumpAndSettle();
+      expect(find.text('Clear'), findsOneWidget);
+
+      await save(tester);
+      expect(tracker.logged.single.invoices,
+          unorderedEquals(['700009771', '700009347']));
+    });
+
+    testWidgets('each invoice shows its SI and, when known, its PO',
+        (tester) async {
+      await openSheet(tester, _stale,
+          poFor: (no) => no == '700009771' ? 'PO-4410' : '');
+      await tester.tap(find.byKey(const ValueKey('recon-type-PAID_CLAIM')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('SI 700009771'), findsOneWidget);
+      expect(find.text('SI 700009347'), findsOneWidget);
+      expect(find.textContaining('PO PO-4410'), findsOneWidget);
+      expect(find.textContaining('PO '), findsOneWidget,
+          reason: 'no PO line for an invoice without one');
     });
 
     testWidgets('a photo is attached to the step', (tester) async {

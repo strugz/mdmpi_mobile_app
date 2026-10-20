@@ -245,7 +245,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             BSizes.defaultSpace,
             BSizes.spaceBtwItemsLight,
           ),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: BCollectionColors.surface,
             border: Border(top: BorderSide(color: BCollectionColors.outline)),
           ),

@@ -13,6 +13,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/reco
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_validator.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 
@@ -33,9 +34,14 @@ class ReconLogActivitySheet extends StatefulWidget {
     this.pickPhoto,
     this.cameraAvailable,
     this.initialType,
+    this.poFor,
   });
 
   final ReconCaseView view;
+
+  /// The PO of an invoice, '' when none is known. Null: looked up in the
+  /// invoices on this phone. A case keeps only invoice numbers and amounts.
+  final String Function(String invoiceNo)? poFor;
 
   /// The step to start on (the stage track opens the sheet on its stage).
   final ReconActivityType? initialType;
@@ -50,13 +56,15 @@ class ReconLogActivitySheet extends StatefulWidget {
   static Future<bool> show(ReconCaseView view,
       {ReconPhotoPicker? pickPhoto,
       bool? cameraAvailable,
-      ReconActivityType? initialType}) async {
+      ReconActivityType? initialType,
+      String Function(String invoiceNo)? poFor}) async {
     final logged = await Get.bottomSheet<bool>(
       ReconLogActivitySheet(
           view: view,
           pickPhoto: pickPhoto,
           cameraAvailable: cameraAvailable,
-          initialType: initialType),
+          initialType: initialType,
+          poFor: poFor),
       isScrollControlled: true,
       backgroundColor: BCollectionColors.surface,
       shape: const RoundedRectangleBorder(
@@ -142,6 +150,25 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       };
 
   bool get _mustNameInvoices => _type == ReconActivityType.paidClaim;
+
+  String _po(String invoiceNo) {
+    final lookup = widget.poFor;
+    if (lookup != null) return lookup(invoiceNo).trim();
+    if (!Get.isRegistered<CollectionActivityController>()) return '';
+    for (final item in CollectionActivityController.instance.allItems) {
+      if (item.id == invoiceNo) return item.poNumber.trim();
+    }
+    return '';
+  }
+
+  bool get _allChosen =>
+      _choices.isNotEmpty && _choices.every((i) => _invoices.contains(i.invoiceNo));
+
+  void _toggleAll() => setState(() {
+        final all = !_allChosen;
+        _invoices.clear();
+        if (all) _invoices.addAll(_choices.map((i) => i.invoiceNo));
+      });
 
   bool get _takesPhotos =>
       _type != null && !_type!.isLifecycle && _type != ReconActivityType.note;
@@ -394,11 +421,23 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
         const SizedBox(height: BSizes.spaceBtwItems),
       ],
       if (_choices.isNotEmpty) ...[
-        Text(
-            _mustNameInvoices
-                ? 'Which invoices does the account say are paid?'
-                : 'Invoices (optional; none means all that apply)',
-            style: theme.textTheme.titleSmall),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                  _mustNameInvoices
+                      ? 'Which invoices does the account say are paid?'
+                      : 'Invoices (optional; none means all that apply)',
+                  style: theme.textTheme.titleSmall),
+            ),
+            if (_choices.length > 1)
+              TextButton(
+                key: const ValueKey('recon-invoices-select-all'),
+                onPressed: _toggleAll,
+                child: Text(_allChosen ? 'Clear' : 'Select all'),
+              ),
+          ],
+        ),
         for (final i in _choices)
           CheckboxListTile(
             key: ValueKey('recon-invoice-${i.invoiceNo}'),
@@ -408,8 +447,11 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
             onChanged: (on) => setState(() => on == true
                 ? _invoices.add(i.invoiceNo)
                 : _invoices.remove(i.invoiceNo)),
-            title: Text(i.invoiceNo),
-            subtitle: Text(BFormatter.formatPesoCurrency(i.amount)),
+            title: Text('SI ${i.invoiceNo}'),
+            subtitle: Text([
+              if (_po(i.invoiceNo).isNotEmpty) 'PO ${_po(i.invoiceNo)}',
+              BFormatter.formatPesoCurrency(i.amount),
+            ].join('  ·  ')),
             secondary: ReconChip(
                 label: i.status.label,
                 color: BReconStyle.invoiceColor(i.status)),
@@ -577,10 +619,11 @@ class _Thumb extends StatelessWidget {
             top: 0,
             child: InkWell(
               onTap: onRemove,
-              child: const CircleAvatar(
+              child: CircleAvatar(
                   radius: 10,
                   backgroundColor: BCollectionColors.ink,
-                  child: Icon(Icons.close, size: 12, color: Colors.white)),
+                  child: Icon(Icons.close,
+                      size: 12, color: BCollectionColors.surface)),
             ),
           ),
         ],

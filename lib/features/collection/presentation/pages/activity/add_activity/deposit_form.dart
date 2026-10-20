@@ -16,7 +16,8 @@ import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
 /// a deposit settled them. It does not: a deposit counts toward neither
 /// Actual Collection nor Collected this Month (revisions list item 9), and is
 /// not tied to an account. So the form is what the deposit slip says — bank,
-/// amount, check number — and optional remarks.
+/// amount, an optional check number (a cash deposit has none) — and remarks,
+/// which are required: they say what the deposit was for.
 class DepositFormScreen extends StatefulWidget {
   const DepositFormScreen({super.key});
 
@@ -122,12 +123,9 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                   autocorrect: false,
                   enableSuggestions: false,
                   decoration: const InputDecoration(
-                    labelText: 'Check Number',
+                    labelText: 'Check Number (optional)',
                     prefixIcon: Icon(Iconsax.card_edit),
                   ),
-                  validator: (value) => value == null || value.trim().isEmpty
-                      ? 'Check number is required'
-                      : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
 
@@ -137,9 +135,12 @@ class _DepositFormScreenState extends State<DepositFormScreen> {
                   maxLines: 3,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(
-                    labelText: 'Remarks (optional)',
+                    labelText: 'Remarks',
                     prefixIcon: Icon(Iconsax.edit),
                   ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Remarks are required'
+                      : null,
                 ),
                 const SizedBox(height: BSizes.spaceBtwSections),
 

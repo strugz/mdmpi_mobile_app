@@ -84,7 +84,7 @@ class _InvoiceCartScreenState extends State<InvoiceCartScreen> {
               BSizes.spaceBtwItemsLight,
               BSizes.defaultSpace,
               BSizes.spaceBtwItemsLight),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: BCollectionColors.surface,
             border: Border(top: BorderSide(color: BCollectionColors.outline)),
           ),

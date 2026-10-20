@@ -132,7 +132,7 @@ class _DeferReasonSheetState extends State<DeferReasonSheet> {
                 IconButton(
                   tooltip: 'Close',
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Iconsax.close_circle,
+                  icon: Icon(Iconsax.close_circle,
                       color: BCollectionColors.inkMuted),
                 ),
               ],

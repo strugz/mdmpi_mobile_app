@@ -90,7 +90,7 @@ class ReconDashboardScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(top: BSizes.xs),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.calendar_tick,
+                      Icon(Iconsax.calendar_tick,
                           size: 16, color: BCollectionColors.primary),
                       const SizedBox(width: BSizes.xs),
                       Expanded(
@@ -112,13 +112,13 @@ class ReconDashboardScreen extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: BSizes.spaceBtwItems),
                   child: ListTile(
                     key: const ValueKey('recon-waiting'),
-                    leading: const Icon(Iconsax.box_add,
+                    leading: Icon(Iconsax.box_add,
                         color: BCollectionColors.reconcile),
                     title: Text(
                         '$waiting ${waiting == 1 ? 'account' : 'accounts'} '
                         'waiting to be acquired'),
                     trailing: const Icon(Iconsax.arrow_right_3, size: 16),
-                    onTap: () => Get.to(() => const CategoryDetailScreen(
+                    onTap: () => Get.to(() => CategoryDetailScreen(
                         title: 'Reconciliation',
                         color: BCollectionColors.reconcile)),
                   ),
@@ -170,7 +170,7 @@ class _Empty extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: BSizes.spaceBtwSections),
         child: Column(
           children: [
-            const Icon(Iconsax.document_text,
+            Icon(Iconsax.document_text,
                 size: 40, color: BCollectionColors.inkMuted),
             const SizedBox(height: BSizes.sm),
             Text('No reconciliation cases yet',
@@ -302,7 +302,7 @@ class _CaseCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 2),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.user,
+                      Icon(Iconsax.user,
                           size: 12, color: BCollectionColors.inkMuted),
                       const SizedBox(width: 4),
                       Expanded(

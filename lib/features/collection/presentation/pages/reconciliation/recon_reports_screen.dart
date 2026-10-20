@@ -243,7 +243,7 @@ class _StatusBar extends StatelessWidget {
                   child: ColoredBox(color: BReconStyle.caseColor(s)),
                 ),
             if (total == 0)
-              const Expanded(
+              Expanded(
                   child: ColoredBox(color: BCollectionColors.surfaceMuted)),
           ],
         ),
@@ -321,7 +321,7 @@ class _AttentionCard extends StatelessWidget {
           padding: const EdgeInsets.all(BSizes.md),
           child: Row(
             children: [
-              const Icon(Iconsax.shield_tick,
+              Icon(Iconsax.shield_tick,
                   color: BCollectionColors.success, size: 20),
               const SizedBox(width: BSizes.sm),
               Expanded(
@@ -422,7 +422,7 @@ class _CaseRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: BSizes.sm),
-            const Icon(Iconsax.arrow_right_3,
+            Icon(Iconsax.arrow_right_3,
                 size: 16, color: BCollectionColors.inkMuted),
           ],
         ),
@@ -654,7 +654,7 @@ class _PostingRow extends StatelessWidget {
         onTap: () =>
             Get.toNamed(BRoutes.reconciliationCase, arguments: item.caseId),
         leading:
-            const Icon(Iconsax.shield_tick, color: BCollectionColors.success),
+            Icon(Iconsax.shield_tick, color: BCollectionColors.success),
         title: Text('${item.invoiceNo} · ${item.clientName}',
             maxLines: 2, overflow: TextOverflow.ellipsis),
         subtitle: Text(

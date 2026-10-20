@@ -365,7 +365,7 @@ class _GatheredGroupDivider extends StatelessWidget {
             ),
           ),
           const SizedBox(width: BSizes.sm),
-          const Expanded(
+          Expanded(
             child: Divider(
               height: 1,
               thickness: 1,
@@ -399,7 +399,7 @@ class _AcquireBar extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(
             BSizes.defaultSpace, BSizes.md, BSizes.defaultSpace, BSizes.md),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),

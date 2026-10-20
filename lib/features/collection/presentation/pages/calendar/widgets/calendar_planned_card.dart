@@ -79,7 +79,7 @@ class CalendarPlannedCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 2),
                   child: Icon(Iconsax.calendar_tick,
                       size: 18, color: BCollectionColors.reconcile),
@@ -117,7 +117,7 @@ class CalendarPlannedCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: BSizes.xs),
-                const Icon(Iconsax.arrow_right_3,
+                Icon(Iconsax.arrow_right_3,
                     size: 16, color: BCollectionColors.inkMuted),
               ],
             ),

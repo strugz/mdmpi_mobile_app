@@ -389,7 +389,7 @@ class _PoSection extends StatelessWidget {
                       turns: open ? 0.5 : 0,
                       duration: _duration,
                       curve: _curve,
-                      child: const Padding(
+                      child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4),
                         child: Icon(Iconsax.arrow_down_1,
                             size: 18, color: BCollectionColors.inkMuted),
@@ -408,7 +408,7 @@ class _PoSection extends StatelessWidget {
                 ? Column(
                     children: [
                       for (final inv in invoices) ...[
-                        const Divider(
+                        Divider(
                             height: 1,
                             thickness: 1,
                             color: BCollectionColors.outline),
@@ -500,7 +500,7 @@ class _InvoiceRow extends StatelessWidget {
               ],
             ),
             const SizedBox(width: BSizes.xs),
-            const Icon(Iconsax.arrow_right_3,
+            Icon(Iconsax.arrow_right_3,
                 size: 14, color: BCollectionColors.inkMuted),
           ],
         ),

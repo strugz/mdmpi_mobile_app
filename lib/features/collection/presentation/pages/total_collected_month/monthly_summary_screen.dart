@@ -134,7 +134,7 @@ class _MonthHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(
           BSizes.sm, 0, BSizes.sm, BSizes.spaceBtwItems),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: BCollectionColors.surface,
         border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
       ),
@@ -178,7 +178,7 @@ class _MonthHeader extends StatelessWidget {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(width: BSizes.xs),
-                          const Icon(Iconsax.arrow_down_1,
+                          Icon(Iconsax.arrow_down_1,
                               size: 14, color: BCollectionColors.inkMuted),
                         ],
                       ),
@@ -305,7 +305,7 @@ class _CollectorBreakdown extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(
             BSizes.md, BSizes.sm, BSizes.md, BSizes.sm),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
         ),
@@ -332,7 +332,7 @@ class _CollectorBreakdown extends StatelessWidget {
                     key: const ValueKey('collector-breakdown-reload'),
                     onTap: controller.reloadOthers,
                     borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.all(BSizes.xs),
                       child: Icon(Iconsax.refresh,
                           size: 16, color: BCollectionColors.inkMuted),
@@ -411,7 +411,7 @@ class _TargetLine extends StatelessWidget {
     if (target <= 0) {
       return Row(
         children: [
-          const Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
+          Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
           const SizedBox(width: BSizes.xs),
           Expanded(
             child: Text('No team target set yet · the office sets it',
@@ -438,7 +438,7 @@ class _TargetLine extends StatelessWidget {
               value: value,
               minHeight: 6,
               backgroundColor: BCollectionColors.outline,
-              valueColor: const AlwaysStoppedAnimation<Color>(
+              valueColor: AlwaysStoppedAnimation<Color>(
                   BCollectionColors.success),
             ),
           ),
@@ -644,7 +644,7 @@ class _EntryRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: last
             ? null
-            : const Border(
+            : Border(
                 bottom:
                     BorderSide(color: BCollectionColors.outline, width: 0.5)),
       ),
@@ -810,7 +810,7 @@ class _MonthSheet extends StatelessWidget {
                 ),
               ),
               trailing: m == selected
-                  ? const Icon(Iconsax.tick_circle5,
+                  ? Icon(Iconsax.tick_circle5,
                       color: BCollectionColors.primary, size: 20)
                   : null,
               onTap: () => Navigator.pop(context, m),

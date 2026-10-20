@@ -75,7 +75,7 @@ class BucketItemCard extends StatelessWidget {
                 ),
               ),
               child: isSelected
-                  ? const Icon(Icons.check,
+                  ? Icon(Icons.check,
                       size: 16, color: BCollectionColors.surface)
                   : null,
             ),

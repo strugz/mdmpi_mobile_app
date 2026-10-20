@@ -23,8 +23,8 @@ class CollectionTotalsCard extends StatelessWidget {
   final VoidCallback? onActualTap;
   final VoidCallback? onCollectedTap;
 
-  static const Color _actualColor = BCollectionColors.primary;
-  static const Color _collectedColor = BCollectionColors.success;
+  static Color get _actualColor => BCollectionColors.primary;
+  static Color get _collectedColor => BCollectionColors.success;
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +114,7 @@ class CollectionTotalsCardView extends StatelessWidget {
                 onTap: onActualTap,
               ),
             ),
-            const VerticalDivider(
+            VerticalDivider(
                 width: 1, thickness: 1, color: BCollectionColors.outline),
             Expanded(
               child: _TotalsHalf(

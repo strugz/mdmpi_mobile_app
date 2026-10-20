@@ -48,7 +48,7 @@ class DefaultAreaSheet extends StatelessWidget {
         title: Text(label),
         selected: isCurrent,
         trailing: isCurrent
-            ? const Icon(Iconsax.tick_circle, color: BCollectionColors.primary)
+            ? Icon(Iconsax.tick_circle, color: BCollectionColors.primary)
             : null,
         onTap: () => Navigator.of(context).pop(code),
       );

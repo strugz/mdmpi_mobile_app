@@ -7,8 +7,9 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/co
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/deposit_form.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
-/// For Deposit is the collector's activity only: bank, amount, check number
-/// and optional remarks. No account, no invoices from the Collection Bucket.
+/// For Deposit is the collector's activity only: bank, amount, an optional
+/// check number and required remarks. No account, no invoices from the
+/// Collection Bucket.
 
 class _Activity extends CollectionActivityController {
   final saved = <({
@@ -97,7 +98,7 @@ void main() {
     expect(bankField(), findsOneWidget);
   });
 
-  testWidgets('bank, amount and check number are required; remarks are not',
+  testWidgets('bank, amount and remarks are required; check number is not',
       (tester) async {
     final activity = await pump(tester);
 
@@ -106,8 +107,40 @@ void main() {
 
     expect(find.text('Bank is required'), findsOneWidget);
     expect(find.text('Amount is required'), findsOneWidget);
-    expect(find.text('Check number is required'), findsOneWidget);
+    expect(find.text('Remarks are required'), findsOneWidget);
+    expect(find.text('Check number is required'), findsNothing);
     expect(activity.saved, isEmpty);
+  });
+
+  testWidgets('blank remarks do not count as remarks', (tester) async {
+    final activity = await pump(tester);
+
+    await tester.enterText(bankField(), 'BPI');
+    await tester.enterText(
+        find.byKey(const ValueKey('deposit-amount')), '1000');
+    await tester.enterText(find.byKey(const ValueKey('deposit-remarks')), '   ');
+    await tester.tap(find.byKey(const ValueKey('deposit-save')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Remarks are required'), findsOneWidget);
+    expect(activity.saved, isEmpty);
+  });
+
+  testWidgets('saves a cash deposit with no check number', (tester) async {
+    final activity = await pump(tester);
+
+    await tester.enterText(bankField(), 'BDO');
+    await tester.enterText(
+        find.byKey(const ValueKey('deposit-amount')), '1500');
+    await tester.enterText(
+        find.byKey(const ValueKey('deposit-remarks')), 'Cash collections');
+    await tester.tap(find.byKey(const ValueKey('deposit-save')));
+    await tester.pumpAndSettle();
+
+    final d = activity.saved.single;
+    expect(d.check, '');
+    expect(d.remarks, 'Cash collections');
+    await drainSnackbar(tester);
   });
 
   testWidgets('the check number takes digits only, on the numeric keypad',
@@ -133,6 +166,8 @@ void main() {
         find.byKey(const ValueKey('deposit-amount')), '2500000');
     await tester.enterText(
         find.byKey(const ValueKey('deposit-check-number')), ' 1254897 ');
+    await tester.enterText(find.byKey(const ValueKey('deposit-remarks')),
+        ' Adventist Hospital - 2,500,000 ');
     await tester.tap(find.byKey(const ValueKey('deposit-save')));
     await tester.pumpAndSettle();
 
@@ -144,7 +179,8 @@ void main() {
     expect(d.amount, 2500000);
     expect(d.bank, 'BPI');
     expect(d.check, '1254897');
-    expect(d.remarks, '', reason: 'no invoice list written into the remarks');
+    expect(d.remarks, 'Adventist Hospital - 2,500,000',
+        reason: 'only what was typed; no invoice list written in');
     await drainSnackbar(tester);
   });
 }

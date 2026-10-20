@@ -107,7 +107,7 @@ class _StageNode extends StatelessWidget {
                       ? Icons.lock_outline
                       : Icons.circle_outlined,
               size: 14,
-              color: p.done ? Colors.white : color,
+              color: p.done ? BCollectionColors.surface : color,
             ),
           ),
           const SizedBox(height: BSizes.xs),

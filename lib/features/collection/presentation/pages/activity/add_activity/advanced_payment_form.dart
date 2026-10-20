@@ -9,6 +9,28 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/quick_fill_chip.dart';
+
+/// What an advance is usually for. A chip adds its label to the remarks, or
+/// takes it back out; anything else is still typed.
+const advancedPaymentRemarkChips = ['Machine', 'Reagents', 'Hold accounts'];
+
+/// [remarks] with [label] added (or removed when already there), the parts
+/// kept as a comma-separated list.
+String toggleRemarkChip(String remarks, String label) {
+  final parts = remarks
+      .split(',')
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .toList();
+  final at = parts.indexWhere((p) => p.toLowerCase() == label.toLowerCase());
+  at >= 0 ? parts.removeAt(at) : parts.add(label);
+  return parts.join(', ');
+}
+
+bool _hasRemarkChip(String remarks, String label) => remarks
+    .split(',')
+    .any((p) => p.trim().toLowerCase() == label.toLowerCase());
 
 class AdvancedPaymentFormScreen extends StatefulWidget {
   const AdvancedPaymentFormScreen({super.key});
@@ -44,7 +66,7 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
       clientId: selectedAccount!.id,
       clientName: selectedAccount!.name,
       amount: BFormatter.parseAmount(amountController.text),
-      remarks: remarksController.text,
+      remarks: remarksController.text.trim(),
     );
 
     Get.back(); // Close form
@@ -112,7 +134,33 @@ class _AdvancedPaymentFormScreenState extends State<AdvancedPaymentFormScreen> {
                   ),
                 ),
                 const SizedBox(height: BSizes.spaceBtwInputFields),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: remarksController,
+                  builder: (context, value, _) => Wrap(
+                    spacing: BSizes.sm,
+                    runSpacing: BSizes.sm,
+                    children: [
+                      for (final label in advancedPaymentRemarkChips)
+                        BQuickFillChip(
+                          key: ValueKey('advance-remark-$label'),
+                          label: label,
+                          selected: _hasRemarkChip(value.text, label),
+                          onTap: () {
+                            final text =
+                                toggleRemarkChip(remarksController.text, label);
+                            remarksController.value = TextEditingValue(
+                              text: text,
+                              selection:
+                                  TextSelection.collapsed(offset: text.length),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: BSizes.spaceBtwInputFields),
                 TextFormField(
+                  key: const ValueKey('advance-remarks'),
                   controller: remarksController,
                   maxLines: 4,
                   textCapitalization: TextCapitalization.sentences,

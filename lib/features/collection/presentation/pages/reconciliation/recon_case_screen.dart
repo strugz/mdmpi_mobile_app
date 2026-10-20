@@ -87,7 +87,7 @@ class ReconCaseScreen extends StatelessWidget {
                 BSizes.spaceBtwItemsLight,
                 BSizes.defaultSpace,
                 BSizes.spaceBtwItemsLight),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               color: BCollectionColors.surface,
               border: Border(top: BorderSide(color: BCollectionColors.outline)),
             ),
@@ -131,16 +131,24 @@ class ReconCaseScreen extends StatelessWidget {
               _SectionTitle('Invoices (${e.invoices.length})'),
               for (final i in e.invoices) _InvoiceRow(invoice: i),
               const SizedBox(height: BSizes.spaceBtwSections),
-              _SectionTitle('Timeline (${view.bundle.activities.length})'),
-              if (view.bundle.activities.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: BSizes.sm),
-                  child: Text('Nothing logged yet. Start with the SOA.'),
-                ),
-              for (final a in view.bundle.activities.reversed)
-                _TimelineEntry(
-                    activity: a,
-                    photoRoot: photoRoot ?? controller.photoDirectory.value),
+              ...() {
+                final entries = timelineEntries(view.bundle.activities, e);
+                return [
+                  _SectionTitle('Timeline (${entries.length})'),
+                  if (entries.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: BSizes.sm),
+                      child: Text('Nothing logged yet. Start with the SOA.'),
+                    ),
+                  for (final entry in entries)
+                    entry.activity != null
+                        ? _TimelineEntry(
+                            activity: entry.activity!,
+                            photoRoot:
+                                photoRoot ?? controller.photoDirectory.value)
+                        : _SettledEntry(invoice: entry.settled!),
+                ];
+              }(),
               if (e.warnings.isNotEmpty) ...[
                 const SizedBox(height: BSizes.spaceBtwItems),
                 _SectionTitle('Not applied'),
@@ -327,6 +335,79 @@ class _SectionTitle extends StatelessWidget {
       );
 }
 
+/// One line of a case's timeline: a logged step, or an invoice settling.
+typedef ReconTimelineEntry = ({
+  ReconActivity? activity,
+  ReconInvoiceState? settled,
+});
+
+/// The case's timeline, newest first: every logged step, plus a "Settled"
+/// line for each invoice paid off (validated, or its balance reached zero).
+/// The Settled line is worked out from the log and the balance on every
+/// phone, so nothing is uploaded for it and every phone shows the same.
+/// At the same moment, Settled reads after the step that settled it.
+List<ReconTimelineEntry> timelineEntries(
+    List<ReconActivity> activities, ReconEvaluation evaluation) {
+  final timed = <(DateTime?, int, ReconTimelineEntry)>[
+    for (final (i, a) in activities.indexed)
+      (BReconClock.parse(a.dateTime), i, (activity: a, settled: null)),
+    for (final s in evaluation.invoices)
+      if (s.settledAt != null)
+        (s.settledAt, activities.length, (activity: null, settled: s)),
+  ];
+  // Stable: an unparseable stamp keeps its place in the log.
+  timed.sort((x, y) {
+    final a = x.$1, b = y.$1;
+    if (a != null && b != null && a != b) return b.compareTo(a);
+    return y.$2.compareTo(x.$2);
+  });
+  return [for (final t in timed) t.$3];
+}
+
+class _SettledEntry extends StatelessWidget {
+  const _SettledEntry({required this.invoice});
+
+  final ReconInvoiceState invoice;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tint = BCollectionColors.success;
+    return Padding(
+      key: ValueKey('recon-settled-${invoice.invoiceNo}'),
+      padding: const EdgeInsets.symmetric(vertical: BSizes.sm),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: tint.withValues(alpha: 0.12),
+            child: Icon(Iconsax.tick_circle, size: 16, color: tint),
+          ),
+          const SizedBox(width: BSizes.sm),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Settled · ${ReconActor.tracker.label}',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                    ReconCaseScreen.when(
+                        BReconClock.format(invoice.settledAt!)),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: BCollectionColors.inkMuted)),
+                Text('Invoice ${invoice.invoiceNo} · ${invoice.status.label}',
+                    style: theme.textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _InvoiceRow extends StatelessWidget {
   const _InvoiceRow({required this.invoice});
 
@@ -468,7 +549,7 @@ class _Photo extends StatelessWidget {
         height: 56,
         child: exists
             ? Image.file(file, fit: BoxFit.cover)
-            : const ColoredBox(
+            : ColoredBox(
                 color: BCollectionColors.surfaceMuted,
                 child: Icon(Iconsax.image, color: BCollectionColors.inkMuted)),
       ),

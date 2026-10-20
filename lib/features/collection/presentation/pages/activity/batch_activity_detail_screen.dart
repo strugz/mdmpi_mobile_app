@@ -836,7 +836,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
           BSizes.defaultSpace,
           BSizes.md,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),
@@ -913,7 +913,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                   leading: Icon(CollectionStatusColors.iconFor(status),
                       color: CollectionStatusColors.colorFor(status)),
                   trailing: itemStatuses[itemId] == status
-                      ? const Icon(Iconsax.tick_circle,
+                      ? Icon(Iconsax.tick_circle,
                           color: BCollectionColors.primary)
                       : null,
                   onTap: () {

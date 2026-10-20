@@ -415,6 +415,62 @@ class ReconciliationRepository extends GetxController {
     }
   }
 
+  /// Opens a case for each account in [marked] whose invoices no case on
+  /// this phone covers: invoices marked for reconciliation before the Tracker
+  /// existed, or while the server held their case back. Without one, the
+  /// Tracker never lists them and they sit in the collector's Activity.
+  ///
+  /// An invoice in any case, open or ended, is left alone (an ended case is
+  /// over, not missing). So is an account that already has an open case: a
+  /// case cannot take more invoices. Returns how many cases were opened.
+  Future<Result<int>> openMissingCases(
+      List<({String clientCode, String clientName, ReconCaseInvoice invoice})>
+          marked) async {
+    if (marked.isEmpty) return Result.success(0);
+    try {
+      final now = _now();
+      final all = (await (await _caseDao()).getAll()).map(_live).toList();
+      final covered = {
+        for (final b in all)
+          for (final i in b.invoices) i.invoiceNo.trim(),
+      };
+      final withOpenCase = {
+        for (final b in all)
+          if (!b.evaluate(now: now, settings: settings).isClosed)
+            b.reconCase.clientCode,
+      };
+
+      final byAccount = <String, List<ReconCaseInvoice>>{};
+      final names = <String, String>{};
+      for (final m in marked) {
+        final code = m.clientCode.trim();
+        final no = m.invoice.invoiceNo.trim();
+        if (code.isEmpty || no.isEmpty || covered.contains(no)) continue;
+        (byAccount[code] ??= []).add(m.invoice);
+        names[code] = m.clientName;
+      }
+
+      var opened = 0;
+      for (final entry in byAccount.entries) {
+        if (withOpenCase.contains(entry.key)) {
+          logDebug('ReconciliationRepository: ${entry.key} has an open case; '
+              '${entry.value.length} marked invoice(s) left outside it');
+          continue;
+        }
+        final r = await openCase(
+            clientCode: entry.key,
+            clientName: names[entry.key] ?? '',
+            invoices: entry.value);
+        if (r.isFailure) return Result.failure(r.error);
+        opened++;
+      }
+      return Result.success(opened);
+    } catch (e) {
+      logDebug('ReconciliationRepository.openMissingCases error: $e');
+      return Result.failure('Could not open the missing cases: $e');
+    }
+  }
+
   /// This collector acquired [clientCode]: they hold its open case now.
   Future<Result<int>> acquireCasesFor(String clientCode) async {
     try {

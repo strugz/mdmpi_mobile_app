@@ -172,7 +172,7 @@ class AccountCard extends StatelessWidget {
                     // label rendered as four dots — the middle of the letters.
                     // Padding is set here so the theme's cannot apply.
                     padding: const EdgeInsets.symmetric(horizontal: BSizes.md),
-                    side: const BorderSide(color: BCollectionColors.primary),
+                    side: BorderSide(color: BCollectionColors.primary),
                     shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(BSizes.borderRadiusMd),
@@ -383,7 +383,7 @@ class AccountCard extends StatelessWidget {
                     child: FadeTransition(opacity: anim, child: child),
                   ),
                   child: isSelected
-                      ? const Icon(Icons.check,
+                      ? Icon(Icons.check,
                           key: ValueKey('on'),
                           size: 14,
                           color: BCollectionColors.surface)
@@ -410,7 +410,7 @@ class AccountCard extends StatelessWidget {
                 value: value,
                 minHeight: 3,
                 backgroundColor: BCollectionColors.outline,
-                valueColor: const AlwaysStoppedAnimation<Color>(
+                valueColor: AlwaysStoppedAnimation<Color>(
                     BCollectionColors.success),
               ),
             ),
@@ -542,7 +542,7 @@ class AccountCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 2),
-                      const Icon(Iconsax.arrow_right_3,
+                      Icon(Iconsax.arrow_right_3,
                           size: 14, color: BCollectionColors.primary),
                     ],
                   ),
