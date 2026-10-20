@@ -127,9 +127,10 @@ void main() {
       await tester.tap(find.text('Acquire Account'));
       await tester.pumpAndSettle();
 
-      expect(c.claimed, ['P1'],
-          reason: 'the account as the bucket acquires it: its open regular '
-              'invoices, not the paid or reconciliation ones');
+      expect(c.claimed, ['P1', 'P3'],
+          reason: 'the account as the bucket acquires it: its open '
+              'invoices, reconciliation ones among them (item 22), not the '
+              'paid ones');
     });
 
     test('nothing in the bucket to take: no button', () {
@@ -146,8 +147,9 @@ void main() {
       c.toggleAccountSelection(_amka.id);
       c.toggleAccountSelection(_ace.id);
       await c.claimSelectedAccounts();
-      expect(c.claimed.toSet(), {'P1', 'F1'},
-          reason: 'a Pre-Collection is a regular bucket invoice');
+      expect(c.claimed.toSet(), {'P1', 'P3', 'F1'},
+          reason: 'a Pre-Collection is a regular bucket invoice; so is a '
+              'reconciliation one (item 22)');
     });
   });
 }

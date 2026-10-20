@@ -59,15 +59,16 @@ class CollectionActivityController extends GetxController {
     return assigned.isNotEmpty && assigned != 'N/A' && item.toBeCollected > 0;
   }
 
-  /// Marked for reconciliation. Such an invoice lives under Home →
-  /// Reconciliation only: the regular bucket neither lists, counts nor
-  /// acquires it, so each open invoice is in exactly one place.
+  /// Marked for reconciliation. A status, not a removal (update checklist
+  /// item 22): the invoice stays in the bucket with its account, and
+  /// acquiring the account takes it and the account's open case along.
   static bool isReconciliation(CollectionItemModel item) =>
       item.status == CollectionStatusColors.statusReconciliation;
 
-  /// Open and in the regular bucket: what the bucket lists and acquires.
+  /// Open and in the bucket: what the bucket lists, counts and acquires.
+  /// Reconciliation invoices among them (item 22).
   static bool isRegularBucketInvoice(CollectionItemModel item) =>
-      item.toBeCollected > 0 && !isReconciliation(item);
+      item.toBeCollected > 0;
 
   /// Every known invoice exactly once. An id can transiently live in both
   /// lists; the Activity copy wins because it carries the freshest history.
@@ -143,8 +144,7 @@ class CollectionActivityController extends GetxController {
       _totalCollectedByClient[id] =
           (_totalCollectedByClient[id] ?? 0) + item.totalCollected;
     }
-    // Invoice count is bucket-only and ignores fully-settled invoices and
-    // those marked for reconciliation (listed under Reconciliation instead).
+    // Invoice count is bucket-only and ignores fully-settled invoices.
     final posByClient = <String, Set<String>>{};
     for (final item in bucketItems) {
       if (isRegularBucketInvoice(item)) {
@@ -574,10 +574,9 @@ class CollectionActivityController extends GetxController {
 
   bool isSelected(String id) => selectedBucketIds.contains(id);
 
-  /// Bucket invoices outside Reconciliation: the Collection Bucket button's
-  /// count. Reconciliation has its own card.
-  int get regularBucketItemCount =>
-      bucketItems.where((item) => !isReconciliation(item)).length;
+  /// The Collection Bucket button's count: every bucket invoice,
+  /// reconciliation ones among them (a status, update checklist item 22).
+  int get regularBucketItemCount => bucketItems.length;
 
   bool get allSelected =>
       bucketItems.isNotEmpty && selectedBucketIds.length == bucketItems.length;
@@ -2061,18 +2060,34 @@ class CollectionActivityController extends GetxController {
         '[CollectionActivityController] Account $clientId unclaimed with account-level reason: $reason');
   }
 
-  /// Acquire an account from the bucket: its regular open invoices. Those
-  /// marked for reconciliation stay behind; [claimReconciliation] takes them.
-  void claimAccount(String clientId) {
-    final ids = bucketItems
+  /// Acquire an account from the bucket: its open invoices, reconciliation
+  /// ones among them, and with those the account's open case.
+  Future<void> claimAccount(String clientId) async {
+    final items = bucketItems
         .where((item) =>
             item.client.id == clientId && isRegularBucketInvoice(item))
-        .map((e) => e.id)
         .toList();
-    if (ids.isEmpty) return;
-    claimItemsByIds(ids);
+    if (items.isEmpty) return;
+    await claimItemsByIds(items.map((e) => e.id).toList());
+    await _takeOverReconCases(items);
     logDebug(
-        '[CollectionActivityController] Account $clientId claimed (${ids.length} invoices)');
+        '[CollectionActivityController] Account $clientId claimed (${items.length} invoices)');
+  }
+
+  /// Acquired invoices marked for reconciliation bring their account's case:
+  /// taken over when someone else held it, opened when there is none. After
+  /// the claim, so the server sees the account held before the case is taken
+  /// over (both go out in the same upload, in this order).
+  Future<void> _takeOverReconCases(Iterable<CollectionItemModel> acquired) async {
+    final clients = {
+      for (final i in acquired)
+        if (isReconciliation(i)) i.client.id,
+    };
+    if (clients.isEmpty) return;
+    for (final id in clients) {
+      await _recon((r) => r.acquireCasesFor(id));
+    }
+    await openMissingReconCases();
   }
 
   /// Acquire an account from Home → Reconciliation: only its invoices marked
@@ -2204,15 +2219,15 @@ class CollectionActivityController extends GetxController {
     if (selectedAccountIds.isEmpty) return;
 
     final wantedClients = selectedAccountIds.toSet();
-    // The regular invoices of every ticked account, as claimAccount takes
-    // them one account at a time. Reconciliation invoices are acquired from
-    // Home → Reconciliation, not from here.
-    final ids = <String>[
+    // The open invoices of every ticked account, as claimAccount takes them
+    // one account at a time, reconciliation ones among them.
+    final items = <CollectionItemModel>[
       for (final item in bucketItems)
         if (wantedClients.contains(item.client.id) &&
             isRegularBucketInvoice(item))
-          item.id,
+          item,
     ];
+    final ids = [for (final i in items) i.id];
     if (ids.isEmpty) {
       exitSelectionMode();
       return;
@@ -2226,6 +2241,7 @@ class CollectionActivityController extends GetxController {
     try {
       await claimItemsByIds(ids,
           onProgress: (done, _) => acquiredInvoices.value = done);
+      await _takeOverReconCases(items);
       logDebug('[CollectionActivityController] Claimed ${ids.length} invoices '
           'across ${wantedClients.length} accounts');
     } finally {

@@ -122,6 +122,48 @@ void main() {
         reason: 'the acquired invoice is now held, so it gets a case');
   });
 
+  // Update checklist item 22: reconciliation is a status, so the bucket's own
+  // Acquire takes the marked invoices and brings the case along.
+  test('acquiring the account from the bucket takes over its case too',
+      () async {
+    c.bucketItems.assignAll([
+      _invoice('r1', _amka, 50),
+      _invoice('a1', _amka, 100, status: ''),
+    ]);
+
+    await c.claimAccount(_amka.id);
+
+    expect(c.activityItems.map((i) => i.id).toSet(), {'r1', 'a1'});
+    expect(c.activityItems.firstWhere((i) => i.id == 'r1').status,
+        'Reconciliation',
+        reason: 'still marked: a status, not a removal');
+    expect(tracker.acquired, ['NLN-1']);
+    expect(tracker.asked.single.map((m) => m.invoice.invoiceNo), ['r1']);
+  });
+
+  test('acquiring ticked accounts takes over the cases of marked ones',
+      () async {
+    c.bucketItems.assignAll([
+      _invoice('r1', _amka, 50),
+      _invoice('b1', _ace, 100, status: ''),
+    ]);
+    c.toggleAccountSelection(_amka.id);
+    c.toggleAccountSelection(_ace.id);
+
+    await c.claimSelectedAccounts();
+
+    expect(c.activityItems.map((i) => i.id).toSet(), {'r1', 'b1'});
+    expect(tracker.acquired, ['NLN-1'],
+        reason: 'Ace has no reconciliation invoice, so no case to take');
+  });
+
+  test('an account with nothing marked leaves the Tracker alone', () async {
+    c.bucketItems.assignAll([_invoice('b1', _ace, 100, status: '')]);
+    await c.claimAccount(_ace.id);
+    expect(tracker.acquired, isEmpty);
+    expect(tracker.asked, isEmpty);
+  });
+
   test('runs one at a time', () async {
     c.activityItems.assignAll([_invoice('r1', _amka, 50)]);
     await Future.wait([c.openMissingReconCases(), c.openMissingReconCases()]);

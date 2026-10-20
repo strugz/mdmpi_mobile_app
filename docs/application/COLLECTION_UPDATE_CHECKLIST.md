@@ -25,11 +25,11 @@
 
 | Status | Count |
 |---|---|
-| Done | 15 |
+| Done | 18 |
 | Already in the app before this round | 3 |
 | Partly done | 2 |
-| Held back | 1 |
-| Not started | 12 |
+| Held back | 0 |
+| Not started | 10 |
 | **Total** | **33** |
 
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (15)
+### Done (18)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -59,6 +59,9 @@ sections below, where its details are. Keep both views in step when an item move
 | 13 | Remarks format, one per line: Account - Amount | Deposit | Deposit accounts commit |
 | 29 | Outbox SMS sending in Settings | SMS | SMS Outbox commit |
 | 16 | Temporary account for advanced payments | Advanced Payments | Temporary account commit + MDMPI.App `5c6e092` |
+| 26 | Reconciled list: "Cleared" / "Open" instead of "Closed" | Reconciliation | Reconciliation bucket commit |
+| 22 | Keep reconciled accounts in the collection bucket | Reconciliation | Reconciliation bucket commit |
+| 27 | Remove "accounts waiting to be acquired" | Reconciliation | Reconciliation bucket commit |
 
 ### Already in the app before this round (3)
 
@@ -75,13 +78,11 @@ sections below, where its details are. Keep both views in step when an item move
 | 21 | Log step "Settled", then the user chooses an invoice | Reconciliation | A step the collector picks by hand (needs a backend change) |
 | 25 | Collected through the bucket: move to Settled, remove from Reconciliation | Reconciliation | Removing it from Reconciliation |
 
-### Held back (1)
+### Held back (0)
 
-| # | Item | Area | Why |
-|---|---|---|---|
-| 27 | Remove "accounts waiting to be acquired" | Reconciliation | Only way to acquire reconciliation accounts; goes with 22 |
+None. Item 27 was held until 22; both are done.
 
-### Not started (12)
+### Not started (10)
 
 | # | Item | Area |
 |---|---|---|
@@ -92,10 +93,8 @@ sections below, where its details are. Keep both views in step when an item move
 | 5 | Dashboard: actual target for a selected area | Web App |
 | 6 | Dashboard: actual target for all areas combined | Web App |
 | 20 | Individual remarks per invoice | Reconciliation |
-| 22 | Keep reconciled accounts in the collection bucket | Reconciliation |
 | 23 | Log activities on other invoices and some reconciled ones | Reconciliation |
 | 24 | Reconciled invoices pickable by specific invoice | Reconciliation |
-| 26 | Reconciled list: "Cleared" / "Open" instead of "Closed" | Reconciliation |
 | 30 | Add Sir Alex to the contact directory (details pending) | Contact Directory |
 
 ## Web App
@@ -226,9 +225,15 @@ sections below, where its details are. Keep both views in step when an item move
       paid-off invoice gets a "Settled · Tracker" line on its case timeline, worked out on
       the phone (see Outside the checklist). There is no step the collector picks by hand,
       because the server rejects unknown step types; a hand-picked step needs a backend change.
-- [ ] 22. Keep reconciled accounts in the collection bucket (reconciliation works like a
-      status, not a removal). Today an invoice marked Reconciliation is excluded from the
-      bucket (`isRegularBucketInvoice` in `collection_activity_controller.dart`).
+- [x] 22. Keep reconciled accounts in the collection bucket (reconciliation works like a
+      status, not a removal). **Done (2026-10-20, Reconciliation bucket commit).** An invoice marked Reconciliation
+      stays in the bucket with its account, with its "Reconciliation" badge, and counts in
+      the account's invoices and the Collection Bucket button
+      (`isRegularBucketInvoice` in `collection_activity_controller.dart`). Acquiring the
+      account, alone or ticked with others, takes it with the rest and brings the
+      account's open case along: taken over from whoever held it, or opened when there is
+      none. An invoice whose case ended unpaid (escalated, not completed) is an ordinary
+      bucket invoice again; ended cases are not reopened.
 - [ ] 23. Let collectors log activities on other invoices plus some of the reconciled
       invoices. Today only the case holder logs (`canLog` in `reconciliation_controller.dart`).
 - [ ] 24. Keep reconciled invoices pickable by specific invoice. Today acquiring takes every
@@ -237,13 +242,16 @@ sections below, where its details are. Keep both views in step when an item move
       Settled and remove it from Reconciliation. **Partly:** it gets the Settled line on the
       timeline, and the case completes when every invoice is paid. It is not yet removed
       from Reconciliation.
-- [ ] 26. In the reconciled list, show settled invoices as "Cleared" (not "Closed") and the
-      rest as Open (e.g., 3 invoices, 1 settled: 1 Cleared, 2 Open). "Closed" is the
-      dashboard filter and the "Closed <date>" line (`reconciliation_controller.dart`,
-      `recon_dashboard_screen.dart`). Invoice statuses already read Open / Cleared.
-- [-] 27. Remove the "1 account waiting to be acquired" item. **Held:** that card is
-      currently the only way into acquiring reconciliation accounts. Remove it together with
-      22, which gives the replacement path.
+- [x] 26. In the reconciled list, show settled invoices as "Cleared" (not "Closed") and the
+      rest as Open (e.g., 3 invoices, 1 settled: 1 Cleared, 2 Open). **Done (2026-10-20, Reconciliation bucket
+      commit).** Each case card on the Reconciliation dashboard now counts its invoices as
+      "1 Cleared · 2 Open" (settled = validated paid or cleared), on open and ended cases
+      alike. An ended case's date reads "Ended <date>" instead of "Closed <date>"
+      (`recon_dashboard_screen.dart`). The Open / Closed / All filter is unchanged: it sorts
+      cases, not invoices.
+- [x] 27. Remove the "1 account waiting to be acquired" item. **Done (2026-10-20, Reconciliation bucket
+      commit).** Gone from the Reconciliation dashboard (`recon_dashboard_screen.dart`);
+      the bucket acquires those accounts now (22).
 
 ## SMS
 

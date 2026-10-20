@@ -429,9 +429,9 @@ class CollectionHomeScreen extends StatelessWidget {
     );
   }
 
-  /// The Tracker's cases; accounts waiting to be acquired are linked from
-  /// there. Follow ups due today and overdue show under the figure, so they
-  /// are seen without opening the list. Read inside the grid's Obx.
+  /// The Tracker's cases (their accounts are acquired from the bucket).
+  /// Follow ups due today and overdue show under the figure, so they are
+  /// seen without opening the list. Read inside the grid's Obx.
   static CollectionSummaryStat _reconciliationStat(
       CollectionActivityController controller) {
     final recon = Get.isRegistered<ReconciliationController>()

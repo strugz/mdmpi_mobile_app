@@ -209,10 +209,44 @@ void main() {
               .widget<Text>(
                   find.byKey(const ValueKey('recon-case-standing-RC-3')))
               .data,
-          'Closed Sep 20, 2026 · 2 invoices · ₱27,619.67');
+          'Ended Sep 20, 2026 · 2 Open · ₱27,619.67',
+          reason: 'escalated with nothing paid: no invoice is Cleared');
       expect(find.text('2 open cases · ₱55,239.34 under reconciliation'),
           findsOneWidget,
           reason: 'the summary is always the open cases');
+    });
+
+    testWidgets('invoices read Cleared or Open, never Closed (item 26)',
+        (tester) async {
+      // 3 invoices, 1 settled: 1 Cleared, 2 Open.
+      final bundle = ReconCaseBundle(
+        reconCase: const ReconCase(
+            caseId: 'RC-9',
+            clientCode: 'C-RC-9',
+            clientName: 'Mixed Co',
+            collectorCode: 'JCA',
+            dateOpened: '2026-09-14T09:00:00'),
+        invoices: const [
+          ReconCaseInvoice(
+              invoiceNo: '700000001',
+              amount: 1000,
+              currentBalance: 0,
+              clearedAt: '2026-09-25T14:00:00'),
+          ReconCaseInvoice(invoiceNo: '700000002', amount: 2000),
+          ReconCaseInvoice(invoiceNo: '700000003', amount: 3000),
+        ],
+        activities: [
+          _step('RA-91', ReconActivityType.soaSent, '2026-09-26T09:00:00'),
+        ],
+      );
+      await _pump(tester, const ReconDashboardScreen(),
+          cases: [ReconCaseView(bundle, bundle.evaluate(now: _now))]);
+      final standing = tester
+          .widget<Text>(find.byKey(const ValueKey('recon-case-standing-RC-9')))
+          .data!;
+      expect(standing, contains('1 Cleared · 2 Open'));
+      expect(standing, endsWith('₱5,000.00'), reason: 'still owed: the 2 Open');
+      expect(standing, isNot(contains('Closed')));
     });
 
     testWidgets(
