@@ -19,14 +19,27 @@ class CollectionOutcome {
     return CollectionStatusColors.statusPartial;
   }
 
+  /// A Pre-Collection records what the account will pay at the next
+  /// scheduled collection (the amount, and the cheque when there is one)
+  /// without settling anything: the balance stays as it is and nothing
+  /// counts as collected. The cheque date is when to collect.
+  static bool isPreCollection(String status) =>
+      status.trim() == CollectionStatusColors.statusPreCollection;
+
+  /// The part of [amount] that comes off the invoice's balance: all of it,
+  /// except for a [isPreCollection] outcome, where it is only information.
+  static double appliedAmount(String status, double amount) =>
+      isPreCollection(status) ? 0 : amount;
+
   /// Whether an engagement's amount is money collected from an account.
   ///
-  /// Five activities are not collections, whatever amount they carry: an
+  /// Six outcomes are not collections, whatever amount they carry: an
   /// Advanced Payment is float until applied to an invoice (the applied row
   /// is the collection); a For Deposit banks money already counted when it
   /// was collected; a CWT Pick-up collects a tax certificate; a
   /// Reconciliation reviews a disputed balance; a Routing of Documents
-  /// takes documents to or from an account. They are the collector's
+  /// takes documents to or from an account; a Pre-Collection only records
+  /// what the next collection will bring. They are the collector's
   /// activities, shown in the history and the calendar, and add nothing to a
   /// money total. One rule, so Collected this Month, the calendar's visit
   /// totals and the history cards cannot disagree. [kind] is the archive's
@@ -56,5 +69,6 @@ class CollectionOutcome {
     CollectionStatusColors.statusCWTPickup,
     CollectionStatusColors.statusReconciliation,
     CollectionStatusColors.statusRoutingDocuments,
+    CollectionStatusColors.statusPreCollection,
   };
 }

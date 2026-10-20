@@ -6,6 +6,7 @@ export 'package:mdmpi_mobile_app/features/collection/helpers/upload_batches.dart
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
@@ -375,9 +376,11 @@ class CollectionRepository extends GetxController {
 
       final now = DateTime.now().toIso8601String();
       final newlyCollected = totalCollected ?? 0.0;
-      final updatedTotalCollected = item.totalCollected + newlyCollected;
+      // A Pre-Collection's amount is recorded and uploaded, never applied.
+      final applied = CollectionOutcome.appliedAmount(status, newlyCollected);
+      final updatedTotalCollected = item.totalCollected + applied;
       final updatedToBeCollected =
-          (item.toBeCollected - newlyCollected).clamp(0.0, double.infinity);
+          (item.toBeCollected - applied).clamp(0.0, double.infinity);
       final isFullyPaid = updatedToBeCollected == 0;
 
       // Create history entry
@@ -508,9 +511,11 @@ class CollectionRepository extends GetxController {
         final itemRemarks = remarks[id] ?? 'Batch Recording';
         final itemStatus = statuses[id] ?? '';
 
-        final updatedTotalCollected = item.totalCollected + manualAmount;
+        final applied =
+            CollectionOutcome.appliedAmount(itemStatus, manualAmount);
+        final updatedTotalCollected = item.totalCollected + applied;
         final updatedToBeCollected =
-            (item.toBeCollected - manualAmount).clamp(0.0, double.infinity);
+            (item.toBeCollected - applied).clamp(0.0, double.infinity);
         final isFullyPaid = updatedToBeCollected == 0;
 
         final historyEntry = CollectionHistoryModel(

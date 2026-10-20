@@ -25,6 +25,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/wid
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/theme_mode_toggle.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
@@ -207,6 +208,29 @@ class CollectionHomeScreen extends StatelessWidget {
                                                               'Advanced Payment',
                                                               BCollectionColors
                                                                   .warning),
+                                                        ),
+                                                        // Fifth, on its own row:
+                                                        // invoices whose last
+                                                        // outcome is Pre-Collection.
+                                                        CollectionSummaryStat(
+                                                          title: CollectionStatusColors
+                                                              .statusPreCollection,
+                                                          value: controller
+                                                              .preCollectionItems
+                                                              .length
+                                                              .toString(),
+                                                          icon: CollectionStatusColors
+                                                              .iconFor(CollectionStatusColors
+                                                                  .statusPreCollection),
+                                                          color: CollectionStatusColors
+                                                              .colorFor(CollectionStatusColors
+                                                                  .statusPreCollection),
+                                                          onTap: () => _openCategory(
+                                                              CollectionStatusColors
+                                                                  .statusPreCollection,
+                                                              CollectionStatusColors.colorFor(
+                                                                  CollectionStatusColors
+                                                                      .statusPreCollection)),
                                                         ),
                                                       ],
                                                     )),

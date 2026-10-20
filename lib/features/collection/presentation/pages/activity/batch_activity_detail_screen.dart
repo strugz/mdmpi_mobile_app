@@ -525,8 +525,10 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   Widget _invoiceRow(BuildContext context, CollectionItemModel item) {
     final theme = Theme.of(context);
     final allocated = _amountFor(item.id);
-    final remaining = item.toBeCollected - allocated;
     final status = itemStatuses[item.id] ?? '';
+    // A Pre-Collection's amount does not come off the balance.
+    final remaining = item.toBeCollected -
+        CollectionOutcome.appliedAmount(status, allocated);
     final showRemark = _remarksShown.contains(item.id);
 
     return Container(

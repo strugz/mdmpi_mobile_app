@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
@@ -13,8 +15,38 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
+
+/// What the latest Pre-Collection on [item] says the next collection
+/// brings: "Next collection: PHP 50,000.00 · Check BDO 1234567, dated
+/// 10-25-2026". '' when it recorded neither an amount nor a check.
+String preCollectionDetails(CollectionItemModel item) {
+  CollectionHistoryModel? last;
+  for (final h in item.history.reversed) {
+    if (CollectionOutcome.isPreCollection(h.status)) {
+      last = h;
+      break;
+    }
+  }
+  if (last == null) return '';
+  final check = [
+    (last.bankName ?? '').trim(),
+    (last.checkNumber ?? '').trim(),
+  ].where((s) => s.isNotEmpty).join(' ');
+  final date = (last.checkDate ?? '').trim();
+  final parts = [
+    if (last.totalCollected > 0)
+      BFormatter.formatPesoCurrency(last.totalCollected),
+    if (check.isNotEmpty || date.isNotEmpty)
+      [
+        if (check.isNotEmpty) 'Check $check' else 'Check',
+        if (date.isNotEmpty) 'dated $date',
+      ].join(', '),
+  ];
+  return parts.isEmpty ? '' : 'Next collection: ${parts.join(' \u00b7 ')}';
+}
 
 class CategoryDetailScreen extends StatelessWidget {
   const CategoryDetailScreen({
@@ -64,12 +96,32 @@ class CategoryDetailScreen extends StatelessWidget {
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: BSizes.spaceBtwItems),
                 itemBuilder: (context, index) {
-                  return InvoiceCard(
+                  final card = InvoiceCard(
                     item: invoices[index],
                     // One account's invoices, under a title that names it.
                     // Repeating the name on every card put a line of noise
                     // between the invoice number and the amount.
                     showAccountName: false,
+                  );
+                  final next = title ==
+                          CollectionStatusColors.statusPreCollection
+                      ? preCollectionDetails(invoices[index])
+                      : '';
+                  if (next.isEmpty) return card;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      card,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                            BSizes.sm, BSizes.xs, BSizes.sm, 0),
+                        child: Text(
+                          next,
+                          key: ValueKey('pre-collection-${invoices[index].id}'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -152,6 +204,9 @@ class CategoryDetailScreen extends StatelessWidget {
                 case 'Reconciliation':
                   accounts = controller.reconciliationAccounts;
                   break;
+                case CollectionStatusColors.statusPreCollection:
+                  accounts = controller.preCollectionAccounts;
+                  break;
                 default:
                   accounts = [];
               }
@@ -182,6 +237,10 @@ class CategoryDetailScreen extends StatelessWidget {
                     case 'Reconciliation':
                       invoices = controller
                           .getReconciliationInvoicesByAccount(client.id);
+                      break;
+                    case CollectionStatusColors.statusPreCollection:
+                      invoices = controller
+                          .getPreCollectionInvoicesByAccount(client.id);
                       break;
                   }
 

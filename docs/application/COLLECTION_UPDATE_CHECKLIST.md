@@ -25,11 +25,11 @@
 
 | Status | Count |
 |---|---|
-| Done | 10 |
+| Done | 11 |
 | Already in the app before this round | 3 |
 | Partly done | 2 |
 | Held back | 1 |
-| Not started | 17 |
+| Not started | 16 |
 | **Total** | **33** |
 
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
@@ -40,7 +40,7 @@ and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checkl
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (10)
+### Done (11)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -53,7 +53,8 @@ sections below, where its details are. Keep both views in step when an item move
 | 31 | Dark mode in Collection | Bug Fixes | `63c6d70` |
 | 32 | Printer for users | Bug Fixes | `32b50ce` |
 | 33 | Debug advanced payment | Bug Fixes | — |
-| 7 | Routing of Documents: Accounts and Remarks flow | New Activity | Routing commits (phone + MDMPI.App) |
+| 7 | Routing of Documents: Accounts and Remarks flow | New Activity | `e0810f1` + MDMPI.App `1ed776e` |
+| 8 | Card for pre-collection | Pre-collection | not yet committed |
 
 ### Already in the app before this round (3)
 
@@ -76,7 +77,7 @@ sections below, where its details are. Keep both views in step when an item move
 |---|---|---|---|
 | 27 | Remove "accounts waiting to be acquired" | Reconciliation | Only way to acquire reconciliation accounts; goes with 22 |
 
-### Not started (17)
+### Not started (16)
 
 | # | Item | Area |
 |---|---|---|
@@ -86,7 +87,6 @@ sections below, where its details are. Keep both views in step when an item move
 | 4 | Dashboard for reviewing all data | Web App |
 | 5 | Dashboard: actual target for a selected area | Web App |
 | 6 | Dashboard: actual target for all areas combined | Web App |
-| 8 | Card for pre-collection | Pre-collection |
 | 12 | Account selected by search | Deposit |
 | 13 | Remarks format, one per line: Account - Amount | Deposit |
 | 16 | Temporary account for advanced payments | Advanced Payments |
@@ -119,8 +119,8 @@ sections below, where its details are. Keep both views in step when an item move
 
 ## New Activity: Routing of Documents
 
-- [x] 7. Set up flow: Accounts and Remarks (for tracking of activity only). **Committed (phone and
-      MDMPI.App); needs the MDMPI.App change deployed first.** "Routing of Documents" is on
+- [x] 7. Set up flow: Accounts and Remarks (for tracking of activity only). **Done (confirmed
+      2026-10-20): phone `e0810f1`, MDMPI.App `1ed776e`.** "Routing of Documents" is on
       the Add field engagement sheet (`routing_documents_form.dart`): one account picked
       from the registry and required Remarks. It is the collector's activity (never counted
       as collected), listed under its own history filter, and texts the Head and Collection
@@ -128,13 +128,36 @@ sections below, where its details are. Keep both views in step when an item move
       `ROUTING_DOCUMENTS`, an account-level operation added to MDMPI.App (branch
       `collection/routing-documents`): saved as an activity like CWT Pick-up, returned in the
       workspace, activity-only in team reports, and its own legend on the printed calendar.
-      An older server answers "Unknown operation" and the row waits in the outbox, so deploy
-      MDMPI.App before releasing the app.
+      An older server answers "Unknown operation" and the row waits in the outbox, so
+      MDMPI.App must carry `1ed776e` wherever this app version runs.
 
 ## Pre-collection
 
-- [ ] 8. Create a card for pre-collection. The `Pre-Collection` status exists; Home tiles are
-      built in `home.dart`.
+- [x] 8. Create a card for pre-collection. **Built, not yet committed; needs
+      `migration_20261020_add_collection_engagement_check.sql` run on the server BEFORE the
+      MDMPI.App build is deployed.**
+  - What Pre-Collection is: information for the next scheduled collection. The collector
+    records the amount to collect and, when it is a check, the bank, check number and check
+    date (the check date is when to collect). It settles nothing: the balance stays, nothing
+    counts as collected, and no payment is created.
+  - Before this, a Pre-Collection with an amount was treated as a payment: the phone took it
+    off the balance and counted it in Collected this Month, and the server created a payment
+    and allocation for it. Fixed on both sides (`CollectionOutcome.appliedAmount` on the
+    phone; `IsPreCollection` in `CollectionInvoiceRepository.cs`). Typing the amount no longer
+    switches the outcome to Collected or Partial; the form reads "Amount to collect" and says
+    the balance stays.
+  - The server keeps a Pre-Collection's check on the engagement (new `bankname`, `checkno`,
+    `checkdate` columns; a collection's check stays on its payment) and returns it in the
+    invoice history. Team reports treat Pre-Collection as activity only.
+  - The card: a fifth card on Collection Home, alone on a third row at the same size as the
+    other four. It counts open invoices whose last outcome is Pre-Collection, acquired or
+    back in the bucket, following Filter by Area (an invoice marked for reconciliation is
+    left to that card). Tapping it lists the accounts like Past Due; each invoice shows
+    "Next collection: ₱50,000.00 · Check BDO 1234567, dated 10-25-2026".
+  - Limits: a deferral replaces the outcome on the server, so a deferred invoice leaves the
+    card at the next download, not at once. Pre-Collections saved before this change that
+    carried an amount already have a payment on the server; the phone no longer counts them
+    as collected.
 
 ## Deposit Process
 

@@ -1563,6 +1563,37 @@ class CollectionActivityController extends GetxController {
     return completedItems.where((item) => item.client.id == clientId).toList();
   }
 
+  /// Pre-Collection: open invoices whose last outcome is Pre-Collection,
+  /// filtered by area (update checklist item 8). The outcome is the
+  /// invoice's own, kept by the server, so it holds whether the invoice is
+  /// still acquired or back in the bucket, until a later outcome replaces
+  /// it. An invoice marked for reconciliation is listed there instead.
+  List<CollectionItemModel> get preCollectionItems => allItems
+      .where((item) =>
+          item.toBeCollected > 0 &&
+          !isReconciliation(item) &&
+          (item.lastOutcome ?? '').trim() ==
+              CollectionStatusColors.statusPreCollection &&
+          _matchesArea(item.bpCode))
+      .toList();
+
+  /// The accounts behind [preCollectionItems]: the master list's record
+  /// when it has one, else the client as the invoice carries it.
+  List<ClientModel> get preCollectionAccounts {
+    final byId = <String, ClientModel>{};
+    for (final item in preCollectionItems) {
+      byId.putIfAbsent(item.client.id, () => item.client);
+    }
+    for (final c in masterAccountList) {
+      if (byId.containsKey(c.id)) byId[c.id] = c;
+    }
+    return byId.values.toList();
+  }
+
+  List<CollectionItemModel> getPreCollectionInvoicesByAccount(
+          String clientId) =>
+      preCollectionItems.where((i) => i.client.id == clientId).toList();
+
   /// Returns overdue invoices for a specific account
   List<CollectionItemModel> getOverdueInvoicesByAccount(String clientId) {
     return overdueItems.where((item) => item.client.id == clientId).toList();
@@ -2172,10 +2203,12 @@ class CollectionActivityController extends GetxController {
       final oldItem = activityItems[index];
       final now = DateTime.now().toIso8601String();
       final double newlyCollected = totalCollected ?? 0;
-      final double updatedTotalCollected =
-          oldItem.totalCollected + newlyCollected;
+      // A Pre-Collection keeps its amount on the record, off the balance.
+      final double applied =
+          CollectionOutcome.appliedAmount(status, newlyCollected);
+      final double updatedTotalCollected = oldItem.totalCollected + applied;
       final double updatedToBeCollected =
-          (oldItem.toBeCollected - newlyCollected).clamp(0, double.infinity);
+          (oldItem.toBeCollected - applied).clamp(0, double.infinity);
 
       final bool isFullyPaid = updatedToBeCollected == 0;
       final bool wasReconciliation =
@@ -2233,7 +2266,7 @@ class CollectionActivityController extends GetxController {
       // timeline.
       await _recon((r) => r.recordPayment(
           invoiceId: id,
-          amount: newlyCollected,
+          amount: applied,
           outcome: status,
           bankName: bankName,
           checkNumber: checkNumber));
@@ -2349,10 +2382,12 @@ class CollectionActivityController extends GetxController {
       for (var item in selectedItems) {
         final double manualAmount = amounts[item.id] ?? 0;
         final String itemRemarks = remarks[item.id] ?? 'Batch Recording';
+        final double applied = CollectionOutcome.appliedAmount(
+            statuses[item.id] ?? '', manualAmount);
 
-        final double updatedTotalCollected = item.totalCollected + manualAmount;
+        final double updatedTotalCollected = item.totalCollected + applied;
         final double updatedToBeCollected =
-            (item.toBeCollected - manualAmount).clamp(0, double.infinity);
+            (item.toBeCollected - applied).clamp(0, double.infinity);
 
         final bool isFullyPaid = updatedToBeCollected == 0;
         final bool wasReconciliation =
@@ -2420,7 +2455,8 @@ class CollectionActivityController extends GetxController {
       for (final id in ids) {
         await _recon((r) => r.recordPayment(
             invoiceId: id,
-            amount: amounts[id] ?? 0,
+            amount: CollectionOutcome.appliedAmount(
+                statuses[id] ?? '', amounts[id] ?? 0),
             outcome: statuses[id] ?? '',
             bankName: bankName,
             checkNumber: checkNumber));
