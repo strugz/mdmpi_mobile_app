@@ -35,6 +35,69 @@
 Plus two changes not on the checklist: reconciliation invoices stuck outside the Tracker,
 and a Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checklist)).
 
+## By status
+
+The same 33 items grouped by where they stand. The number is the item's number in the
+sections below, where its details are. Keep both views in step when an item moves.
+
+### Done (9)
+
+| # | Item | Area | Commit |
+|---|---|---|---|
+| 10 | Make Cheque number optional | Deposit | `63c6d70` |
+| 11 | Make Remarks required | Deposit | `63c6d70` |
+| 14 | Chips on Remarks (Machine, Reagents, Hold accounts) | Advanced Payments | `63c6d70` |
+| 17 | Invoice picking: "Select all" | Reconciliation | `63c6d70` |
+| 18 | Invoice picking: PO/SI | Reconciliation | `63c6d70` |
+| 28 | SMS message format | SMS | `d049a33` |
+| 31 | Dark mode in Collection | Bug Fixes | `63c6d70` |
+| 32 | Printer for users | Bug Fixes | `32b50ce` |
+| 33 | Debug advanced payment | Bug Fixes | — |
+
+### Already in the app before this round (3)
+
+| # | Item | Area |
+|---|---|---|
+| 9 | Make Bank required | Deposit |
+| 15 | Advanced payments visible to all users | Advanced Payments |
+| 19 | Multiple pictures in the photo section (Log a step sheet) | Reconciliation |
+
+### Partly done (2)
+
+| # | Item | Area | What is missing |
+|---|---|---|---|
+| 21 | Log step "Settled", then the user chooses an invoice | Reconciliation | A step the collector picks by hand (needs a backend change) |
+| 25 | Collected through the bucket: move to Settled, remove from Reconciliation | Reconciliation | Removing it from Reconciliation |
+
+### Held back (1)
+
+| # | Item | Area | Why |
+|---|---|---|---|
+| 27 | Remove "accounts waiting to be acquired" | Reconciliation | Only way to acquire reconciliation accounts; goes with 22 |
+
+### Not started (18)
+
+| # | Item | Area |
+|---|---|---|
+| 1 | Actual Collection: daily entry in Post Actual Collection | Web App |
+| 2 | Actual Collection: Reference no. optional | Web App |
+| 3 | Targets: different target amount per area | Web App |
+| 4 | Dashboard for reviewing all data | Web App |
+| 5 | Dashboard: actual target for a selected area | Web App |
+| 6 | Dashboard: actual target for all areas combined | Web App |
+| 7 | Routing of Documents: Accounts and Remarks flow | New Activity |
+| 8 | Card for pre-collection | Pre-collection |
+| 12 | Account selected by search | Deposit |
+| 13 | Remarks format, one per line: Account - Amount | Deposit |
+| 16 | Temporary account for advanced payments | Advanced Payments |
+| 20 | Individual remarks per invoice | Reconciliation |
+| 22 | Keep reconciled accounts in the collection bucket | Reconciliation |
+| 23 | Log activities on other invoices and some reconciled ones | Reconciliation |
+| 24 | Reconciled invoices pickable by specific invoice | Reconciliation |
+| 26 | Reconciled list: "Cleared" / "Open" instead of "Closed" | Reconciliation |
+| 29 | Outbox SMS sending in Settings | SMS |
+| 30 | Add Sir Alex to the contact directory (details pending) | Contact Directory |
+
 ## Web App
 
 - [ ] 1. Actual Collection: add a daily entry in Post Actual Collection. Today the server
