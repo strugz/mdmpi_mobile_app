@@ -46,6 +46,7 @@ import 'package:mdmpi_mobile_app/data/repositories/pull_out/lose_item_repository
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/department_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/mobile_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/commute_id_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/role_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/user_initial_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/client/client_repository.dart';
@@ -189,6 +190,8 @@ class GeneralBindings extends Bindings {
     // guard to make the long-press flow available on all targets.
     Get.lazyPut(() => BackLoadRepository(), fenix: true);
     Get.lazyPut(() => ContactRepository(), fenix: true);
+    // Commute IDs (trip ticket stand-in for commuting drivers): REST only.
+    Get.lazyPut(() => CommuteIdRepository(), fenix: true);
     // Lost items on Pull Out requests: REST only, no Firebase dependency.
     Get.lazyPut(() => LoseItemRepository(), fenix: true);
     // Backloaded items on delivery requests: REST only, no Firebase dependency.

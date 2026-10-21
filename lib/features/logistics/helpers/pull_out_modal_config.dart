@@ -3,6 +3,7 @@ import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/pull_out_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Configuration resolved from (role, status) that drives the Pull Out modal.
 ///
@@ -159,7 +160,9 @@ class PullOutModalConfig {
       );
       return false;
     }
-    if (formState.mobile.text.trim().isEmpty) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (formState.mobile.text.trim().isEmpty &&
+        !BCommuteId.isCommuteId(formState.tripTicketController.text)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

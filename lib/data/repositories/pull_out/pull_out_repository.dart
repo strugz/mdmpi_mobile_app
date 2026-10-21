@@ -31,6 +31,11 @@ class PullOutRepository extends GetxController {
 
   static const String _resource = '/api4/RequestPullOutReturnPickUp';
 
+  /// v2 create (MDMPI.App): same body as v1, but the server also saves trip
+  /// ticket, driver, helper and vehicle. v1 ignores those keys on purpose —
+  /// older builds send them from leftover form state.
+  static const String _insertV2Resource = '/api4/v2/RequestPullOutReturnPickUp';
+
   PullOutDao? _daoInstance;
 
   /// Injects a DAO backed by a test database, bypassing [DatabaseHelper].
@@ -265,12 +270,17 @@ class PullOutRepository extends GetxController {
   /// When [items] are provided, they are posted to the shared
   /// `POST /api4/Item/request/{id}` endpoint after the request is created —
   /// the insert response carries the new RequestID the item post needs.
+  ///
+  /// [withDispatchInfo] posts to the v2 create endpoint so the trip ticket,
+  /// driver, helper and vehicle are saved on create (Stock Receive).
   Future<void> insert(PullOutModel data,
-      {bool silent = false, List<InventoryItemModel>? items}) async {
+      {bool silent = false,
+      List<InventoryItemModel>? items,
+      bool withDispatchInfo = false}) async {
     try {
       final dto = PullOutMapper.toInsertDto(data);
       final payload = dto.toJson();
-      final url = _uri(_resource);
+      final url = _uri(withDispatchInfo ? _insertV2Resource : _resource);
 
       logDebug('PullOutRepository.insert payload: ${jsonEncode(payload)}');
 

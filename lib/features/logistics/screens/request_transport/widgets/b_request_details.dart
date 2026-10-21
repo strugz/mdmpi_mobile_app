@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/common/utils/role_resolver.dart';
 import 'package:mdmpi_mobile_app/common/widgets/chips/status_chip.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_document_reference.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/backload_items_section.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_proof_photo_list.dart';
@@ -167,9 +168,11 @@ class BRequestDetails extends StatelessWidget {
               if (hasTripTicket) ...[
                 const SizedBox(height: BSizes.sm),
                 BLabelValueText(
-                  label: 'Trip Ticket No',
+                  label: BCommuteId.label(updatedRequest.tripTicketNumber),
                   value: updatedRequest.tripTicketNumber,
-                  showLabel: false,
+                  // Spell out "Commute ID" so it is not read as a trip ticket.
+                  showLabel:
+                      BCommuteId.isCommuteId(updatedRequest.tripTicketNumber),
                   copyable: true,
                   icon: Iconsax.receipt_2,
                   padding: EdgeInsets.zero,
