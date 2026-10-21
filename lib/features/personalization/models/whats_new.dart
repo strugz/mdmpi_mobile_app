@@ -27,6 +27,62 @@ class BWhatsNew {
   BWhatsNew._();
 
   static const List<WhatsNewGroup> groups = [
+    WhatsNewGroup(version: '1.1.116', items: [
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Actual Collection for your area',
+          detail: 'With a default area set, Home and the Actual Collection page '
+              'show your area\'s entries against its target. Switch to All '
+              'areas for the team\'s figure.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Reconciliation invoices stay in the bucket',
+          detail: 'They keep their Reconciliation badge in the bucket. Pick the '
+              'exact invoices to claim; one collected in full is settled, and '
+              'the case completes when every invoice is. Cases count Cleared '
+              'and Open invoices.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Picking invoices on a reconciliation step',
+          detail: 'Select all, and each invoice shows its SI and P.O. number.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Pre-Collection card',
+          detail: 'A card on Home for Pre-Collection. Acquire an account from its '
+              'page; Pre-Collection no longer settles the invoice.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Routing of Documents',
+          detail: 'A new activity: pick the accounts and add your remarks.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Record Deposit',
+          detail: 'Find accounts by search. Remarks are required and list one '
+              'account per line, as Account - Amount. The check number is '
+              'optional.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Temporary account for advanced payments',
+          detail: 'Account not in the list? Record the advance under a '
+              'temporary account by name, then link it to the real account '
+              'before applying it. Quick chips fill in the remarks: Machine, '
+              'Reagents, Hold accounts.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'SMS Outbox',
+          detail: 'Every SMS goes through Settings → SMS Outbox and is sent in '
+              'the background, retried by itself when it fails. The Outbox '
+              'shows the day\'s messages. Each message puts one fact on a '
+              'line, the check date and the bank included.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Calendar printout',
+          detail: 'Print the month\'s calendar as a PDF for reimbursement.'),
+      WhatsNewItem(
+          area: 'Collection',
+          title: 'Dark mode',
+          detail: 'Switch between light and dark from the moon icon on Home.'),
+    ]),
     WhatsNewGroup(version: '1.1.110', items: [
       WhatsNewItem(
           area: 'Collection',
