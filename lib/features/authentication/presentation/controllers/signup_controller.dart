@@ -5,9 +5,13 @@ import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/data/models/directory_user.dart';
+import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/authentication/authentication_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/verify_email.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_roles.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
 import '../../../../data/models/department_model.dart';
@@ -45,6 +49,21 @@ class SignupController extends GetxController {
   final departments = Rx<List<DepartmentModel>>(List<DepartmentModel>.empty());
 
   final selectedRole = TextEditingController();
+
+  /// The department picked at the top of the form; the role list and the
+  /// department's own fields follow it.
+  final selectedDepartment = ''.obs;
+
+  /// Collection only: the Head saved as `HeadKey` / `HeadName`, the same
+  /// fields Settings → My Head writes. Optional at sign-up.
+  final headKey = ''.obs;
+  final headName = ''.obs;
+
+  /// The user directory for the Head picker; empty when it cannot be read yet
+  /// (masters download after the first login).
+  final headDirectory = <DirectoryUser>[].obs;
+  final headQuery = ''.obs;
+  final headDirectoryLoading = false.obs;
 
   GlobalKey<FormState> signupFormKey = GlobalKey<FormState>();
 
@@ -103,6 +122,80 @@ class SignupController extends GetxController {
     super.onClose();
   }
 
+  bool get isCollection =>
+      BCollectionRoles.isCollectionDepartment(selectedDepartment.value);
+
+  /// The roles offered for the selected department; none until one is picked.
+  List<RoleModel> get filteredRoles => roles.value
+      .where((r) => r.appliesTo(selectedDepartment.value))
+      .toList();
+
+  /// People in the Head picker matching [headQuery] on name, code or department.
+  List<DirectoryUser> get filteredHeadDirectory {
+    final q = headQuery.value.trim().toLowerCase();
+    if (q.isEmpty) return headDirectory;
+    return headDirectory
+        .where((u) =>
+            u.name.toLowerCase().contains(q) ||
+            u.key.toLowerCase().contains(q) ||
+            u.department.toLowerCase().contains(q))
+        .toList();
+  }
+
+  /// A new department starts the role choice over, so a role from another
+  /// department cannot be submitted, and drops the Head outside Collection.
+  void onDepartmentChanged(String? value) {
+    final dept = (value ?? '').trim();
+    if (dept == selectedDepartment.value) return;
+    department.text = dept;
+    selectedDepartment.value = dept;
+    _resetRoles();
+    if (!isCollection) clearHead();
+  }
+
+  void selectHead(DirectoryUser person) {
+    headKey.value = person.key;
+    headName.value = person.name;
+  }
+
+  void clearHead() {
+    headKey.value = '';
+    headName.value = '';
+  }
+
+  /// Loads the directory for the Head picker. Never fails the form: an
+  /// unreadable directory is an empty list.
+  Future<void> loadHeadDirectory() async {
+    if (headDirectoryLoading.value) return;
+    headDirectoryLoading.value = true;
+    try {
+      if (!Get.isRegistered<UserDirectoryRepository>()) {
+        headDirectory.clear();
+        return;
+      }
+      final result = await Get.find<UserDirectoryRepository>().load();
+      if (result.isSuccess) {
+        headDirectory.assignAll(result.value);
+      } else {
+        logDebug('SignupController: head directory unavailable: ${result.error}');
+        headDirectory.clear();
+      }
+    } catch (e) {
+      logDebug('SignupController: head directory error: $e');
+      headDirectory.clear();
+    } finally {
+      headDirectoryLoading.value = false;
+    }
+  }
+
+  void _resetRoles() {
+    selectedRole.clear();
+    for (final role in roles.value) {
+      role.status = false;
+    }
+    roles.refresh();
+  }
+
   /// Clear all form fields
   void clearForm() {
     email.clear();
@@ -114,6 +207,10 @@ class SignupController extends GetxController {
     initial.clear();
     department.clear();
     selectedRole.clear();
+    selectedDepartment.value = '';
+    _resetRoles();
+    clearHead();
+    headQuery.value = '';
     privacyPolicy.value = true;
     hidePassword.value = true;
   }
@@ -164,6 +261,8 @@ class SignupController extends GetxController {
         initial: initial.text.trim(),
         department: department.text.trim(),
         role: selectedRole.text,
+        headKey: isCollection ? headKey.value : '',
+        headName: isCollection ? headName.value : '',
       );
 
       final userRepository = Get.put(UserRepository());

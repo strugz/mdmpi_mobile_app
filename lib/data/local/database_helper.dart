@@ -23,6 +23,7 @@ import 'dao/common/image_outbox_dao.dart';
 import 'dao/common/backload_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
+import 'dao/common/client_alias_dao.dart';
 import 'dao/common/mobile_dao.dart';
 import 'dao/common/user_dao.dart';
 import 'dao/common/cntmst_dao.dart';
@@ -53,6 +54,7 @@ class DatabaseHelper {
 
   // Cached DAO instances
   RequestDao? _requestDao;
+  ClientAliasDao? _clientAliasDao;
   SignatureDao? _signatureDao;
   ImageOutboxDao? _imageOutboxDao;
   PickUpDao? _pickUpDao;
@@ -114,6 +116,7 @@ class DatabaseHelper {
       onOpen: (db) async {
         await ensureProofUploadTables(db);
         await ensureCollectionTables(db);
+        await ensureOneScanTables(db);
       },
     );
   }
@@ -157,7 +160,8 @@ class DatabaseHelper {
   /// - `contacts` — user-entered;
   /// - `a_tblRequestReceiverSignature`, `a_tblRequestImageOutbox` — captured
   ///   signatures and queued proof images awaiting upload;
-  /// - every `a_tblCollection*` table — un-uploaded collector field work.
+  /// - every `a_tblCollection*` table — un-uploaded collector field work;
+  /// - `CLIENT_ALIAS_` — Standard Delivery one-scan aliases learned here.
   /// Tables the destructive rebuild drops. Server-backed cache only.
   ///
   /// Anything holding data that exists nowhere else must stay out of this
@@ -277,6 +281,13 @@ class DatabaseHelper {
     final db = await database;
     _clientDao = ClientDao(db);
     return _clientDao!;
+  }
+
+  Future<ClientAliasDao> get clientAliasDao async {
+    if (_clientAliasDao != null) return _clientAliasDao!;
+    final db = await database;
+    _clientAliasDao = ClientAliasDao(db);
+    return _clientAliasDao!;
   }
 
   Future<MobileDao> get mobileDao async {
@@ -720,6 +731,7 @@ class DatabaseHelper {
     _database = null;
 
     _requestDao = null;
+    _clientAliasDao = null;
     _signatureDao = null;
     _imageOutboxDao = null;
     _documentReferenceDao = null;
@@ -750,6 +762,7 @@ class DatabaseHelper {
 
       // Clear all cached DAOs
       _requestDao = null;
+      _clientAliasDao = null;
       _signatureDao = null;
       _imageOutboxDao = null;
       _pickUpDao = null;

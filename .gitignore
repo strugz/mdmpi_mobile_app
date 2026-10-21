@@ -48,3 +48,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/build/
+
+# Standard Delivery one-scan OCR fixtures: real documents with customer data.
+/test/fixtures/one_scan/

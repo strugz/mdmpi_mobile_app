@@ -16,7 +16,7 @@ class BSmsResendIconButton extends StatelessWidget {
     this.cancelButtonText = 'Cancel',
     this.icon = Iconsax.send_1,
     this.rotationAngle = -0.7,
-    this.iconColor = BColors.primary,
+    this.iconColor,
     this.iconSize = 18,
     this.buttonSize = 30,
   });
@@ -49,7 +49,7 @@ class BSmsResendIconButton extends StatelessWidget {
   final double rotationAngle;
 
   /// Icon color.
-  final Color iconColor;
+  final Color? iconColor;
 
   /// Icon size.
   final double iconSize;
@@ -85,7 +85,7 @@ class BSmsResendIconButton extends StatelessWidget {
           child: Icon(
             icon,
             size: iconSize,
-            color: iconColor,
+            color: iconColor ?? BColors.primary,
           ),
         ),
       ),

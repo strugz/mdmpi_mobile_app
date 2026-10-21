@@ -46,7 +46,8 @@ Future<void> createAllTables(Database db) async {
       RecipientName TEXT,
       TripTicketNumber TEXT,
       ItemCategoryID TEXT,
-      FormCategoryID TEXT
+      FormCategoryID TEXT,
+      RequestDeliveryAddress TEXT
     )
   ''');
 
@@ -308,6 +309,26 @@ Future<void> createAllTables(Database db) async {
 
   // Collection tables (bucket cache, engagement history, pending upload queue).
   await ensureCollectionTables(db);
+
+  // Standard Delivery one-scan: learned client aliases.
+  await ensureOneScanTables(db);
+}
+
+/// Creates the Standard Delivery one-scan tables idempotently.
+///
+/// `CLIENT_ALIAS_` maps a normalized scanned customer name to the client the
+/// user confirmed for it, so the next scan of that customer ranks it first.
+/// The aliases are learned on this device and exist nowhere else, so the
+/// table is created with `CREATE TABLE IF NOT EXISTS` and kept out of the
+/// destructive `_recreateAllTables` rebuild, like [ensureProofUploadTables].
+Future<void> ensureOneScanTables(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS CLIENT_ALIAS_ (
+      ALIAS TEXT PRIMARY KEY,
+      ACCMID TEXT NOT NULL,
+      UPDATED_AT TEXT
+    )
+  ''');
 }
 
 /// Creates the proof-upload tables idempotently.

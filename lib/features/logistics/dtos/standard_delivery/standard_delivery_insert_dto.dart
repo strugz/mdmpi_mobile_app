@@ -17,6 +17,11 @@ class StandardDeliveryInsertDto {
   final int? itemCategoryID;  // Changed to int
   final int? formCategoryID;  // Changed to int
 
+  /// The scanned delivery address, set only when a one-scan used it because
+  /// the client's saved address was missing (plan §4.4b). Null otherwise, so
+  /// the JSON is exactly what it was before.
+  final String? requestDeliveryAddress;
+
   StandardDeliveryInsertDto({
     this.requestClientID,
     this.requestShippingMethod,
@@ -33,6 +38,7 @@ class StandardDeliveryInsertDto {
     this.items,
     this.itemCategoryID,
     this.formCategoryID,
+    this.requestDeliveryAddress,
   });
 
   Map<String, dynamic> toJson() {
@@ -61,6 +67,7 @@ class StandardDeliveryInsertDto {
     }
     put('itemCategoryID', itemCategoryID);
     put('formCategoryID', formCategoryID);
+    put('requestDeliveryAddress', requestDeliveryAddress);
     return data;
   }
 }

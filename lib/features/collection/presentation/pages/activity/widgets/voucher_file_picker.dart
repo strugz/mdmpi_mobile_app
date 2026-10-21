@@ -2,12 +2,10 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/b_document_scanner.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:path/path.dart' as p;
 
@@ -47,31 +45,8 @@ class BVoucherFilePicker {
     return photo == null ? const [] : [photo];
   }
 
-  static Future<List<File>?> _scanDocument() async {
-    final scanner = DocumentScanner(
-      options: DocumentScannerOptions(
-        documentFormats: const {DocumentFormat.jpeg},
-        mode: ScannerMode.full,
-        pageLimit: maxPages,
-        isGalleryImport: false,
-      ),
-    );
-    try {
-      final result = await scanner.scanDocument();
-      return [for (final path in result.images ?? const <String>[]) File(path)];
-    } on PlatformException catch (e) {
-      if ((e.message ?? '').toLowerCase().contains('cancel')) return const [];
-      logDebug('BVoucherFilePicker: document scanner unavailable: '
-          '${e.message}; using the camera');
-      return null;
-    } catch (e) {
-      logDebug('BVoucherFilePicker: document scanner failed: $e; '
-          'using the camera');
-      return null;
-    } finally {
-      scanner.close().catchError((_) {});
-    }
-  }
+  static Future<List<File>?> _scanDocument() =>
+      BDocumentScanner.scan(pageLimit: maxPages);
 
   /// A photo, sharp enough for small print.
   static Future<File?> _plainPhoto() async {

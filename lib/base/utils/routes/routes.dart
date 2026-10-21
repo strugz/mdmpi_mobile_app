@@ -38,6 +38,7 @@ class BRoutes{
   static const teamActivity = '/collection/team-activity';
   static const collectionStorage = '/settings/collection-storage';
   static const collectionTheme = '/settings/collection-theme';
+  static const logisticsTheme = '/settings/logistics-theme';
   static const about = '/settings/about';
   static const addToBucket = '/collection/add-to-bucket';
   // Collection - engagement forms (opened from the activity type sheet)
@@ -62,6 +63,8 @@ class BRoutes{
   static const signatureOutbox = '/signature-outbox';
   static const imageOutbox = '/image-outbox';
   static const uploadData = '/upload-data';
+  // Logistics requests not yet at a final status (08:00 reminder, Settings)
+  static const unfinishedRequests = '/logistics/unfinished-requests';
   // Back load routes
   static const backLoad = '/back-load';
 }

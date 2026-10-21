@@ -18,11 +18,15 @@ class LogisticsHomeHeader extends StatelessWidget {
   const LogisticsHomeHeader({
     super.key,
     required this.quickActions,
+    this.scanAction,
     this.now,
   });
 
   /// The "New request" grid rendered inside the header.
   final Widget quickActions;
+
+  /// "Scan Document" above the grid (Standard Delivery one-scan, scan first).
+  final Widget? scanAction;
 
   /// Injected for tests; defaults to the wall clock.
   final DateTime? now;
@@ -91,6 +95,7 @@ class LogisticsHomeHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: BSizes.sm),
+          if (scanAction != null) scanAction!,
           quickActions,
         ],
       ),

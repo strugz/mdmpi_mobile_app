@@ -18,19 +18,16 @@ class WhatsNewPromptController extends GetxController {
   final GetStorage _storage;
   final BuildInfoLoader _load;
 
-  /// Departments that get the prompt. Collection only for now; Logistics
-  /// still reads its notes on Settings → About.
-  static const departments = {'collection'};
-
   bool _showing = false;
 
   static String seenKey(String userId) =>
       userId.isEmpty ? 'WhatsNewSeenVersion' : 'WhatsNewSeenVersion_$userId';
 
   /// The cards [userId] in [department] has still to walk through, or null.
+  /// Every department gets them: Collection its own area, everyone else the
+  /// Logistics one (see [WhatsNewGroup.areaOf]), each with the shared items.
   Future<WhatsNewGroup?> due(
       {required String department, required String userId}) async {
-    if (!departments.contains(department.trim().toLowerCase())) return null;
     final info = await _load();
     if (!info.hasVersion) return null;
     final group = BWhatsNew.exactly(info.version);

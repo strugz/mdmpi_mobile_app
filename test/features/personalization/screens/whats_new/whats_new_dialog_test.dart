@@ -38,6 +38,8 @@ void main() {
         ['First', 'Second', 'Third']);
     expect(
         notes.itemsFor('logistics').map((i) => i.title), ['Trucks', 'Second']);
+    // Every non-Collection department reads the Logistics notes.
+    expect(notes.itemsFor('Service').map((i) => i.title), ['Trucks', 'Second']);
   });
 
   test('the prompt only uses notes filed under the running version', () {
@@ -72,12 +74,16 @@ void main() {
       expect(await c.due(department: 'Collection', userId: 'u2'), isNotNull);
     });
 
-    test('nothing for other departments, unknown or note-less builds',
-        () async {
+    test('Logistics gets its own area and the shared items', () async {
       final version = BWhatsNew.groups.first.version;
-      expect(
-          await controller(version).due(department: 'Logistics', userId: 'u'),
-          isNull);
+      final due =
+          await controller(version).due(department: 'Logistics', userId: 'u');
+      expect(due, isNotNull);
+      expect(due!.items.map((i) => i.area?.toLowerCase()).toSet(),
+          everyElement(anyOf(isNull, 'logistics')));
+    });
+
+    test('nothing for unknown or note-less builds', () async {
       expect(await controller('').due(department: 'Collection', userId: 'u'),
           isNull);
       expect(

@@ -63,7 +63,7 @@ class BList extends StatelessWidget {
                       onTap: () {
                         requestController.currentSelectedRequest.value =
                             request;
-                        _handleRequestTap(context, request, requestController,
+                        handleStandardDeliveryTap(context, request, requestController,
                             userController);
                       },
                       onLongPress: () {
@@ -155,7 +155,7 @@ class BList extends StatelessWidget {
 /// Handles tap on Standard Delivery request based on user role.
 /// Resolves a single [StandardDeliveryModalConfig] from the highest-priority role and
 /// opens the modal — no handler classes needed.
-void _handleRequestTap(
+void handleStandardDeliveryTap(
   BuildContext context,
   StandardDeliveryModel request,
   StandardDeliveryController controller,

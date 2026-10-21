@@ -83,7 +83,7 @@ class StockReceiveList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
                       onTap: () {
                         controller.currentSelectedStockReceive.value = item;
-                        _handleStockReceiveTap(
+                        handleStockReceiveTap(
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
@@ -162,7 +162,7 @@ class StockReceiveList extends StatelessWidget {
 /// Handles tap on Stock Receive request based on user role.
 /// Uses status-driven role selection so users with multiple roles
 /// can perform ALL available actions at ANY status.
-void _handleStockReceiveTap(
+void handleStockReceiveTap(
   BuildContext context,
   PullOutModel request,
   StockReceiveController controller,

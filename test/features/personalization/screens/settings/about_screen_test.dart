@@ -44,11 +44,12 @@ void main() {
         '1.1.110');
   });
 
-  Future<void> pump(WidgetTester tester, AppBuildInfo info) async {
+  Future<void> pump(WidgetTester tester, AppBuildInfo info,
+      {String? department}) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
-    Get.put(AboutController(load: () async => info));
+    Get.put(AboutController(load: () async => info, department: department));
     await tester.pumpWidget(const GetMaterialApp(home: AboutScreen()));
     await tester.pumpAndSettle();
   }
@@ -61,8 +62,24 @@ void main() {
     expect(find.text('Version ${newest.version} (7)'), findsOneWidget);
     expect(find.text("What's new in ${newest.version}"), findsOneWidget);
     expect(find.byKey(const ValueKey('about-newer-note')), findsNothing);
-    expect(find.textContaining(newest.items.first.title), findsOneWidget);
+    expect(find.textContaining(newest.items.first.title), findsWidgets);
     expect(find.byKey(const ValueKey('about-copy')), findsOneWidget);
+  });
+
+  testWidgets('Logistics reads its own notes and the shared ones',
+      (tester) async {
+    final newest = BWhatsNew.groups.first;
+    await pump(
+        tester,
+        AppBuildInfo(appName: 'MDMPI App', version: newest.version, build: ''),
+        department: 'Logistics');
+
+    expect(find.text('LOGISTICS'), findsOneWidget);
+    expect(find.text('COLLECTION'), findsNothing);
+    final controller = Get.find<AboutController>();
+    expect(controller.whatsNew!.items.map((i) => i.area?.toLowerCase()),
+        everyElement(anyOf(isNull, 'logistics')));
+    expect(controller.whatsNew!.items, isNotEmpty);
   });
 
   testWidgets('a build with no notes shows the newest list and says so',

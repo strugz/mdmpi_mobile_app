@@ -15,6 +15,17 @@ abstract class INotificationService {
     String? payload,
   });
 
+  /// Shows [title]/[body] at once on [channelId]. Unlike [showSimple] it never
+  /// asks for the notification permission: without it, Android drops it.
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+    required String channelId,
+    required String channelName,
+    String? payload,
+  });
+
   /// Whether [scheduleAt] can work on this platform (Android). Elsewhere it
   /// does nothing, and callers rely on what the app shows on screen.
   bool get canSchedule;

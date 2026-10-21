@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/ocr_dump_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -10,6 +11,7 @@ import 'package:mdmpi_mobile_app/common/widgets/list_tiles/settings_menu_tile.da
 import 'package:mdmpi_mobile_app/common/widgets/list_tiles/user_profile_tile.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_heading.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/profile/profile.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/local_storage_data_viewer.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/contact_directory_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/settings_department_theme.dart';
@@ -23,6 +25,7 @@ import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/default_area_sheet.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/settings/logistics_theme_screen.dart';
 
 import '../../../../data/repositories/authentication/authentication_repository.dart';
 
@@ -135,6 +138,13 @@ class _LogisticsSettings extends StatelessWidget {
           onTap: () => Get.toNamed(BRoutes.uploadData),
         ),
         const SettingsHardResetSection(),
+        BSettingsMenuTile(
+          icon: Iconsax.task_square,
+          title: 'Unfinished requests',
+          subTitle: 'Requests not yet delivered, taken out or received',
+          onTap: () => Get.toNamed(BRoutes.unfinishedRequests),
+        ),
+        if (GetPlatform.isAndroid) const _UnfinishedReminderTile(),
         Obx(
           () => BSettingsMenuTile(
             icon: Iconsax.location,
@@ -154,6 +164,16 @@ class _LogisticsSettings extends StatelessWidget {
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _ContactDirectoryTile(),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const BSectionHeading(title: 'Preferences', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        BSettingsMenuTile(
+          key: const ValueKey('settings-theme-tile'),
+          icon: Iconsax.brush_2,
+          title: 'Theme',
+          subTitle: LogisticsThemeScreen.summary(),
+          onTap: () => Get.toNamed(BRoutes.logisticsTheme),
+        ),
         const _AboutTile(),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),
@@ -171,6 +191,13 @@ class _LogisticsSettings extends StatelessWidget {
           subTitle: 'Review pending or failed proof image uploads',
           onTap: () => Get.toNamed(BRoutes.imageOutbox),
         ),
+        if (GetPlatform.isAndroid)
+          BSettingsMenuTile(
+            icon: Iconsax.scan,
+            title: 'Dump OCR lines',
+            subTitle: 'Save document photos as one-scan test fixtures',
+            onTap: () => Get.to(() => const OcrDumpPage()),
+          ),
       ],
     );
   }
@@ -309,6 +336,33 @@ class _CollectedScopeTile extends StatelessWidget {
           onChanged: settings.setCollectedAllCollectors,
         ),
         onTap: () => settings.setCollectedAllCollectors(!all),
+      );
+    });
+  }
+}
+
+/// The 8 AM phone reminder of this user's unfinished Logistics requests
+/// (docs/application/UNFINISHED_REQUESTS_REMINDER_PLAN.md).
+class _UnfinishedReminderTile extends StatelessWidget {
+  const _UnfinishedReminderTile();
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<UnfinishedRequestsController>();
+    return Obx(() {
+      final on = controller.reminderOn.value;
+      return BSettingsMenuTile(
+        icon: Iconsax.notification,
+        title: 'Unfinished requests reminder',
+        subTitle: on
+            ? 'At 8 AM, and the first time you open the app each day'
+            : 'Off · the list is still here in Settings',
+        trailing: Switch(
+          key: const ValueKey('settings-unfinished-reminder'),
+          value: on,
+          onChanged: controller.setReminderOn,
+        ),
+        onTap: () => controller.setReminderOn(!on),
       );
     });
   }

@@ -74,7 +74,7 @@ class BClientSearch extends StatelessWidget {
                         requestTransportController.onSearchHerePressed();
                         requestTransportController.searchFocusNode.requestFocus();
                       },
-                      icon: const Icon(Iconsax.edit, color: BColors.primary),
+                      icon: Icon(Iconsax.edit, color: BColors.primary),
                     ),
                   ],
                 ),

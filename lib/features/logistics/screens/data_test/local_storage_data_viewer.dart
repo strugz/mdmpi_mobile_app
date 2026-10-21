@@ -199,7 +199,7 @@ class LocalStorageDataViewer extends StatelessWidget {
                                         flex: 2,
                                         child: Text(
                                           entry.key,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             color: BColors.primary,
                                           ),

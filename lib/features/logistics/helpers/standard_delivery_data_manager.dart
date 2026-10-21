@@ -136,6 +136,7 @@ class StandardDeliveryDataManager {
         formCategoryID: normalizedFormCategory,
         recipientContactDetails: formState.recipientContactDetails.text.trim(),
         recipientName: formState.recipientName.text.trim(),
+        deliveryAddress: formState.deliveryAddressFor(client.id),
       );
 
       // Save to repository - include scanned items from form state

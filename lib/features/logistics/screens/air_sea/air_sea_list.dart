@@ -66,7 +66,7 @@ class AirSeaList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
                       onTap: () {
                         controller.currentSelectedAirSea.value = item;
-                        _handleAirSeaTap(
+                        handleAirSeaTap(
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
@@ -155,7 +155,7 @@ class AirSeaList extends StatelessWidget {
 /// Handles tap on Air/Sea request based on user role.
 /// Resolves a single [AirSeaModalConfig] from the highest-priority role and
 /// opens the modal — no handler classes needed.
-void _handleAirSeaTap(
+void handleAirSeaTap(
   BuildContext context,
   AirSeaModel request,
   AirSeaController controller,

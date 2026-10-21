@@ -12,7 +12,7 @@ class BProductTitleWIthVerifiedIcon extends StatelessWidget {
     required this.title,
     this.maxLines = 1,
     this.textColor,
-    this.iconColor = BColors.primary,
+    this.iconColor,
     this.textAlign = TextAlign.center,
     this.brandTextSize = TextSizes.small,
   });
@@ -38,7 +38,8 @@ class BProductTitleWIthVerifiedIcon extends StatelessWidget {
           ),
         ),
         const SizedBox(width: BSizes.xs),
-        const Icon(Iconsax.verify5, color: BColors.primary, size: BSizes.iconXs)
+        Icon(Iconsax.verify5,
+            color: iconColor ?? BColors.primary, size: BSizes.iconXs)
       ],
     );
   }

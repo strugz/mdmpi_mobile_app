@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
@@ -203,6 +204,7 @@ class StandardDeliveryController extends GetxController
   Future<void> loadForScope(RequestDateScope scope) async {
     await dataManager.fetchStandardDeliveryRequests(
         this, useLocalStorage.value, scope);
+    UnfinishedRequestsController.changed();
   }
 
   /// Loads item categories from the repository and populates form state.
@@ -694,6 +696,41 @@ class StandardDeliveryController extends GetxController
       isAnalyzingFile.value = false;
     }
   }
+
+  // ========================================================================
+  // ONE-SCAN ENTRY POINTS (plan §5 step 15: additions only)
+  // ========================================================================
+
+  /// Adds scanned document references to the form, skipping any already
+  /// there (case and spaces ignored). Empty reference fields are filled
+  /// first, then new fields are added. Returns how many were added.
+  int appendDocumentReferences(List<String> references) {
+    String key(String v) => v.replaceAll(' ', '').toUpperCase();
+    final controllers = formState.documentReferenceControllers;
+    final present = {
+      for (final c in controllers)
+        if (c.text.trim().isNotEmpty) key(c.text.trim()),
+    };
+    var added = 0;
+    for (final ref in references) {
+      final value = ref.trim();
+      if (value.isEmpty || !present.add(key(value))) continue;
+      final empty = controllers.firstWhereOrNull((c) => c.text.trim().isEmpty);
+      if (empty != null) {
+        empty.text = value;
+      } else {
+        controllers.add(TextEditingController(text: value));
+      }
+      added++;
+    }
+    controllers.refresh();
+    return added;
+  }
+
+  /// Merges items read by the one-scan into the form, the same way the
+  /// Add Item scan does.
+  void mergeScannedItems(List<InventoryItemModel> items) =>
+      _mergeScannedItems(items);
 
   /// Merge incoming scanned items into [formState.scannedInventoryItems].
   ///

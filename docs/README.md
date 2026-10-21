@@ -22,6 +22,7 @@ docs/
     DEVELOPER_GUIDE.md               # Developer setup and architecture guide
     LOGISTICS_PROCESS_FLOW_AND_NARRATIVE.docx # ISO / QMS Logistics process flow and user narrative (Word)
     COLLECTION_PROCESS_FLOW_AND_NARRATIVE.docx # ISO / QMS Collection process flow and user narrative (Word)
+    UNFINISHED_REQUESTS_REMINDER_PLAN.md   # Daily unfinished-requests reminder (8 AM notification)
   modules/
     air-sea/README.md                # Air / Sea / Land logistics module (base + HD tabs)
     air-sea/HISTORY_MODEL_PLAN.md    # Superseded history-model plan (see banner in file)
@@ -56,7 +57,9 @@ docs/
 | Module | Domain | Status | Link |
 |---|---|---|---|
 | Post-Demo Revisions TO DO | Logistics / Cross-module | Open: 24, 28 (one-scan, planned) | [POST_DEMO_REVISIONS_TODO.md](POST_DEMO_REVISIONS_TODO.md) |
-| Standard Delivery one-scan fill plan | Logistics (mobile) | Planned (week of 2026-10-12) | [application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md](application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md) |
+| Standard Delivery one-scan fill plan | Logistics (mobile) | Built 2026-10-15 (OCR only; scan from Home; device checks pending) | [application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md](application/LOGISTICS_ONE_SCAN_DELIVERY_PLAN.md) |
+| Air / Sea / Land items plan | Logistics (mobile) | Built 2026-10-15 (app only, no backend change; device QA pending) | [application/LOGISTICS_AIR_SEA_ITEMS_PLAN.md](application/LOGISTICS_AIR_SEA_ITEMS_PLAN.md) |
+| Daily unfinished-requests reminder | Logistics (mobile) | Built 2026-10-21 (8 AM + first open of the day, plus list); device check open | [application/UNFINISHED_REQUESTS_REMINDER_PLAN.md](application/UNFINISHED_REQUESTS_REMINDER_PLAN.md) |
 | Collection Revisions TO DO | Collection (mobile, backend, admin web) | Code complete (4/4); P.O. migration + deploys open | [application/COLLECTION_REVISIONS_TODO.md](application/COLLECTION_REVISIONS_TODO.md) |
 | Reconciliation Tracker plan | Collection (mobile, backend) | Stages 0–5 done; revisions 1–2 (stages) done, backend deploys open | [application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md](application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md) |
 | Reconciliation follow-up reminders | Collection (mobile) | Phases 0–3 built (due state, dashboard chips + sort, Home badge, calendar, 8 AM Android reminder); reminder device check open | [application/COLLECTION_RECON_FOLLOWUP_REMINDERS_PLAN.md](application/COLLECTION_RECON_FOLLOWUP_REMINDERS_PLAN.md) |
