@@ -105,18 +105,32 @@ class BStringSimilarity {
   /// then [tokensMatch] pairs. The score averages how much of the shorter
   /// list is covered (`1.0` when one name is a subset of the other) with the
   /// Dice overlap of both lists (which still marks the missing words).
-  static double tokenSetRatio(Iterable<String> a, Iterable<String> b) {
+  static double tokenSetRatio(Iterable<String> a, Iterable<String> b) =>
+      weightedTokenSetRatio(a, b, (_) => 1);
+
+  /// [tokenSetRatio] with each word counted by [weight] instead of once, so
+  /// a rare word (`GALINATO`) decides more than a common one (`HOSPITAL`).
+  /// A word paired with a misread partner counts with the partner's weight.
+  static double weightedTokenSetRatio(
+    Iterable<String> a,
+    Iterable<String> b,
+    double Function(String token) weight,
+  ) {
     final left = a.where((t) => t.isNotEmpty).toSet().toList();
     final right = b.where((t) => t.isNotEmpty).toSet().toList();
     if (left.isEmpty && right.isEmpty) return 1.0;
     if (left.isEmpty || right.isEmpty) return 0.0;
 
     final unpaired = right.toSet();
+    final partnerOf = <String, String>{};
     final leftover = <String>[];
     for (final token in left) {
-      if (!unpaired.remove(token)) leftover.add(token);
+      if (unpaired.remove(token)) {
+        partnerOf[token] = token;
+      } else {
+        leftover.add(token);
+      }
     }
-    var matched = left.length - leftover.length;
     for (final token in leftover) {
       final partner = unpaired.firstWhere(
         (candidate) => tokensMatch(token, candidate),
@@ -124,11 +138,15 @@ class BStringSimilarity {
       );
       if (partner.isEmpty) continue;
       unpaired.remove(partner);
-      matched++;
+      partnerOf[token] = partner;
     }
 
-    final coverage = matched / math.min(left.length, right.length);
-    final dice = 2 * matched / (left.length + right.length);
+    final matched = partnerOf.values.fold<double>(0, (s, t) => s + weight(t));
+    final leftWeight =
+        left.fold<double>(0, (s, t) => s + weight(partnerOf[t] ?? t));
+    final rightWeight = right.fold<double>(0, (s, t) => s + weight(t));
+    final coverage = matched / math.min(leftWeight, rightWeight);
+    final dice = 2 * matched / (leftWeight + rightWeight);
     return (coverage + dice) / 2;
   }
 }

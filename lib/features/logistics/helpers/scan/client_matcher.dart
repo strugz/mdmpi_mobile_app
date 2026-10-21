@@ -122,7 +122,7 @@ class ClientMatcher {
       if (client == null) continue;
       scored.add(ClientCandidate(
         client: client,
-        score: score(tokens, key, scannedAddress, c),
+        score: score(tokens, key, scannedAddress, c, index),
         kind: ClientMatchKind.fuzzy,
       ));
     }
@@ -130,6 +130,16 @@ class ClientMatcher {
     ranked.addAll(scored);
 
     final top = ranked.take(ClientMatchResult.maxCandidates).toList();
+    if (top.isNotEmpty && top.first.kind == ClientMatchKind.fuzzy) {
+      final runnerUp = top.length > 1 ? top[1].score : 0.0;
+      final best = top.first;
+      top[0] = ClientCandidate(
+        client: best.client,
+        score: best.score,
+        kind: best.kind,
+        clearLead: best.score - runnerUp >= ClientMatchResult.strongLead,
+      );
+    }
     if (top.isEmpty) {
       logDebug('[OneScan] client: no candidate for "$ocrName"');
       return ClientMatchResult(kind: ClientMatchKind.none, ocrName: ocrName);
@@ -141,20 +151,33 @@ class ClientMatcher {
     return ClientMatchResult(kind: kind, ocrName: ocrName, candidates: top);
   }
 
-  /// `0.45 · token-set + 0.35 · Jaro-Winkler + 0.20 · address overlap`
-  /// (plan §4.4). The address part is 0 when either side has none.
+  /// `0.60 · word overlap + 0.20 · Jaro-Winkler + 0.20 · address overlap`.
+  /// When either side has no address, the name alone (`0.75 · word overlap
+  /// + 0.25 · Jaro-Winkler`), so a missing address no longer caps the score.
+  ///
+  /// Both overlaps weigh each word by how rare it is among the clients
+  /// ([ClientTokenIndex.nameWeight]). With every word counted once, and
+  /// whole-name likeness at 0.35, "Hospital", "Medical" and "Center" (in
+  /// hundreds of names) made wrong clients look close: device scans of
+  /// 2026-10-21 topped out at 0.20–0.64 with the runner-up 0.02 behind.
+  /// Word overlap already forgives one-letter OCR slips, so Jaro-Winkler
+  /// weighs less than in plan §4.4 (0.45 / 0.35 / 0.20).
   @visibleForTesting
   static double score(
     List<String> tokens,
     String key,
     List<String> scannedAddress,
     IndexedClient client,
+    ClientTokenIndex index,
   ) {
-    final address = scannedAddress.isEmpty || client.addressTokens.isEmpty
-        ? 0.0
-        : BStringSimilarity.tokenSetRatio(scannedAddress, client.addressTokens);
-    return 0.45 * BStringSimilarity.tokenSetRatio(tokens, client.tokens) +
-        0.35 * BStringSimilarity.jaroWinkler(key, client.key) +
-        0.20 * address;
+    final words = BStringSimilarity.weightedTokenSetRatio(
+        tokens, client.tokens, index.nameWeight);
+    final likeness = BStringSimilarity.jaroWinkler(key, client.key);
+    if (scannedAddress.isEmpty || client.addressTokens.isEmpty) {
+      return 0.75 * words + 0.25 * likeness;
+    }
+    final address = BStringSimilarity.weightedTokenSetRatio(
+        scannedAddress, client.addressTokens, index.addressWeight);
+    return 0.60 * words + 0.20 * likeness + 0.20 * address;
   }
 }

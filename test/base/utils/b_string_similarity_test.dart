@@ -150,4 +150,36 @@ void main() {
       expect(BStringSimilarity.tokenSetRatio([], ['A']), 0.0);
     });
   });
+
+  group('weightedTokenSetRatio', () {
+    double rarity(String t) => t == 'HOSPITAL' ? 1 : 4;
+
+    test('a shared rare word beats a shared common one', () {
+      final rare = BStringSimilarity.weightedTokenSetRatio(
+          ['GALINATO', 'HOSPITAL'], ['GALINATO', 'CLINIC'], rarity);
+      final common = BStringSimilarity.weightedTokenSetRatio(
+          ['GALINATO', 'HOSPITAL'], ['MANILA', 'HOSPITAL'], rarity);
+      expect(rare, greaterThan(common));
+      expect(
+          BStringSimilarity.tokenSetRatio(
+              ['GALINATO', 'HOSPITAL'], ['GALINATO', 'CLINIC']),
+          BStringSimilarity.tokenSetRatio(
+              ['GALINATO', 'HOSPITAL'], ['MANILA', 'HOSPITAL']),
+          reason: 'unweighted, both look the same');
+    });
+
+    test('equal weights give tokenSetRatio', () {
+      const a = ['ST', 'LUKES', 'MEDICAL'];
+      const b = ['ST', 'LUKE', 'MEDICAL', 'CENTER'];
+      expect(BStringSimilarity.weightedTokenSetRatio(a, b, (_) => 1),
+          BStringSimilarity.tokenSetRatio(a, b));
+    });
+
+    test('a misread word counts with its partner weight', () {
+      expect(
+          BStringSimilarity.weightedTokenSetRatio(
+              ['GALINAT0'], ['GALINATO'], (t) => t == 'GALINATO' ? 4 : 9),
+          1.0);
+    });
+  });
 }

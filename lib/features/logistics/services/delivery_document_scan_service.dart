@@ -126,8 +126,8 @@ class DeliveryDocumentScanService implements IDeliveryDocumentScanService {
 
   /// No name under a label: each header row that could be the name is
   /// matched against the client list, and the best is taken when it matches
-  /// a client strongly ([ClientMatchResult.strongScore], or an exact name or
-  /// learned alias). Otherwise the header and [none] stay as they were. The
+  /// a client strongly ([ClientCandidate.isStrong]: a high score with a
+  /// clear lead, or an exact name or learned alias). Otherwise the header and [none] stay as they were. The
   /// user still confirms the client.
   Future<(ScannedClientHeader, ClientMatchResult)> _matchCandidates(
     ScannedClientHeader header,
@@ -148,7 +148,7 @@ class DeliveryDocumentScanService implements IDeliveryDocumentScanService {
         bestName = name;
       }
     }
-    if (best == null || scoreOf(best) < ClientMatchResult.strongScore) {
+    if (best == null || !best.candidates.first.isStrong) {
       return (header, none);
     }
     logDebug('[OneScan] client name taken from a header row (no label): '

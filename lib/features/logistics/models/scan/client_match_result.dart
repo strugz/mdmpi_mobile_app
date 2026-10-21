@@ -9,6 +9,7 @@ class ClientCandidate {
     required this.client,
     required this.score,
     required this.kind,
+    this.clearLead = false,
   });
 
   /// Looked up fresh from the client list at scan time.
@@ -19,11 +20,21 @@ class ClientCandidate {
 
   final ClientMatchKind kind;
 
+  /// The best fuzzy candidate, at least [ClientMatchResult.strongLead]
+  /// ahead of the next one. A close race is never Strong, whatever the score.
+  final bool clearLead;
+
+  /// Alias, exact name, or a high fuzzy score with a clear lead.
+  bool get isStrong =>
+      kind == ClientMatchKind.alias ||
+      kind == ClientMatchKind.exact ||
+      (clearLead && score >= ClientMatchResult.strongScore);
+
   /// The tag shown next to the name.
   String get label => switch (kind) {
         ClientMatchKind.alias => 'Used before',
         ClientMatchKind.exact => 'Exact name',
-        _ => score >= ClientMatchResult.strongScore ? 'Strong' : 'Possible',
+        _ => isStrong ? 'Strong' : 'Possible',
       };
 }
 
@@ -42,6 +53,9 @@ class ClientMatchResult {
   /// search opens pre-filled with [ocrName]. Start value, tuned on device.
   static const double listScore = 0.60;
   static const double strongScore = 0.80;
+
+  /// How far the best fuzzy candidate must lead the next to be Strong.
+  static const double strongLead = 0.10;
   static const int maxCandidates = 5;
 
   final ClientMatchKind kind;

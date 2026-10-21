@@ -125,6 +125,45 @@ void main() {
     });
   });
 
+  group('rare words and a clear lead (2026-10-21)', () {
+    // Common words fill most client names; rare ones tell clients apart.
+    final fillers = [
+      for (var i = 0; i < 12; i++) _c('f$i', 'CLIENT$i MEDICAL CENTER HOSPITAL'),
+    ];
+
+    test('the client sharing the rare words ranks first', () async {
+      final r = await matcher.match(_h('Red Cross Medical Center Hospital'), [
+        ...fillers,
+        _c('A', 'PHILIPPINE RED CROSS'),
+        _c('B', 'MAKATI MEDICAL CENTER HOSPITAL'),
+      ]);
+      expect(r.candidates.first.client.id, 'A',
+          reason: 'B shares three common words, A two rare ones');
+    });
+
+    test('a close race is never Strong, however high', () async {
+      final r = await matcher.match(_h('St Lukes Medical Center'), [
+        ...fillers,
+        _c('G', 'ST LUKES MEDICAL CENTER GLOBAL CITY'),
+        _c('Q', 'ST LUKES MEDICAL CENTER QUEZON CITY'),
+      ]);
+      expect(r.candidates.map((c) => c.client.id).take(2),
+          unorderedEquals(['G', 'Q']));
+      expect(r.candidates.every((c) => c.label == 'Possible'), isTrue);
+    });
+
+    test('a high score well ahead of the rest is Strong', () async {
+      final r = await matcher.match(_h('Galinato Clinik and Hospital'), [
+        ...fillers,
+        ...clients(),
+      ]);
+      expect(r.kind, ClientMatchKind.fuzzy);
+      expect(r.candidates.first.client.id, '4');
+      expect(r.candidates.first.label, 'Strong');
+      expect(r.candidates.skip(1).every((c) => !c.isStrong), isTrue);
+    });
+  });
+
   group('index cache', () {
     test('an unchanged list reuses the index', () async {
       final list = clients();

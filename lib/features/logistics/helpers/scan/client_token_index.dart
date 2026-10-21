@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:mdmpi_mobile_app/base/utils/b_client_address.dart';
 import 'package:mdmpi_mobile_app/base/utils/b_name_normalizer.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -26,13 +28,30 @@ class IndexedClient {
 /// "Performance" and "Cache invalidation"). Built from a list, tagged with
 /// that list's [fingerprint]; rebuilt when the fingerprint changes.
 class ClientTokenIndex {
-  ClientTokenIndex._(this.fingerprintValue, this.clients, this._byToken);
+  ClientTokenIndex._(this.fingerprintValue, this.clients, this._byToken,
+      this._addressCount);
 
   /// [fingerprint] of the list this index was built from.
   final int fingerprintValue;
 
   final List<IndexedClient> clients;
   final Map<String, List<int>> _byToken;
+
+  /// How many clients' addresses hold each address word.
+  final Map<String, int> _addressCount;
+
+  /// How much a name word says about which client it is: high when few
+  /// clients have it (`GALINATO`), low when many do (`HOSPITAL`). A word no
+  /// client has counts as rare. Inverse document frequency,
+  /// `ln((N + 1) / (n + 1)) + 1`, so a word every client has still counts 1.
+  double nameWeight(String token) =>
+      _rarity(_byToken[token]?.length ?? 0);
+
+  /// [nameWeight] for address words (`MANDALUYONG` over `CITY`).
+  double addressWeight(String token) => _rarity(_addressCount[token] ?? 0);
+
+  double _rarity(int clientsWithIt) =>
+      math.log((clients.length + 1) / (clientsWithIt + 1)) + 1;
 
   /// Cheap identity of a client list's content: length plus every
   /// `id|name|address`. Catches a sync, a hard reset or an edit that keeps
@@ -46,23 +65,29 @@ class ClientTokenIndex {
   static ClientTokenIndex build(List<ClientModel> list) {
     final clients = <IndexedClient>[];
     final byToken = <String, List<int>>{};
+    final addressCount = <String, int>{};
     for (final c in list) {
       final tokens = BNameNormalizer.scoringTokens(c.name);
+      final addressTokens = BClientAddress.isMissing(c.address)
+          ? const <String>[]
+          : BNameNormalizer.scoringTokens(c.address);
       final index = clients.length;
       clients.add(IndexedClient(
         id: c.id,
         normalized: BNameNormalizer.normalize(c.name),
         tokens: tokens,
         key: tokens.join(' '),
-        addressTokens: BClientAddress.isMissing(c.address)
-            ? const []
-            : BNameNormalizer.scoringTokens(c.address),
+        addressTokens: addressTokens,
       ));
       for (final t in {...tokens, ...tokens.map(_prefixKey)}) {
         byToken.putIfAbsent(t, () => []).add(index);
       }
+      for (final t in addressTokens.toSet()) {
+        addressCount[t] = (addressCount[t] ?? 0) + 1;
+      }
     }
-    return ClientTokenIndex._(fingerprint(list), clients, byToken);
+    return ClientTokenIndex._(
+        fingerprint(list), clients, byToken, addressCount);
   }
 
   /// Clients sharing at least one significant token, or the first three
