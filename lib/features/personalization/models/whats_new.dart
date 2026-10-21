@@ -19,12 +19,19 @@ class WhatsNewGroup {
 
   /// The items for one department: its own area plus those for everyone.
   List<WhatsNewItem> itemsFor(String department) {
-    final dept = department.trim().toLowerCase();
+    final area = areaOf(department);
     return [
       for (final item in items)
-        if (item.area == null || item.area!.toLowerCase() == dept) item,
+        if (item.area == null || item.area!.toLowerCase() == area) item,
     ];
   }
+
+  /// The notes area a department reads: Collection's own, and Logistics for
+  /// everyone else, as Settings and the bottom navigation split them.
+  static String areaOf(String department) =>
+      department.trim().toLowerCase() == 'collection'
+          ? 'collection'
+          : 'logistics';
 }
 
 class WhatsNewItem {
@@ -60,6 +67,43 @@ class BWhatsNew {
           title: 'Pick your theme',
           detail: 'Settings → Theme: Ocean, Teal, Rose, Cocoa or Graphite, and '
               'Phone, Light or Dark. The whole app follows.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.brush_2,
+          title: 'Pick your theme',
+          detail: 'Settings → Theme: Ocean, Teal, Rose, Cocoa or Graphite, and '
+              'Phone, Light or Dark. The header and buttons follow.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.scan,
+          title: 'Scan a document to fill a request',
+          detail: 'Home → Scan Document: take a photo of a Sales Invoice, DR or '
+              'slip. The client, references and items fill in; check them '
+              'before you save.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.user_search,
+          title: 'The scan finds the client',
+          detail: 'It matches the name on the document to your client list, '
+              'asks you to pick when two are close, and remembers your pick.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.box_add,
+          title: 'Items on Air / Sea / Land',
+          detail: 'Add items to Air / Sea / Land requests as on Standard '
+              'Delivery. View Items shows them and the SMS lists them.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.location,
+          title: 'A delivery address per request',
+          detail: 'Client has no saved address? Enter one for this Standard '
+              'Delivery. The client\'s own record stays as it is.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.info_circle,
+          title: 'What\'s new after an update',
+          detail: 'The first time you open a new version, its changes show '
+              'over Home, one at a time. Settings → About keeps the list.'),
       WhatsNewItem(
           area: 'Collection',
           icon: Iconsax.message_text,

@@ -7,20 +7,32 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/whats_new.dart';
 
 export 'package:mdmpi_mobile_app/base/utils/app_build_info.dart'
     show AppBuildInfo, BuildInfoLoader;
 
-/// Backs Settings → About (Collection TODO item 15).
+/// Backs Settings → About (Collection TODO item 15), for every department:
+/// each reads its own area's notes plus those for everyone.
 class AboutController extends GetxController {
-  AboutController({BuildInfoLoader? load})
+  AboutController({BuildInfoLoader? load, String? department})
       : _load = load ?? BAppBuildInfo.current,
         // Already read during the splash: no "Reading version…" frame.
-        _seed = load == null ? BAppBuildInfo.cached : null;
+        _seed = load == null ? BAppBuildInfo.cached : null,
+        _department = department ?? _signedInDepartment();
 
   final BuildInfoLoader _load;
   final AppBuildInfo? _seed;
+
+  /// Null when nobody is signed in (or in tests): every area is listed.
+  final String? _department;
+
+  static String? _signedInDepartment() {
+    if (!Get.isRegistered<UserController>()) return null;
+    final department = Get.find<UserController>().user.value.department;
+    return department.trim().isEmpty ? null : department;
+  }
 
   final info = Rxn<AppBuildInfo>();
   final isLoading = true.obs;
@@ -47,8 +59,14 @@ class AboutController extends GetxController {
     }
   }
 
-  WhatsNewGroup? get whatsNew =>
-      BWhatsNew.forVersion(info.value?.version ?? '');
+  /// The running version's notes, for this department when it is known.
+  WhatsNewGroup? get whatsNew {
+    final group = BWhatsNew.forVersion(info.value?.version ?? '');
+    final department = _department;
+    if (group == null || department == null) return group;
+    return WhatsNewGroup(
+        version: group.version, items: group.itemsFor(department));
+  }
 }
 
 class AboutScreen extends StatelessWidget {
