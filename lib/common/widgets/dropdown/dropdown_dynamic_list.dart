@@ -376,7 +376,7 @@ class _SearchableDropdownDialogState extends State<_SearchableDropdownDialog> {
                               ? BColors.primary.withValues(alpha: 0.2)
                               : BColors.primary.withValues(alpha: 0.1),
                           trailing: isSelected
-                              ? const Icon(Icons.check,
+                              ? Icon(Icons.check,
                                   color: BColors.primary, size: 20)
                               : null,
                           onTap: () {

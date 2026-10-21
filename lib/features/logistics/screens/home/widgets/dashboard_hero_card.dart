@@ -34,7 +34,7 @@ class DashboardHeroCard extends StatelessWidget {
     required this.total,
     required this.scopeLabel,
     required this.segments,
-    this.accent = BColors.primary,
+    this.accent,
     this.icon,
     this.onScopeTap,
     this.onBack,
@@ -47,7 +47,9 @@ class DashboardHeroCard extends StatelessWidget {
   /// e.g. "All Time", "2026", "Sep 2026".
   final String scopeLabel;
   final List<ShareSegment> segments;
-  final Color accent;
+
+  /// The tile and back chip colour; the Logistics theme colour when null.
+  final Color? accent;
   final IconData? icon;
 
   /// Opens the date filter. The pill is inert when null.
@@ -60,6 +62,7 @@ class DashboardHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = this.accent ?? BColors.primary;
     final dark = BHelperFunctions.isDarkMode(context);
     final textTheme = Theme.of(context).textTheme;
     final muted = dark ? BColors.darkGrey : BColors.textSecondary;

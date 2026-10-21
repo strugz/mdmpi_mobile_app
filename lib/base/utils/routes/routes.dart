@@ -38,6 +38,7 @@ class BRoutes{
   static const teamActivity = '/collection/team-activity';
   static const collectionStorage = '/settings/collection-storage';
   static const collectionTheme = '/settings/collection-theme';
+  static const logisticsTheme = '/settings/logistics-theme';
   static const about = '/settings/about';
   static const addToBucket = '/collection/add-to-bucket';
   // Collection - engagement forms (opened from the activity type sheet)

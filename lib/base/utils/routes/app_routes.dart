@@ -34,6 +34,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/team/tea
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_storage_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/about_screen.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/settings/logistics_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/add_to_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/advanced_payment_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
@@ -86,6 +87,7 @@ class AppRoutes {
     GetPage(name: BRoutes.teamActivity, page: () => const TeamActivityScreen()),
     GetPage(name: BRoutes.collectionStorage, page: () => const CollectionStorageScreen()),
     GetPage(name: BRoutes.collectionTheme, page: () => const CollectionThemeScreen()),
+    GetPage(name: BRoutes.logisticsTheme, page: () => const LogisticsThemeScreen()),
     GetPage(name: BRoutes.about, page: () => const AboutScreen()),
     GetPage(name: BRoutes.addToBucket, page: () => const AddToBucketScreen()),
     // Engagement forms take no arguments; they read the account and invoice

@@ -24,6 +24,7 @@ import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/default_area_sheet.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/settings/logistics_theme_screen.dart';
 
 import '../../../../data/repositories/authentication/authentication_repository.dart';
 
@@ -155,6 +156,16 @@ class _LogisticsSettings extends StatelessWidget {
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _ContactDirectoryTile(),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        const BSectionHeading(title: 'Preferences', showActionButton: false),
+        const SizedBox(height: BSizes.spaceBtwItems),
+        BSettingsMenuTile(
+          key: const ValueKey('settings-theme-tile'),
+          icon: Iconsax.brush_2,
+          title: 'Theme',
+          subTitle: LogisticsThemeScreen.summary(),
+          onTap: () => Get.toNamed(BRoutes.logisticsTheme),
+        ),
         const _AboutTile(),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),

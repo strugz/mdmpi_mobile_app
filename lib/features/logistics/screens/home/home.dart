@@ -60,7 +60,7 @@ class HomeScreen extends StatelessWidget {
                   Expanded(
                     child: Stack(
                       children: [
-                        const Positioned(
+                        Positioned(
                           top: 0,
                           left: 0,
                           right: 0,

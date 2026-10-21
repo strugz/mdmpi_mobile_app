@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/base/utils/theme/logistics_theme.dart';
 import 'package:mdmpi_mobile_app/base/utils/theme/theme.dart';
 
 /// One set of Collection colour tokens: [light] or [dark].
@@ -529,16 +530,25 @@ class BCollectionTheme {
       // files a theme under dark only once a dark theme is already set, so
       // the first call after start-up would put the dark theme in the light
       // slot and a light phone would turn dark.
-      // The Home toggle is Collection's; everyone else follows the phone.
+      // Each department keeps its own Settings → Theme choice on the phone.
       BCollectionColors.themeMode =
           isCollection ? readSavedMode() : ThemeMode.system;
       BCollectionColors.accent =
           isCollection ? readSavedAccent() : BCollectionAccent.ocean;
+      BLogisticsColors.themeMode =
+          isCollection ? ThemeMode.system : BLogisticsTheme.readSavedMode();
+      BLogisticsColors.accent = isCollection
+          ? BLogisticsAccent.ocean
+          : BLogisticsTheme.readSavedAccent();
       Get.rootController
-        ..theme = isCollection ? light : BAppTheme.lightTheme
-        ..darkTheme = isCollection ? dark : BAppTheme.darkTheme
-        ..themeMode = BCollectionColors.themeMode
+        ..theme = isCollection ? light : BLogisticsTheme.light
+        ..darkTheme = isCollection ? dark : BLogisticsTheme.dark
+        ..themeMode = isCollection
+            ? BCollectionColors.themeMode
+            : BLogisticsColors.themeMode
         ..update();
+      // BColors.primary is read, not inherited: recolour what is built.
+      if (!isCollection) rebuildAll();
     });
     // The callback waits for a frame; ask for one, or a call made while
     // nothing is redrawing (after login, say) would wait for the next tap.
@@ -652,7 +662,10 @@ class _BrightnessWatcher with WidgetsBindingObserver {
   @override
   void didChangePlatformBrightness() {
     // Only the phone's setting changed; a pinned choice does not follow it.
-    if (BCollectionColors.themeMode != ThemeMode.system) return;
+    if (BCollectionColors.themeMode != ThemeMode.system ||
+        BLogisticsColors.themeMode != ThemeMode.system) {
+      return;
+    }
     BCollectionTheme.rebuildAll();
   }
 }
