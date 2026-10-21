@@ -62,6 +62,15 @@ class _Phone implements INotificationService {
       String? payload}) async {}
 
   @override
+  Future<void> showNow(
+      {required int id,
+      required String title,
+      required String body,
+      required String channelId,
+      required String channelName,
+      String? payload}) async {}
+
+  @override
   Future<String?> launchPayload() async => null;
 
   @override

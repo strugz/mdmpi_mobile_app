@@ -83,6 +83,28 @@ class NotificationService implements INotificationService {
   }
 
   @override
+  Future<void> showNow({
+    required int id,
+    required String title,
+    required String body,
+    required String channelId,
+    required String channelName,
+    String? payload,
+  }) async {
+    if (!_initialized) {
+      await init();
+    }
+    await _plugin.show(
+      id,
+      title,
+      body,
+      NotificationDetails(
+          android: AndroidNotificationDetails(channelId, channelName)),
+      payload: payload,
+    );
+  }
+
+  @override
   bool get canSchedule => !kIsWeb && Platform.isAndroid;
 
   static bool _zonesLoaded = false;

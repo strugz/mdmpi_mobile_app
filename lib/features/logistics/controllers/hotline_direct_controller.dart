@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
@@ -191,6 +192,7 @@ class HotlineDirectController extends GetxController
   Future<void> loadForScope(RequestDateScope scope) async {
     await dataManager.fetchHotlineDirectRequests(
         this, useLocalStorage.value, scope);
+    UnfinishedRequestsController.changed();
   }
 
   /// Loads item categories from the repository and populates form state.

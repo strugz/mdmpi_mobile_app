@@ -62,6 +62,8 @@ class BRoutes{
   static const signatureOutbox = '/signature-outbox';
   static const imageOutbox = '/image-outbox';
   static const uploadData = '/upload-data';
+  // Logistics requests not yet at a final status (08:00 reminder, Settings)
+  static const unfinishedRequests = '/logistics/unfinished-requests';
   // Back load routes
   static const backLoad = '/back-load';
 }
