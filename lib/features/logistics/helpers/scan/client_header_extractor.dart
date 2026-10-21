@@ -201,7 +201,10 @@ class ClientHeaderExtractor {
     }
 
     // The row(s) below. The value starts near the label's column, and in
-    // the left half of the page when the label is there.
+    // the left half of the page when the label is there. A part ending left
+    // of where the anchor starts is margin, not value: the "NO" cut off from
+    // a sheet underneath, beside "NCR-326", read as the label "No." and
+    // stopped the name (gallery photo of SI 700014771, 2026-10-21).
     final labelInLeftHalf = label.center.dx < page.center.dx;
     final rows = <String>[];
     var anchor = hit.line;
@@ -212,6 +215,7 @@ class ClientHeaderExtractor {
           !used.contains(l) &&
           l.box.center.dy > previousBottom &&
           l.box.left >= anchor.box.left - 3 * h &&
+          l.box.right > anchor.box.left &&
           !(labelInLeftHalf && l.box.left >= page.center.dx);
 
       OcrLine? first;

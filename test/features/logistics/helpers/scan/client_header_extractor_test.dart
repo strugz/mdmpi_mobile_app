@@ -24,6 +24,36 @@ final _systemHeader = [
 
 void main() {
   group('samples', () {
+    test('SI gallery photo: a margin fragment beside the code is not a label',
+        () {
+      // SI 700014771, 2026-10-21: "NO" and "TI", cut off from a sheet
+      // underneath, sit in the left margin. "NO" read as the label "No."
+      // and the customer name was lost.
+      final h = ClientHeaderExtractor.extract([
+        ..._systemHeader,
+        _l('SALES INVOICE', 1469, 1149, 368, 42),
+        _l('Customer', 217, 1179, 124, 33),
+        _l('Philippine Red Cross National Blood Center-NBC Tower', 451, 1222,
+            626, 46),
+        _l('NCR-326', 218, 1224, 104, 24),
+        _l('NO', 119, 1225, 30, 22),
+        _l('TIN 330-000-804', 227, 1256, 194, 30),
+        _l('TI', 134, 1259, 12, 21),
+        _l('Tel #: 000-000', 216, 1287, 163, 34),
+        _l('Address:', 219, 1453, 103, 24),
+        _l('37 Edsa Corner Boni Avenue Mandaluyong PHILIPPINES', 219, 1490,
+            655, 30),
+        _l('Details', 240, 1566, 84, 21),
+        _l('Item Code', 263, 1620, 123, 21),
+        _l('Description', 756, 1620, 129, 21),
+      ]);
+
+      expect(h.label, 'Customer');
+      expect(h.prefix, 'NCR-326');
+      expect(h.name, 'Philippine Red Cross National Blood Center-NBC Tower');
+      expect(h.address, '37 Edsa Corner Boni Avenue Mandaluyong PHILIPPINES');
+    });
+
     test('S1 Inventory Transfer Request: Business Partner, name below', () {
       final h = ClientHeaderExtractor.extract([
         ..._systemHeader,
