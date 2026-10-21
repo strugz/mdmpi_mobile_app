@@ -88,6 +88,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/contact_dir
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/update_name_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/whats_new_prompt_controller.dart';
 
 import '../../data/repositories/collection/collection_repository.dart';
 import '../../features/collection/helpers/sync_manager.dart';
@@ -295,6 +296,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => TeamActivityController(), fenix: true);
     // Settings → Default area (item 15): GetStorage-backed, no repository.
     Get.lazyPut(() => CollectionSettingsController(), fenix: true);
+    // The mandatory What's new over Home after an update: GetStorage-backed.
+    Get.lazyPut(() => WhatsNewPromptController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     // The phone's position, stamped on every queued Collection change.
     // Permanent: it keeps the last fix so a batch asks once.

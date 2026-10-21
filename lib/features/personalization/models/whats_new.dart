@@ -16,6 +16,15 @@ class WhatsNewGroup {
   /// `major.minor.patch`, as in pubspec.
   final String version;
   final List<WhatsNewItem> items;
+
+  /// The items for one department: its own area plus those for everyone.
+  List<WhatsNewItem> itemsFor(String department) {
+    final dept = department.trim().toLowerCase();
+    return [
+      for (final item in items)
+        if (item.area == null || item.area!.toLowerCase() == dept) item,
+    ];
+  }
 }
 
 class WhatsNewItem {
@@ -192,5 +201,16 @@ class BWhatsNew {
       if (g.version == v) return g;
     }
     return groups.first;
+  }
+
+  /// The group filed under exactly [version], or null. The post-login prompt
+  /// uses this rather than [forVersion]: a build with no notes of its own
+  /// must not make everyone walk through an older list again.
+  static WhatsNewGroup? exactly(String version) {
+    final v = version.trim();
+    for (final g in groups) {
+      if (g.version == v) return g;
+    }
+    return null;
   }
 }
