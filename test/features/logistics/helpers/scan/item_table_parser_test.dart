@@ -437,4 +437,200 @@ void main() {
       expect(ItemTableParser.parse([]).headerFound, isFalse);
     });
   });
+
+  group('batch sub-rows without an expiry date (capture of 2026-10-21)', () {
+    // The Scanned Items screen showed "Inorganic Phosphorus, R1 4x15 mL + R2
+    // 4x15mL Batch/Seral # Quantty 2617 2,00" and an item code "öSRS116".
+    final header = [
+      _l('Item Code', 133, 437, 66, 14),
+      _l('Description', 386, 437, 70, 14),
+      _l('Qty', 639, 437, 24, 14),
+      _l('Unit', 734, 437, 28, 14),
+    ];
+
+    test('misspelled titles and the batch values stay out of the description',
+        () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('OSR6122', 143, 457, 50, 14),
+        _l('Inorganic Phosphorus, R1 4x15 mL + R2 4x15mL', 237, 457, 260, 14),
+        _l('2.00', 637, 457, 28, 14),
+        _l('BOX', 734, 457, 26, 14),
+        _l('Batch/Seral #', 315, 476, 80, 13),
+        _l('Quantty', 462, 476, 44, 13),
+        _l('2617', 250, 494, 30, 13),
+        _l('2,00', 474, 494, 23, 13),
+        _l('öSRS116', 143, 510, 50, 14),
+        _l('Cholesterol, R1 4 X 22.5 mL', 237, 510, 160, 14),
+        _l('3.00', 640, 510, 28, 14),
+        _l('BOX', 734, 510, 26, 14),
+        _l('Batch/Serlal #', 316, 529, 82, 13),
+        _l('Quantity', 463, 529, 47, 13),
+        _l('2613', 252, 547, 30, 13),
+        _l('3,00', 475, 547, 23, 13),
+        _l('Comments:', 122, 640, 66, 14),
+      ]);
+
+      expect(r.items.map((i) => (i.itemCode, i.description, i.qty, i.unit)), [
+        ('OSR6122', 'Inorganic Phosphorus, R1 4x15 mL + R2 4x15mL', 2.0, 'BOX'),
+        ('OSRS116', 'Cholesterol, R1 4 X 22.5 mL', 3.0, 'BOX'),
+      ]);
+      expect([
+        for (final i in r.items)
+          for (final b in i.batches) (b.batchSerial, b.batchQuantity, b.expiryDate)
+      ], [
+        ('2617', 2.0, ''),
+        ('2613', 3.0, ''),
+      ]);
+      // Printed OSR6116: the S sits where OSR6122 has a digit.
+      expect(r.unsure, {1});
+      expect(r.unsureLabels, ['OSRS116']);
+    });
+
+    test('titles and values read on the description line are cut off', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('OSR6122', 143, 457, 50, 14),
+        _l('Inorganic Phosphorus, R1 4x15 mL + R2 4x15mL Batch/Seral # '
+            'Quantty 2617 2,00', 237, 457, 380, 14),
+        _l('2.00', 637, 457, 28, 14),
+        _l('BOX', 734, 457, 26, 14),
+        _l('öSRS116', 143, 510, 50, 14),
+        _l('Cholesterol, R1 4 X 22.5 mL Batch/Serlal # Quantity 2613 3,00',
+            237, 510, 380, 14),
+        _l('3.00', 640, 510, 28, 14),
+        _l('BOX', 734, 510, 26, 14),
+      ]);
+
+      expect(r.items.map((i) => (i.itemCode, i.description)), [
+        ('OSR6122', 'Inorganic Phosphorus, R1 4x15 mL + R2 4x15mL'),
+        ('OSRS116', 'Cholesterol, R1 4 X 22.5 mL'),
+      ]);
+      expect(r.items.map((i) => i.batches.single.batchSerial), ['2617', '2613']);
+      expect(r.items.map((i) => i.batches.single.batchQuantity), [2.0, 3.0]);
+    });
+
+    test('a misspelled Description title still finds the table', () {
+      // Gallery photo of 2026-10-21: "Descriptian", and no items at all.
+      final r = ItemTableParser.parse([
+        _l('Item Code', 151, 1380, 138, 30),
+        _l('Descriptian', 712, 1379, 153, 41),
+        _l('Qty', 1288, 1386, 44, 28),
+        _l('Unit', 1503, 1385, 55, 24),
+        _l('OSR6122', 158, 1423, 123, 32),
+        _l('Inorganic Phosphorus, R1 4x15 mL + R2 4x15mL', 379, 1417, 623, 49),
+        _l('2.00', 1282, 1428, 60, 28),
+        _l('BOX', 1496, 1425, 57, 29),
+        _l('Batch/Serial #', 550, 1466, 164, 30),
+        _l('Quantity', 882, 1470, 103, 28),
+        _l('Expiry Date', 1051, 1471, 137, 27),
+        _l('2617', 408, 1513, 56, 21),
+        _l('2.00', 910, 1515, 48, 21),
+        _l('07/01/2028', 1045, 1513, 140, 29),
+      ]);
+      expect(r.headerFound, isTrue);
+      final item = r.items.single;
+      expect((item.itemCode, item.description, item.qty, item.unit),
+          ('OSR6122', 'Inorganic Phosphorus, R1 4x15 mL + R2 4x15mL', 2.0, 'BOX'));
+      expect(item.batches.map((b) => (b.batchSerial, b.batchQuantity, b.expiryDate)),
+          [('2617', 2.0, '07/01/2028')]);
+    });
+
+    test('a Description title split in two still finds the table', () {
+      // Gallery photo of SI 700014771: "Descripti on".
+      final r = ItemTableParser.parse([
+        _l('Item Code', 263, 1620, 123, 21),
+        _l('Descripti on', 756, 1620, 129, 21),
+        _l('Qty', 1253, 1620, 41, 21),
+        _l('Unit', 1438, 1620, 49, 21),
+        _l('B36845', 276, 1653, 95, 24),
+        _l('DxH 500 Diluent, 10L', 480, 1653, 218, 24),
+        _l('6.00', 1249, 1653, 47, 24),
+        _l('BOX', 1436, 1653, 52, 24),
+      ]);
+      expect(r.items.map((i) => (i.itemCode, i.description, i.qty, i.unit)),
+          [('B36845', 'DxH 500 Diluent, 10L', 6.0, 'BOX')]);
+    });
+
+    test('a code with a letter where its neighbour has a digit is flagged', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('OSR6122', 143, 457, 50, 14),
+        _l('Inorganic Phosphorus', 237, 457, 160, 14),
+        _l('2.00', 637, 457, 28, 14),
+        _l('BOX', 734, 457, 26, 14),
+        _l('OSRB116', 143, 510, 50, 14),
+        _l('Cholesterol', 237, 510, 160, 14),
+        _l('3.00', 640, 510, 28, 14),
+        _l('BOX', 734, 510, 26, 14),
+      ]);
+      expect(r.items.map((i) => i.itemCode), ['OSR6122', 'OSRB116'],
+          reason: 'the code stays as read: which digit it was is not known');
+      expect(r.unsure, {1});
+      expect(r.unsureLabels, ['OSRB116']);
+    });
+
+    test('codes that differ only in digits are not flagged', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('B36845', 143, 457, 50, 14),
+        _l('DxH 500 Diluent, 10L', 237, 457, 160, 14),
+        _l('6.00', 637, 457, 28, 14),
+        _l('BOX', 734, 457, 26, 14),
+        _l('B36846', 143, 510, 50, 14),
+        _l('DXH 500 Lyse, 500mL', 237, 510, 160, 14),
+        _l('5.00', 640, 510, 28, 14),
+        _l('BOTTLE', 734, 510, 46, 14),
+        _l('RXH60169', 143, 563, 60, 14),
+        _l('Optic Bench', 237, 563, 160, 14),
+        _l('1.00', 640, 563, 28, 14),
+        _l('PIECE', 734, 563, 46, 14),
+      ]);
+      expect(r.unsure, isEmpty);
+    });
+
+    test('close-match titles: misspelled headers on any form still read', () {
+      final r = ItemTableParser.parse([
+        _l('ltem Cade', 133, 437, 66, 14),
+        _l('Descrlptlon', 386, 437, 70, 14),
+        _l('Quantlty', 639, 437, 50, 14),
+        _l('Unit', 734, 437, 28, 14),
+        _l('Unit Prise', 880, 437, 60, 14),
+        _l('B36845', 143, 460, 47, 14),
+        _l('DxH 500 Diluent, 10L', 237, 460, 124, 14),
+        _l('6.00', 645, 460, 28, 14),
+        _l('BOX', 734, 460, 26, 14),
+        _l('16,104.00', 880, 460, 62, 14),
+      ]);
+      expect(r.items.map((i) => (i.itemCode, i.description, i.qty, i.unit)),
+          [('B36845', 'DxH 500 Diluent, 10L', 6.0, 'BOX')]);
+    });
+
+    test('close-match titles never turn an item row into a header', () {
+      final r = ItemTableParser.parse([
+        _l('Item Code', 133, 437, 66, 14),
+        _l('Description', 386, 437, 70, 14),
+        _l('Qty', 639, 437, 24, 14),
+        _l('B36845', 143, 460, 47, 14),
+        _l('Descriptive Amounts Booklet', 237, 460, 200, 14),
+        _l('2.00', 645, 460, 28, 14),
+        _l('B36846', 143, 490, 47, 14),
+        _l('DXH 500 Lyse, 500mL', 237, 490, 131, 14),
+        _l('5.00', 645, 490, 28, 14),
+      ]);
+      expect(r.items.map((i) => i.itemCode), ['B36845', 'B36846']);
+      expect(r.items.first.description, 'Descriptive Amounts Booklet');
+    });
+
+    test('a valid item code is left as read', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('OSR6122T', 143, 457, 56, 14),
+        _l('Inorganic Phosphorus', 237, 457, 160, 14),
+        _l('1.00', 637, 457, 28, 14),
+        _l('BOX', 734, 457, 26, 14),
+      ]);
+      expect(r.items.single.itemCode, 'OSR6122T');
+    });
+  });
 }

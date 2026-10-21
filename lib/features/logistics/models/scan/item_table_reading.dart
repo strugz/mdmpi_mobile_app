@@ -21,8 +21,8 @@ class ItemTableReading {
   final List<InventoryItemModel> items;
 
   /// Indexes into [items] the user should check: quantity missing or
-  /// unreadable (set to 1), a very short description, or a row read as one
-  /// run of text across several columns.
+  /// unreadable (set to 1), a very short description, a row read as one
+  /// run of text across several columns, or an item code that looks misread.
   final Set<int> unsure;
 
   /// The text of every line inside the table body. Property tags in here
@@ -33,4 +33,14 @@ class ItemTableReading {
   final List<String> dropped;
 
   bool isUnsure(int index) => unsure.contains(index);
+
+  /// The items to check, by item code (description when there is none), in
+  /// table order, so the review sheet can name them.
+  List<String> get unsureLabels => [
+        for (final i in unsure.toList()..sort())
+          if (i < items.length)
+            items[i].itemCode.isNotEmpty
+                ? items[i].itemCode
+                : items[i].description,
+      ];
 }

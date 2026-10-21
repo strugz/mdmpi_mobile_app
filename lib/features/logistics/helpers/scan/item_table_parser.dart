@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show Rect;
 
 import 'package:mdmpi_mobile_app/base/utils/b_ocr_orientation.dart';
+import 'package:mdmpi_mobile_app/base/utils/b_string_similarity.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/ocr_rows.dart';
@@ -66,9 +67,10 @@ class ItemTableParser {
   );
 
   /// The sub-header under an item on a Sales Invoice:
-  /// "Batch/Serial #   Quantity   Expiry Date".
+  /// "Batch/Serial #   Quantity   Expiry Date". OCR misspells "Serial"
+  /// (`Seral`, `Serlal`: capture of 2026-10-21).
   static final RegExp _batchHeader =
-      RegExp(r'batch\s*/?\s*serial', caseSensitive: false);
+      RegExp(r'batch\s*/?\s*s[ea]?r[a-z1|]*\s*#?', caseSensitive: false);
 
   /// A date, allowing the OCR slips seen on captures (`D8/06/2027`).
   static final RegExp _date = RegExp(
@@ -139,6 +141,10 @@ class ItemTableParser {
     // header or a batch line often lands in the same row as an item, and
     // taking the whole row as a batch lost that item (device run 2026-10-15).
     final batchArea = _batchArea(sorted.where((l) => l.box.top >= headerBottom));
+    // A batch row right under its titles may have no expiry date (capture of
+    // 2026-10-21: "2617  2,00"), so the row after the titles is a batch even
+    // without one.
+    var batchTitled = false;
 
     for (final fullRow in rows.skip(headerRow + 1)) {
       if (fullRow.first.box.top < headerBottom) continue;
@@ -148,22 +154,35 @@ class ItemTableParser {
       if (batchArea != null) {
         final headerParts =
             row.where((l) => _isBatchHeaderPart(l, batchArea)).toList();
+        // Values read on the same line as the titles.
+        for (final l in headerParts) {
+          final batch = _batchAfterTitles(l.text);
+          if (last == null || batch == null) continue;
+          last.batches.add(batch.$1);
+          if (!batch.$2) last.unsure = true;
+        }
+        if (headerParts.isNotEmpty) batchTitled = true;
         var batchParts = <OcrLine>[];
-        if (last != null &&
-            row.any((l) => batchArea.contains(l) && _date.hasMatch(l.text))) {
+        final dated =
+            row.any((l) => batchArea.contains(l) && _date.hasMatch(l.text));
+        if (last != null && (dated || batchTitled)) {
           batchParts = row
               .where((l) =>
                   !headerParts.contains(l) &&
                   batchArea.contains(l) &&
-                  _isBatchToken(l.text))
+                  _isBatchToken(l.text) &&
+                  // An item code is never part of a batch.
+                  _columnFor(l.box.center.dx, columns) != _Col.itemCode)
               .toList()
             ..sort((a, b) => a.box.left.compareTo(b.box.left));
-          final batch = _batch(batchParts.map((l) => l.text.trim()).join(' '));
+          final batch = _batch(batchParts.map((l) => l.text.trim()).join(' '),
+              dateRequired: !batchTitled);
           if (batch == null) {
             batchParts = [];
           } else {
             last.batches.add(batch.$1);
             if (!batch.$2) last.unsure = true;
+            batchTitled = false;
           }
         }
         if (headerParts.isNotEmpty || batchParts.isNotEmpty) {
@@ -263,8 +282,14 @@ class ItemTableParser {
       lastBottom = rowBottom;
     }
 
-    for (final r in collected) {
-      if (r.unsure || r.description.length < 3) unsure.add(items.length);
+    final codes = [for (final r in collected) _cleanCode(r.itemCode)];
+    for (final (i, r) in collected.indexed) {
+      _cutBatchTail(r);
+      if (r.unsure ||
+          r.description.length < 3 ||
+          _codeLooksMisread(codes[i], codes)) {
+        unsure.add(items.length);
+      }
       // A single batch whose quantity was not read holds the whole item
       // quantity. The item stays flagged for the user to check.
       final batches = r.batches.length == 1 && r.batches.single.batchQuantity == 0
@@ -277,7 +302,7 @@ class ItemTableParser {
             ]
           : r.batches;
       items.add(InventoryItemModel(
-        itemCode: r.itemCode,
+        itemCode: codes[i],
         description: r.description,
         qty: r.qty,
         unit: _cleanUnit(r.unit),
@@ -303,6 +328,12 @@ class ItemTableParser {
   /// mistaken for a header.
   static List<_Title> _titlesIn(OcrLine line) {
     final text = line.text;
+    // A whole line close to one title ("Unit Prise") is that title, before
+    // a short exact title inside it ("Unit") takes part of it.
+    final whole = _closestTitle(_plainTitle(text));
+    if (whole != null) {
+      return [_Title(whole, line.box.left, line.box.right)];
+    }
     final found = <_Title>[];
     final taken = List<bool>.filled(text.length, false);
     for (final (col, re) in _titles) {
@@ -314,6 +345,7 @@ class ItemTableParser {
         found.add(_Title(col, _xAt(line, m.start), _xAt(line, m.end)));
       }
     }
+    _closeTitlesIn(line, taken, found);
     var leftover = 0;
     var letters = 0;
     for (var i = 0; i < text.length; i++) {
@@ -322,6 +354,80 @@ class ItemTableParser {
       if (!taken[i]) leftover++;
     }
     return leftover < math.max(3, 0.3 * letters) ? found : const [];
+  }
+
+  /// Titles the patterns above miss because OCR misspelled or split them
+  /// (`Descriptian`, `Descripti on`, `Quantlty`), on every form: a word, or
+  /// two words read together, within one edit of a known title (two for
+  /// titles of eight letters or more). Short titles (`Qty`, `Unit`, `UOM`)
+  /// stay exact: one edit there matches almost anything.
+  static final List<(_Col, String)> _closeTitles = [
+    (_Col.description, 'description'),
+    (_Col.description, 'itemdescription'),
+    (_Col.itemCode, 'itemcode'),
+    (_Col.qty, 'quantity'),
+    (_Col.partNo, 'partno'),
+    (_Col.serialNo, 'serialno'),
+    (_Col.ptn, 'propertytag'),
+    (_Col.ignored, 'unitprice'),
+    (_Col.ignored, 'warehouse'),
+    (_Col.ignored, 'fromwarehouse'),
+    (_Col.ignored, 'expirydate'),
+    (_Col.ignored, 'amount'),
+    (_Col.ignored, 'remarks'),
+    (_Col.ignored, 'glaccount'),
+    (_Col.ignored, 'accountname'),
+  ];
+
+  static void _closeTitlesIn(OcrLine line, List<bool> taken, List<_Title> found) {
+    final text = line.text;
+    final words = [
+      for (final m in RegExp(r'\S+').allMatches(text))
+        if (!taken.sublist(m.start, m.end).any((t) => t)) m,
+    ];
+    void take(int start, int end, _Col col) {
+      for (var i = start; i < end; i++) {
+        taken[i] = true;
+      }
+      found.add(_Title(col, _xAt(line, start), _xAt(line, end)));
+    }
+
+    var i = 0;
+    while (i < words.length) {
+      final w = words[i];
+      // Two words first: "Descripti on" is one title split by OCR.
+      if (i + 1 < words.length && words[i + 1].start == w.end + 1) {
+        final next = words[i + 1];
+        final col = _closestTitle(_plainTitle('${w.group(0)}${next.group(0)}'));
+        if (col != null) {
+          take(w.start, next.end, col);
+          i += 2;
+          continue;
+        }
+      }
+      final col = _closestTitle(_plainTitle(w.group(0)!));
+      if (col != null) take(w.start, w.end, col);
+      i++;
+    }
+  }
+
+  /// Lower case letters only, OCR digits read as the letters they replace
+  /// (`Descr1ption`).
+  static String _plainTitle(String s) => s
+      .toLowerCase()
+      .replaceAll('0', 'o')
+      .replaceAll('1', 'i')
+      .replaceAll(RegExp('[^a-z]'), '');
+
+  /// The column of the title [word] is close to, or null.
+  static _Col? _closestTitle(String word) {
+    if (word.length < 5) return null;
+    for (final (col, title) in _closeTitles) {
+      final allowed = title.length >= 8 ? 2 : 1;
+      if ((word.length - title.length).abs() > allowed) continue;
+      if (BStringSimilarity.levenshtein(word, title) <= allowed) return col;
+    }
+    return null;
   }
 
   /// Horizontal position of character [index] in [line], assuming evenly
@@ -380,13 +486,19 @@ class ItemTableParser {
   /// centred title) to just past "Expiry Date". Null when the document has no
   /// batch sub-rows, so dates elsewhere are never read as batches.
   static _BatchArea? _batchArea(Iterable<OcrLine> body) {
-    final titles = body.where((l) => _batchHeader.hasMatch(l.text)).toList();
+    final titles = body
+        .where((l) => _batchHeader.matchAsPrefix(l.text.trim()) != null)
+        .toList();
     if (titles.isEmpty) return null;
     final h = titles.map((l) => l.box.height).reduce(math.max);
     final left = titles.map((l) => l.box.left).reduce(math.min) - 6 * h;
     var right = titles.map((l) => l.box.right).reduce(math.max);
     for (final l in body) {
-      if (_expiryTitle.hasMatch(l.text.trim())) {
+      final text = l.text.trim();
+      // "Quantity" only beside a batch title: elsewhere it may be any column.
+      final besideTitle = _quantityTitle.hasMatch(text) &&
+          titles.any((t) => (t.box.center.dy - l.box.center.dy).abs() < h);
+      if (_expiryTitle.hasMatch(text) || besideTitle) {
         right = math.max(right, l.box.right);
       }
     }
@@ -395,13 +507,15 @@ class ItemTableParser {
 
   static final RegExp _expiryTitle =
       RegExp(r'^expiry\s*date$', caseSensitive: false);
+  /// "Quantity", also as OCR misspells it (`Quantty`).
   static final RegExp _quantityTitle =
-      RegExp(r'^quantity$', caseSensitive: false);
+      RegExp(r'^qu?an?t[a-z1|]{0,4}$', caseSensitive: false);
 
-  /// "Batch/Serial #", or the "Quantity" / "Expiry Date" beside it.
+  /// "Batch/Serial #", or the "Quantity" / "Expiry Date" beside it. A line
+  /// that only ends in the titles is an item's description, cut later.
   static bool _isBatchHeaderPart(OcrLine line, _BatchArea area) {
     final text = line.text.trim();
-    if (_batchHeader.hasMatch(text)) return true;
+    if (_batchHeader.matchAsPrefix(text) != null) return true;
     return area.contains(line) &&
         (_quantityTitle.hasMatch(text) || _expiryTitle.hasMatch(text));
   }
@@ -419,10 +533,16 @@ class ItemTableParser {
   /// token is the expiry, the first other token with a digit the serial, and
   /// the next plain number the quantity. Null when the row has no date (not
   /// a batch row). The flag is false when the quantity was not read.
-  static (InventoryBatchModel, bool)? _batch(String text) {
+  ///
+  /// With [dateRequired] false a row without a date is read too, the expiry
+  /// left empty.
+  static (InventoryBatchModel, bool)? _batch(String text,
+      {bool dateRequired = true}) {
     final date = _date.firstMatch(text);
-    if (date == null) return null;
-    final rest = '${text.substring(0, date.start)} ${text.substring(date.end)}'
+    if (date == null && dateRequired) return null;
+    final rest = (date == null
+            ? text
+            : '${text.substring(0, date.start)} ${text.substring(date.end)}')
         .split(RegExp(r'\s+'))
         .where((t) => t.isNotEmpty)
         .toList();
@@ -431,8 +551,11 @@ class ItemTableParser {
     for (final token in rest) {
       if (serial.isEmpty && RegExp(r'\d').hasMatch(token) && !_number.hasMatch(token)) {
         serial = token;
-      } else if (serial.isEmpty && _number.hasMatch(token) && !token.contains('.')) {
-        // An all-digit serial such as 0179170 (no decimal point).
+      } else if (serial.isEmpty &&
+          _number.hasMatch(token) &&
+          !RegExp('[.,]').hasMatch(token)) {
+        // An all-digit serial such as 0179170 (no decimal point or comma:
+        // `2,00` is a quantity).
         serial = token;
       } else if (quantity == null && _number.hasMatch(token)) {
         quantity = double.tryParse(token.replaceAll(',', '.'));
@@ -443,10 +566,65 @@ class ItemTableParser {
       InventoryBatchModel(
         batchSerial: serial,
         batchQuantity: quantity ?? 0,
-        expiryDate: _fixDate(date.group(0)!),
+        expiryDate: date == null ? '' : _fixDate(date.group(0)!),
       ),
       quantity != null,
     );
+  }
+
+  /// The batch read after the titles on one line ("Batch/Seral # Quantty
+  /// 2617 2,00"), or null when only titles are there.
+  static (InventoryBatchModel, bool)? _batchAfterTitles(String text) {
+    final m = _batchHeader.firstMatch(text);
+    if (m == null) return null;
+    final values = text
+        .substring(m.end)
+        .split(RegExp(r'\s+'))
+        .where((t) =>
+            t.isNotEmpty &&
+            t != '#' &&
+            !_quantityTitle.hasMatch(t) &&
+            !RegExp(r'^(expiry|date)$', caseSensitive: false).hasMatch(t))
+        .toList();
+    if (values.isEmpty || !values.every(_isBatchToken)) return null;
+    return _batch(values.join(' '), dateRequired: false);
+  }
+
+  /// The batch titles and values glued onto the end of a description
+  /// ("… 4x15mL Batch/Seral # Quantty 2617 2,00"; capture of 2026-10-21)
+  /// are cut off; the values become the item's batch when it has none.
+  static void _cutBatchTail(_Row r) {
+    final m = _batchHeader.firstMatch(r.description);
+    if (m == null || m.start == 0) return;
+    final tail = r.description.substring(m.start);
+    r.description = r.description.substring(0, m.start).trim();
+    if (r.batches.isNotEmpty) return;
+    final batch = _batchAfterTitles(tail);
+    if (batch == null) return;
+    r.batches.add(batch.$1);
+    if (!batch.$2) r.unsure = true;
+  }
+
+  /// Codes are plain capitals and digits: an accented letter is the capital
+  /// OCR misread (`öSRS116` is `OSRS116`), and a stray mark before the code
+  /// is dropped.
+  static String _cleanCode(String code) => _cleanUnit(code.replaceAllMapped(
+          RegExp('[à-öø-ÿ]'), (m) => m.group(0)!.toUpperCase()))
+      .replaceFirst(RegExp(r'^[^A-Za-z0-9]+(?=[A-Za-z0-9])'), '');
+
+  /// Whether [code] looks like another code on the same document with a
+  /// letter where that one has a digit, the rest digits: `OSRB116` next to
+  /// `OSR6122` (the 6 read as B or S, capture of 2026-10-21). Which digit it
+  /// was cannot be told, so the item is only flagged for the user to check.
+  static bool _codeLooksMisread(String code, List<String> codes) {
+    final m = RegExp(r'^([A-Za-z0-9]*?[A-Za-z])([A-Za-z])(\d+)$').firstMatch(code);
+    if (m == null) return false;
+    final prefix = m.group(1)!;
+    return codes.any((other) =>
+        other != code &&
+        other.length > prefix.length &&
+        other.startsWith(prefix) &&
+        RegExp(r'\d').hasMatch(other[prefix.length]));
   }
 
   /// Accented letters OCR puts into plain capitals (`BÖTTLE`).

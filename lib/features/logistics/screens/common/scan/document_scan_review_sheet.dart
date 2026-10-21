@@ -197,7 +197,8 @@ class _Review extends StatelessWidget {
                             '${items.items.length} item${items.items.length == 1 ? '' : 's'} found'),
                         subtitle: Text(items.unsure.isEmpty
                             ? 'You can check and edit them after Apply.'
-                            : '${items.unsure.length} to check (quantity or text unsure). '
+                            : '${items.unsure.length} to check (code, quantity '
+                                'or text unsure): ${items.unsureLabels.join(', ')}. '
                                 'You can edit them after Apply.'),
                       )),
               ],
