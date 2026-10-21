@@ -132,6 +132,33 @@ class BCollectionPalette {
     onHeaderMuted: Color(0xFFAAB2D4),
   );
 
+  /// This palette in [accent]'s colours: the accent and the header change,
+  /// surfaces, ink and the status colours do not (they carry meaning).
+  BCollectionPalette withAccent(BCollectionAccentColors accent) =>
+      BCollectionPalette(
+        brightness: brightness,
+        background: background,
+        surface: surface,
+        surfaceMuted: surfaceMuted,
+        outline: outline,
+        ink: ink,
+        inkSecondary: inkSecondary,
+        inkMuted: inkMuted,
+        primary: accent.primary,
+        primaryPressed: accent.primaryPressed,
+        primarySoft: accent.primarySoft,
+        onPrimary: accent.onPrimary,
+        success: success,
+        warning: warning,
+        danger: danger,
+        info: info,
+        reconcile: reconcile,
+        neutral: neutral,
+        headerBackground: accent.headerBackground,
+        onHeader: onHeader,
+        onHeaderMuted: accent.onHeaderMuted,
+      );
+
   ColorScheme get scheme => ColorScheme(
         brightness: brightness,
         primary: primary,
@@ -150,9 +177,150 @@ class BCollectionPalette {
       );
 }
 
+/// The colours one [BCollectionAccent] gives a palette, in light or dark.
+@immutable
+class BCollectionAccentColors {
+  const BCollectionAccentColors({
+    required this.primary,
+    required this.primaryPressed,
+    required this.primarySoft,
+    required this.onPrimary,
+    required this.headerBackground,
+    required this.onHeaderMuted,
+  });
+
+  final Color primary;
+  final Color primaryPressed;
+  final Color primarySoft;
+  final Color onPrimary;
+  final Color headerBackground;
+  final Color onHeaderMuted;
+}
+
+/// The colour themes a collector can pick in Settings → Theme.
+///
+/// Each is an accent and a header to match, in light and dark. None is green,
+/// amber, red or purple: those are the status colours (paid, due, overdue,
+/// reconciliation), and an accent in one of them would read as a status.
+/// [ocean] is the original Collection blue, and stays the default.
+enum BCollectionAccent {
+  ocean(
+    'Ocean',
+    light: BCollectionAccentColors(
+      primary: Color(0xFF3452C7),
+      primaryPressed: Color(0xFF2A43A6),
+      primarySoft: Color(0xFFEAEEFB),
+      onPrimary: Color(0xFFFFFFFF),
+      headerBackground: Color(0xFF1F2A5C),
+      onHeaderMuted: Color(0xFFB8C0E0),
+    ),
+    dark: BCollectionAccentColors(
+      primary: Color(0xFF8EA2F2),
+      primaryPressed: Color(0xFF7389E6),
+      primarySoft: Color(0xFF252B45),
+      onPrimary: Color(0xFF0F1530),
+      headerBackground: Color(0xFF161C3A),
+      onHeaderMuted: Color(0xFFAAB2D4),
+    ),
+  ),
+  teal(
+    'Teal',
+    light: BCollectionAccentColors(
+      primary: Color(0xFF0F7C80),
+      primaryPressed: Color(0xFF0B6366),
+      primarySoft: Color(0xFFE2F2F2),
+      onPrimary: Color(0xFFFFFFFF),
+      headerBackground: Color(0xFF0E3B40),
+      onHeaderMuted: Color(0xFFA9CFD1),
+    ),
+    dark: BCollectionAccentColors(
+      primary: Color(0xFF5EC4C7),
+      primaryPressed: Color(0xFF46AEB1),
+      primarySoft: Color(0xFF173436),
+      onPrimary: Color(0xFF062224),
+      headerBackground: Color(0xFF0B2A2D),
+      onHeaderMuted: Color(0xFF9BC4C6),
+    ),
+  ),
+  rose(
+    'Rose',
+    light: BCollectionAccentColors(
+      primary: Color(0xFFB0306A),
+      primaryPressed: Color(0xFF92255A),
+      primarySoft: Color(0xFFF8E6EE),
+      onPrimary: Color(0xFFFFFFFF),
+      headerBackground: Color(0xFF4A1830),
+      onHeaderMuted: Color(0xFFE0B5C8),
+    ),
+    dark: BCollectionAccentColors(
+      primary: Color(0xFFF08DB8),
+      primaryPressed: Color(0xFFE073A3),
+      primarySoft: Color(0xFF3D1F2D),
+      onPrimary: Color(0xFF3A0C22),
+      headerBackground: Color(0xFF2E1220),
+      onHeaderMuted: Color(0xFFD4A9BC),
+    ),
+  ),
+  cocoa(
+    'Cocoa',
+    light: BCollectionAccentColors(
+      primary: Color(0xFF8A5A3C),
+      primaryPressed: Color(0xFF724A31),
+      primarySoft: Color(0xFFF3EBE5),
+      onPrimary: Color(0xFFFFFFFF),
+      headerBackground: Color(0xFF3B2A20),
+      onHeaderMuted: Color(0xFFD2C0B3),
+    ),
+    dark: BCollectionAccentColors(
+      primary: Color(0xFFD9A982),
+      primaryPressed: Color(0xFFC8936A),
+      primarySoft: Color(0xFF33281F),
+      onPrimary: Color(0xFF2B1A0E),
+      headerBackground: Color(0xFF241A14),
+      onHeaderMuted: Color(0xFFC4AE9D),
+    ),
+  ),
+  graphite(
+    'Graphite',
+    light: BCollectionAccentColors(
+      primary: Color(0xFF3F4A5A),
+      primaryPressed: Color(0xFF323B48),
+      primarySoft: Color(0xFFEAECEF),
+      onPrimary: Color(0xFFFFFFFF),
+      headerBackground: Color(0xFF1E232B),
+      onHeaderMuted: Color(0xFFB3BAC4),
+    ),
+    dark: BCollectionAccentColors(
+      primary: Color(0xFFAEB8C6),
+      primaryPressed: Color(0xFF98A3B3),
+      primarySoft: Color(0xFF2A2E35),
+      onPrimary: Color(0xFF151A21),
+      headerBackground: Color(0xFF16191E),
+      onHeaderMuted: Color(0xFFA3ABB6),
+    ),
+  );
+
+  const BCollectionAccent(this.label, {required this.light, required this.dark});
+
+  final String label;
+  final BCollectionAccentColors light;
+  final BCollectionAccentColors dark;
+
+  BCollectionAccentColors forBrightness(Brightness brightness) =>
+      brightness == Brightness.dark ? dark : light;
+
+  static BCollectionAccent? fromName(Object? name) {
+    for (final a in values) {
+      if (a.name == name) return a;
+    }
+    return null;
+  }
+}
+
 /// Colour tokens for the Collection department, from the palette in use:
-/// the collector's choice from the Home toggle ([themeMode]), or the phone's
-/// light/dark setting until they make one.
+/// the collector's choice from the Home toggle or Settings → Theme
+/// ([themeMode]), or the phone's light/dark setting until they make one, in
+/// the colour theme they picked ([accent]).
 ///
 /// Read at build time, so they cannot be `const`. When the phone switches
 /// mode the whole app is rebuilt (see [BCollectionTheme.applyFor]), so every
@@ -179,8 +347,12 @@ class BCollectionColors {
     };
   }
 
+  /// The colour theme. Set through [BCollectionTheme.setAccent], which also
+  /// saves and applies it.
+  static BCollectionAccent accent = BCollectionAccent.ocean;
+
   static BCollectionPalette get current =>
-      isDark ? BCollectionPalette.dark : BCollectionPalette.light;
+      BCollectionTheme.paletteFor(isDark ? Brightness.dark : Brightness.light);
 
   // Surfaces
   static Color get background => current.background;
@@ -225,13 +397,23 @@ class BCollectionTheme {
   BCollectionTheme._();
 
   static ThemeData get light =>
-      _build(BAppTheme.lightTheme, BCollectionPalette.light);
+      _build(BAppTheme.lightTheme, paletteFor(Brightness.light));
 
   /// The Collection theme on a phone in dark mode. Without it, a dark phone
   /// got the app's plain black theme under Collection's light colours: white
   /// cards and fields on black, with the dark theme's white text on them.
   static ThemeData get dark =>
-      _build(BAppTheme.darkTheme, BCollectionPalette.dark);
+      _build(BAppTheme.darkTheme, paletteFor(Brightness.dark));
+
+  /// The light or dark palette in [accent] (default: the one picked).
+  static BCollectionPalette paletteFor(Brightness brightness,
+      [BCollectionAccent? accent]) {
+    final base = brightness == Brightness.dark
+        ? BCollectionPalette.dark
+        : BCollectionPalette.light;
+    return base.withAccent(
+        (accent ?? BCollectionColors.accent).forBrightness(brightness));
+  }
 
   static ThemeData _build(ThemeData base, BCollectionPalette c) {
     return base.copyWith(
@@ -350,6 +532,8 @@ class BCollectionTheme {
       // The Home toggle is Collection's; everyone else follows the phone.
       BCollectionColors.themeMode =
           isCollection ? readSavedMode() : ThemeMode.system;
+      BCollectionColors.accent =
+          isCollection ? readSavedAccent() : BCollectionAccent.ocean;
       Get.rootController
         ..theme = isCollection ? light : BAppTheme.lightTheme
         ..darkTheme = isCollection ? dark : BAppTheme.darkTheme
@@ -399,6 +583,40 @@ class BCollectionTheme {
     if (Get.context == null) return;
     Get.rootController
       ..themeMode = mode
+      ..update();
+    rebuildAll();
+  }
+
+  /// Where the colour theme from Settings → Theme is kept: an accent's name.
+  /// Absent until the collector picks one; [BCollectionAccent.ocean] till then.
+  static const String accentKey = 'collection.accent';
+
+  /// The saved colour theme, or [BCollectionAccent.ocean] when there is none
+  /// (or it is unknown, or the storage cannot be read).
+  static BCollectionAccent readSavedAccent(
+      [Object? Function(String key)? read]) {
+    try {
+      return BCollectionAccent.fromName((read ?? GetStorage().read)(accentKey)) ??
+          BCollectionAccent.ocean;
+    } catch (_) {
+      return BCollectionAccent.ocean;
+    }
+  }
+
+  /// Settings → Theme: use [accent] now and remember it on this phone. Both
+  /// themes are rebuilt in its colours, then the whole app, as for [setMode].
+  static void setAccent(BCollectionAccent accent,
+      {void Function(String key, Object value)? write}) {
+    BCollectionColors.accent = accent;
+    try {
+      (write ?? GetStorage().write)(accentKey, accent.name);
+    } catch (e) {
+      logDebug('BCollectionTheme: colour theme not saved: $e');
+    }
+    if (Get.context == null) return;
+    Get.rootController
+      ..theme = light
+      ..darkTheme = dark
       ..update();
     rebuildAll();
   }

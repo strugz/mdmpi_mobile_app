@@ -21,6 +21,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.da
 import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/default_area_sheet.dart';
 
 import '../../../../data/repositories/authentication/authentication_repository.dart';
@@ -208,6 +209,13 @@ class _CollectionSettings extends StatelessWidget {
         const SizedBox(height: BSizes.spaceBtwItems),
         const BSectionHeading(title: 'Preferences', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
+        BSettingsMenuTile(
+          key: const ValueKey('settings-theme-tile'),
+          icon: Iconsax.brush_2,
+          title: 'Theme',
+          subTitle: CollectionThemeScreen.summary(),
+          onTap: () => Get.toNamed(BRoutes.collectionTheme),
+        ),
         const _DefaultAreaTile(),
         const _CollectedScopeTile(),
         if (GetPlatform.isAndroid) const _FollowUpRemindersTile(),
