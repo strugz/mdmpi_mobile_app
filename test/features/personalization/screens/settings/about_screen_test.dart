@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -14,6 +16,20 @@ void main() {
     expect(BWhatsNew.forVersion('9.9.9'), newest);
     expect(BWhatsNew.forVersion(''), newest);
     expect(newest.items, isNotEmpty);
+  });
+
+  test('the newest list is the one for the version being built', () {
+    // A phone shows the list for its own version, so a list filed under a
+    // later version than pubspec's would never be seen on this build.
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    final version =
+        RegExp(r'^version:\s*([0-9.]+)', multiLine: true).firstMatch(pubspec)!
+            .group(1);
+    expect(BWhatsNew.groups.first.version, version);
+    expect(BWhatsNew.forVersion(version!), same(BWhatsNew.groups.first));
+    final versions = BWhatsNew.groups.map((g) => g.version).toList();
+    expect(versions.toSet(), hasLength(versions.length),
+        reason: 'one list per version');
   });
 
   test('the version label hides a build number that repeats the version', () {

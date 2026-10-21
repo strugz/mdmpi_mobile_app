@@ -47,6 +47,40 @@ class BWhatsNew {
     WhatsNewGroup(version: '1.1.116', items: [
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.brush_2,
+          title: 'Pick your theme',
+          detail: 'Settings → Theme: Ocean, Teal, Rose, Cocoa or Graphite, and '
+              'Phone, Light or Dark. The whole app follows.'),
+      WhatsNewItem(
+          area: 'Collection',
+          icon: Iconsax.message_text,
+          title: 'A remark for each invoice',
+          detail: 'Logging a step on two or more invoices? Give each its own '
+              'remark, plus one for all.'),
+      WhatsNewItem(
+          area: 'Collection',
+          icon: Iconsax.timer_1,
+          title: 'Opening a case shows its progress',
+          detail: 'The form says what it is saving while the case opens, and '
+              'cannot be tapped twice.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.bus,
+          title: 'Commute ID for commuting drivers',
+          detail: 'No trip ticket? Turn on Commuting and the app fills in a '
+              'Commute ID. No vehicle needed.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.truck_fast,
+          title: 'Stock Receive with its driver',
+          detail: 'Enter the trip ticket, driver, helper and vehicle when you '
+              'create the request; the driver sees it right away.'),
+      WhatsNewItem(
+          icon: Iconsax.info_circle,
+          title: 'A clearer What\'s new',
+          detail: 'This page: each change on its own card, grouped by area.'),
+      WhatsNewItem(
+          area: 'Collection',
           icon: Iconsax.chart_2,
           title: 'Actual Collection for your area',
           detail: 'With a default area set, Home shows your area\'s figure '
