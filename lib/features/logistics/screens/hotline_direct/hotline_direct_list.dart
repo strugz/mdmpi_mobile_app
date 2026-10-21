@@ -110,7 +110,7 @@ class HotlineDirectList extends StatelessWidget {
                             : () => {
                                   requestController
                                       .currentSelectedRequest.value = request,
-                                  _showAppropriateDialog(context, request,
+                                  showAppropriateDialog(context, request,
                                       userController, requestController)
                                 },
                         onLongPress: requestController.isLoading.value
@@ -192,7 +192,7 @@ class HotlineDirectList extends StatelessWidget {
   }
 
   /// Shows the appropriate dialog based on user role and request status.
-  void _showAppropriateDialog(
+  static void showAppropriateDialog(
     BuildContext context,
     StandardDeliveryModel request,
     UserController userController,

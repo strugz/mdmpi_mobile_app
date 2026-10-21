@@ -93,6 +93,15 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/contact_dir
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/update_name_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/unfinished/unfinished_requests.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/unfinished/unfinished_requests_reminder.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/unfinished/unfinished_request.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/whats_new_prompt_controller.dart';
 
 import '../../data/repositories/collection/collection_repository.dart';
@@ -244,6 +253,43 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => AirSeaHdController(), fenix: true);
     Get.lazyPut(() => HotlineDirectController(), fenix: true);
     Get.lazyPut(() => StockReceiveController(), fenix: true);
+    // The 08:00 "unfinished requests" reminder (Android) and its list: reads
+    // the request repositories' local tables, refreshed after every list
+    // load. Repositories missing on a desktop without Firebase count as empty.
+    Get.lazyPut(
+        () => BUnfinishedRequestsReminder(
+              notifications: () => Get.isRegistered<INotificationService>()
+                  ? Get.find<INotificationService>()
+                  : null,
+              enabled: UnfinishedRequestsController.reminderOnInStorage,
+            ),
+        fenix: true);
+    Get.lazyPut(
+        () => UnfinishedRequestsController(
+              loader: _loadLocalLogisticsRequests,
+              currentUser: () {
+                final user = UserController.instance.user.value;
+                return (
+                  role: user.role,
+                  initial: user.initial,
+                  department: user.department,
+                );
+              },
+              reminder: () => Get.isRegistered<BUnfinishedRequestsReminder>()
+                  ? Get.find<BUnfinishedRequestsReminder>()
+                  : null,
+              askPermission: () async {
+                if (!GetPlatform.isAndroid ||
+                    !Get.isRegistered<IPermissionService>()) {
+                  return;
+                }
+                await Get.find<IPermissionService>().requireForFeature(
+                    PermissionType.notifications,
+                    featureName: 'Unfinished requests reminder',
+                    openSettingsOnPermanentDenial: false);
+              },
+            ),
+        fenix: true);
     Get.lazyPut(() => RequestController(), fenix: true);
     Get.lazyPut(() => InventoryItemController(), fenix: true);
     Get.lazyPut(
@@ -426,4 +472,32 @@ class GeneralBindings extends Bindings {
     GetInstance().lazyPut<ReconciliationController>(controller,
         fenix: true, permanent: true);
   }
+}
+
+/// Every Logistics request in the phone's local tables, as
+/// [UnfinishedRequest]s, for [UnfinishedRequestsController]. A table that
+/// can't be read (repository not registered, DB error) counts as empty.
+Future<List<UnfinishedRequest>> _loadLocalLogisticsRequests() async {
+  Future<List<UnfinishedRequest>> read<R, M>(
+      Future<List<M>> Function(R repo) fetch,
+      UnfinishedRequest Function(M model) map) async {
+    if (!Get.isRegistered<R>()) return const [];
+    try {
+      return (await fetch(Get.find<R>())).map(map).toList();
+    } catch (e) {
+      logDebug('GeneralBindings: could not read local $R: $e');
+      return const [];
+    }
+  }
+
+  return [
+    ...await read<StandardDeliveryRepository, StandardDeliveryModel>(
+        (r) => r.getLocalRequests(), BUnfinishedRequests.fromStandardDelivery),
+    ...await read<PullOutRepository, PullOutModel>(
+        (r) => r.getLocalPullOuts(), BUnfinishedRequests.fromPullOut),
+    ...await read<PickUpRepository, PickUpModel>(
+        (r) => r.getLocalPickUps(), BUnfinishedRequests.fromPickUp),
+    ...await read<AirSeaRepository, AirSeaModel>(
+        (r) => r.getLocalAirSeaRequests(), BUnfinishedRequests.fromAirSea),
+  ];
 }

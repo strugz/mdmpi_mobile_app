@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
@@ -203,6 +204,7 @@ class StandardDeliveryController extends GetxController
   Future<void> loadForScope(RequestDateScope scope) async {
     await dataManager.fetchStandardDeliveryRequests(
         this, useLocalStorage.value, scope);
+    UnfinishedRequestsController.changed();
   }
 
   /// Loads item categories from the repository and populates form state.
