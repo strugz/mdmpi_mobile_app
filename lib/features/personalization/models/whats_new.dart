@@ -100,6 +100,20 @@ class BWhatsNew {
               'Delivery. The client\'s own record stays as it is.'),
       WhatsNewItem(
           area: 'Logistics',
+          icon: Iconsax.notification,
+          title: 'A reminder of unfinished requests',
+          detail: 'At 8 AM, and the first time you open the app each day, a '
+              'notification counts your requests not yet delivered, taken out '
+              'or received. Tap it to see them.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.task_square,
+          title: 'Unfinished requests list',
+          detail: 'Settings → Unfinished requests: every request still open, '
+              'by type, oldest first. Tap one to open it. Turn the reminder '
+              'off in Settings.'),
+      WhatsNewItem(
+          area: 'Logistics',
           icon: Iconsax.info_circle,
           title: 'What\'s new after an update',
           detail: 'The first time you open a new version, its changes show '
