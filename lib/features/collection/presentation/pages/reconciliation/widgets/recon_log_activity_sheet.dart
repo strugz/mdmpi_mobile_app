@@ -9,6 +9,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_remarks.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_status_style.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_validator.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
@@ -88,6 +89,32 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
   ReconValidationResult? _result;
   final _amount = TextEditingController();
   final _remarks = TextEditingController();
+
+  /// A remark for each named invoice instead of one for all (update
+  /// checklist item 20). Offered once two or more invoices are ticked.
+  bool _perInvoice = false;
+  final Map<String, TextEditingController> _invoiceRemarks = {};
+
+  TextEditingController _remarkFor(String invoiceNo) =>
+      _invoiceRemarks.putIfAbsent(invoiceNo, TextEditingController.new);
+
+  /// The ticked invoices in the order the sheet lists them.
+  List<String> get _tickedInOrder => [
+        for (final i in _choices)
+          if (_invoices.contains(i.invoiceNo)) i.invoiceNo,
+      ];
+
+  bool get _offersPerInvoice => _invoices.length > 1;
+
+  String get _composedRemarks => _perInvoice && _offersPerInvoice
+      ? BReconRemarks.compose(
+          general: _remarks.text,
+          invoiceNos: _tickedInOrder,
+          perInvoice: {
+            for (final e in _invoiceRemarks.entries) e.key: e.value.text,
+          },
+        )
+      : _remarks.text;
   final _nextAction = TextEditingController();
   DateTime? _due;
   final List<Uint8List> _photos = [];
@@ -109,6 +136,9 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
   void dispose() {
     _amount.dispose();
     _remarks.dispose();
+    for (final c in _invoiceRemarks.values) {
+      c.dispose();
+    }
     _nextAction.dispose();
     super.dispose();
   }
@@ -119,6 +149,7 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       _error = null;
       _result = null;
       _invoices.clear();
+      _perInvoice = false;
       if (type == ReconActivityType.soaSent) {
         _amount.text = BFormatter.formatPesoCurrency(
                 _eval.amountUnderReconciliation,
@@ -239,6 +270,13 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       setState(() => _error = allowed.error);
       return;
     }
+    final remarks = _composedRemarks;
+    if (remarks.length > BReconRemarks.maxLength) {
+      setState(() => _error = 'Remarks are too long '
+          '(${remarks.length} of ${BReconRemarks.maxLength} characters). '
+          'Shorten some of them.');
+      return;
+    }
     if (type.isLifecycle && !await _confirmEnd(type)) return;
 
     setState(() {
@@ -249,7 +287,7 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       caseId: widget.view.caseId,
       type: type,
       invoiceNos: _invoices.toList(),
-      remarks: _remarks.text,
+      remarks: remarks,
       amount: type == ReconActivityType.soaSent
           ? BFormatter.parseAmount(_amount.text)
           : null,
@@ -464,9 +502,34 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
         maxLines: 3,
         minLines: 1,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(
-            labelText: 'Remarks', prefixIcon: Icon(Iconsax.edit)),
+        decoration: InputDecoration(
+            labelText: _perInvoice && _offersPerInvoice
+                ? 'Remarks for all (optional)'
+                : 'Remarks',
+            prefixIcon: const Icon(Iconsax.edit)),
       ),
+      if (_offersPerInvoice) ...[
+        SwitchListTile(
+          key: const ValueKey('recon-remarks-per-invoice'),
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          title: const Text('A remark for each invoice'),
+          value: _perInvoice,
+          onChanged: (on) => setState(() => _perInvoice = on),
+        ),
+        if (_perInvoice)
+          for (final no in _tickedInOrder) ...[
+            TextField(
+              key: ValueKey('recon-remarks-$no'),
+              controller: _remarkFor(no),
+              maxLines: 2,
+              minLines: 1,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(labelText: 'SI $no'),
+            ),
+            const SizedBox(height: BSizes.xs),
+          ],
+      ],
       if (!type.isLifecycle) ...[
         const SizedBox(height: BSizes.spaceBtwInputFields),
         TextField(

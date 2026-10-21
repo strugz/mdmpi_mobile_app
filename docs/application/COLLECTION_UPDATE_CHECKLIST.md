@@ -21,13 +21,13 @@
 > Legend: `[x]` done · `[~]` partly done, or already in the app before this round ·
 > `[-]` held back on purpose · `[ ]` not started.
 
-## Summary (updated 2026-10-20)
+## Summary (updated 2026-10-21)
 
 | Status | Count |
 |---|---|
-| Done | 29 |
+| Done | 30 |
 | Already in the app before this round | 3 |
-| Partly done | 1 |
+| Partly done | 0 |
 | Held back | 0 |
 | Not started | 0 |
 | **Total** | **33** |
@@ -41,7 +41,7 @@ Light/Dark toggle on Home (see [Outside the checklist](#outside-the-checklist)).
 The same 33 items grouped by where they stand. The number is the item's number in the
 sections below, where its details are. Keep both views in step when an item moves.
 
-### Done (29)
+### Done (30)
 
 | # | Item | Area | Commit |
 |---|---|---|---|
@@ -74,6 +74,7 @@ sections below, where its details are. Keep both views in step when an item move
 | 4 | Dashboard for reviewing all data | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
 | 5 | Dashboard: actual target for a selected area | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
 | 6 | Dashboard: actual target for all areas combined | Web App | MDMPI.App `76fcdd2` + web `24bb0dc` |
+| 21 | Log step "Settled", then the user chooses an invoice | Reconciliation | Covered by 25 (no new code) |
 
 ### Already in the app before this round (3)
 
@@ -83,11 +84,9 @@ sections below, where its details are. Keep both views in step when an item move
 | 15 | Advanced payments visible to all users | Advanced Payments |
 | 19 | Multiple pictures in the photo section (Log a step sheet) | Reconciliation |
 
-### Partly done (1)
+### Partly done (0)
 
-| # | Item | Area | What is missing |
-|---|---|---|---|
-| 21 | Log step "Settled", then the user chooses an invoice | Reconciliation | A step the collector picks by hand (needs a backend change) |
+None. Item 21 is covered by 25.
 
 ### Held back (0)
 
@@ -255,13 +254,13 @@ Logistics changes, not on this work.
       (`BReconRemarks` in `helpers/reconciliation/recon_remarks.dart`). The server keeps up to
       1,000 characters of remarks per step; the sheet stops at that limit and says so. No
       MDMPI.App change.
-- [~] 21. Add log step "Settled", after which the user chooses an invoice. **Partly:** a
-      paid-off invoice gets a "Settled · Tracker" line on its case timeline, worked out on
-      the phone (see Outside the checklist), and Proof validated → Valid on chosen invoices
-      settles them by hand, but only after Claims paid and Proof sent (checked 2026-10-20).
-      There is no single "Settled" step the collector picks: the server rejects unknown step
-      types, so it needs a new step type in MDMPI.App (`ReconRules.cs`) and on the phone
-      (`recon_enums.dart`, `recon_rules.dart`, the Log a step sheet).
+- [x] 21. Add log step "Settled", after which the user chooses an invoice. **Done
+      (decided 2026-10-21), covered by item 25, no new code.** The collector acquires the
+      account, picks the invoices (item 24) and collects them through the bucket; each one
+      paid in full is settled (Cleared, with the "Settled · Tracker" line on its case
+      timeline), and the case completes once every invoice is settled. Proof validated →
+      Valid still settles invoices whose payment the account proves. A separate "Settled"
+      step was built and then removed on purpose: settling through the bucket is enough.
 - [x] 22. Keep reconciled accounts in the collection bucket (reconciliation works like a
       status, not a removal). **Done (2026-10-20, Reconciliation bucket commit).** An invoice marked Reconciliation
       stays in the bucket with its account, with its "Reconciliation" badge, and counts in
