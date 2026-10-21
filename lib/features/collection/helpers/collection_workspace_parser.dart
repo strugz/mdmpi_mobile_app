@@ -2,6 +2,7 @@ import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_account_hi
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_activity_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_advance_dao.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_target_dao.dart';
 import 'package:mdmpi_mobile_app/features/collection/dtos/collection_item_dto.dart';
 import 'package:mdmpi_mobile_app/features/collection/mappers/collection_mapper.dart';
 import 'package:mdmpi_mobile_app/features/collection/mappers/recon_case_mapper.dart';
@@ -18,8 +19,15 @@ class CollectionWorkspace {
   final List<CollectionActivityRecord> activities;
   final List<CollectionAccountHistoryRecord> accountHistory;
 
-  /// yyyy-MM -> target amount
+  /// yyyy-MM -> target amount (the whole team's: the sum of the areas)
   final Map<String, double> targets;
+
+  /// The same targets area by area (update checklist items 3 and 5).
+  final List<CollectionAreaTarget> areaTargets;
+
+  /// Whether the server sent `AreaTargets` at all: an older server leaves it
+  /// out, and that must not clear the area targets on the phone.
+  final bool hasAreaTargets;
 
   /// Actual Collection the office posted for this collector (revisions list
   /// item 11), last 12 months.
@@ -43,6 +51,8 @@ class CollectionWorkspace {
     required this.activities,
     required this.accountHistory,
     required this.targets,
+    this.areaTargets = const [],
+    this.hasAreaTargets = false,
     this.actualCollections = const [],
     this.hasActualCollections = false,
     this.reconCases = const [],
@@ -79,6 +89,16 @@ class CollectionWorkspaceParser {
         for (final t in _list(json, 'Targets').map(_map))
           _str(t, 'YearMonth'): _num(t, 'TargetAmount'),
       }..removeWhere((k, _) => k.isEmpty),
+      areaTargets: [
+        for (final t in _list(json, 'AreaTargets').whereType<Map>().map(_map))
+          if (_str(t, 'YearMonth').trim().isNotEmpty)
+            CollectionAreaTarget(
+              yearMonth: _str(t, 'YearMonth').trim(),
+              area: _str(t, 'Area').trim().toUpperCase(),
+              amount: _num(t, 'TargetAmount'),
+            ),
+      ],
+      hasAreaTargets: _pick(json, 'AreaTargets') is List,
       actualCollections: _list(json, 'ActualCollections')
           .whereType<Map>()
           .map(_map)
@@ -156,6 +176,7 @@ class CollectionWorkspaceParser {
       collectionDate: date,
       amount: _num(m, 'Amount'),
       referenceNo: _str(m, 'ReferenceNo').trim(),
+      area: _str(m, 'Area').trim().toUpperCase(),
       remarks: _str(m, 'Remarks').trim(),
       postedBy: _str(m, 'PostedBy'),
       createdAt: _str(m, 'CreatedAt'),

@@ -20,7 +20,10 @@ class BMobile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(0.0),
       child: Obx(
-        () => BDropDownDynamicList(
+        // A commuting driver has no vehicle to pick.
+        () => requestController.formState.commute.isOn.value
+            ? const SizedBox.shrink()
+            : BDropDownDynamicList(
             icon: Iconsax.truck,
             label: 'Vehicle',
             dropdownList:

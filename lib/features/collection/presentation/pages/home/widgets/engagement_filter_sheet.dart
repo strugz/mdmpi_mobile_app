@@ -232,7 +232,7 @@ class _EngagementFilterSheetState extends State<EngagementFilterSheet> {
               IconButton(
                 tooltip: 'Close',
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Iconsax.close_circle,
+                icon: Icon(Iconsax.close_circle,
                     color: BCollectionColors.inkMuted),
               ),
             ],
@@ -453,7 +453,7 @@ class EngagementFilterChips extends StatelessWidget {
           color: BCollectionColors.primary, fontWeight: FontWeight.w600),
       backgroundColor: BCollectionColors.primary.withValues(alpha: 0.10),
       side: BorderSide.none,
-      deleteIcon: const Icon(Iconsax.close_circle,
+      deleteIcon: Icon(Iconsax.close_circle,
           size: 16, color: BCollectionColors.primary),
       deleteButtonTooltipMessage: 'Remove $label',
       onDeleted: onRemove,

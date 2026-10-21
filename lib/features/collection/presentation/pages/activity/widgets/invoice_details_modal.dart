@@ -18,7 +18,7 @@ class InvoiceDetailsModal extends StatelessWidget {
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (_, scrollController) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           borderRadius: BorderRadius.vertical(
               top: Radius.circular(BSizes.borderRadiusLg)),

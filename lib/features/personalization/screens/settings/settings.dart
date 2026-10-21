@@ -19,7 +19,9 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_lo
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
+import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/default_area_sheet.dart';
 
 import '../../../../data/repositories/authentication/authentication_repository.dart';
@@ -192,6 +194,7 @@ class _CollectionSettings extends StatelessWidget {
           subTitle: 'Review and upload your queued collections',
           onTap: () => Get.toNamed(BRoutes.collectionUploadOutbox),
         ),
+        if (GetPlatform.isAndroid) const _SmsOutboxTile(),
         BSettingsMenuTile(
           icon: Iconsax.document_download,
           title: 'Reports',
@@ -206,6 +209,13 @@ class _CollectionSettings extends StatelessWidget {
         const SizedBox(height: BSizes.spaceBtwItems),
         const BSectionHeading(title: 'Preferences', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
+        BSettingsMenuTile(
+          key: const ValueKey('settings-theme-tile'),
+          icon: Iconsax.brush_2,
+          title: 'Theme',
+          subTitle: CollectionThemeScreen.summary(),
+          onTap: () => Get.toNamed(BRoutes.collectionTheme),
+        ),
         const _DefaultAreaTile(),
         const _CollectedScopeTile(),
         if (GetPlatform.isAndroid) const _FollowUpRemindersTile(),
@@ -390,6 +400,32 @@ class _VisitLocationTileState extends State<_VisitLocationTile> {
 }
 
 /// Collection TODO item 13: who receives the Done Engagement notices.
+/// Settings → SMS Outbox, with how many messages are not sent yet.
+class _SmsOutboxTile extends StatelessWidget {
+  const _SmsOutboxTile();
+
+  static const _idle = "Today's Collection SMS, sent in the background";
+
+  @override
+  Widget build(BuildContext context) {
+    void open() => Get.toNamed(BRoutes.collectionSmsOutbox);
+    if (!Get.isRegistered<CollectionSmsService>()) {
+      return BSettingsMenuTile(
+          icon: Iconsax.sms, title: 'SMS Outbox', subTitle: _idle, onTap: open);
+    }
+    final count = CollectionSmsService.instance.needsAttention;
+    return Obx(() => BSettingsMenuTile(
+          key: const ValueKey('settings-sms-outbox'),
+          icon: Iconsax.sms,
+          title: 'SMS Outbox',
+          subTitle: count.value == 0
+              ? _idle
+              : '${count.value} SMS not sent yet · tap to see',
+          onTap: open,
+        ));
+  }
+}
+
 class _MyHeadTile extends StatelessWidget {
   const _MyHeadTile();
 

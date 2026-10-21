@@ -22,8 +22,10 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/wid
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_sync_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_totals_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/home_skeleton.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/theme_mode_toggle.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
@@ -71,11 +73,13 @@ class CollectionHomeScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         // Header
-                        const BPrimaryHeaderContainer(
+                        BPrimaryHeaderContainer(
                           color: BCollectionColors.headerBackground,
                           child: Column(
                             children: [
-                              BHomeAppBar(),
+                              BHomeAppBar(actions: [
+                                CollectionThemeModeToggle(),
+                              ]),
                               SizedBox(height: BSizes.spaceBtwSections),
                             ],
                           ),
@@ -205,6 +209,29 @@ class CollectionHomeScreen extends StatelessWidget {
                                                               BCollectionColors
                                                                   .warning),
                                                         ),
+                                                        // Fifth, on its own row:
+                                                        // invoices whose last
+                                                        // outcome is Pre-Collection.
+                                                        CollectionSummaryStat(
+                                                          title: CollectionStatusColors
+                                                              .statusPreCollection,
+                                                          value: controller
+                                                              .preCollectionItems
+                                                              .length
+                                                              .toString(),
+                                                          icon: CollectionStatusColors
+                                                              .iconFor(CollectionStatusColors
+                                                                  .statusPreCollection),
+                                                          color: CollectionStatusColors
+                                                              .colorFor(CollectionStatusColors
+                                                                  .statusPreCollection),
+                                                          onTap: () => _openCategory(
+                                                              CollectionStatusColors
+                                                                  .statusPreCollection,
+                                                              CollectionStatusColors.colorFor(
+                                                                  CollectionStatusColors
+                                                                      .statusPreCollection)),
+                                                        ),
                                                       ],
                                                     )),
                                                 const SizedBox(
@@ -292,7 +319,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                 MainAxisAlignment
                                                                     .center,
                                                             children: [
-                                                              const Icon(
+                                                              Icon(
                                                                   Iconsax.clock,
                                                                   size: 48,
                                                                   color: BCollectionColors
@@ -402,9 +429,9 @@ class CollectionHomeScreen extends StatelessWidget {
     );
   }
 
-  /// The Tracker's cases; accounts waiting to be acquired are linked from
-  /// there. Follow ups due today and overdue show under the figure, so they
-  /// are seen without opening the list. Read inside the grid's Obx.
+  /// The Tracker's cases (their accounts are acquired from the bucket).
+  /// Follow ups due today and overdue show under the figure, so they are
+  /// seen without opening the list. Read inside the grid's Obx.
   static CollectionSummaryStat _reconciliationStat(
       CollectionActivityController controller) {
     final recon = Get.isRegistered<ReconciliationController>()

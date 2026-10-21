@@ -26,7 +26,7 @@ class CollectionSummaryStat {
   final Color? noteColor;
 }
 
-/// The dashboard's four counts, two by two.
+/// The dashboard's counts, two by two (a fifth sits alone on a third row).
 ///
 /// These were pages of a carousel, one at a time: 118pt of screen — a 104pt
 /// card plus its dots — to show a single integer, with the other three behind

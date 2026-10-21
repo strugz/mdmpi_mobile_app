@@ -280,7 +280,7 @@ class ActivityHistoryCard extends StatelessWidget {
       showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           borderRadius: BorderRadius.vertical(
               top: Radius.circular(BSizes.borderRadiusLg)),
@@ -585,7 +585,7 @@ class ActivityHistoryCard extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Iconsax.calendar,
+                      Icon(Iconsax.calendar,
                           size: 14, color: BCollectionColors.inkMuted),
                       const SizedBox(width: BSizes.xs),
                       Flexible(

@@ -82,6 +82,17 @@ class CollectionAdvanceDao {
         whereArgs: [externalRef],
       );
 
+  /// The advance moves to [clientId] (a temporary account linked to the
+  /// real one).
+  Future<void> moveToClient(
+          String externalRef, String clientId, String clientName) =>
+      db.update(
+        table,
+        {'clientId': clientId, 'clientName': clientName},
+        where: 'externalRef = ?',
+        whereArgs: [externalRef],
+      );
+
   /// Part of the advance went onto an invoice and the rest stays float for
   /// the next one: the row stays unassigned, holding only [remaining].
   ///

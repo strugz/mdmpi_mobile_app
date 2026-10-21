@@ -11,14 +11,19 @@ class BHomeAppBar extends StatelessWidget {
   const BHomeAppBar({
     super.key,
     this.title,
+    this.actions,
   });
 
   final String? title;
+
+  /// Buttons at the right of the bar (Collection's Light/Dark toggle).
+  final List<Widget>? actions;
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<UserController>();
     return BAppBar(
+      actions: actions,
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

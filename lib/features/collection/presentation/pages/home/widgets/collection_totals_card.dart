@@ -23,8 +23,8 @@ class CollectionTotalsCard extends StatelessWidget {
   final VoidCallback? onActualTap;
   final VoidCallback? onCollectedTap;
 
-  static const Color _actualColor = BCollectionColors.primary;
-  static const Color _collectedColor = BCollectionColors.success;
+  static Color get _actualColor => BCollectionColors.primary;
+  static Color get _collectedColor => BCollectionColors.success;
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +40,9 @@ class CollectionTotalsCard extends StatelessWidget {
       final total = controller.scopedTotal;
 
       return CollectionTotalsCardView(
+        // The team's, or with a default area set the collector's area's
+        // (switchable on the Actual Collection page).
+        actualLabel: 'Actual Collection · ${controller.actualScopeLabel}',
         actual: BFormatter.formatPesoCurrency(actual),
         // Same wording as the Actual Collection page's target line.
         actualFootnote: target <= 0
@@ -74,12 +77,14 @@ class CollectionTotalsCardView extends StatelessWidget {
     required this.actual,
     required this.actualFootnote,
     required this.collected,
+    this.actualLabel = 'Actual Collection · Team',
     this.collectedLabel = 'Collected this Month',
     this.collectedFootnote = 'View breakdown',
     this.onActualTap,
     this.onCollectedTap,
   });
 
+  final String actualLabel;
   final String actual;
   final String actualFootnote;
   final String collected;
@@ -108,13 +113,13 @@ class CollectionTotalsCardView extends StatelessWidget {
               child: _TotalsHalf(
                 icon: Iconsax.bank,
                 color: CollectionTotalsCard._actualColor,
-                label: 'Actual Collection · Team',
+                label: actualLabel,
                 value: actual,
                 footnote: actualFootnote,
                 onTap: onActualTap,
               ),
             ),
-            const VerticalDivider(
+            VerticalDivider(
                 width: 1, thickness: 1, color: BCollectionColors.outline),
             Expanded(
               child: _TotalsHalf(

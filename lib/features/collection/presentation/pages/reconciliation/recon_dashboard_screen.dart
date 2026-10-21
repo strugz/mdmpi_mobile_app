@@ -9,9 +9,8 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.da
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_status_style.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_summary.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
-import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/category_detail_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/recon_case_screen.dart';
 
 /// The collector's reconciliation cases (Home → Reconciliation): open ones
@@ -44,10 +43,6 @@ class ReconDashboardScreen extends StatelessWidget {
           final filter = controller.dashboardFilter.value;
           final scope = controller.dashboardScope.value;
           final cases = controller.dashboardCases;
-          final waiting = Get.isRegistered<CollectionActivityController>()
-              ? CollectionActivityController
-                  .instance.reconciliationAccounts.length
-              : 0;
           final open = controller.dashboardOpenCases;
           final under = open.fold<double>(
               0, (s, c) => s + c.evaluation.amountUnderReconciliation);
@@ -90,7 +85,7 @@ class ReconDashboardScreen extends StatelessWidget {
                   padding: const EdgeInsets.only(top: BSizes.xs),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.calendar_tick,
+                      Icon(Iconsax.calendar_tick,
                           size: 16, color: BCollectionColors.primary),
                       const SizedBox(width: BSizes.xs),
                       Expanded(
@@ -107,22 +102,9 @@ class ReconDashboardScreen extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: BSizes.spaceBtwItems),
-              if (waiting > 0)
-                Card(
-                  margin: const EdgeInsets.only(bottom: BSizes.spaceBtwItems),
-                  child: ListTile(
-                    key: const ValueKey('recon-waiting'),
-                    leading: const Icon(Iconsax.box_add,
-                        color: BCollectionColors.reconcile),
-                    title: Text(
-                        '$waiting ${waiting == 1 ? 'account' : 'accounts'} '
-                        'waiting to be acquired'),
-                    trailing: const Icon(Iconsax.arrow_right_3, size: 16),
-                    onTap: () => Get.to(() => const CategoryDetailScreen(
-                        title: 'Reconciliation',
-                        color: BCollectionColors.reconcile)),
-                  ),
-                ),
+              // No "accounts waiting to be acquired" here (update checklist
+              // item 27): reconciliation invoices stay in the bucket and are
+              // acquired with their account there (item 22).
               Wrap(
                 spacing: BSizes.sm,
                 runSpacing: BSizes.xs,
@@ -170,7 +152,7 @@ class _Empty extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: BSizes.spaceBtwSections),
         child: Column(
           children: [
-            const Icon(Iconsax.document_text,
+            Icon(Iconsax.document_text,
                 size: 40, color: BCollectionColors.inkMuted),
             const SizedBox(height: BSizes.sm),
             Text('No reconciliation cases yet',
@@ -223,20 +205,31 @@ class _CaseCard extends StatelessWidget {
 
   static final DateFormat _date = DateFormat('MMM d, yyyy');
 
-  /// Open: who acts next and what is still owed. Closed: when, and what the
-  /// case covered.
+  /// The case's invoices by where they stand: settled ones are Cleared, the
+  /// rest Open (3 invoices, 1 settled: "1 Cleared · 2 Open"). Update
+  /// checklist item 26.
+  static String _invoiceCounts(ReconEvaluation e) {
+    final cleared = e.invoices.where((i) => i.status.isSettled).length;
+    final open = e.invoices.length - cleared;
+    return [
+      if (cleared > 0) '$cleared Cleared',
+      if (open > 0 || cleared == 0) '$open Open',
+    ].join(' · ');
+  }
+
+  /// Open: who acts next, the invoices, and what is still owed. Ended: when,
+  /// the invoices, and what the case covered.
   String _standing() {
     final e = view.evaluation;
     if (!e.isClosed) {
       return '${BReconStyle.nextActorLabel(e.nextActor)} · '
-          '${e.openInvoices.length} open · '
+          '${_invoiceCounts(e)} · '
           '${BFormatter.formatPesoCurrency(e.amountUnderReconciliation)}';
     }
-    final invoices = view.bundle.invoices;
-    final total = invoices.fold<double>(0, (s, i) => s + i.amount);
+    final total = view.bundle.invoices.fold<double>(0, (s, i) => s + i.amount);
     return [
-      if (e.dateClosed != null) 'Closed ${_date.format(e.dateClosed!)}',
-      '${invoices.length} ${invoices.length == 1 ? 'invoice' : 'invoices'}',
+      if (e.dateClosed != null) 'Ended ${_date.format(e.dateClosed!)}',
+      _invoiceCounts(e),
       BFormatter.formatPesoCurrency(total),
     ].join(' · ');
   }
@@ -302,7 +295,7 @@ class _CaseCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 2),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.user,
+                      Icon(Iconsax.user,
                           size: 12, color: BCollectionColors.inkMuted),
                       const SizedBox(width: 4),
                       Expanded(

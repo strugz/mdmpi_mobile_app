@@ -8,6 +8,7 @@ import '../../../features/logistics/models/client_model.dart';
 import '../../../data/models/item_category_model.dart';
 import '../../../data/models/form_category_model.dart';
 import '../../../common/controllers/autocomplete_controller.dart';
+import 'commute_id.dart';
 
 class PullOutFormState {
   final TextEditingController clientContactPersonController = TextEditingController();
@@ -24,6 +25,8 @@ class PullOutFormState {
   final TextEditingController formCategoryController = TextEditingController();
   final TextEditingController itemCategoryController = TextEditingController();
   final TextEditingController mobile = TextEditingController();
+  // "Commuting" switch: fills [tripTicketController] with a Commute ID.
+  final CommuteTicketToggle commute = CommuteTicketToggle();
   final RxList<TextEditingController> documentReferenceControllers = <TextEditingController>[].obs;
   final Rx<ClientModel?> clientInformation = Rx<ClientModel?>(ClientModel.empty());
   final RxString cameraDropOffPicture = RxString("");
@@ -65,6 +68,7 @@ class PullOutFormState {
     pullOutStartController.text = '';
     pullOutEndController.text = '';
     tripTicketController.text = '';
+    commute.reset();
     driverController.text = '';
     helperController.text = '';
     formCategoryController.text = '';

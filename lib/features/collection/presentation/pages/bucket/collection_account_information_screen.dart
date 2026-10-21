@@ -33,7 +33,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(BSizes.defaultSpace),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 // Continues the navy bar above it, so the account's name and
                 // balance sit in the header rather than a second band of blue.
                 color: BCollectionColors.headerBackground,
@@ -55,7 +55,7 @@ class CollectionAccountInformationScreen extends StatelessWidget {
                   const SizedBox(height: BSizes.xs),
                   Row(
                     children: [
-                      const Icon(Iconsax.location,
+                      Icon(Iconsax.location,
                           size: 16, color: BCollectionColors.surface),
                       const SizedBox(width: BSizes.xs),
                       Expanded(

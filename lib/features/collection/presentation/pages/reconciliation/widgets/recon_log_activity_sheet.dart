@@ -9,10 +9,12 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_remarks.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_status_style.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_validator.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_enums.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/reconciliation/recon_evaluation.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 
@@ -33,9 +35,14 @@ class ReconLogActivitySheet extends StatefulWidget {
     this.pickPhoto,
     this.cameraAvailable,
     this.initialType,
+    this.poFor,
   });
 
   final ReconCaseView view;
+
+  /// The PO of an invoice, '' when none is known. Null: looked up in the
+  /// invoices on this phone. A case keeps only invoice numbers and amounts.
+  final String Function(String invoiceNo)? poFor;
 
   /// The step to start on (the stage track opens the sheet on its stage).
   final ReconActivityType? initialType;
@@ -50,13 +57,15 @@ class ReconLogActivitySheet extends StatefulWidget {
   static Future<bool> show(ReconCaseView view,
       {ReconPhotoPicker? pickPhoto,
       bool? cameraAvailable,
-      ReconActivityType? initialType}) async {
+      ReconActivityType? initialType,
+      String Function(String invoiceNo)? poFor}) async {
     final logged = await Get.bottomSheet<bool>(
       ReconLogActivitySheet(
           view: view,
           pickPhoto: pickPhoto,
           cameraAvailable: cameraAvailable,
-          initialType: initialType),
+          initialType: initialType,
+          poFor: poFor),
       isScrollControlled: true,
       backgroundColor: BCollectionColors.surface,
       shape: const RoundedRectangleBorder(
@@ -80,6 +89,32 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
   ReconValidationResult? _result;
   final _amount = TextEditingController();
   final _remarks = TextEditingController();
+
+  /// A remark for each named invoice instead of one for all (update
+  /// checklist item 20). Offered once two or more invoices are ticked.
+  bool _perInvoice = false;
+  final Map<String, TextEditingController> _invoiceRemarks = {};
+
+  TextEditingController _remarkFor(String invoiceNo) =>
+      _invoiceRemarks.putIfAbsent(invoiceNo, TextEditingController.new);
+
+  /// The ticked invoices in the order the sheet lists them.
+  List<String> get _tickedInOrder => [
+        for (final i in _choices)
+          if (_invoices.contains(i.invoiceNo)) i.invoiceNo,
+      ];
+
+  bool get _offersPerInvoice => _invoices.length > 1;
+
+  String get _composedRemarks => _perInvoice && _offersPerInvoice
+      ? BReconRemarks.compose(
+          general: _remarks.text,
+          invoiceNos: _tickedInOrder,
+          perInvoice: {
+            for (final e in _invoiceRemarks.entries) e.key: e.value.text,
+          },
+        )
+      : _remarks.text;
   final _nextAction = TextEditingController();
   DateTime? _due;
   final List<Uint8List> _photos = [];
@@ -101,6 +136,9 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
   void dispose() {
     _amount.dispose();
     _remarks.dispose();
+    for (final c in _invoiceRemarks.values) {
+      c.dispose();
+    }
     _nextAction.dispose();
     super.dispose();
   }
@@ -111,6 +149,7 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       _error = null;
       _result = null;
       _invoices.clear();
+      _perInvoice = false;
       if (type == ReconActivityType.soaSent) {
         _amount.text = BFormatter.formatPesoCurrency(
                 _eval.amountUnderReconciliation,
@@ -142,6 +181,25 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       };
 
   bool get _mustNameInvoices => _type == ReconActivityType.paidClaim;
+
+  String _po(String invoiceNo) {
+    final lookup = widget.poFor;
+    if (lookup != null) return lookup(invoiceNo).trim();
+    if (!Get.isRegistered<CollectionActivityController>()) return '';
+    for (final item in CollectionActivityController.instance.allItems) {
+      if (item.id == invoiceNo) return item.poNumber.trim();
+    }
+    return '';
+  }
+
+  bool get _allChosen =>
+      _choices.isNotEmpty && _choices.every((i) => _invoices.contains(i.invoiceNo));
+
+  void _toggleAll() => setState(() {
+        final all = !_allChosen;
+        _invoices.clear();
+        if (all) _invoices.addAll(_choices.map((i) => i.invoiceNo));
+      });
 
   bool get _takesPhotos =>
       _type != null && !_type!.isLifecycle && _type != ReconActivityType.note;
@@ -212,6 +270,13 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       setState(() => _error = allowed.error);
       return;
     }
+    final remarks = _composedRemarks;
+    if (remarks.length > BReconRemarks.maxLength) {
+      setState(() => _error = 'Remarks are too long '
+          '(${remarks.length} of ${BReconRemarks.maxLength} characters). '
+          'Shorten some of them.');
+      return;
+    }
     if (type.isLifecycle && !await _confirmEnd(type)) return;
 
     setState(() {
@@ -222,7 +287,7 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
       caseId: widget.view.caseId,
       type: type,
       invoiceNos: _invoices.toList(),
-      remarks: _remarks.text,
+      remarks: remarks,
       amount: type == ReconActivityType.soaSent
           ? BFormatter.parseAmount(_amount.text)
           : null,
@@ -394,11 +459,23 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
         const SizedBox(height: BSizes.spaceBtwItems),
       ],
       if (_choices.isNotEmpty) ...[
-        Text(
-            _mustNameInvoices
-                ? 'Which invoices does the account say are paid?'
-                : 'Invoices (optional; none means all that apply)',
-            style: theme.textTheme.titleSmall),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                  _mustNameInvoices
+                      ? 'Which invoices does the account say are paid?'
+                      : 'Invoices (optional; none means all that apply)',
+                  style: theme.textTheme.titleSmall),
+            ),
+            if (_choices.length > 1)
+              TextButton(
+                key: const ValueKey('recon-invoices-select-all'),
+                onPressed: _toggleAll,
+                child: Text(_allChosen ? 'Clear' : 'Select all'),
+              ),
+          ],
+        ),
         for (final i in _choices)
           CheckboxListTile(
             key: ValueKey('recon-invoice-${i.invoiceNo}'),
@@ -408,8 +485,11 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
             onChanged: (on) => setState(() => on == true
                 ? _invoices.add(i.invoiceNo)
                 : _invoices.remove(i.invoiceNo)),
-            title: Text(i.invoiceNo),
-            subtitle: Text(BFormatter.formatPesoCurrency(i.amount)),
+            title: Text('SI ${i.invoiceNo}'),
+            subtitle: Text([
+              if (_po(i.invoiceNo).isNotEmpty) 'PO ${_po(i.invoiceNo)}',
+              BFormatter.formatPesoCurrency(i.amount),
+            ].join('  ·  ')),
             secondary: ReconChip(
                 label: i.status.label,
                 color: BReconStyle.invoiceColor(i.status)),
@@ -422,9 +502,34 @@ class _ReconLogActivitySheetState extends State<ReconLogActivitySheet> {
         maxLines: 3,
         minLines: 1,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(
-            labelText: 'Remarks', prefixIcon: Icon(Iconsax.edit)),
+        decoration: InputDecoration(
+            labelText: _perInvoice && _offersPerInvoice
+                ? 'Remarks for all (optional)'
+                : 'Remarks',
+            prefixIcon: const Icon(Iconsax.edit)),
       ),
+      if (_offersPerInvoice) ...[
+        SwitchListTile(
+          key: const ValueKey('recon-remarks-per-invoice'),
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          title: const Text('A remark for each invoice'),
+          value: _perInvoice,
+          onChanged: (on) => setState(() => _perInvoice = on),
+        ),
+        if (_perInvoice)
+          for (final no in _tickedInOrder) ...[
+            TextField(
+              key: ValueKey('recon-remarks-$no'),
+              controller: _remarkFor(no),
+              maxLines: 2,
+              minLines: 1,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(labelText: 'SI $no'),
+            ),
+            const SizedBox(height: BSizes.xs),
+          ],
+      ],
       if (!type.isLifecycle) ...[
         const SizedBox(height: BSizes.spaceBtwInputFields),
         TextField(
@@ -577,10 +682,11 @@ class _Thumb extends StatelessWidget {
             top: 0,
             child: InkWell(
               onTap: onRemove,
-              child: const CircleAvatar(
+              child: CircleAvatar(
                   radius: 10,
                   backgroundColor: BCollectionColors.ink,
-                  child: Icon(Icons.close, size: 12, color: Colors.white)),
+                  child: Icon(Icons.close,
+                      size: 12, color: BCollectionColors.surface)),
             ),
           ),
         ],

@@ -24,6 +24,10 @@ class CollectionStatusColors {
   static const String statusCWTPickup = 'CWT Pick-up';
   static const String statusReconciliation = 'Reconciliation';
 
+  /// Documents taken to or from an account (update checklist item 7):
+  /// tracking only, no amount.
+  static const String statusRoutingDocuments = 'Routing of Documents';
+
   // ─── Advanced Payment ───────────────────────────────────────────────
   /// Received before an invoice exists: float, awaiting an invoice.
   static const String statusAdvance = 'Advanced Payment';
@@ -42,6 +46,7 @@ class CollectionStatusColors {
     statusDeposit,
     statusCWTPickup,
     statusReconciliation,
+    statusRoutingDocuments,
   ];
 
   /// Statuses that a user can manually select in the update screen.
@@ -89,6 +94,11 @@ class CollectionStatusColors {
         break;
       case statusReconciliation:
         bg = BCollectionColors.reconcile;
+        break;
+      // Slate, not Deposit's blue: the activity sheet gives each type its
+      // own hue.
+      case statusRoutingDocuments:
+        bg = BCollectionColors.neutral;
         break;
       // Float in the home tile's amber; once applied it is a collection.
       case statusAdvance:
@@ -144,6 +154,8 @@ class CollectionStatusColors {
         return Iconsax.document_text;
       case statusReconciliation:
         return Iconsax.status_up;
+      case statusRoutingDocuments:
+        return Iconsax.document_forward;
       case statusAdvance:
         return Iconsax.wallet_money;
       case statusAdvanceApplied:

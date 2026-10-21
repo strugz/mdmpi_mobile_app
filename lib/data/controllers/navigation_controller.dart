@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/hom
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/home.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/whats_new_prompt_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 
 import '../../features/personalization/controller/user_controller.dart';
@@ -21,11 +22,15 @@ class NavigationController extends GetxController {
   final Rx<int> selectedIndex = 0.obs;
 
   /// The main navigation is up: if a Collection reminder launched the app,
-  /// open its screen now.
+  /// open its screen now. Then the update's What's new, over Home, until it
+  /// has been read through once.
   @override
   void onReady() {
     super.onReady();
     BCollectionNotificationRouter.openPending();
+    if (Get.isRegistered<WhatsNewPromptController>()) {
+      Get.find<WhatsNewPromptController>().showIfDue();
+    }
   }
 
   // Store route names instead of widget instances

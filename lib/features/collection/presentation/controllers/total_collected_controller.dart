@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_actual_dao.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/collection_repository.dart';
@@ -18,12 +19,42 @@ typedef OtherCollectorsLoader = Future<Result<List<CollectorSummaryRow>>>
 
 /// Controller for the Total Collected this Month screen and card.
 class TotalCollectedController extends GetxController {
-  TotalCollectedController({OtherCollectorsLoader? loadOthers})
-      : _loadOthers = loadOthers ?? _othersFromServer;
+  TotalCollectedController({
+    OtherCollectorsLoader? loadOthers,
+    String Function()? defaultArea,
+  })  : _loadOthers = loadOthers ?? _othersFromServer,
+        _defaultArea = defaultArea ?? _settingsDefaultArea;
 
   static TotalCollectedController get instance => Get.find();
 
   final OtherCollectorsLoader _loadOthers;
+  final String Function() _defaultArea;
+
+  static String _settingsDefaultArea() =>
+      Get.isRegistered<CollectionSettingsController>()
+          ? CollectionSettingsController.instance.defaultArea.value
+          : '';
+
+  /// Which Actual Collection and target are shown (update checklist items 3
+  /// and 5): '' for the whole team, or an area code (NCR, VIS, … OTHERS). A
+  /// collector with a default area starts on it, and can switch to all areas
+  /// and back; one without sees the whole team, as before.
+  final RxString actualArea = ''.obs;
+
+  /// The collector's default area (Settings), or '' when none is set.
+  String get defaultArea => _defaultArea();
+
+  /// Whether there is an area to switch to: only with a default area set.
+  bool get canPickArea => defaultArea.isNotEmpty;
+
+  /// Show [area]'s Actual Collection and target ('' = all areas).
+  void setActualArea(String area) =>
+      actualArea.value = area.trim().toUpperCase();
+
+  /// "Team" for all areas, else the area's name ("NCR", "Visayas").
+  String get actualScopeLabel => actualArea.value.isEmpty
+      ? 'Team'
+      : BCollectionArea.labelFor(actualArea.value);
 
   /// Currently selected month (use first day of month for comparison)
   final Rx<DateTime> selectedMonth =
@@ -43,6 +74,13 @@ class TotalCollectedController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    actualArea.value = defaultArea;
+    // A new default area (Settings) moves the view to it.
+    if (Get.isRegistered<CollectionSettingsController>()) {
+      ever(CollectionSettingsController.instance.defaultArea,
+          (String area) => actualArea.value = area);
+    }
+    ever(actualArea, (_) => reloadTarget());
     reloadTarget();
     reloadActual();
     reloadOthers();
@@ -142,9 +180,16 @@ class TotalCollectedController extends GetxController {
     return Result.success(teamSummaryRows(feed.value, skipCode: me));
   }
 
-  /// Targets used to live only in memory; now read from SQLite per month.
+  /// The selected month's target from SQLite: the whole team's, or with an
+  /// area chosen ([actualArea]) that area's own.
   Future<void> reloadTarget() async {
-    final stored = await CollectionRepository.instance.getTarget(_yearMonth);
+    final yearMonth = _yearMonth;
+    final area = actualArea.value;
+    final stored = area.isEmpty
+        ? await CollectionRepository.instance.getTarget(yearMonth)
+        : await CollectionRepository.instance.getAreaTarget(yearMonth, area);
+    // The month or the area moved on while this was reading.
+    if (yearMonth != _yearMonth || area != actualArea.value) return;
     targetAmount.value = stored ?? 0.0;
   }
 
@@ -225,11 +270,17 @@ class TotalCollectedController extends GetxController {
   List<MonthlyEntry> get actualEntries =>
       _filterAndSortEntries(_postedInMonth());
 
+  /// The selected month's posted entries; with an area chosen, only the ones
+  /// posted for that area (entries without an area count for the team only).
   List<MonthlyEntry> _postedInMonth() {
     final month = selectedMonth.value;
+    final area = actualArea.value;
     return [
       for (final e in postedActual)
-        if (e.date.year == month.year && e.date.month == month.month) e,
+        if (e.date.year == month.year &&
+            e.date.month == month.month &&
+            (area.isEmpty || e.area == area))
+          e,
     ];
   }
 
@@ -323,6 +374,9 @@ class MonthlyEntry {
   /// Who in the office posted an Actual Collection entry.
   final String postedBy;
 
+  /// The area a posted Actual Collection entry counts toward ('' = the team).
+  final String area;
+
   MonthlyEntry({
     required this.date,
     required this.amount,
@@ -332,6 +386,7 @@ class MonthlyEntry {
     this.referenceNo = '',
     this.remarks = '',
     this.postedBy = '',
+    this.area = '',
   });
 
   /// A posted Actual Collection entry, dated its collection day. Null when
@@ -350,6 +405,7 @@ class MonthlyEntry {
       referenceNo: r.referenceNo,
       remarks: r.remarks,
       postedBy: r.postedBy,
+      area: r.area,
     );
   }
 }

@@ -1,4 +1,3 @@
-import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -338,13 +337,11 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
     String? trimmedOrNull(TextEditingController c) =>
         c.text.trim().isEmpty ? null : c.text.trim();
 
-    // One Collected or Partial row means the batch SMS goes out, and the
-    // sending view and "Message Sent!" confirm the save.
-    final smsFollows = finalStatuses.values
-        .any((s) => CollectionSmsService.smsFollows(status: s));
     _saving = true;
 
-    final saving = controller.saveBatchActivity(
+    // The batch SMS goes out in the background from the SMS Outbox; the
+    // screen does not wait for it.
+    controller.saveBatchActivity(
       ids: widget.items.map((e) => e.id).toList(),
       statuses: finalStatuses,
       remarks: finalRemarks,
@@ -356,21 +353,12 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
       purposeOfVisit: 'Collection',
     );
 
-    if (!smsFollows) {
-      Get.back();
-      BLoaders.successSnackBar(
-        title: 'Saved',
-        message:
-            'Recorded ${BFormatter.formatPesoCurrency(_targetTotal)} across ${widget.items.length} invoices.',
-      );
-      return;
-    }
-
-    // Stay here while the sending view and "Message Sent!" play over this
-    // screen, then leave (see ActivityDetailScreen._saveActivity).
-    await saving;
-    await CollectionSmsService.whenSettled();
-    if (mounted) Navigator.of(context).pop();
+    Get.back();
+    BLoaders.successSnackBar(
+      title: 'Saved',
+      message:
+          'Recorded ${BFormatter.formatPesoCurrency(_targetTotal)} across ${widget.items.length} invoices.',
+    );
   }
 
   @override
@@ -525,8 +513,10 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
   Widget _invoiceRow(BuildContext context, CollectionItemModel item) {
     final theme = Theme.of(context);
     final allocated = _amountFor(item.id);
-    final remaining = item.toBeCollected - allocated;
     final status = itemStatuses[item.id] ?? '';
+    // A Pre-Collection's amount does not come off the balance.
+    final remaining = item.toBeCollected -
+        CollectionOutcome.appliedAmount(status, allocated);
     final showRemark = _remarksShown.contains(item.id);
 
     return Container(
@@ -836,7 +826,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
           BSizes.defaultSpace,
           BSizes.md,
         ),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),
@@ -913,7 +903,7 @@ class _BatchActivityDetailScreenState extends State<BatchActivityDetailScreen> {
                   leading: Icon(CollectionStatusColors.iconFor(status),
                       color: CollectionStatusColors.colorFor(status)),
                   trailing: itemStatuses[itemId] == status
-                      ? const Icon(Iconsax.tick_circle,
+                      ? Icon(Iconsax.tick_circle,
                           color: BCollectionColors.primary)
                       : null,
                   onTap: () {

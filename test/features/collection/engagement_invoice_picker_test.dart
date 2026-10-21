@@ -53,16 +53,16 @@ void main() {
     )));
 
     expect(find.byType(CheckboxListTile), findsNWidgets(2));
-    expect(find.text('RC1'), findsOneWidget);
-    expect(find.text('RC2'), findsOneWidget);
+    expect(find.text('SI RC1'), findsOneWidget);
+    expect(find.text('SI RC2'), findsOneWidget);
     expect(find.textContaining('1,200'), findsOneWidget);
     expect(find.text('1 selected'), findsOneWidget);
 
     final rc2 = tester.widget<CheckboxListTile>(find.ancestor(
-        of: find.text('RC2'), matching: find.byType(CheckboxListTile)));
+        of: find.text('SI RC2'), matching: find.byType(CheckboxListTile)));
     expect(rc2.value, isTrue);
     final rc1 = tester.widget<CheckboxListTile>(find.ancestor(
-        of: find.text('RC1'), matching: find.byType(CheckboxListTile)));
+        of: find.text('SI RC1'), matching: find.byType(CheckboxListTile)));
     expect(rc1.value, isFalse);
   });
 
@@ -86,11 +86,83 @@ void main() {
       onToggle: (id, selected) => calls.add((id, selected)),
     )));
 
-    await tester.tap(find.text('RC1'));
+    await tester.tap(find.text('SI RC1'));
     await tester.pump();
-    await tester.tap(find.text('RC2'));
+    await tester.tap(find.text('SI RC2'));
     await tester.pump();
 
     expect(calls, [('RC1', true), ('RC2', false)]);
+  });
+
+  testWidgets('the title names the SI and the subtitle the PO', (tester) async {
+    await tester.pumpWidget(_host(EngagementInvoicePicker(
+      invoices: [
+        CollectionItemModel(
+          id: 'SI-77',
+          client: ClientModel(
+              id: 'C1',
+              code: 'NCR-400',
+              name: 'Best Care Pharmacy',
+              address: '',
+              contact: '',
+              emailAddress: ''),
+          toBeCollected: 500,
+          poNumber: 'PO-9',
+          dueDate: '2026-09-30',
+        ),
+      ],
+      selectedIds: const [],
+      onToggle: (_, __) {},
+    )));
+
+    expect(find.text('SI SI-77'), findsOneWidget);
+    expect(find.textContaining('PO PO-9'), findsOneWidget);
+  });
+
+  testWidgets('no Select all unless the form asks for it', (tester) async {
+    await tester.pumpWidget(_host(EngagementInvoicePicker(
+      invoices: [_invoice('RC1'), _invoice('RC2')],
+      selectedIds: const [],
+      onToggle: (_, __) {},
+    )));
+
+    expect(find.byKey(const ValueKey('invoice-picker-select-all')),
+        findsNothing);
+  });
+
+  testWidgets('Select all picks every invoice; Clear when all are picked',
+      (tester) async {
+    final calls = <bool>[];
+    await tester.pumpWidget(_host(EngagementInvoicePicker(
+      invoices: [_invoice('RC1'), _invoice('RC2')],
+      selectedIds: const ['RC1'],
+      onToggle: (_, __) {},
+      onToggleAll: calls.add,
+    )));
+
+    expect(find.text('Select all'), findsOneWidget);
+    await tester.tap(find.text('Select all'));
+    expect(calls, [true]);
+
+    await tester.pumpWidget(_host(EngagementInvoicePicker(
+      invoices: [_invoice('RC1'), _invoice('RC2')],
+      selectedIds: const ['RC1', 'RC2'],
+      onToggle: (_, __) {},
+      onToggleAll: calls.add,
+    )));
+    await tester.tap(find.text('Clear'));
+    expect(calls, [true, false]);
+  });
+
+  testWidgets('one invoice needs no Select all', (tester) async {
+    await tester.pumpWidget(_host(EngagementInvoicePicker(
+      invoices: [_invoice('RC1')],
+      selectedIds: const [],
+      onToggle: (_, __) {},
+      onToggleAll: (_) {},
+    )));
+
+    expect(find.byKey(const ValueKey('invoice-picker-select-all')),
+        findsNothing);
   });
 }

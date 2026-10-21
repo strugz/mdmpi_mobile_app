@@ -219,7 +219,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                       onPressed:
                           busy ? null : () => _print.printMonth(_focusedDay),
                       icon: busy
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
@@ -313,7 +313,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
                 count: events.length, planned: _plannedFor(day).length),
           ),
         ),
-        const Divider(height: 1, color: BCollectionColors.outline),
+        Divider(height: 1, color: BCollectionColors.outline),
         Expanded(
           child: SingleChildScrollView(
             controller: _listController,

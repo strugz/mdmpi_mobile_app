@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/crew_assignment.dart
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/request_transport.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Configuration resolved from (role, status) that drives the Standard Delivery modal.
 ///
@@ -193,7 +194,9 @@ class StandardDeliveryModalConfig {
       );
       return false;
     }
-    if (formState.mobile.text.trim().isEmpty) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (formState.mobile.text.trim().isEmpty &&
+        !BCommuteId.isCommuteId(formState.tripTicketNumber.text)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

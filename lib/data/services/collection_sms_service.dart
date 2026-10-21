@@ -1,19 +1,16 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'dart:async';
 
 import 'package:another_telephony/telephony.dart';
 import 'package:get/get.dart';
-import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
+import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_sms_outbox_dao.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/deposit_remarks.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
-import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
-import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// The Head the collector chose (Settings → My Head) and how to reach them.
 class HeadContact {
@@ -36,11 +33,8 @@ enum CollectionSmsOutcome {
 
   /// The phone accepted the send, but the radio did not report SENT for at
   /// least one recipient in time. Usually no SIM load / credit, or a carrier
-  /// delay. Treated as Logistics does: a warning, not "Message Sent!".
+  /// delay. Not tried again by itself: it waits for a hand Resend.
   unconfirmed,
-
-  /// SMS permission refused; the Messages app was opened pre-filled instead.
-  handedOff,
 
   /// No Head with a number and no Collection contact: nobody to tell.
   noRecipients,
@@ -48,12 +42,36 @@ enum CollectionSmsOutcome {
   /// Not Android, so there is no radio to send over (Windows).
   unavailable,
 
-  /// The phone cannot send right now (no SIM, no service) or every send failed.
+  /// The phone could not send it (no SIM, no service, no permission) or every
+  /// send failed. Tried again by itself.
   failed,
 }
 
 /// How one recipient's send ended.
 enum _RecipientResult { confirmed, unconfirmed, failed }
+
+/// How one attempt went: the outcome, why when it went wrong, how many
+/// were to receive it, and each number's [SmsRecipientResult].
+class _Delivery {
+  const _Delivery(this.outcome, this.reason, this.recipients, this.results);
+
+  final CollectionSmsOutcome outcome;
+  final String? reason;
+  final int recipients;
+  final Map<String, String> results;
+}
+
+/// The trigger each Collection SMS came from, as the SMS Outbox names it.
+abstract final class SmsKind {
+  static const acquiring = 'Acquiring Account';
+  static const engagement = 'Saving Engagement';
+  static const deferred = 'Defer Account';
+  static const cleared = 'Clear Engagement';
+  static const deposit = 'Adding Deposit';
+  static const cwt = 'CWT Pick-Up';
+  static const routing = 'Routing of Documents';
+  static const escalated = 'Reconciliation Escalated';
+}
 
 /// One invoice in an Engagement Saved message.
 class SmsInvoiceLine {
@@ -90,63 +108,57 @@ typedef ContactNumbersResolver = Future<List<String>> Function();
 typedef SmsSender = Future<void> Function(
     String to, String message, void Function(SendStatus status) onStatus);
 typedef SmsPermission = Future<bool> Function();
-typedef MessagesAppLauncher = Future<bool> Function(
-    List<String> to, String message);
 typedef NetworkIssueChecker = Future<String?> Function();
 typedef SmsOutcomeReporter = void Function(
     CollectionSmsOutcome outcome, int recipients, String? reason);
-typedef ProgressOpener = void Function(RxString text);
-typedef ProgressCloser = void Function();
-typedef SentViewOpener = Future<void> Function();
 typedef InitialsResolver = String Function();
 
-/// The six Collection SMS triggers (spec of 2026-09-25):
-///
-/// 1. Acquiring Account   4. Clear Engagement
-/// 2. Saving Engagement   5. Adding Deposit
-/// 3. Defer Account       6. CWT Pick-Up
+/// The eight Collection SMS triggers: Acquiring Account, Saving Engagement,
+/// Defer Account, Clear Engagement, Adding Deposit, CWT Pick-Up, Routing of
+/// Documents and Reconciliation Escalated (the last to the Head only).
 ///
 /// Every message goes to the collector's Head (Settings → My Head, at the
 /// number the user directory holds) **and** to the Contact Directory contacts
-/// tagged with department "Collection". Delivery follows the Logistics
-/// notifications ([MessagingController]) step for step: check the SIM and
-/// service, ask for permission (Messages app as the fallback), then send
-/// behind the full-screen "sending" view with a per-recipient counter, each
-/// send bounded by a timeout so the view always comes down, and the
-/// "Message Sent!" view on success. Android-only: a clean no-op on Windows.
+/// tagged with department "Collection".
+///
+/// Sending is in the background. A message is saved to the SMS Outbox and
+/// sent from there, one message and one recipient at a time, with no view,
+/// dialog or wait on the collector's screen: their work goes straight on. A
+/// message the phone could not send (no signal, no SIM, no permission) is
+/// tried again by itself; one the phone accepted but never confirmed waits
+/// for a hand Resend, since sending it again might text the Head twice. The
+/// Outbox keeps the day's messages; sent ones are cleared at midnight.
+/// Android-only: a clean no-op on Windows.
 ///
 /// The message builders are static and pure; the notify methods never throw.
-class CollectionSmsService extends GetxController {
+class CollectionSmsService extends GetxController with WidgetsBindingObserver {
   CollectionSmsService({
     HeadContactResolver? head,
     ContactNumbersResolver? contacts,
     SmsSender? send,
     SmsPermission? permission,
-    MessagesAppLauncher? handOff,
     NetworkIssueChecker? networkIssue,
     bool Function()? smsAvailable,
     SmsOutcomeReporter? report,
-    ProgressOpener? openProgress,
-    ProgressCloser? closeProgress,
-    SentViewOpener? showSent,
     InitialsResolver? initials,
+    Future<CollectionSmsOutboxDao?> Function()? outbox,
+    DateTime Function()? now,
     Duration betweenRecipients = const Duration(seconds: 1),
-    Duration? minSendingView,
-  })  : _minSendingView = minSendingView ??
-            (openProgress == null ? defaultMinSendingView : Duration.zero),
-        _head = head ?? _headFromDirectory,
+    Duration confirmTimeout = defaultConfirmTimeout,
+    bool timers = true,
+  })  : _head = head ?? _headFromDirectory,
         _contacts = contacts ?? _collectionContacts,
         _sendOne = send,
         _permission = permission,
-        _handOff = handOff,
         _networkIssue = networkIssue,
         _smsAvailable = smsAvailable ?? (() => GetPlatform.isAndroid),
         _reportHook = report,
-        _openProgress = openProgress ?? _openProgressView,
-        _closeProgress = closeProgress ?? BFullScreenLoader.stopLoading,
-        _showSent = showSent ?? BFullScreenLoader.openMessageSentDialog,
         _initials = initials ?? _collectorInitials,
-        _betweenRecipients = betweenRecipients;
+        _outbox = outbox,
+        _now = now ?? DateTime.now,
+        _betweenRecipients = betweenRecipients,
+        _confirmTimeout = confirmTimeout,
+        _timersOn = timers;
 
   static CollectionSmsService get instance => Get.find();
 
@@ -154,68 +166,60 @@ class CollectionSmsService extends GetxController {
   /// Directory (`contacts` table).
   static const String recipientDepartment = 'Collection';
 
-  /// Bounds on the radio: the platform call itself, then the SENT report
-  /// (the latter matches the Logistics notifications).
+  /// Bounds on the radio: the platform call itself, then the SENT report.
+  /// Nobody waits on the report any more, so it is given 30 seconds (it was
+  /// 3 while the sending view held the screen); a slow carrier then reads
+  /// as sent rather than as "not confirmed".
   static const Duration sendCallTimeout = Duration(seconds: 15);
-  static const Duration sentConfirmationTimeout = Duration(seconds: 3);
+  static const Duration defaultConfirmTimeout = Duration(seconds: 30);
 
   final HeadContactResolver _head;
   final ContactNumbersResolver _contacts;
   final SmsSender? _sendOne;
   final SmsPermission? _permission;
-  final MessagesAppLauncher? _handOff;
   final NetworkIssueChecker? _networkIssue;
   final bool Function() _smsAvailable;
   final SmsOutcomeReporter? _reportHook;
-  final ProgressOpener _openProgress;
-  final ProgressCloser _closeProgress;
-  final SentViewOpener _showSent;
   final InitialsResolver _initials;
+  final Future<CollectionSmsOutboxDao?> Function()? _outbox;
+  final DateTime Function() _now;
   final Duration _betweenRecipients;
-
-  /// The sending view stays up at least this long. One recipient goes out in
-  /// about a tenth of a second, which flashed the view by unseen and left
-  /// "Message Sent!" with nothing before it to say a message was going out.
-  static const Duration defaultMinSendingView = Duration(milliseconds: 1500);
-  final Duration _minSendingView;
-
-  /// "No one to text" is said once per app run, not on every save.
-  static bool _noRecipientsShown = false;
-
-  /// The text on the full-screen sending view.
-  final RxString progressText = ''.obs;
-
-  /// How many recipients the last lookup found; null before the first.
-  /// Lets a screen know, without waiting, whether its save is about to be
-  /// followed by the sending view (see [smsFollows]).
-  int? _knownRecipients;
+  final Duration _confirmTimeout;
+  final bool _timersOn;
 
   @override
   void onInit() {
     super.onInit();
-    // Warm the count so the first save already knows.
-    // ignore: unawaited_futures
-    recipients();
-  }
-
-  /// Whether this save is followed by an SMS: Android, someone to text, and
-  /// (for Saving Engagement) a Collected or Partial outcome. While an SMS goes
-  /// out, the sending view and "Message Sent!" are the only feedback, so a
-  /// screen skips its own "Saved" snackbar when this is true.
-  bool willSend({String? status}) {
-    if (!_smsAvailable()) return false;
-    if (status != null && collectionStatusWord(status) == null) return false;
-    return (_knownRecipients ?? 1) > 0;
-  }
-
-  /// [willSend] on the registered service; false when there is none.
-  static bool smsFollows({String? status}) {
-    if (!Get.isRegistered<CollectionSmsService>()) return false;
     try {
-      return Get.find<CollectionSmsService>().willSend(status: status);
-    } catch (_) {
-      return false;
+      WidgetsBinding.instance.addObserver(this);
+    } catch (e) {
+      logDebug('CollectionSmsService: lifecycle unavailable: $e');
     }
+    // Clear yesterday's sent messages, then send whatever is still waiting
+    // (the app may have closed with messages in the outbox).
+    // ignore: unawaited_futures
+    refreshOutbox(purge: true).then((_) => dispatchPending());
+    _scheduleMidnight();
+  }
+
+  @override
+  void onClose() {
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (_) {}
+    _retryTimer?.cancel();
+    _midnightTimer?.cancel();
+    super.onClose();
+  }
+
+  /// Back in front: a new day may have started, the signal may be back, and
+  /// SMS permission may have been turned on in the phone's settings.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    _permissionAsked = false;
+    // ignore: unawaited_futures
+    refreshOutbox(purge: true).then((_) => dispatchPending());
   }
 
   Telephony? _telephony;
@@ -233,11 +237,11 @@ class CollectionSmsService extends GetxController {
     ];
   }
 
-  /// "PO 230736" / "POs 2026-0323, 2026-0309"; '' when there are none.
+  /// "PO: 230736" / "POs: 2026-0323, 2026-0309"; '' when there are none.
   static String _labelled(String one, String many, Iterable<String> values) {
     final items = _items(values);
     if (items.isEmpty) return '';
-    return '${items.length == 1 ? one : many} ${items.join(', ')}';
+    return '${items.length == 1 ? one : many}: ${items.join(', ')}';
   }
 
   /// "PHP 37,759.82", not "₱37,759.82": the peso sign is outside the GSM-7
@@ -246,27 +250,53 @@ class CollectionSmsService extends GetxController {
   static String _peso(double amount) =>
       'PHP ${BFormatter.formatPesoCurrency(amount, includeSymbol: false).trim()}';
 
-  /// " Note: [text]." or '' when blank.
+  /// "Note: [text]" or '' when blank.
   static String _note(String label, String? value) {
     final t = _text(value, none: '');
-    return t.isEmpty ? '' : ' $label: ${_end(t)}';
+    return t.isEmpty ? '' : '$label: $t';
   }
 
-  /// [value] closed with one period: "Accuteqs Diagnostics Corp." already
-  /// ends a sentence, and another would read "Corp..".
-  static String _end(String value) {
-    final v = value.trim();
-    return v.endsWith('.') ? v : '$v.';
+  /// One fact per line, blank parts left out.
+  ///
+  /// The messages used to be one run of sentences, and with invoice numbers,
+  /// amounts, POs, check numbers and dates side by side the Head could not
+  /// tell which number was which. Now each number sits on its own line
+  /// behind a label. A line break is in the GSM-7 alphabet, so it costs one
+  /// character, like the ". " it replaces.
+  static String _lines(Iterable<String> lines) =>
+      lines.map((l) => l.trim()).where((l) => l.isNotEmpty).join('\n');
+
+  /// [name] tidied for the end of a line: a stray closing period goes, but
+  /// "Corp." or "Inc." keeps its own.
+  static String _name(String name) {
+    final n = _text(name, none: '');
+    if (_abbrev.hasMatch(n)) return n;
+    return n.replaceFirst(RegExp(r'\.+$'), '');
   }
 
-  // Each message leads with what happened, so the notification preview alone
-  // tells the Head. The collector's initials are added by [send].
+  static final RegExp _abbrev =
+      RegExp(r'\b(Corp|Inc|Co|Ltd|Bros|Jr|Sr)\.$', caseSensitive: false);
 
-  /// 1. "Now handling [Client]. 5 POs, 6 invoices, PHP 95,198.18."
-  /// Reconciliation lists every number: "Now handling [Client] for
-  /// reconciliation. POs A, B. Invoices X, Y. PHP 118,139.87."
+  // Each message leads with what happened and to whom, on the first line,
+  // so the notification preview alone tells the Head. The details follow,
+  // one labelled line each. The collector's initials are added by [send].
+
+  /// 1. Acquiring Account:
+  ///
+  ///     Now handling: Abbott Laboratories
+  ///     1 PO, 1 invoice
+  ///     Balance: PHP 112,000.00
+  ///
   /// Counts, not the numbers themselves: an account can carry dozens of
-  /// invoices. [amount] is the balance taken on; left out when null.
+  /// invoices. Reconciliation lists every number, because the Head checks
+  /// them one by one against the office's records:
+  ///
+  ///     Now handling for reconciliation: Amka Trading
+  ///     POs: 1, 2
+  ///     Invoices: a, b
+  ///     Balance: PHP 118,139.87
+  ///
+  /// [amount] is the balance taken on; left out when null.
   static String acquiringAccount({
     required String clientName,
     required Iterable<String> poNumbers,
@@ -274,31 +304,38 @@ class CollectionSmsService extends GetxController {
     double? amount,
     bool reconciliation = false,
   }) {
+    final name = _name(clientName);
     if (reconciliation) {
-      // Reconciliation names every PO and invoice: the Head checks them
-      // one by one against the office's records.
-      final parts = [
+      return _lines([
+        'Now handling for reconciliation: $name',
         _labelled('PO', 'POs', poNumbers),
         _labelled('Invoice', 'Invoices', invoiceIds),
-        if (amount != null) _peso(amount),
-      ].where((s) => s.isNotEmpty).map(_end);
-      return [
-        'Now handling ${clientName.trim()} for reconciliation.',
-        ...parts,
-      ].join(' ');
+        if (amount != null) 'Balance: ${_peso(amount)}',
+      ]);
     }
-    final details = [
-      _count(_items(poNumbers).length, 'PO', 'POs'),
-      _count(_items(invoiceIds).length, 'invoice', 'invoices'),
-      if (amount != null) _peso(amount),
-    ].where((s) => s.isNotEmpty).join(', ');
-    return 'Now handling ${_end(clientName)}'
-        '${details.isEmpty ? '' : ' ${_end(details)}'}';
+    return _lines([
+      'Now handling: $name',
+      _counts(poNumbers, invoiceIds),
+      if (amount != null) 'Balance: ${_peso(amount)}',
+    ]);
   }
 
-  /// 1, for one acquire of several accounts: ONE message, not one each.
-  /// "Now handling 3 accounts: A (5 POs, 6 invoices, PHP 95,198.18); B (…).
-  /// Total PHP 271,170.59." One account reads as [acquiringAccount].
+  /// "5 POs, 6 invoices"; '' when there are neither.
+  static String _counts(Iterable<String> pos, Iterable<String> invoices) => [
+        _count(_items(pos).length, 'PO', 'POs'),
+        _count(_items(invoices).length, 'invoice', 'invoices'),
+      ].where((s) => s.isNotEmpty).join(', ');
+
+  /// 1, for one acquire of several accounts: ONE message, not one each,
+  /// numbered so each account's figures stay with its name:
+  ///
+  ///     Now handling 3 accounts
+  ///     1. Alexis Yu Best Care Pharmacy
+  ///     5 POs, 6 invoices, PHP 95,198.18
+  ///     2. ...
+  ///     Total: PHP 271,170.59
+  ///
+  /// One account reads as [acquiringAccount].
   static String acquiringAccounts(List<SmsAccountLine> accounts) {
     if (accounts.length == 1) {
       final a = accounts.single;
@@ -309,30 +346,33 @@ class CollectionSmsService extends GetxController {
           amount: a.amount,
           reconciliation: a.reconciliation);
     }
-    final lines = accounts.map((a) {
-      final name = a.clientName.trim();
+    final lines = <String>['Now handling ${accounts.length} accounts'];
+    for (final (i, a) in accounts.indexed) {
+      final name = _name(a.clientName);
       if (a.reconciliation) {
-        // Every PO and invoice, as for one account; ';' between the lists
-        // because the numbers themselves are separated by ','.
-        final parts = [
-          _labelled('POs', 'POs', a.poNumbers),
-          _labelled('invoices', 'invoices', a.invoiceIds),
-          if (a.amount != null) _peso(a.amount!),
-        ].where((s) => s.isNotEmpty).join('; ');
-        return '$name (reconciliation${parts.isEmpty ? '' : ': $parts'})';
+        // Every PO and invoice, as for one account.
+        lines.addAll([
+          '${i + 1}. $name (reconciliation)',
+          _labelled('PO', 'POs', a.poNumbers),
+          _labelled('Invoice', 'Invoices', a.invoiceIds),
+          if (a.amount != null) 'Balance: ${_peso(a.amount!)}',
+        ]);
+      } else {
+        lines.addAll([
+          '${i + 1}. $name',
+          [
+            _counts(a.poNumbers, a.invoiceIds),
+            if (a.amount != null) _peso(a.amount!),
+          ].where((s) => s.isNotEmpty).join(', '),
+        ]);
       }
-      final details = [
-        _count(_items(a.poNumbers).length, 'PO', 'POs'),
-        _count(_items(a.invoiceIds).length, 'invoice', 'invoices'),
-        if (a.amount != null) _peso(a.amount!),
-      ].where((s) => s.isNotEmpty).join(', ');
-      return details.isEmpty ? name : '$name ($details)';
-    }).join('; ');
+    }
     final amounts = accounts.map((a) => a.amount).whereType<double>();
-    final total = amounts.isEmpty
-        ? ''
-        : ' Total ${_peso(amounts.fold<double>(0, (sum, v) => sum + v))}.';
-    return 'Now handling ${accounts.length} accounts: ${_end(lines)}$total';
+    if (amounts.isNotEmpty) {
+      lines.add(
+          'Total: ${_peso(amounts.fold<double>(0, (sum, v) => sum + v))}');
+    }
+    return _lines(lines);
   }
 
   /// "1 PO" / "5 POs"; '' for none.
@@ -340,7 +380,7 @@ class CollectionSmsService extends GetxController {
       n == 0 ? '' : '$n ${n == 1 ? one : many}';
 
   /// The status word for an outcome, or null when that outcome sends
-  /// nothing (Pre-Collection, Follow Up, …).
+  /// nothing (Pre-Collection, Follow Up, ...).
   static String? collectionStatusWord(String status) {
     final s = status.trim().toLowerCase();
     if (s == CollectionStatusColors.statusCollected.toLowerCase()) {
@@ -354,11 +394,18 @@ class CollectionSmsService extends GetxController {
     return null;
   }
 
-  /// 2. "Collected PHP [total] from [Client]. Invoice [Invoice] (PO [PO]).
-  /// Check [Bank] [No.], dated [Date]." The check part only when paid by
-  /// check (any of bank, number or date given).
-  /// Partial: "Partial payment of PHP [total] from [Client]. …". Several
-  /// invoices list each with its amount after the total.
+  /// 2. Saving Engagement:
+  ///
+  ///     Collected: Accusure Medical Enterprises
+  ///     Amount: PHP 24,281.25
+  ///     Invoice: 700013391
+  ///     PO: 2026-0309
+  ///     Check: BDO 4588255
+  ///     Check Date: 09-28-2026
+  ///
+  /// Partial reads "Partial payment: ...". Several invoices list each with
+  /// its amount, one per line, under "Invoices:". The check lines only when
+  /// paid by check: the bank and number, and the date on its own line.
   static String engagementSaved({
     required String clientName,
     required Iterable<String> poNumbers,
@@ -370,87 +417,124 @@ class CollectionSmsService extends GetxController {
   }) {
     final lines = invoices.where((i) => i.id.trim().isNotEmpty).toList();
     final total = lines.fold<double>(0, (sum, i) => sum + i.amount);
-    final lead = status == 'Partial'
-        ? 'Partial payment of ${_peso(total)} from ${_end(clientName)}'
-        : 'Collected ${_peso(total)} from ${_end(clientName)}';
-    final invoicePart = switch (lines.length) {
-      0 => '',
-      1 => 'Invoice ${lines.single.id.trim()}',
-      _ =>
-        'Invoices ${lines.map((i) => '${i.id.trim()} ${_peso(i.amount)}').join(', ')}',
-    };
-    final pos = _labelled('PO', 'POs', poNumbers);
-    final detail = [
-      if (invoicePart.isNotEmpty) invoicePart,
-      if (pos.isNotEmpty) '($pos)',
-    ].join(' ');
-    final message = detail.isEmpty ? lead : '$lead $detail.';
-    final check = _checkDetails(bankName, checkNumber, checkDate);
-    return check.isEmpty ? message : '$message $check';
+    return _lines([
+      '${status == 'Partial' ? 'Partial payment' : 'Collected'}: '
+          '${_name(clientName)}',
+      'Amount: ${_peso(total)}',
+      if (lines.length == 1) 'Invoice: ${lines.single.id.trim()}',
+      if (lines.length > 1) ...[
+        'Invoices:',
+        for (final i in lines) '${i.id.trim()} - ${_peso(i.amount)}',
+      ],
+      _labelled('PO', 'POs', poNumbers),
+      ..._checkDetails(bankName, checkNumber, checkDate),
+    ]);
   }
 
-  /// "Check BDO 4588255, dated 09-28-2026."; '' when nothing is given.
-  static String _checkDetails(
+  /// "Check: BDO 4588255" and "Check Date: 09-28-2026", each only when
+  /// given; none for cash. The date has its own line and label: run on
+  /// after the check number as ", dated …" it read as more of the number.
+  static List<String> _checkDetails(
       String? bankName, String? checkNumber, String? checkDate) {
     final what = [_text(bankName, none: ''), _text(checkNumber, none: '')]
         .where((s) => s.isNotEmpty)
         .join(' ');
     final date = _text(checkDate, none: '');
-    if (what.isEmpty && date.isEmpty) return '';
-    if (date.isEmpty) return 'Check ${_end(what)}';
-    return what.isEmpty
-        ? 'Check dated ${_end(date)}'
-        : 'Check $what, dated ${_end(date)}';
+    return [
+      if (what.isNotEmpty) 'Check: $what',
+      if (date.isNotEmpty) 'Check Date: $date',
+    ];
   }
 
-  /// 3. "Postponed [Client]. Reason: [Remarks]."
+  /// 3. "Postponed: [Client]" / "Reason: [Remarks]".
   static String accountDeferred(
           {required String clientName, required String remarks}) =>
-      'Postponed ${_end(clientName)}${_note('Reason', remarks)}';
+      _lines(['Postponed: ${_name(clientName)}', _note('Reason', remarks)]);
 
-  /// 4. "Done with [Client]."
+  /// 4. "Done: [Client]".
   static String engagementCleared({required String clientName}) =>
-      'Done with ${_end(clientName)}';
+      'Done: ${_name(clientName)}';
 
-  /// 5. "Deposited PHP [Amount] at [Bank]. Check [No.]. Note: [Remarks]."
-  /// The optional parts are left out when blank.
+  /// 5. Adding Deposit; the optional lines left out when blank:
+  ///
+  ///     Deposited: PHP 30,000.00
+  ///     Deposited At Bank: BDO
+  ///     Check: 1254897
+  ///     Antipolo Doctors Hospital - PHP 25,000.00
+  ///     Ace Diagnostics Corp. - PHP 5,000.00
+  ///     Note: Morning run
+  ///
+  /// The remarks are the deposit's accounts, "Account - Amount" one per line
+  /// ([BDepositRemarks]), and its note: each keeps its own line. Remarks
+  /// written before that format read as one "Note:" line, as they did.
   static String depositAdded({
     required String bankName,
     required double amount,
     String? checkNumber,
     String? remarks,
-  }) {
-    final bank = _text(bankName, none: '');
-    final check = _text(checkNumber, none: '');
-    return _end(
-            'Deposited ${_peso(amount)}${bank.isEmpty ? '' : ' at $bank'}') +
-        (check.isEmpty ? '' : ' Check ${_end(check)}') +
-        _note('Note', remarks);
+  }) =>
+      _lines([
+        'Deposited: ${_peso(amount)}',
+        _note('Deposited At Bank', bankName),
+        _note('Check', checkNumber),
+        ..._depositRemarks(remarks),
+      ]);
+
+  static List<String> _depositRemarks(String? remarks) {
+    final lines = (remarks ?? '')
+        .split('\n')
+        .map((l) => _text(l, none: ''))
+        .where((l) => l.isNotEmpty)
+        .toList();
+    final structured = lines.any((l) =>
+        BDepositRemarks.parseLine(l) != null || l.startsWith('Note:'));
+    if (!structured) {
+      final note = _note('Note', lines.join(' '));
+      return note.isEmpty ? const [] : [note];
+    }
+    return [
+      for (final l in lines)
+        switch (BDepositRemarks.parseLine(l)) {
+          final p? => '${p.account} - PHP ${p.amount}',
+          null => l,
+        },
+    ];
   }
 
-  /// 6. "Picked up CWT from [Client]. Note: [Remarks]."
+  /// 6. "Picked up CWT: [Client]" / "Note: [Remarks]".
   static String cwtPickup(
           {required String clientName, required String remarks}) =>
-      'Picked up CWT from ${_end(clientName)}${_note('Note', remarks)}';
+      _lines(['Picked up CWT: ${_name(clientName)}', _note('Note', remarks)]);
+
+  /// 8. "Routed documents: [Client]" / "Note: [Remarks]".
+  static String documentsRouted(
+          {required String clientName, required String remarks}) =>
+      _lines(['Routed documents: ${_name(clientName)}', _note('Note', remarks)]);
 
   /// 7. Reconciliation escalated (Reconciliation Tracker, to the Head only):
-  /// "Reconciliation escalated: [Client]. 2 open invoices, PHP 276,995.00.
-  /// Reason: [Remarks]."
+  ///
+  ///     Reconciliation escalated: [Client]
+  ///     Open: 2 invoices, PHP 276,995.00
+  ///     Reason: [Remarks]
   static String reconEscalated({
     required String clientName,
     required int openInvoices,
     required double openAmount,
     String remarks = '',
   }) =>
-      'Reconciliation escalated: ${_end(clientName)} '
-      '$openInvoices open ${openInvoices == 1 ? 'invoice' : 'invoices'}, '
-      '${_end(_peso(openAmount))}${_note('Reason', remarks)}';
+      _lines([
+        'Reconciliation escalated: ${_name(clientName)}',
+        'Open: $openInvoices ${openInvoices == 1 ? 'invoice' : 'invoices'}, '
+            '${_peso(openAmount)}',
+        _note('Reason', remarks),
+      ]);
 
-  /// "[message] - MAR": who sent it, since the Head hears from every
-  /// collector. A plain hyphen, not a dash: a dash is outside GSM-7 too.
+  /// The message with "- MAR" on its own last line: who sent it, since the
+  /// Head hears from every collector. A plain hyphen, not a dash: a dash is
+  /// outside GSM-7 too.
   static String signed(String message, String initials) {
     final i = initials.trim();
-    return i.isEmpty ? message : '$message - $i';
+    return i.isEmpty ? message : '$message\n- $i';
   }
 
   static String _text(String? value, {String none = 'none'}) {
@@ -466,7 +550,7 @@ class CollectionSmsService extends GetxController {
   Future<CollectionSmsOutcome?> notifyAcquiringAccounts(
       List<SmsAccountLine> accounts) {
     if (accounts.isEmpty) return Future.value(null);
-    return send(acquiringAccounts(accounts));
+    return send(acquiringAccounts(accounts), kind: SmsKind.acquiring);
   }
 
   /// Sends only for a Collected or Partial outcome; other outcomes resolve
@@ -489,16 +573,19 @@ class CollectionSmsService extends GetxController {
         status: word,
         bankName: bankName,
         checkNumber: checkNumber,
-        checkDate: checkDate));
+        checkDate: checkDate),
+        kind: SmsKind.engagement);
   }
 
   Future<CollectionSmsOutcome> notifyAccountDeferred(
           {required String clientName, required String remarks}) =>
-      send(accountDeferred(clientName: clientName, remarks: remarks));
+      send(accountDeferred(clientName: clientName, remarks: remarks),
+          kind: SmsKind.deferred);
 
   Future<CollectionSmsOutcome> notifyEngagementCleared(
           {required String clientName}) =>
-      send(engagementCleared(clientName: clientName));
+      send(engagementCleared(clientName: clientName),
+          kind: SmsKind.cleared);
 
   Future<CollectionSmsOutcome> notifyDepositAdded({
     required String bankName,
@@ -510,11 +597,18 @@ class CollectionSmsService extends GetxController {
           bankName: bankName,
           amount: amount,
           checkNumber: checkNumber,
-          remarks: remarks));
+          remarks: remarks),
+          kind: SmsKind.deposit);
 
   Future<CollectionSmsOutcome> notifyCwtPickup(
           {required String clientName, required String remarks}) =>
-      send(cwtPickup(clientName: clientName, remarks: remarks));
+      send(cwtPickup(clientName: clientName, remarks: remarks),
+          kind: SmsKind.cwt);
+
+  Future<CollectionSmsOutcome> notifyDocumentsRouted(
+          {required String clientName, required String remarks}) =>
+      send(documentsRouted(clientName: clientName, remarks: remarks),
+          kind: SmsKind.routing);
 
   /// A case escalated to the Head: the Head alone is told, not the
   /// Collection contacts; an escalation is theirs to take on.
@@ -530,7 +624,8 @@ class CollectionSmsService extends GetxController {
               openInvoices: openInvoices,
               openAmount: openAmount,
               remarks: remarks),
-          headOnly: true);
+          headOnly: true,
+          kind: SmsKind.escalated);
 
   /// Whether a Head with a number is set, for the one-time Settings hint.
   Future<bool> hasHead() async {
@@ -563,90 +658,282 @@ class CollectionSmsService extends GetxController {
       logDebug('CollectionSmsService: contacts lookup failed: $e');
     }
     final seen = <String>{};
-    final result = [
+    return [
       for (final n in numbers)
         if (n.trim().isNotEmpty && seen.add(_digits(n))) n.trim(),
     ];
-    _knownRecipients = result.length;
-    return result;
   }
 
   static String _digits(String number) => number.replaceAll(RegExp(r'\D'), '');
 
-  /// The last queued send, and the "Message Sent!" view it left open.
+  /// Every send runs after the one before it: one message at a time, one
+  /// recipient at a time.
   Future<void> _queue = Future<void>.value();
 
-  /// Completes once every send queued so far is done, its sending view and
-  /// "Message Sent!" included. Never fails.
-  Future<void> get settled => _queue;
-
-  /// [settled] on the registered service; at once when there is none.
-  static Future<void> whenSettled() {
-    if (!Get.isRegistered<CollectionSmsService>()) return Future.value();
-    try {
-      return Get.find<CollectionSmsService>().settled;
-    } catch (_) {
-      return Future.value();
-    }
-  }
-  Future<void>? _sentView;
-
-  /// Send [message] to every recipient. Never throws; the outcome is
-  /// reported on screen so a silent "nothing happened" is never the
-  /// collector's only clue.
-  ///
-  /// One message at a time: acquiring three accounts fires three sends at
-  /// once, and each opens and pops its own full-screen view. Overlapping,
-  /// a pop can close another send's view (or the screen beneath it), so each
-  /// send waits for the one before it, "Message Sent!" included.
-  Future<CollectionSmsOutcome> send(String message, {bool headOnly = false}) {
-    final result = _queue.then((_) => _sendNow(message, headOnly: headOnly));
-    _queue = result
-        .then((_) => _sentView ?? Future<void>.value())
-        .catchError((Object _) {});
+  Future<T> _serial<T>(Future<T> Function() job) {
+    final result = _queue.then((_) => job());
+    _queue = result.then((_) {}, onError: (Object _) {});
     return result;
   }
 
-  Future<CollectionSmsOutcome> _sendNow(String message,
-      {bool headOnly = false}) async {
-    _sentView = null;
-    message = signed(message, _safeInitials());
-    var count = 0;
+  /// Completes once every send queued so far is done. Never fails.
+  Future<void> get settled => _queue;
+
+  /// Save [message] to the SMS Outbox and send it in the background. [kind]
+  /// names the trigger in the Outbox. Never throws, and nothing shows on
+  /// screen: the collector's screen does not wait for it (callers do not
+  /// await it). Resolves to how the first attempt went; a message the phone
+  /// could not send is tried again by itself (see [dispatchPending]).
+  Future<CollectionSmsOutcome> send(String message,
+      {bool headOnly = false, String kind = ''}) async {
+    final text = signed(message, _safeInitials());
+    if (!_smsAvailable()) {
+      _report(const _Delivery(CollectionSmsOutcome.unavailable, null, 0, {}));
+      return CollectionSmsOutcome.unavailable;
+    }
+    final to = await recipients(headOnly: headOnly);
+    final record = await _recordNew(
+        kind: kind, message: text, headOnly: headOnly, to: to);
+    if (to.isEmpty) {
+      _report(const _Delivery(CollectionSmsOutcome.noRecipients,
+          'No Head with a number and no Collection contact.', 0, {}));
+      return CollectionSmsOutcome.noRecipients;
+    }
+    if (record == null) {
+      // No outbox (its table cannot be written): send once, quietly, as
+      // before. The outbox must never stop a message from going out.
+      return _serial(() async {
+        final delivery = await _deliver(to, text);
+        _report(delivery);
+        return delivery.outcome;
+      });
+    }
+    return await _serial<CollectionSmsOutcome?>(() => _attempt(record.id)) ??
+        CollectionSmsOutcome.failed;
+  }
+
+  /// Send outbox message [id] again now, to every original recipient that
+  /// has not confirmed it, "not confirmed" ones included (Settings → SMS
+  /// Outbox). Null when there is nothing to send.
+  Future<CollectionSmsOutcome?> resend(String id) =>
+      _serial(() => _attempt(id, byHand: true));
+
+  /// Send a message that already went out again, the same text to every
+  /// one of its original recipients (Settings → SMS Outbox → Sent today →
+  /// Resend), e.g. when the Head says it never arrived. Queued like any
+  /// other; a number that fails this time is retried by itself.
+  Future<CollectionSmsOutcome?> resendToEveryone(String id) =>
+      _serial(() => _attempt(id, everyone: true));
+
+  /// Resends each of [ids], one after another. Returns how many went out in
+  /// full.
+  Future<int> resendAll(Iterable<String> ids) async {
+    var sent = 0;
+    for (final id in ids.toList()) {
+      if (await resend(id) == CollectionSmsOutcome.sent) sent++;
+    }
+    return sent;
+  }
+
+  /// Removes outbox message [id] (the collector decided not to send it).
+  Future<void> discard(String id) async {
+    final dao = await _outboxDao();
+    if (dao == null) return;
+    await _safely(() => dao.delete(id));
+    await refreshOutbox();
+  }
+
+  /// Every outbox message, newest first; empty when there is no outbox.
+  Future<List<SmsOutboxRecord>> outboxMessages() async {
+    final dao = await _outboxDao();
+    if (dao == null) return const [];
+    return await _safely(dao.getAll) ?? const [];
+  }
+
+  /// One attempt at outbox message [id]: its numbers that never got it (or,
+  /// [byHand], every number not confirmed; [everyone], all of them). Null
+  /// when there is none to try.
+  Future<CollectionSmsOutcome?> _attempt(String id,
+      {bool byHand = false, bool everyone = false}) async {
+    final dao = await _outboxDao();
+    if (dao == null) return null;
+    final record = await _safely(() => dao.getById(id));
+    if (record == null) return null;
+    final targets = everyone
+        ? [for (final r in record.recipients) r.number]
+        : byHand
+            ? record.unconfirmedNumbers
+            : record.retryableNumbers;
+    if (targets.isEmpty) return null;
+    final delivery = await _deliver(targets, record.message);
+    await _recordResult(record, targets, delivery);
+    _report(delivery);
+    _scheduleRetry();
+    return delivery.outcome;
+  }
+
+  // ------------------------------------------------------------------
+  // Background dispatch
+  // ------------------------------------------------------------------
+
+  /// A message is tried by itself at most this many times; after that it
+  /// waits for a hand Resend.
+  static const int maxAutoAttempts = 10;
+
+  /// How long to wait before trying again, after each failed attempt; the
+  /// last applies to every attempt after it.
+  static const List<Duration> retryDelays = [
+    Duration(minutes: 1),
+    Duration(minutes: 2),
+    Duration(minutes: 5),
+    Duration(minutes: 10),
+    Duration(minutes: 15),
+  ];
+
+  static Duration retryDelay(int attempts) =>
+      retryDelays[(attempts - 1).clamp(0, retryDelays.length - 1)];
+
+  bool _dispatching = false;
+  bool _dispatchAgain = false;
+  Timer? _retryTimer;
+  Timer? _midnightTimer;
+
+  /// Sends, one after another, every outbox message due: never tried, or
+  /// failed and past its wait. Run at start-up, when the app comes back to
+  /// the front, and when a retry falls due. Never throws.
+  Future<void> dispatchPending() async {
+    if (_dispatching) {
+      _dispatchAgain = true;
+      return;
+    }
+    _dispatching = true;
+    try {
+      do {
+        _dispatchAgain = false;
+        for (final m in await _dueMessages()) {
+          await _serial(() => _attempt(m.id));
+        }
+      } while (_dispatchAgain);
+    } catch (e) {
+      logDebug('CollectionSmsService.dispatchPending error: $e');
+    } finally {
+      _dispatching = false;
+      _scheduleRetry();
+    }
+  }
+
+  /// Messages with a number still to reach, oldest first; with [due], only
+  /// those whose wait is over.
+  Future<List<SmsOutboxRecord>> _retryable({bool due = true}) async {
+    final all = await outboxMessages();
+    final now = _now();
+    return [
+      for (final m in all.reversed)
+        if (m.status != SmsOutboxStatus.noRecipients &&
+            m.retryableNumbers.isNotEmpty &&
+            m.attempts < maxAutoAttempts &&
+            (!due || !_nextTry(m).isAfter(now)))
+          m,
+    ];
+  }
+
+  Future<List<SmsOutboxRecord>> _dueMessages() => _retryable();
+
+  DateTime _nextTry(SmsOutboxRecord m) {
+    final last = DateTime.tryParse(m.lastAttemptAt ?? '');
+    if (m.attempts == 0 || last == null) return DateTime(0);
+    return last.add(retryDelay(m.attempts));
+  }
+
+  /// One timer, for the next message whose wait ends.
+  void _scheduleRetry() {
+    if (!_timersOn) return;
+    // ignore: unawaited_futures
+    _retryable(due: false).then((waiting) {
+      _retryTimer?.cancel();
+      if (waiting.isEmpty) return;
+      final next = waiting.map(_nextTry).reduce((a, b) => a.isBefore(b) ? a : b);
+      var wait = next.difference(_now());
+      if (wait.isNegative) wait = Duration.zero;
+      _retryTimer = Timer(wait, () {
+        // ignore: unawaited_futures
+        dispatchPending();
+      });
+    }).catchError((Object e) {
+      logDebug('CollectionSmsService: retry not scheduled: $e');
+    });
+  }
+
+  /// At 00:00 the day's sent messages are cleared, so the Outbox starts
+  /// each day fresh.
+  void _scheduleMidnight() {
+    if (!_timersOn) return;
+    _midnightTimer?.cancel();
+    final now = _now();
+    final midnight = DateTime(now.year, now.month, now.day + 1);
+    _midnightTimer = Timer(midnight.difference(now), () {
+      // ignore: unawaited_futures
+      refreshOutbox(purge: true);
+      _scheduleMidnight();
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // Sending
+  // ------------------------------------------------------------------
+
+  /// Asked at most once per app run, and again when the app comes back to
+  /// the front: a refusal leaves the messages in the outbox instead of
+  /// asking again and again in the background.
+  bool _permissionAsked = false;
+  bool _permissionGranted = false;
+
+  Future<bool> _hasPermission() async {
+    if (_permissionGranted) return true;
+    if (_permissionAsked) return false;
+    _permissionAsked = true;
+    try {
+      _permissionGranted = await (_permission ?? _ensurePermission)();
+    } catch (e) {
+      logDebug('CollectionSmsService: permission check failed: $e');
+      _permissionGranted = false;
+    }
+    return _permissionGranted;
+  }
+
+  static const String permissionOffReason =
+      'SMS permission is off for this app. Allow it in the phone settings; '
+      'the message waits here and goes out by itself.';
+
+  /// One attempt at [to], quietly: the outcome, why when it went wrong, and
+  /// each number's [SmsRecipientResult].
+  Future<_Delivery> _deliver(List<String> to, String message) async {
     String? reason;
+    var results = <String, String>{};
     CollectionSmsOutcome outcome;
     try {
-      final to = await recipients(headOnly: headOnly);
-      count = to.length;
       if (to.isEmpty) {
-        logDebug('CollectionSmsService: no recipients');
         outcome = CollectionSmsOutcome.noRecipients;
       } else if (!_smsAvailable()) {
-        logDebug('CollectionSmsService: skipped (not Android)');
         outcome = CollectionSmsOutcome.unavailable;
+      } else if (!await _hasPermission()) {
+        outcome = CollectionSmsOutcome.failed;
+        reason = permissionOffReason;
       } else {
-        final granted = await (_permission ?? _ensurePermission)();
-        if (!granted) {
-          // Refused: hand the pre-filled text to the Messages app, the same
-          // fallback the Logistics notifications use.
-          final opened = await (_handOff ?? _openMessagesApp)(to, message);
-          outcome = opened
-              ? CollectionSmsOutcome.handedOff
-              : CollectionSmsOutcome.failed;
-          if (!opened) reason = 'The Messages app could not be opened.';
+        reason = await (_networkIssue ?? _likelyNetworkIssue)();
+        if (reason != null) {
+          logDebug('CollectionSmsService: $reason');
+          outcome = CollectionSmsOutcome.failed;
         } else {
-          reason = await (_networkIssue ?? _likelyNetworkIssue)();
-          if (reason != null) {
-            logDebug('CollectionSmsService: $reason');
-            outcome = CollectionSmsOutcome.failed;
-          } else {
-            outcome = await _sendBehindProgressView(to, message);
-            if (outcome == CollectionSmsOutcome.failed) {
-              reason = 'The phone did not accept the message for sending.';
-            } else if (outcome == CollectionSmsOutcome.unconfirmed) {
-              reason = 'The phone did not confirm the SMS as sent within '
-                  '${sentConfirmationTimeout.inSeconds} seconds. Check the SIM '
-                  'load or balance and the signal, then try again.';
-            }
+          final sent = await _sendEach(to, message);
+          outcome = sent.outcome;
+          results = sent.results;
+          if (outcome == CollectionSmsOutcome.failed) {
+            reason = 'The phone did not accept the message for sending.';
+          } else if (outcome == CollectionSmsOutcome.unconfirmed) {
+            reason = 'The phone did not confirm the SMS as sent within '
+                '${_confirmTimeout.inSeconds} seconds. Check the SIM load or '
+                'balance and the signal, then resend.';
           }
         }
       }
@@ -655,73 +942,43 @@ class CollectionSmsService extends GetxController {
       outcome = CollectionSmsOutcome.failed;
       reason = e.toString();
     }
-    if (outcome == CollectionSmsOutcome.sent) {
-      // The "Message Sent!" view, as after a Logistics notification. Not
-      // awaited here: the caller's save is already done; the next queued
-      // send waits for it (see [send]). It is the confirmation, so a "Saved"
-      // snackbar that arrived meanwhile is taken down.
-      if (_reportHook == null) _closeSnackbars();
-      _sentView = _showSent().catchError((Object e) {
-        logDebug('CollectionSmsService: sent view failed: $e');
-      });
-    }
-    try {
-      (_reportHook ?? _reportOnScreen)(outcome, count, reason);
-    } catch (e) {
-      logDebug('CollectionSmsService: report failed: $e');
-    }
-    return outcome;
+    return _Delivery(outcome, reason, to.length, results);
   }
 
-  /// One recipient at a time behind the full-screen view, like Logistics:
-  /// "Sending message 1/2...". The view is taken down in a `finally`, and
-  /// each send is bounded, so it cannot stay up whatever the radio does.
-  Future<CollectionSmsOutcome> _sendBehindProgressView(
-      List<String> to, String message) async {
-    final total = to.length;
-    progressText.value = 'Please wait message sending... (0/$total)';
-    try {
-      _openProgress(progressText);
-    } catch (e) {
-      logDebug('CollectionSmsService: progress view failed: $e');
-    }
-    final shownAt = DateTime.now();
+  /// One recipient at a time, each send bounded by a timeout.
+  Future<({CollectionSmsOutcome outcome, Map<String, String> results})>
+      _sendEach(List<String> to, String message) async {
+    final results = <String, String>{};
     var confirmed = 0;
     var unconfirmed = 0;
-    try {
-      for (var i = 0; i < total; i++) {
-        progressText.value = 'Sending message ${i + 1}/$total...';
-        switch (await _sendToRecipient(to[i], message)) {
-          case _RecipientResult.confirmed:
-            confirmed++;
-          case _RecipientResult.unconfirmed:
-            unconfirmed++;
-          case _RecipientResult.failed:
-            break;
-        }
-        if (i < total - 1 && _betweenRecipients > Duration.zero) {
-          await Future.delayed(_betweenRecipients);
-        }
+    for (var i = 0; i < to.length; i++) {
+      switch (await _sendToRecipient(to[i], message)) {
+        case _RecipientResult.confirmed:
+          confirmed++;
+          results[to[i]] = SmsRecipientResult.sent;
+        case _RecipientResult.unconfirmed:
+          unconfirmed++;
+          results[to[i]] = SmsRecipientResult.unconfirmed;
+        case _RecipientResult.failed:
+          results[to[i]] = SmsRecipientResult.failed;
       }
-      final shortBy = _minSendingView - DateTime.now().difference(shownAt);
-      if (shortBy > Duration.zero) await Future.delayed(shortBy);
-    } finally {
-      try {
-        _closeProgress();
-      } catch (e) {
-        logDebug('CollectionSmsService: closing progress view failed: $e');
+      if (i < to.length - 1 && _betweenRecipients > Duration.zero) {
+        await Future.delayed(_betweenRecipients);
       }
     }
     logDebug('CollectionSmsService: confirmed $confirmed, unconfirmed '
-        '$unconfirmed of $total');
-    if (confirmed == total) return CollectionSmsOutcome.sent;
-    if (confirmed + unconfirmed == 0) return CollectionSmsOutcome.failed;
-    return CollectionSmsOutcome.unconfirmed;
+        '$unconfirmed of ${to.length}');
+    final outcome = confirmed == to.length
+        ? CollectionSmsOutcome.sent
+        : confirmed + unconfirmed == 0
+            ? CollectionSmsOutcome.failed
+            : CollectionSmsOutcome.unconfirmed;
+    return (outcome: outcome, results: results);
   }
 
-  /// Confirmed when the radio reports SENT within the timeout (as Logistics
-  /// requires before showing "Message Sent!"), unconfirmed when the phone
-  /// accepted the send but no report came, failed when the send threw.
+  /// Confirmed when the radio reports SENT within the timeout, unconfirmed
+  /// when the phone accepted the send but no report came, failed when the
+  /// send threw.
   Future<_RecipientResult> _sendToRecipient(String to, String message) async {
     final sent = Completer<void>();
     void onStatus(SendStatus status) {
@@ -736,11 +993,11 @@ class CollectionSmsService extends GetxController {
       return _RecipientResult.failed;
     }
     try {
-      await sent.future.timeout(sentConfirmationTimeout);
+      await sent.future.timeout(_confirmTimeout);
       return _RecipientResult.confirmed;
     } on TimeoutException {
       logDebug('CollectionSmsService: no SENT report for $to within '
-          '${sentConfirmationTimeout.inSeconds}s');
+          '${_confirmTimeout.inSeconds}s');
       return _RecipientResult.unconfirmed;
     }
   }
@@ -760,81 +1017,139 @@ class CollectionSmsService extends GetxController {
         statusListener: onStatus,
       );
 
-  static void _openProgressView(RxString text) {
-    // The save that triggered this has just shown its own "Saved" snackbar;
-    // a snackbar draws above dialogs, so it would sit on the sending view
-    // and then on "Message Sent!". One confirmation at a time.
-    _closeSnackbars();
-    BFullScreenLoader.openProgressLoadingDialog(text, BImages.docerAnimation);
-  }
-
-  static void _closeSnackbars() {
+  /// Nothing is shown: the outcome goes to the hook (tests) or the log, and
+  /// the SMS Outbox carries it for the collector.
+  void _report(_Delivery delivery) {
     try {
-      if (Get.isSnackbarOpen) Get.closeAllSnackbars();
+      final hook = _reportHook;
+      if (hook != null) {
+        hook(delivery.outcome, delivery.recipients, delivery.reason);
+      } else if (delivery.outcome != CollectionSmsOutcome.sent) {
+        logDebug('CollectionSmsService: ${delivery.outcome.name}'
+            '${delivery.reason == null ? '' : ': ${delivery.reason}'}');
+      }
     } catch (e) {
-      logDebug('CollectionSmsService: closing snackbars failed: $e');
+      logDebug('CollectionSmsService: report failed: $e');
     }
   }
 
-  /// What the collector sees when it went wrong: a warning saying why.
-  /// Success shows the "Message Sent!" view (see [send]); the Messages-app
-  /// hand-off shows nothing extra, the app opening is the feedback.
-  void _reportOnScreen(
-      CollectionSmsOutcome outcome, int recipients, String? reason) {
-    switch (outcome) {
-      case CollectionSmsOutcome.sent:
-      case CollectionSmsOutcome.handedOff:
-        break;
-      case CollectionSmsOutcome.noRecipients:
-        if (_noRecipientsShown) return;
-        _noRecipientsShown = true;
-        _notice(
-          'SMS not sent: no one to text',
-          'Set your Head in Settings > My Head (they need a phone number in '
-              'the directory), or add a Contact Directory contact with '
-              'department "Collection".',
-        );
-      case CollectionSmsOutcome.unconfirmed:
-        _notice('SMS may not have been sent',
-            reason ?? 'The phone did not confirm the SMS as sent.');
-      case CollectionSmsOutcome.failed:
-        _notice('SMS not sent',
-            reason ?? 'The message could not be sent from this phone.');
-      case CollectionSmsOutcome.unavailable:
-        // Windows: there is no radio, and no save waits on one. Nothing to say.
-        break;
+  // ------------------------------------------------------------------
+  // SMS Outbox
+  // ------------------------------------------------------------------
+
+  /// Bumped whenever the outbox changes, so a screen can reload with `ever`.
+  final RxInt outboxVersion = 0.obs;
+
+  /// Messages not sent yet (waiting, failed, not confirmed, nobody to text):
+  /// the Settings badge.
+  final RxInt needsAttention = 0.obs;
+
+  /// Saved before sending, so a message survives the app closing mid-send.
+  Future<SmsOutboxRecord?> _recordNew({
+    required String kind,
+    required String message,
+    required bool headOnly,
+    required List<String> to,
+  }) async {
+    final dao = await _outboxDao();
+    if (dao == null) return null;
+    final now = _now();
+    final record = SmsOutboxRecord(
+      id: 'SMS-${now.microsecondsSinceEpoch}',
+      createdAt: now.toIso8601String(),
+      kind: kind,
+      message: message,
+      headOnly: headOnly,
+      status:
+          to.isEmpty ? SmsOutboxStatus.noRecipients : SmsOutboxStatus.pending,
+      recipients: [
+        for (final n in to) SmsOutboxRecipient(n, SmsRecipientResult.pending),
+      ],
+    );
+    try {
+      await dao.insert(record);
+    } catch (e) {
+      logDebug('CollectionSmsService: outbox write failed: $e');
+      return null;
+    }
+    await refreshOutbox();
+    return record;
+  }
+
+  /// [record] after one attempt at [attempted]: each attempted number takes
+  /// its new result (a number the attempt never reached, failed), the
+  /// others keep theirs.
+  Future<void> _recordResult(
+      SmsOutboxRecord record, List<String> attempted, _Delivery delivery) async {
+    final dao = await _outboxDao();
+    if (dao == null) return;
+    final tried = attempted.toSet();
+    final recipients = [
+      for (final r in record.recipients)
+        tried.contains(r.number)
+            ? SmsOutboxRecipient(r.number,
+                delivery.results[r.number] ?? SmsRecipientResult.failed)
+            : r,
+    ];
+    final updated = record.copyWith(
+      status: _statusOf(delivery.outcome, recipients),
+      recipients: recipients,
+      attempts: record.attempts + 1,
+      lastError: delivery.reason,
+      clearError: delivery.reason == null,
+      lastAttemptAt: _now().toIso8601String(),
+    );
+    await _safely(() => dao.update(updated));
+    await refreshOutbox();
+  }
+
+  static String _statusOf(
+      CollectionSmsOutcome outcome, List<SmsOutboxRecipient> recipients) {
+    if (outcome == CollectionSmsOutcome.noRecipients || recipients.isEmpty) {
+      return SmsOutboxStatus.noRecipients;
+    }
+    if (recipients.every((r) => r.confirmed)) return SmsOutboxStatus.sent;
+    final anyAccepted = recipients.any((r) =>
+        r.result == SmsRecipientResult.sent ||
+        r.result == SmsRecipientResult.unconfirmed);
+    return anyAccepted ? SmsOutboxStatus.unconfirmed : SmsOutboxStatus.failed;
+  }
+
+  /// With [purge], clears the messages sent before today (the Outbox shows
+  /// the day's messages; ones not sent stay until they go out or are
+  /// discarded). Recounts what is not sent yet. Never throws.
+  Future<void> refreshOutbox({bool purge = false}) async {
+    final dao = await _outboxDao();
+    if (dao == null) return;
+    if (purge) {
+      final now = _now();
+      await _safely(() => dao.purgeDeliveredBefore(
+          DateTime(now.year, now.month, now.day).toIso8601String()));
+    }
+    needsAttention.value = await _safely(dao.countNeedingAttention) ?? 0;
+    outboxVersion.value++;
+  }
+
+  Future<CollectionSmsOutboxDao?> _outboxDao() async {
+    try {
+      return await (_outbox ?? _defaultOutbox)();
+    } catch (e) {
+      logDebug('CollectionSmsService: outbox unavailable: $e');
+      return null;
     }
   }
 
-  /// A small dialog for what went wrong. Not a snackbar: nothing about the
-  /// sending flow is shown in one.
-  static void _notice(String title, String message) {
-    if (Get.testMode) return;
-    try {
-      Get.dialog<void>(
-        AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-                onPressed: () => Get.back<void>(), child: const Text('OK')),
-          ],
-        ),
-      );
-    } catch (e) {
-      logDebug('CollectionSmsService: notice failed: $e');
-    }
-  }
+  static Future<CollectionSmsOutboxDao?> _defaultOutbox() =>
+      DatabaseHelper.instance.collectionSmsOutboxDao;
 
-  Future<bool> _openMessagesApp(List<String> to, String message) async {
+  /// Runs an outbox read or write; null (logged) when it fails, so the
+  /// outbox can never stop a message from going out.
+  static Future<T?> _safely<T>(Future<T> Function() action) async {
     try {
-      return await launchUrl(
-        MessagingController.buildMessagingAppUri(to, message),
-        mode: LaunchMode.externalApplication,
-      );
+      return await action();
     } catch (e) {
-      logDebug('CollectionSmsService: Messages app hand-off failed: $e');
-      return false;
+      logDebug('CollectionSmsService: outbox write failed: $e');
+      return null;
     }
   }
 
@@ -905,14 +1220,10 @@ class CollectionSmsService extends GetxController {
     return dao.getPhoneNumbersByDepartment(recipientDepartment);
   }
 
+  /// Android's own SMS permission prompt, and only that: no app dialog in
+  /// front of it, since sending is in the background. Already granted, it
+  /// asks nothing.
   Future<bool> _ensurePermission() async {
-    if (Get.isRegistered<IPermissionService>()) {
-      final permission = await Get.find<IPermissionService>().requireForFeature(
-        PermissionType.sms,
-        featureName: 'Collection SMS notification',
-      );
-      if (!permission.granted) return false;
-    }
     final granted = await _telephonyInstance.requestSmsPermissions;
     return granted ?? false;
   }
