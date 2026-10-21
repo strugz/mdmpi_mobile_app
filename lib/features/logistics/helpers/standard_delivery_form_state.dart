@@ -7,6 +7,7 @@ import '../../../features/logistics/models/client_model.dart';
 import '../../../data/models/item_category_model.dart';
 import '../../../data/models/form_category_model.dart';
 import '../../../data/models/inventory_item_model.dart';
+import 'commute_id.dart';
 
 /// Encapsulates all form-related state for Standard Delivery requests.
 ///
@@ -32,6 +33,9 @@ class StandardDeliveryFormState {
   final TextEditingController mobile = TextEditingController();
   final TextEditingController tripTicketNumber = TextEditingController();
   final TextEditingController remarks = TextEditingController();
+
+  // "Commuting" switch: fills [tripTicketNumber] with a Commute ID.
+  final CommuteTicketToggle commute = CommuteTicketToggle();
 
   // Category fields
   final TextEditingController itemCategory = TextEditingController();
@@ -112,6 +116,7 @@ class StandardDeliveryFormState {
      recipientName.clear();
      mobile.clear();
     tripTicketNumber.clear();
+    commute.reset();
     remarks.clear();
 
     // Clear dynamic lists

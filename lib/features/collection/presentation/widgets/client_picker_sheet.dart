@@ -228,7 +228,7 @@ class _ClientPickerSheetState extends State<ClientPickerSheet> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.wifi_square,
+                      Icon(Iconsax.wifi_square,
                           size: 18, color: BCollectionColors.warning),
                       const SizedBox(width: BSizes.sm),
                       Expanded(
@@ -254,7 +254,7 @@ class _ClientPickerSheetState extends State<ClientPickerSheet> {
                         padding: const EdgeInsets.fromLTRB(BSizes.sm, BSizes.xs,
                             BSizes.sm, BSizes.defaultSpace),
                         itemCount: _results.length,
-                        separatorBuilder: (_, __) => const Divider(
+                        separatorBuilder: (_, __) => Divider(
                             height: 1,
                             indent: BSizes.md,
                             endIndent: BSizes.md,
@@ -324,7 +324,7 @@ class _ClientRow extends StatelessWidget {
             ),
             if (selected) ...[
               const SizedBox(width: BSizes.sm),
-              const Icon(Iconsax.tick_circle5,
+              Icon(Iconsax.tick_circle5,
                   size: 20, color: BCollectionColors.primary),
             ],
           ],

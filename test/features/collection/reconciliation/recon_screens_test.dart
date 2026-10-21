@@ -24,13 +24,21 @@ typedef _Logged = ({
   List<String> invoices,
   ReconValidationResult? result,
   int photos,
+  String remarks,
 });
 
 class _Tracker extends ReconciliationController {
   _Tracker() : super(collectorCode: () => 'JCA', heldInvoiceIds: () => {});
 
   final logged = <_Logged>[];
+  final acquired = <String>[];
   String? refuse;
+
+  @override
+  Future<Result<void>> acquireAccountOf(ReconCaseView c) async {
+    acquired.add(c.caseId);
+    return Result.success(null);
+  }
 
   @override
   // ignore: must_call_super
@@ -57,6 +65,7 @@ class _Tracker extends ReconciliationController {
       invoices: invoiceNos,
       result: validationResult,
       photos: photos.length,
+      remarks: remarks,
     ));
     return Result.success(ReconActivity(
         activityId: 'RA-X', caseId: caseId, dateTime: '', type: type));
@@ -186,8 +195,8 @@ void main() {
     testWidgets('the case says what is next and when', (tester) async {
       await _pump(tester, ReconCaseScreen(caseId: _stale.caseId),
           cases: [_stale]);
-      expect(find.text('Next: Follow up · Overdue since Sep 21'),
-          findsOneWidget);
+      expect(
+          find.text('Next: Follow up · Overdue since Sep 21'), findsOneWidget);
       await tester.scrollUntilVisible(
           find.textContaining('due Sep 21, 2026'), 200);
       expect(find.textContaining('due Sep 21, 2026'), findsOneWidget,
@@ -209,10 +218,44 @@ void main() {
               .widget<Text>(
                   find.byKey(const ValueKey('recon-case-standing-RC-3')))
               .data,
-          'Closed Sep 20, 2026 · 2 invoices · ₱27,619.67');
+          'Ended Sep 20, 2026 · 2 Open · ₱27,619.67',
+          reason: 'escalated with nothing paid: no invoice is Cleared');
       expect(find.text('2 open cases · ₱55,239.34 under reconciliation'),
           findsOneWidget,
           reason: 'the summary is always the open cases');
+    });
+
+    testWidgets('invoices read Cleared or Open, never Closed (item 26)',
+        (tester) async {
+      // 3 invoices, 1 settled: 1 Cleared, 2 Open.
+      final bundle = ReconCaseBundle(
+        reconCase: const ReconCase(
+            caseId: 'RC-9',
+            clientCode: 'C-RC-9',
+            clientName: 'Mixed Co',
+            collectorCode: 'JCA',
+            dateOpened: '2026-09-14T09:00:00'),
+        invoices: const [
+          ReconCaseInvoice(
+              invoiceNo: '700000001',
+              amount: 1000,
+              currentBalance: 0,
+              clearedAt: '2026-09-25T14:00:00'),
+          ReconCaseInvoice(invoiceNo: '700000002', amount: 2000),
+          ReconCaseInvoice(invoiceNo: '700000003', amount: 3000),
+        ],
+        activities: [
+          _step('RA-91', ReconActivityType.soaSent, '2026-09-26T09:00:00'),
+        ],
+      );
+      await _pump(tester, const ReconDashboardScreen(),
+          cases: [ReconCaseView(bundle, bundle.evaluate(now: _now))]);
+      final standing = tester
+          .widget<Text>(find.byKey(const ValueKey('recon-case-standing-RC-9')))
+          .data!;
+      expect(standing, contains('1 Cleared · 2 Open'));
+      expect(standing, endsWith('₱5,000.00'), reason: 'still owed: the 2 Open');
+      expect(standing, isNot(contains('Closed')));
     });
 
     testWidgets(
@@ -331,6 +374,50 @@ void main() {
       expect(claim, lessThan(soa));
     });
 
+    testWidgets('a paid-off invoice shows Settled on the timeline',
+        (tester) async {
+      final bundle = ReconCaseBundle(
+        reconCase: const ReconCase(
+            caseId: 'RC-9',
+            clientCode: 'C-RC-9',
+            clientName: 'Paid Off Inc.',
+            collectorCode: 'JCA',
+            collectorName: 'Jay',
+            dateOpened: '2026-09-14T09:00:00'),
+        invoices: const [
+          ReconCaseInvoice(
+              invoiceNo: '700009771',
+              amount: 21048.87,
+              currentBalance: 0,
+              clearedAt: '2026-09-20T15:00:00'),
+          ReconCaseInvoice(invoiceNo: '700009347', amount: 6570.80),
+        ],
+        activities: [
+          _step('RA-1', ReconActivityType.soaSent, '2026-09-15T09:30:00'),
+          _step('RA-2', ReconActivityType.followUp, '2026-09-25T09:30:00'),
+        ],
+      );
+      final view = ReconCaseView(bundle, bundle.evaluate(now: _now));
+      await _pump(tester, const ReconCaseScreen(caseId: 'RC-9'), cases: [view]);
+
+      await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('recon-settled-700009771')), 200);
+      expect(find.text('Timeline (3)'), findsOneWidget);
+      expect(find.text('Settled · Tracker'), findsOneWidget);
+      expect(find.text('Invoice 700009771 · Cleared'), findsOneWidget,
+          reason: 'the list still reads Cleared');
+      expect(
+          find.byKey(const ValueKey('recon-settled-700009347')), findsNothing,
+          reason: 'still open');
+
+      // Newest first: the follow up (25th), Settled (20th), the SOA (15th).
+      final entries = timelineEntries(bundle.activities, view.evaluation);
+      expect(
+          entries.map((t) =>
+              t.activity?.type.label ?? 'Settled ${t.settled!.invoiceNo}'),
+          ['Follow up', 'Settled 700009771', 'SOA sent']);
+    });
+
     testWidgets('an ended case cannot be logged on', (tester) async {
       await _pump(tester, const ReconCaseScreen(caseId: 'RC-3'));
       final button = tester
@@ -339,12 +426,18 @@ void main() {
       expect(find.text('Case escalated'), findsOneWidget);
     });
 
-    testWidgets("someone else's case is read-only until acquired",
+    testWidgets("someone else's case is acquired, not logged on",
         (tester) async {
-      await _pump(tester, const ReconCaseScreen(caseId: 'RC-4'));
-      final button = tester
-          .widget<ButtonStyleButton>(find.byKey(const ValueKey('recon-log')));
-      expect(button.onPressed, isNull);
+      final tracker =
+          await _pump(tester, const ReconCaseScreen(caseId: 'RC-4'));
+      await tester.tap(find.byKey(const ValueKey('recon-log')));
+      await tester.pumpAndSettle();
+      expect(find.text('Acquire this account?'), findsOneWidget,
+          reason: 'asks first: the account moves to this collector');
+      await tester.tap(find.byKey(const ValueKey('recon-acquire-confirm')));
+      await tester.pumpAndSettle();
+      expect(tracker.acquired, ['RC-4']);
+      expect(tracker.logged, isEmpty);
       expect(
           tester
               .widget<Text>(find.byKey(const ValueKey('recon-log-label')))
@@ -374,6 +467,10 @@ void main() {
               .widget<Text>(find.byKey(const ValueKey('recon-log-label')))
               .data,
           'Acquire the account to log a step');
+      final button = tester
+          .widget<ButtonStyleButton>(find.byKey(const ValueKey('recon-log')));
+      expect(button.onPressed, isNotNull,
+          reason: 'the button the label points at works');
     });
 
     testWidgets('an unknown case says so', (tester) async {
@@ -400,14 +497,15 @@ void main() {
 
   group('log sheet', () {
     Future<_Tracker> openSheet(WidgetTester tester, ReconCaseView view,
-        {ReconPhotoPicker? picker}) async {
+        {ReconPhotoPicker? picker,
+        String Function(String invoiceNo)? poFor}) async {
       final tracker = await _pump(
           tester,
           Scaffold(
             body: Builder(
               builder: (context) => TextButton(
                 onPressed: () => ReconLogActivitySheet.show(view,
-                    pickPhoto: picker, cameraAvailable: true),
+                    pickPhoto: picker, cameraAvailable: true, poFor: poFor),
                 child: const Text('open'),
               ),
             ),
@@ -422,6 +520,21 @@ void main() {
       await tester.ensureVisible(find.byKey(const ValueKey('recon-save')));
       await tester.tap(find.byKey(const ValueKey('recon-save')));
       await tester.pumpAndSettle();
+    }
+
+    Future<void> tick(WidgetTester tester, String invoiceNo) async {
+      final row = find.byKey(ValueKey('recon-invoice-$invoiceNo'));
+      await tester.ensureVisible(row);
+      await tester.pumpAndSettle();
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> type(WidgetTester tester, String key, String text) async {
+      final field = find.byKey(ValueKey(key));
+      await tester.ensureVisible(field);
+      await tester.pumpAndSettle();
+      await tester.enterText(field, text);
     }
 
     testWidgets('offers only the steps that make sense now', (tester) async {
@@ -453,6 +566,83 @@ void main() {
       expect(tracker.logged.single.type, ReconActivityType.paidClaim);
       expect(tracker.logged.single.invoices, ['700009347']);
       expect(find.text('Log a step'), findsNothing, reason: 'the sheet closed');
+    });
+
+    testWidgets('two ticked invoices can each take their own remark',
+        (tester) async {
+      final tracker = await openSheet(tester, _stale);
+      await tester.tap(find.byKey(const ValueKey('recon-type-PAID_CLAIM')));
+      await tester.pumpAndSettle();
+      final perInvoice =
+          find.byKey(const ValueKey('recon-remarks-per-invoice'));
+
+      await tick(tester, '700009771');
+      await tester.pumpAndSettle();
+      expect(perInvoice, findsNothing, reason: 'one invoice, one remark');
+
+      await tick(tester, '700009347');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(perInvoice);
+      await tester.tap(perInvoice);
+      await tester.pumpAndSettle();
+
+      await type(tester, 'recon-remarks', 'Called Ms. Cruz');
+      await type(tester, 'recon-remarks-700009771', 'Paid by check');
+      await type(tester, 'recon-remarks-700009347', 'Deposit slip to follow');
+      await save(tester);
+
+      expect(
+          tracker.logged.single.remarks,
+          'Called Ms. Cruz\n'
+          'SI 700009771 - Paid by check\n'
+          'SI 700009347 - Deposit slip to follow');
+      expect(tracker.logged.single.invoices,
+          unorderedEquals(['700009771', '700009347']),
+          reason: 'still one step naming both');
+    });
+
+    testWidgets('per-invoice remarks off: the one remark is kept as typed',
+        (tester) async {
+      final tracker = await openSheet(tester, _stale);
+      await tester.tap(find.byKey(const ValueKey('recon-type-PAID_CLAIM')));
+      await tester.pumpAndSettle();
+      await tick(tester, '700009771');
+      await tick(tester, '700009347');
+      await tester.pumpAndSettle();
+      await type(tester, 'recon-remarks', 'Both paid');
+      await save(tester);
+      expect(tracker.logged.single.remarks, 'Both paid');
+    });
+
+    testWidgets('Select all names every invoice the step can name',
+        (tester) async {
+      final tracker = await openSheet(tester, _stale);
+      await tester.tap(find.byKey(const ValueKey('recon-type-PAID_CLAIM')));
+      await tester.pumpAndSettle();
+
+      final selectAll = find.byKey(const ValueKey('recon-invoices-select-all'));
+      await tester.ensureVisible(selectAll);
+      await tester.tap(selectAll);
+      await tester.pumpAndSettle();
+      expect(find.text('Clear'), findsOneWidget);
+
+      await save(tester);
+      expect(tracker.logged.single.invoices,
+          unorderedEquals(['700009771', '700009347']));
+    });
+
+    testWidgets('each invoice shows its SI and, when known, its PO',
+        (tester) async {
+      await openSheet(tester, _stale,
+          poFor: (no) => no == '700009771' ? 'PO-4410' : '');
+      await tester.tap(find.byKey(const ValueKey('recon-type-PAID_CLAIM')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('SI 700009771'), findsOneWidget);
+      expect(find.text('SI 700009347'), findsOneWidget);
+      expect(find.textContaining('PO PO-4410'), findsOneWidget);
+      expect(find.textContaining('PO '), findsOneWidget,
+          reason: 'no PO line for an invoice without one');
     });
 
     testWidgets('a photo is attached to the step', (tester) async {
@@ -569,7 +759,8 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('recon-camera')));
       await tester.pumpAndSettle();
       await save();
-      expect(tracker.logged.single.type, ReconActivityType.collectionLetterSent);
+      expect(
+          tracker.logged.single.type, ReconActivityType.collectionLetterSent);
       expect(tracker.logged.single.photos, 1);
     });
   });

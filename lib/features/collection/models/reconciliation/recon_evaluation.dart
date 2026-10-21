@@ -9,6 +9,7 @@ class ReconInvoiceState {
     required this.status,
     this.proofPending = false,
     this.proofRequested = false,
+    this.settledAt,
   });
 
   final String invoiceNo;
@@ -23,6 +24,10 @@ class ReconInvoiceState {
 
   /// Proof asked for since the latest claim, and none received since.
   final bool proofRequested;
+
+  /// When it was paid off (validated, or its balance reached zero), on the
+  /// Philippine wall clock; null while it is not settled.
+  final DateTime? settledAt;
 }
 
 /// How far a case has got through one [ReconStage].

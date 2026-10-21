@@ -28,13 +28,16 @@ import '../../../features/logistics/screens/data_test/local_storage_data_viewer.
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reports/collection_reports_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/upload/collection_upload_outbox_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/sms/sms_outbox_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/my_head_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/team/team_activity_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_storage_screen.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/about_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/add_to_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/advanced_payment_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/cwt_pickup_form.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/routing_documents_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/deposit_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/reconciliation_form.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/reconciliation/recon_case_screen.dart';
@@ -78,15 +81,18 @@ class AppRoutes {
     ),
     GetPage(name: BRoutes.totalCollected, page: () => const MonthlySummaryScreen(type: 'Collection')),
     GetPage(name: BRoutes.collectionUploadOutbox, page: () => const CollectionUploadOutboxScreen()),
+    GetPage(name: BRoutes.collectionSmsOutbox, page: () => const CollectionSmsOutboxScreen()),
     GetPage(name: BRoutes.myHead, page: () => const MyHeadScreen()),
     GetPage(name: BRoutes.teamActivity, page: () => const TeamActivityScreen()),
     GetPage(name: BRoutes.collectionStorage, page: () => const CollectionStorageScreen()),
+    GetPage(name: BRoutes.collectionTheme, page: () => const CollectionThemeScreen()),
     GetPage(name: BRoutes.about, page: () => const AboutScreen()),
     GetPage(name: BRoutes.addToBucket, page: () => const AddToBucketScreen()),
     // Engagement forms take no arguments; they read the account and invoice
     // selection from CollectionActivityController.
     GetPage(name: BRoutes.collectionDepositForm, page: () => const DepositFormScreen()),
     GetPage(name: BRoutes.collectionCwtPickupForm, page: () => const CWTPickupFormScreen()),
+    GetPage(name: BRoutes.collectionRoutingDocumentsForm, page: () => const RoutingDocumentsFormScreen()),
     GetPage(name: BRoutes.collectionReconciliationForm, page: () => const ReconciliationFormScreen()),
     GetPage(name: BRoutes.reconciliationCases, page: () => const ReconDashboardScreen()),
     GetPage(name: BRoutes.reconciliationReports, page: () => const ReconReportsScreen()),

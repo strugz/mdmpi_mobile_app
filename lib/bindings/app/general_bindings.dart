@@ -3,6 +3,7 @@ import 'package:mdmpi_mobile_app/data/services/gemini_document_service.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/voucher_invoice_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/voucher_scan_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/report_export_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_calendar_print_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_reports_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/upload_data_controller.dart';
 import 'package:get/get.dart';
@@ -45,6 +46,7 @@ import 'package:mdmpi_mobile_app/data/repositories/pull_out/lose_item_repository
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/department_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/mobile_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/commute_id_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/role_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/user_initial_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/client/client_repository.dart';
@@ -59,6 +61,7 @@ import 'package:mdmpi_mobile_app/data/repositories/standard_delivery/standard_de
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_sms_outbox_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/forget_password_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/verify_email_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_onboarding_controller.dart';
@@ -90,6 +93,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/contact_dir
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/update_name_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/whats_new_prompt_controller.dart';
 
 import '../../data/repositories/collection/collection_repository.dart';
 import '../../features/collection/helpers/sync_manager.dart';
@@ -98,6 +102,7 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.da
 import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/my_head_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/collection_calendar_print_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
@@ -191,6 +196,8 @@ class GeneralBindings extends Bindings {
     // guard to make the long-press flow available on all targets.
     Get.lazyPut(() => BackLoadRepository(), fenix: true);
     Get.lazyPut(() => ContactRepository(), fenix: true);
+    // Commute IDs (trip ticket stand-in for commuting drivers): REST only.
+    Get.lazyPut(() => CommuteIdRepository(), fenix: true);
     // Lost items on Pull Out requests: REST only, no Firebase dependency.
     Get.lazyPut(() => LoseItemRepository(), fenix: true);
     // Backloaded items on delivery requests: REST only, no Firebase dependency.
@@ -322,6 +329,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => TeamActivityController(), fenix: true);
     // Settings → Default area (item 15): GetStorage-backed, no repository.
     Get.lazyPut(() => CollectionSettingsController(), fenix: true);
+    // The mandatory What's new over Home after an update: GetStorage-backed.
+    Get.lazyPut(() => WhatsNewPromptController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     // The phone's position, stamped on every queued Collection change.
     // Permanent: it keeps the last fix so a batch asks once.
@@ -337,6 +346,11 @@ class GeneralBindings extends Bindings {
             ),
         fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
+    // Settings → SMS Outbox; after the service it reads.
+    Get.lazyPut(
+        () => CollectionSmsOutboxController(
+            sms: Get.find<CollectionSmsService>()),
+        fenix: true);
     // Reconciliation Tracker: queues through CollectionRepository and
     // SyncManager (above). SQLite + /api4 only, so outside the Firebase guard.
     registerReconciliationTracker(
@@ -367,6 +381,10 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(
         () => CollectionReportsController(exporter: Get.find<ReportExportService>()),
         fenix: true);
+    // Calendar → Print: the month as a PDF drawn on MDMPI.App (/api4), shared
+    // through the export service above. Online only.
+    Get.lazyPut(() => CollectionCalendarPrintRepository(), fenix: true);
+    Get.lazyPut(() => CollectionCalendarPrintController(), fenix: true);
 
     // Eager, not lazy: it must be alive to hear connectivity and lifecycle
     // events, otherwise nothing drains the proof outboxes automatically.

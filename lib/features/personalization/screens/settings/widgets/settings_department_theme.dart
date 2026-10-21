@@ -24,7 +24,8 @@ class SettingsStatusColors extends ThemeExtension<SettingsStatusColors> {
   /// cool tint of the Logistics blue.
   final Color canvas;
 
-  static const collection = SettingsStatusColors(
+  /// Follows the phone's light/dark palette, so read when the theme is built.
+  static SettingsStatusColors get collection => SettingsStatusColors(
     success: BCollectionColors.success,
     warning: BCollectionColors.warning,
     danger: BCollectionColors.danger,
@@ -84,9 +85,11 @@ class SettingsDepartmentTheme extends StatelessWidget {
   static bool isCollection(String department) =>
       department.trim().toLowerCase() == 'collection';
 
-  static final ThemeData collection = BCollectionTheme.light.copyWith(
-    extensions: const [SettingsStatusColors.collection],
-  );
+  /// The Collection theme for the phone's mode: Settings pinned the light
+  /// one, so a phone in dark mode showed a white Settings page.
+  static ThemeData get collection =>
+      (BCollectionColors.isDark ? BCollectionTheme.dark : BCollectionTheme.light)
+          .copyWith(extensions: [SettingsStatusColors.collection]);
 
   static final ThemeData logistics = BAppTheme.lightTheme.copyWith(
     colorScheme: ColorScheme.fromSeed(

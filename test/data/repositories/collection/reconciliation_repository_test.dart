@@ -231,6 +231,84 @@ void main() {
     expect(r.error, 'Already settled: 700013391.');
   });
 
+  group('missing cases', () {
+    ({String clientCode, String clientName, ReconCaseInvoice invoice}) marked(
+            String client, String no, double amount) =>
+        (
+          clientCode: client,
+          clientName: 'Name of $client',
+          invoice: ReconCaseInvoice(invoiceNo: no, amount: amount),
+        );
+
+    test('marked invoices in no case get one case per account', () async {
+      final r = await repo.openMissingCases([
+        marked('NLN-115', '700013391', 24281.25),
+        marked('NLN-115', '700013392', 121208.04),
+        marked('NCR-9', '700020001', 500),
+      ]);
+      expect(r.value, 2);
+
+      final cases = (await repo.loadCases()).value;
+      final nln = cases.singleWhere((b) => b.reconCase.clientCode == 'NLN-115');
+      expect(nln.invoices.map((i) => i.invoiceNo),
+          ['700013391', '700013392']);
+      expect(nln.reconCase.clientName, 'Name of NLN-115');
+      expect(nln.reconCase.collectorCode, 'JCA',
+          reason: 'the collector holding the invoices holds the case');
+      expect(queued.map((c) => c.op),
+          everyElement('RECON_OPEN_CASE'));
+      expect(queued, hasLength(2));
+    });
+
+    test('a second run opens nothing', () async {
+      await repo.openMissingCases([marked('NLN-115', '700013391', 1)]);
+      final again =
+          await repo.openMissingCases([marked('NLN-115', '700013391', 1)]);
+      expect(again.value, 0);
+      expect(queued, hasLength(1));
+    });
+
+    test('an invoice already in a case is left alone', () async {
+      await open();
+      final r = await repo.openMissingCases([
+        marked('NLN-115', '700013391', 1),
+        marked('NLN-115', '700013392', 1),
+      ]);
+      expect(r.value, 0);
+      expect((await repo.loadCases()).value, hasLength(1));
+    });
+
+    test('an invoice of an ended case is not put in a new one', () async {
+      final caseId = await open();
+      await repo.appendActivity(
+          caseId: caseId, type: ReconActivityType.caseNotCompleted);
+      final r =
+          await repo.openMissingCases([marked('NLN-115', '700013391', 1)]);
+      expect(r.value, 0);
+    });
+
+    test('an account with an open case keeps it; the rest wait', () async {
+      await repo.openCase(
+          clientCode: 'NLN-115',
+          clientName: 'Accusure',
+          invoices: const [
+            ReconCaseInvoice(invoiceNo: '700013391', amount: 1)
+          ]);
+      queued.clear();
+      final r = await repo.openMissingCases([
+        marked('NLN-115', '700013392', 1),
+        marked('NCR-9', '700020001', 1),
+      ]);
+      expect(r.value, 1, reason: 'only NCR-9 gets a case');
+      expect(queued.single.fields['ClientCode'], 'NCR-9');
+    });
+
+    test('nothing marked: nothing done', () async {
+      expect((await repo.openMissingCases(const [])).value, 0);
+      expect(queued, isEmpty);
+    });
+  });
+
   group('logged by the app', () {
     test('a collection on a case invoice goes on the timeline', () async {
       final caseId = await open();

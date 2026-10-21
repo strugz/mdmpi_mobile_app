@@ -4,9 +4,9 @@ import 'package:mdmpi_mobile_app/features/collection/models/collection_item_mode
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 
-/// An invoice marked for reconciliation lives under Home → Reconciliation
-/// only. It used to sit in the regular bucket as well, and acquiring its
-/// account from the bucket took only the marked invoices and left the rest.
+/// Reconciliation is a status, not a removal (update checklist item 22): an
+/// invoice marked for reconciliation stays in the bucket with its account,
+/// and acquiring the account takes it with the rest.
 
 class _Stub extends CollectionActivityController {
   final claimed = <String>[];
@@ -63,16 +63,17 @@ _Stub _seeded() {
 void main() {
   tearDown(Get.reset);
 
-  test('the bucket leaves out invoices marked for reconciliation', () {
+  test('the bucket keeps invoices marked for reconciliation', () {
     final c = _seeded();
     expect(c.bucketAccounts.map((a) => a.name),
-        ['Ace Diagnostics Corp.', 'Amka Trading'],
-        reason: 'an account with only marked invoices is not in the bucket');
-    expect(c.getAccountInvoiceCount(_amka.id), 2);
-    expect(c.getBucketOpenInvoices(_amka.id).map((i) => i.id), ['a1', 'a2']);
+        ['Ace Diagnostics Corp.', 'Amka Trading', 'Only Reconciliation Inc.'],
+        reason: 'an account with only marked invoices is in the bucket too');
+    expect(c.getAccountInvoiceCount(_amka.id), 3);
+    expect(c.getBucketOpenInvoices(_amka.id).map((i) => i.id),
+        ['a1', 'a2', 'r1']);
     expect(c.getInvoicesByAccount(_amka.id).map((i) => i.id).toSet(),
-        {'a1', 'a2'});
-    expect(c.regularBucketItemCount, 3);
+        {'a1', 'a2', 'r1'});
+    expect(c.regularBucketItemCount, 5);
   });
 
   test('Reconciliation lists the marked ones', () {
@@ -83,18 +84,31 @@ void main() {
         ['r1']);
   });
 
-  test('acquiring from the bucket takes the regular invoices', () {
+  test('acquiring from the bucket takes the marked invoices too', () async {
     final c = _seeded();
-    c.claimAccount(_amka.id);
-    expect(c.claimed, ['a1', 'a2']);
+    await c.claimAccount(_amka.id);
+    expect(c.claimed, ['a1', 'a2', 'r1']);
   });
 
-  test('acquiring ticked accounts takes their regular invoices', () async {
+  test('acquiring ticked accounts takes their marked invoices too', () async {
     final c = _seeded();
     c.toggleAccountSelection(_amka.id);
-    c.toggleAccountSelection(_ace.id);
+    c.toggleAccountSelection(_only.id);
     await c.claimSelectedAccounts();
-    expect(c.claimed.toSet(), {'a1', 'a2', 'b1'});
+    expect(c.claimed.toSet(), {'a1', 'a2', 'r1', 'r2'});
+  });
+
+  test('acquiring from the case screen takes the whole account', () async {
+    final c = _seeded();
+    await c.acquireForCase(_amka.id);
+    expect(c.claimed, ['a1', 'a2', 'r1']);
+  });
+
+  test('acquiring from the case screen with nothing in the bucket claims '
+      'nothing', () async {
+    final c = _seeded();
+    await c.acquireForCase('no-such-account');
+    expect(c.claimed, isEmpty);
   });
 
   test('acquiring from Reconciliation takes only the marked invoices', () {

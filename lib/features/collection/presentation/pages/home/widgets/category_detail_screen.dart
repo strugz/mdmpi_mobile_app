@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:intl/intl.dart';
+import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/pressable_scale.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/area_selection/widgets/filter_by_area_button.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_account_information_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/account_card.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/client_picker_sheet.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/invoice_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -13,8 +16,38 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_amount_blur_pad.dart';
+
+/// What the latest Pre-Collection on [item] says the next collection
+/// brings: "Next collection: PHP 50,000.00 · Check BDO 1234567, dated
+/// 10-25-2026". '' when it recorded neither an amount nor a check.
+String preCollectionDetails(CollectionItemModel item) {
+  CollectionHistoryModel? last;
+  for (final h in item.history.reversed) {
+    if (CollectionOutcome.isPreCollection(h.status)) {
+      last = h;
+      break;
+    }
+  }
+  if (last == null) return '';
+  final check = [
+    (last.bankName ?? '').trim(),
+    (last.checkNumber ?? '').trim(),
+  ].where((s) => s.isNotEmpty).join(' ');
+  final date = (last.checkDate ?? '').trim();
+  final parts = [
+    if (last.totalCollected > 0)
+      BFormatter.formatPesoCurrency(last.totalCollected),
+    if (check.isNotEmpty || date.isNotEmpty)
+      [
+        if (check.isNotEmpty) 'Check $check' else 'Check',
+        if (date.isNotEmpty) 'dated $date',
+      ].join(', '),
+  ];
+  return parts.isEmpty ? '' : 'Next collection: ${parts.join(' \u00b7 ')}';
+}
 
 class CategoryDetailScreen extends StatelessWidget {
   const CategoryDetailScreen({
@@ -64,12 +97,32 @@ class CategoryDetailScreen extends StatelessWidget {
                 separatorBuilder: (_, __) =>
                     const SizedBox(height: BSizes.spaceBtwItems),
                 itemBuilder: (context, index) {
-                  return InvoiceCard(
+                  final card = InvoiceCard(
                     item: invoices[index],
                     // One account's invoices, under a title that names it.
                     // Repeating the name on every card put a line of noise
                     // between the invoice number and the amount.
                     showAccountName: false,
+                  );
+                  final next = title ==
+                          CollectionStatusColors.statusPreCollection
+                      ? preCollectionDetails(invoices[index])
+                      : '';
+                  if (next.isEmpty) return card;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      card,
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                            BSizes.sm, BSizes.xs, BSizes.sm, 0),
+                        child: Text(
+                          next,
+                          key: ValueKey('pre-collection-${invoices[index].id}'),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -130,8 +183,11 @@ class CategoryDetailScreen extends StatelessWidget {
                                   ?.name ??
                               (pay['clientName'] as String? ?? ''),
                           accent: color,
+                          temporary: CollectionActivityController
+                              .isOnTemporaryAccount(pay),
                           onApply: () =>
                               _showPaymentDetailSheet(context, controller, pay),
+                          onLink: () => _linkAdvance(context, controller, pay),
                         ),
                         const SizedBox(height: BSizes.spaceBtwItemsLight),
                       ],
@@ -151,6 +207,9 @@ class CategoryDetailScreen extends StatelessWidget {
                   break;
                 case 'Reconciliation':
                   accounts = controller.reconciliationAccounts;
+                  break;
+                case CollectionStatusColors.statusPreCollection:
+                  accounts = controller.preCollectionAccounts;
                   break;
                 default:
                   accounts = [];
@@ -183,6 +242,10 @@ class CategoryDetailScreen extends StatelessWidget {
                       invoices = controller
                           .getReconciliationInvoicesByAccount(client.id);
                       break;
+                    case CollectionStatusColors.statusPreCollection:
+                      invoices = controller
+                          .getPreCollectionInvoicesByAccount(client.id);
+                      break;
                   }
 
                   return AccountCard(
@@ -200,7 +263,15 @@ class CategoryDetailScreen extends StatelessWidget {
                         CollectionAccountInformationScreen(client: client)),
                     onClaimTap: title == 'Reconciliation'
                         ? () => controller.claimReconciliation(client.id)
-                        : null,
+                        // Acquired here as from the bucket: the account's
+                        // open invoices, Pre-Collection ones among them.
+                        : title ==
+                                    CollectionStatusColors
+                                        .statusPreCollection &&
+                                controller
+                                    .hasPreCollectionInBucket(client.id)
+                            ? () => controller.claimAccount(client.id)
+                            : null,
                   );
                 },
               );
@@ -209,6 +280,26 @@ class CategoryDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// A temporary account's advance: find the real account and move it there.
+  Future<void> _linkAdvance(BuildContext context,
+      CollectionActivityController controller, Map<String, dynamic> pay) async {
+    final client = await ClientPickerSheet.show(
+      context,
+      search: controller.searchClientRegistry,
+      searchKnown: controller.searchKnownAccounts,
+    );
+    if (client == null) return;
+    final ok = await controller.linkAdvance(pay['id'] as String, client);
+    if (ok) {
+      BLoaders.successSnackBar(
+          title: 'Advance linked',
+          message: 'Moved to ${client.name}. You can apply it to an invoice now.');
+    } else {
+      BLoaders.errorSnackBar(
+          title: 'Not linked', message: 'Pick an account from the registry.');
+    }
   }
 
   void _showPaymentDetailSheet(BuildContext context,
@@ -301,6 +392,8 @@ class _AdvanceCard extends StatelessWidget {
     required this.accountName,
     required this.accent,
     required this.onApply,
+    this.temporary = false,
+    this.onLink,
   });
 
   final Map<String, dynamic> payment;
@@ -308,14 +401,20 @@ class _AdvanceCard extends StatelessWidget {
   final Color accent;
   final VoidCallback onApply;
 
+  /// On a temporary account: it is linked to the real account before it can
+  /// be applied, so the card offers Link to account instead.
+  final bool temporary;
+  final VoidCallback? onLink;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final amount = (payment['amount'] as num?)?.toDouble() ?? 0;
     final remarks = (payment['remarks'] as String? ?? '').trim();
 
+    final action = temporary ? (onLink ?? () {}) : onApply;
     return BPressableScale(
-      onTap: onApply,
+      onTap: action,
       pressedScale: 0.98,
       child: Container(
         padding: const EdgeInsets.all(BSizes.md),
@@ -355,7 +454,7 @@ class _AdvanceCard extends StatelessWidget {
             const SizedBox(height: BSizes.xs),
             Row(
               children: [
-                const Icon(Iconsax.calendar_1,
+                Icon(Iconsax.calendar_1,
                     size: 14, color: BCollectionColors.inkMuted),
                 const SizedBox(width: BSizes.xs),
                 Flexible(
@@ -392,7 +491,10 @@ class _AdvanceCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
                 ),
                 child: Text(
-                  'Float · awaiting invoice',
+                  temporary
+                      ? 'Temporary account · link to apply'
+                      : 'Float · awaiting invoice',
+                  key: ValueKey('advance-state-${payment['id']}'),
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: accent, fontWeight: FontWeight.w700),
                 ),
@@ -402,9 +504,11 @@ class _AdvanceCard extends StatelessWidget {
             // No fixed height and the theme's tall padding replaced, so the
             // label always has room and grows with the system font size.
             ElevatedButton.icon(
-              onPressed: onApply,
-              icon: const Icon(Iconsax.receipt_add, size: 18),
-              label: const Text('Apply to invoice'),
+              key: ValueKey('advance-action-${payment['id']}'),
+              onPressed: action,
+              icon: Icon(temporary ? Iconsax.link : Iconsax.receipt_add,
+                  size: 18),
+              label: Text(temporary ? 'Link to account' : 'Apply to invoice'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                     horizontal: BSizes.md, vertical: BSizes.sm + 2),

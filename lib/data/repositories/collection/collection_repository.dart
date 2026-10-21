@@ -6,6 +6,7 @@ export 'package:mdmpi_mobile_app/features/collection/helpers/upload_batches.dart
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_outcome.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/api_environment.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
@@ -167,6 +168,11 @@ class CollectionRepository extends GetxController {
     await (await helper.collectionAccountHistoryDao)
         .replaceAll(ws.accountHistory);
     await (await helper.collectionTargetDao).replaceAll(ws.targets);
+    // Per-area targets only when this server sends them (an older one does
+    // not, and that is not the office clearing them).
+    if (ws.hasAreaTargets) {
+      await (await helper.collectionTargetDao).replaceAreas(ws.areaTargets);
+    }
     // Actual Collection is the office's list and wins outright, empty or not
     // — but only when this server sent one. An older server leaves the key
     // out, and that is not the office deleting every entry.
@@ -375,9 +381,11 @@ class CollectionRepository extends GetxController {
 
       final now = DateTime.now().toIso8601String();
       final newlyCollected = totalCollected ?? 0.0;
-      final updatedTotalCollected = item.totalCollected + newlyCollected;
+      // A Pre-Collection's amount is recorded and uploaded, never applied.
+      final applied = CollectionOutcome.appliedAmount(status, newlyCollected);
+      final updatedTotalCollected = item.totalCollected + applied;
       final updatedToBeCollected =
-          (item.toBeCollected - newlyCollected).clamp(0.0, double.infinity);
+          (item.toBeCollected - applied).clamp(0.0, double.infinity);
       final isFullyPaid = updatedToBeCollected == 0;
 
       // Create history entry
@@ -394,8 +402,12 @@ class CollectionRepository extends GetxController {
       );
 
       // Update item
+      // Paid in full leaves Reconciliation (item 25); partly paid keeps it,
+      // as the controller does in memory. Clearing it here lost the badge on
+      // the next reload.
       final updatedItem = item.copyWith(
-        status: isFullyPaid ? 'Collected' : '',
+        status: CollectionOutcome.statusAfterPayment(item.status,
+            fullyPaid: isFullyPaid),
         lastOutcome: status,
         remarks: remarks,
         toBeCollected: updatedToBeCollected,
@@ -508,9 +520,11 @@ class CollectionRepository extends GetxController {
         final itemRemarks = remarks[id] ?? 'Batch Recording';
         final itemStatus = statuses[id] ?? '';
 
-        final updatedTotalCollected = item.totalCollected + manualAmount;
+        final applied =
+            CollectionOutcome.appliedAmount(itemStatus, manualAmount);
+        final updatedTotalCollected = item.totalCollected + applied;
         final updatedToBeCollected =
-            (item.toBeCollected - manualAmount).clamp(0.0, double.infinity);
+            (item.toBeCollected - applied).clamp(0.0, double.infinity);
         final isFullyPaid = updatedToBeCollected == 0;
 
         final historyEntry = CollectionHistoryModel(
@@ -526,7 +540,8 @@ class CollectionRepository extends GetxController {
         );
 
         final updatedItem = item.copyWith(
-          status: isFullyPaid ? 'Collected' : '',
+          status: CollectionOutcome.statusAfterPayment(item.status,
+              fullyPaid: isFullyPaid),
           lastOutcome: itemStatus,
           remarks: itemRemarks,
           toBeCollected: updatedToBeCollected,
@@ -1382,7 +1397,7 @@ class CollectionRepository extends GetxController {
         }
       }
 
-      await _queueChange(_operationForActivity(type), localRef, {
+      await _queueChange(operationForActivity(type), localRef, {
         'ClientCode': clientId,
         'ActivityType': type,
         'EngagementDate': now,
@@ -1401,7 +1416,9 @@ class CollectionRepository extends GetxController {
     }
   }
 
-  String _operationForActivity(String type) {
+  /// The upload operation for an office activity's type. Public so a test
+  /// can check the mapping without a database.
+  static String operationForActivity(String type) {
     switch (type.trim().toLowerCase()) {
       case 'deposit':
         return 'DEPOSIT';
@@ -1410,6 +1427,10 @@ class CollectionRepository extends GetxController {
         return 'CWT_PICKUP';
       case 'reconciliation':
         return 'RECONCILIATION';
+      // Account-level, like CWT: an older server answers "Unknown
+      // operation" and the row waits in the outbox until MDMPI.App has it.
+      case 'routing of documents':
+        return 'ROUTING_DOCUMENTS';
       default:
         return 'OFFICE_ACTIVITY';
     }
@@ -1450,6 +1471,9 @@ class CollectionRepository extends GetxController {
 
       await _queueChange('ADVANCED_PAYMENT', record.externalRef, {
         'ClientCode': clientId,
+        // For an account the server does not know yet (a temporary account),
+        // the name it is registered under.
+        'ClientName': clientName,
         'ExternalRef': record.externalRef,
         'EngagementDate': now,
         'AmountCollected': amount,
@@ -1462,6 +1486,31 @@ class CollectionRepository extends GetxController {
     } catch (e) {
       logDebug('CollectionRepository.saveAdvance error: $e');
       return null;
+    }
+  }
+
+  /// A temporary account's advance moves to the real account [clientId]
+  /// (update checklist item 16): on the phone now, on the server with the
+  /// next upload (LINK_ADVANCE). Only an advance not yet applied.
+  Future<bool> linkAdvance({
+    required String externalRef,
+    required String clientId,
+    required String clientName,
+  }) async {
+    try {
+      final advDao = await DatabaseHelper.instance.collectionAdvanceDao;
+      await advDao.moveToClient(externalRef, clientId, clientName);
+      await _queueChange('LINK_ADVANCE', 'LINK-$externalRef', {
+        'ExternalRef': externalRef,
+        'ClientCode': clientId,
+        'ClientName': clientName,
+        'EngagementDate': _nowStamp(),
+      });
+      logDebug('CollectionRepository: advance $externalRef linked to $clientId');
+      return true;
+    } catch (e) {
+      logDebug('CollectionRepository.linkAdvance error: $e');
+      return false;
     }
   }
 
@@ -1544,6 +1593,18 @@ class CollectionRepository extends GetxController {
       return await tDao.get(yearMonth);
     } catch (e) {
       logDebug('CollectionRepository.getTarget error: $e');
+      return null;
+    }
+  }
+
+  /// [area]'s target for [yearMonth] (yyyy-MM), as the office set it on the
+  /// admin web; null when none is set for that area.
+  Future<double?> getAreaTarget(String yearMonth, String area) async {
+    try {
+      final tDao = await DatabaseHelper.instance.collectionTargetDao;
+      return await tDao.getArea(yearMonth, area);
+    } catch (e) {
+      logDebug('CollectionRepository.getAreaTarget error: $e');
       return null;
     }
   }

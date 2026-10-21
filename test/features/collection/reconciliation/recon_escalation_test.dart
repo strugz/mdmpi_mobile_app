@@ -52,9 +52,8 @@ void main() {
         onStatus(SendStatus.SENT);
       },
       report: (_, __, ___) {},
-      openProgress: (_) {},
-      closeProgress: () {},
-      showSent: () async {},
+      outbox: () async => null,
+      timers: false,
       betweenRecipients: Duration.zero,
       initials: () => 'JCA',
     ));
@@ -97,8 +96,10 @@ void main() {
     expect(
         texts.single.$2,
         'Reconciliation escalated: Allied Care Experts (ACE) Medical Center - '
-        'Bohol, Inc. 1 open invoice, PHP 276,995.00. Reason: No proof after '
-        'three follow-ups. - JCA');
+        'Bohol, Inc.\n'
+        'Open: 1 invoice, PHP 276,995.00\n'
+        'Reason: No proof after three follow-ups\n'
+        '- JCA');
     expect(controller.caseById(caseId)!.evaluation.status,
         ReconCaseStatus.escalated);
   });

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 
 import '../../../features/logistics/models/client_model.dart';
 import '../../../data/models/item_category_model.dart';
+import 'commute_id.dart';
 
 /// Encapsulates all form-related state for Air/Sea requests.
 /// Manages text controllers, reactive values, and form validation state.
@@ -29,6 +30,8 @@ class AirSeaFormState {
   final TextEditingController driverController = TextEditingController();
   final TextEditingController helperController = TextEditingController();
   final TextEditingController vehicleController = TextEditingController();
+  // "Commuting" switch: fills [tripTicketController] with a Commute ID.
+  final CommuteTicketToggle commute = CommuteTicketToggle();
   final TextEditingController dispatchedAtController = TextEditingController();
   final TextEditingController dropOffAtController = TextEditingController();
   final TextEditingController provincialDeliveredToController = TextEditingController();
@@ -80,6 +83,7 @@ class AirSeaFormState {
     receivedByController.text = '';
     waybillNumberController.text = '';
     tripTicketController.text = '';
+    commute.reset();
     driverController.text = '';
     helperController.text = '';
     vehicleController.text = '';

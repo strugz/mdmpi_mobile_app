@@ -116,7 +116,9 @@ Future<void> createAllTables(Database db) async {
       PhoneNumber TEXT,
       Username TEXT,
       ProfilePicture TEXT,
-      Status BOOLEAN
+      Status BOOLEAN,
+      HeadKey TEXT,
+      HeadName TEXT
     )
   ''');
 
@@ -544,6 +546,7 @@ Future<void> ensureCollectionTables(Database db) async {
       collectionDate TEXT,
       amount REAL DEFAULT 0,
       referenceNo TEXT,
+      area TEXT,
       remarks TEXT,
       postedBy TEXT,
       createdAt TEXT,
@@ -554,6 +557,20 @@ Future<void> ensureCollectionTables(Database db) async {
   await db.execute('''
     CREATE INDEX IF NOT EXISTS idx_collection_actual_date
       ON a_tblCollectionActual (collectionDate)
+  ''');
+  // The area an entry counts toward (update checklist item 3); '' = the team.
+  await _addColumnIfMissing(db, 'a_tblCollectionActual', 'area', 'TEXT');
+
+  // Table: a_tblCollectionAreaTarget (the office's targets per month and area;
+  // a_tblCollectionTarget keeps the month's sum). A cache of the server's
+  // list, replaced on each download that carries it.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionAreaTarget (
+      yearMonth TEXT NOT NULL,
+      area TEXT NOT NULL DEFAULT '',
+      amount REAL DEFAULT 0,
+      PRIMARY KEY (yearMonth, area)
+    )
   ''');
 
   // Table: a_tblCollectionEngagement (the collector's own field-work archive)
@@ -758,6 +775,27 @@ Future<void> ensureReconciliationTables(Database db) async {
   await db.execute('''
     CREATE INDEX IF NOT EXISTS idx_collection_recon_attachment_status
       ON a_tblCollectionReconAttachment (status)
+  ''');
+  // The SMS Outbox: every Collection SMS is saved here and sent from here in
+  // the background (Settings → SMS Outbox). recipients is a JSON list of
+  // {number, result}; sent rows are cleared at midnight, unsent ones stay.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionSmsOutbox (
+      id            TEXT PRIMARY KEY,
+      createdAt     TEXT NOT NULL,
+      kind          TEXT NOT NULL DEFAULT '',
+      message       TEXT NOT NULL,
+      headOnly      INTEGER NOT NULL DEFAULT 0,
+      status        TEXT NOT NULL DEFAULT 'Pending',
+      recipients    TEXT NOT NULL DEFAULT '[]',
+      attempts      INTEGER NOT NULL DEFAULT 0,
+      lastError     TEXT,
+      lastAttemptAt TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_sms_outbox_status
+      ON a_tblCollectionSmsOutbox (status, createdAt)
   ''');
 }
 

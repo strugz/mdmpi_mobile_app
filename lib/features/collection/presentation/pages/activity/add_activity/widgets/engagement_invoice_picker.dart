@@ -19,16 +19,23 @@ class EngagementInvoicePicker extends StatelessWidget {
     required this.invoices,
     required this.selectedIds,
     required this.onToggle,
+    this.onToggleAll,
   });
 
   final List<CollectionItemModel> invoices;
   final List<String> selectedIds;
   final void Function(String id, bool selected) onToggle;
 
+  /// Select every listed invoice (true) or none (false). Without it the
+  /// picker offers no "Select all".
+  final void Function(bool selectAll)? onToggleAll;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final count = selectedIds.length;
+    final allSelected = invoices.isNotEmpty &&
+        invoices.every((inv) => selectedIds.contains(inv.id));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,6 +60,12 @@ class EngagementInvoicePicker extends StatelessWidget {
                 ),
               ),
             ),
+            if (onToggleAll != null && invoices.length > 1)
+              TextButton(
+                key: const ValueKey('invoice-picker-select-all'),
+                onPressed: () => onToggleAll!(!allSelected),
+                child: Text(allSelected ? 'Clear' : 'Select all'),
+              ),
           ],
         ),
         const SizedBox(height: BSizes.sm),
@@ -69,7 +82,7 @@ class EngagementInvoicePicker extends StatelessWidget {
                   padding: const EdgeInsets.all(BSizes.md),
                   child: Row(
                     children: [
-                      const Icon(Iconsax.document,
+                      Icon(Iconsax.document,
                           size: 18, color: BCollectionColors.inkMuted),
                       const SizedBox(width: BSizes.sm),
                       Expanded(
@@ -101,7 +114,9 @@ class EngagementInvoicePicker extends StatelessWidget {
                       activeColor: BCollectionColors.primary,
                       contentPadding:
                           const EdgeInsets.symmetric(horizontal: BSizes.sm),
-                      title: Text(inv.id,
+                      // SI and PO named, so neither is mistaken for the
+                      // other when the customer quotes one.
+                      title: Text('SI ${inv.id}',
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w600)),
                       subtitle: Text(

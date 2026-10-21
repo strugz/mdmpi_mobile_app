@@ -31,7 +31,7 @@ Future<void> _open(WidgetTester tester) async {
 
 void main() {
   testWidgets('titles the sheet as the button that opened it and lists the '
-      'four engagement types', (tester) async {
+      'five engagement types', (tester) async {
     await tester.pumpWidget(_host());
     await _open(tester);
 

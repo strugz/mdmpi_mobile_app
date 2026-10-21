@@ -18,15 +18,15 @@ import '../../../../base/utils/constants/text_strings.dart';
 // ============================================================================
 // STATUS-DRIVEN ROLE SELECTION
 // ============================================================================
-// Stock Receive mirrors Pull Out minus the "For Pull Out" step: Release
-// dispatches (New Request → In Transit) and Courier completes
-// (In Transit → Taken Out).
+// Stock Receive mirrors Pull Out minus the "For Pull Out" step. Trip ticket,
+// driver, helper and vehicle are entered on the create form, so the assigned
+// Courier runs the whole flow (New Request → In Transit → Taken Out).
 //
 // Status-Role Capability Matrix:
 // ┌──────────────┬─────────┬─────────┬─────────┐
 // │ Status       │ Request │ Release │ Courier │
 // ├──────────────┼─────────┼─────────┼─────────┤
-// │ New Request  │ View    │ ✅ Action│ View    │
+// │ New Request  │ View    │ View    │ ✅ Action│
 // │ In Transit   │ View    │ View    │ ✅ Action│
 // │ Taken Out    │ View    │ View    │ View    │
 // │ Cancelled    │ View    │ View    │ View    │
@@ -35,7 +35,7 @@ import '../../../../base/utils/constants/text_strings.dart';
 
 /// Maps each status to the preferred role that has action capability.
 const _statusToPreferredRole = {
-  BTexts.statusNewRequest: BTexts.roleRelease, // Release: Set In Transit
+  BTexts.statusNewRequest: BTexts.roleCourier, // Courier: Set In Transit
   BTexts.statusInTransit: BTexts.roleCourier, // Courier: Mark Taken Out
   // Taken Out, Cancelled, Picked-up: All roles are view-only
 };

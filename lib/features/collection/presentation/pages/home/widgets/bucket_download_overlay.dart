@@ -119,12 +119,12 @@ class _DownloadCard extends StatelessWidget {
                     child: FadeTransition(opacity: anim, child: child),
                   ),
                   child: switch (phase) {
-                    BucketDownloadPhase.success => const _ResultBadge(
+                    BucketDownloadPhase.success => _ResultBadge(
                         key: ValueKey('success'),
                         icon: Iconsax.tick_circle5,
                         color: BCollectionColors.success,
                       ),
-                    BucketDownloadPhase.error => const _ResultBadge(
+                    BucketDownloadPhase.error => _ResultBadge(
                         key: ValueKey('error'),
                         icon: Iconsax.close_circle5,
                         color: BCollectionColors.danger,
@@ -322,7 +322,7 @@ class _DataTransferAnimationState extends State<_DataTransferAnimation>
               child: _Node(
                 size: nodeSize,
                 ringOpacity: 0.35 - 0.2 * math.sin(t * 2 * math.pi).abs(),
-                child: const Icon(Iconsax.cloud_connection,
+                child: Icon(Iconsax.cloud_connection,
                     size: 32, color: BCollectionColors.primary),
               ),
             ),

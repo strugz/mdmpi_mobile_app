@@ -33,14 +33,18 @@ class BRoutes{
   // Collection - total collected
   static const totalCollected = '/collection/total-collected';
   static const collectionUploadOutbox = '/collection/upload-outbox';
+  static const collectionSmsOutbox = '/collection/sms-outbox';
   static const myHead = '/settings/my-head';
   static const teamActivity = '/collection/team-activity';
   static const collectionStorage = '/settings/collection-storage';
+  static const collectionTheme = '/settings/collection-theme';
   static const about = '/settings/about';
   static const addToBucket = '/collection/add-to-bucket';
   // Collection - engagement forms (opened from the activity type sheet)
   static const collectionDepositForm = '/collection/engagement/deposit';
   static const collectionCwtPickupForm = '/collection/engagement/cwt-pickup';
+  static const collectionRoutingDocumentsForm =
+      '/collection/engagement/routing-documents';
   static const collectionReconciliationForm =
       '/collection/engagement/reconciliation';
   static const collectionAdvancedPaymentForm =

@@ -376,7 +376,7 @@ void main() {
 
       await pick(tester, const ValueKey('reconciliation-account'),
           'Antipolo Doctors Hospital');
-      await tester.tap(find.text('INV-1'));
+      await tester.tap(find.text('SI INV-1'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).last, 'Asked for SOA');
       await tester.tap(find.text('Open reconciliation case'));
@@ -405,7 +405,7 @@ void main() {
 
       await pick(tester, const ValueKey('reconciliation-account'),
           'Antipolo Doctors Hospital');
-      await tester.tap(find.text('INV-1'));
+      await tester.tap(find.text('SI INV-1'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Open reconciliation case'));
       await tester.pumpAndSettle();

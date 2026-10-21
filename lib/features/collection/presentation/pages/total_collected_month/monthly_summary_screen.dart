@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The month's ledger: what was collected, or posted as Actual Collection,
@@ -134,7 +135,7 @@ class _MonthHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(
           BSizes.sm, 0, BSizes.sm, BSizes.spaceBtwItems),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: BCollectionColors.surface,
         border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
       ),
@@ -178,7 +179,7 @@ class _MonthHeader extends StatelessWidget {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(width: BSizes.xs),
-                          const Icon(Iconsax.arrow_down_1,
+                          Icon(Iconsax.arrow_down_1,
                               size: 14, color: BCollectionColors.inkMuted),
                         ],
                       ),
@@ -195,6 +196,10 @@ class _MonthHeader extends StatelessWidget {
                 ),
               ],
             ),
+            // With a default area set: that area's Actual Collection and
+            // target, or every area's (update checklist items 3 and 5).
+            if (isActual && controller.canPickArea)
+              _AreaSwitch(controller: controller),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
               child: AnimatedSwitcher(
@@ -211,7 +216,7 @@ class _MonthHeader extends StatelessWidget {
                   children: [
                     Text(
                       isActual
-                          ? 'Team · posted by the office'
+                          ? '${controller.actualScopeLabel} · posted by the office'
                           : all
                               ? 'Collected · all collectors'
                               : 'Collected',
@@ -305,7 +310,7 @@ class _CollectorBreakdown extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.fromLTRB(
             BSizes.md, BSizes.sm, BSizes.md, BSizes.sm),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
         ),
@@ -332,7 +337,7 @@ class _CollectorBreakdown extends StatelessWidget {
                     key: const ValueKey('collector-breakdown-reload'),
                     onTap: controller.reloadOthers,
                     borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.all(BSizes.xs),
                       child: Icon(Iconsax.refresh,
                           size: 16, color: BCollectionColors.inkMuted),
@@ -392,6 +397,45 @@ class _CollectorBreakdown extends StatelessWidget {
   }
 }
 
+/// "All areas" or the collector's default area, for Actual Collection and its
+/// target. Shown only with a default area set (Settings).
+class _AreaSwitch extends StatelessWidget {
+  const _AreaSwitch({required this.controller});
+
+  final TotalCollectedController controller;
+
+  @override
+  Widget build(BuildContext context) => Obx(() {
+        final mine = controller.defaultArea;
+        final selected = controller.actualArea.value;
+        return _chips(mine, selected);
+      });
+
+  Widget _chips(String mine, String selected) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          BSizes.sm, 0, BSizes.sm, BSizes.spaceBtwItemsLight),
+      child: Wrap(
+        spacing: BSizes.sm,
+        children: [
+          ChoiceChip(
+            key: const ValueKey('actual-area-mine'),
+            label: Text(BCollectionArea.labelFor(mine)),
+            selected: selected == mine,
+            onSelected: (_) => controller.setActualArea(mine),
+          ),
+          ChoiceChip(
+            key: const ValueKey('actual-area-all'),
+            label: const Text('All areas'),
+            selected: selected.isEmpty,
+            onSelected: (_) => controller.setActualArea(''),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Actual Collection against the month's target.
 ///
 /// Read-only: the office sets targets on the admin web (the CollectionPoster
@@ -411,7 +455,7 @@ class _TargetLine extends StatelessWidget {
     if (target <= 0) {
       return Row(
         children: [
-          const Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
+          Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
           const SizedBox(width: BSizes.xs),
           Expanded(
             child: Text('No team target set yet · the office sets it',
@@ -438,7 +482,7 @@ class _TargetLine extends StatelessWidget {
               value: value,
               minHeight: 6,
               backgroundColor: BCollectionColors.outline,
-              valueColor: const AlwaysStoppedAnimation<Color>(
+              valueColor: AlwaysStoppedAnimation<Color>(
                   BCollectionColors.success),
             ),
           ),
@@ -644,7 +688,7 @@ class _EntryRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: last
             ? null
-            : const Border(
+            : Border(
                 bottom:
                     BorderSide(color: BCollectionColors.outline, width: 0.5)),
       ),
@@ -810,7 +854,7 @@ class _MonthSheet extends StatelessWidget {
                 ),
               ),
               trailing: m == selected
-                  ? const Icon(Iconsax.tick_circle5,
+                  ? Icon(Iconsax.tick_circle5,
                       color: BCollectionColors.primary, size: 20)
                   : null,
               onTap: () => Navigator.pop(context, m),

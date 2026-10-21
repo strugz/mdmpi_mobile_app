@@ -8,7 +8,12 @@ import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_dynamic_list.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_autocomplete_text_field.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/b_client_validation_field.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
+import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown_list.dart';
+import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
+import 'package:mdmpi_mobile_app/data/controllers/app_data/user_initial_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
+import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/pull_out_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controller.dart';
@@ -16,6 +21,7 @@ import 'package:mdmpi_mobile_app/common/widgets/scanner/scanned_items_screen.dar
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_constants.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_client_information.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/b_document_reference.dart';
+import 'package:mdmpi_mobile_app/features/logistics/widgets/trip_ticket_input.dart';
 
 import '../../../../../base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/form/read_only_date_field.dart';
@@ -32,6 +38,8 @@ class PullOutForm extends StatelessWidget {
     final StandardDeliveryController stdController = Get.find();
     final UserMdmpiController userController = Get.find();
     final RequestController requestController = Get.find();
+    final UserInitialController userInitialController = Get.find();
+    final MobileController mobileController = Get.find();
 
     userController.filterUserFromLocal();
 
@@ -76,6 +84,11 @@ class PullOutForm extends StatelessWidget {
         controller.formState.irrfDateController.clear();
         controller.formState.reasonController.clear();
         controller.formState.pullOutDateController.clear();
+        controller.formState.tripTicketController.clear();
+        controller.formState.commute.reset();
+        controller.formState.driverController.clear();
+        controller.formState.helperController.clear();
+        controller.formState.mobile.clear();
 
         stdController.formState.requestedBy.clear();
 
@@ -246,14 +259,91 @@ class PullOutForm extends StatelessWidget {
                     /// Pull Out Date (date only)
                     ReadOnlyDateFormField(
                       controller: controller.formState.pullOutDateController,
-                      label: 'Pull Out Date',
+                      label: isStockReceive
+                          ? 'Stock Receive Date'
+                          : 'Pull Out Date',
                       includeTime: false,
                       icon: Iconsax.clock,
                       validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Please pick a pull out date'
+                          ? (isStockReceive
+                              ? 'Please pick a stock receive date'
+                              : 'Please pick a pull out date')
                           : null,
                     ),
                     const SizedBox(height: BSizes.spaceBtwItems),
+
+                    /// Delivery Info — Stock Receive is dispatched at
+                    /// creation, so the assigned driver sees it right away.
+                    if (isStockReceive) ...[
+                      const BTextDivider(text: 'Delivery Info'),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+                      TripTicketInput(
+                        tripTicket: controller.formState.tripTicketController,
+                        commute: controller.formState.commute,
+                        vehicle: controller.formState.mobile,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Please enter Trip Ticket Number'
+                            : null,
+                      ),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+                      Obx(() {
+                        final users = userInitialController.userList.toList();
+                        if (users.isEmpty) {
+                          return const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2));
+                        }
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: DropdownList<UserModel>(
+                                label: 'Driver',
+                                dropdownList: users,
+                                controller:
+                                    controller.formState.driverController,
+                                getValue: (u) => u.initial,
+                                getDisplay: (u) => u.initial,
+                                onChanged: (_) {},
+                              ),
+                            ),
+                            const SizedBox(width: BSizes.spaceBtwItems),
+                            Expanded(
+                              child: DropdownList<UserModel>(
+                                label: 'Helper',
+                                dropdownList: users,
+                                controller:
+                                    controller.formState.helperController,
+                                getValue: (u) => u.initial,
+                                getDisplay: (u) => u.initial,
+                                onChanged: (_) {},
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+                      // A commuting driver has no vehicle to pick (hidden, so
+                      // its validator does not run either).
+                      Obx(() => controller.formState.commute.isOn.value
+                          ? const SizedBox.shrink()
+                          : BDropDownDynamicList(
+                              icon: Iconsax.truck,
+                              label: 'Vehicle',
+                              dropdownList: mobileController.mobile
+                                  .map((m) => m.toJson())
+                                  .toList(),
+                              controller: controller.formState.mobile,
+                              valueKey: 'MobileID',
+                              displayKey: 'MobileName',
+                              validator: (v) =>
+                                  (v == null || v.trim().isEmpty)
+                                      ? 'Please select Vehicle'
+                                      : null,
+                            )),
+                      const SizedBox(height: BSizes.spaceBtwItems),
+                    ],
 
                     /// Requested By
                     Center(

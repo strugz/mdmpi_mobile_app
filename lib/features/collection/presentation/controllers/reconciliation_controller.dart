@@ -205,6 +205,23 @@ class ReconciliationController extends GetxController {
   /// logs"). Everyone else reads it: a released case waits for an acquire.
   bool canLog(ReconCaseView c) => !c.evaluation.isClosed && holds(c);
 
+  /// An open case someone else holds, or nobody does: the case screen offers
+  /// to acquire its account so this collector can log on it.
+  bool canAcquire(ReconCaseView c) => !c.evaluation.isClosed && !holds(c);
+
+  /// Acquires [c]'s account from the bucket, and the case with it, then
+  /// reloads so the screen offers "Log a step".
+  Future<Result<void>> acquireAccountOf(ReconCaseView c) async {
+    if (!Get.isRegistered<CollectionActivityController>()) {
+      return Result.failure('Open Collection first, then try again.');
+    }
+    final r = await CollectionActivityController.instance
+        .acquireForCase(c.reconCase.clientCode);
+    if (r.isFailure) return Result.failure(r.error);
+    await load();
+    return Result.success(null);
+  }
+
   /// This collector's cases (Step 1 of every round): open ones first, the
   /// one untouched longest at the top. Mine: I hold it, I hold one of its
   /// invoices, or it has ended and I logged a step on it (a paid case stays
@@ -296,6 +313,18 @@ class ReconciliationController extends GetxController {
     }
     return ended.difference(open);
   }
+
+  /// Invoices in a case that is still open: no second case may take them.
+  Set<String> get openCaseInvoiceIds => {
+        for (final c in cases)
+          if (!c.evaluation.isClosed)
+            ...c.bundle.invoices.map((i) => i.invoiceNo),
+      };
+
+  /// [clientCode]'s open case, if it has one. An account has at most one, so
+  /// the Open Reconciliation Case form sends the collector there instead.
+  ReconCaseView? openCaseOf(String clientCode) => cases.firstWhereOrNull(
+      (c) => c.reconCase.clientCode == clientCode && !c.evaluation.isClosed);
 
   ReconCaseView? caseById(String caseId) =>
       cases.firstWhereOrNull((c) => c.caseId == caseId);

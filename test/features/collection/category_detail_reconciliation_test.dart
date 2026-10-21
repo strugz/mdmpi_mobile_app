@@ -44,7 +44,7 @@ void main() {
 
     await tester.pumpWidget(GetMaterialApp(
       theme: BCollectionTheme.light,
-      home: const CategoryDetailScreen(
+      home: CategoryDetailScreen(
           title: 'Reconciliation', color: BCollectionColors.warning),
     ));
     await tester.pumpAndSettle();

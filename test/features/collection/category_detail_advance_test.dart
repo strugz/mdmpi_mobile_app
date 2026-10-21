@@ -61,7 +61,7 @@ Future<void> _pump(WidgetTester tester, List<Map<String, dynamic>> advances,
     home: MediaQuery(
       data: MediaQueryData(
           size: const Size(360, 800), textScaler: TextScaler.linear(scale)),
-      child: const CategoryDetailScreen(
+      child: CategoryDetailScreen(
           title: 'Advanced Payment', color: BCollectionColors.warning),
     ),
   ));
@@ -137,7 +137,7 @@ void main() {
       activity.unassignedAdvancedPayments.assignAll([_advance()]);
       await tester.pumpWidget(GetMaterialApp(
         theme: BCollectionTheme.light,
-        home: const CategoryDetailScreen(
+        home: CategoryDetailScreen(
             title: 'Advanced Payment', color: BCollectionColors.warning),
       ));
       await tester.pumpAndSettle();

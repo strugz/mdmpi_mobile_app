@@ -92,6 +92,18 @@ Modular config lives in `.claude/` (see `.claude/README.md`):
 - `commands/` — `/check`, `/review`, `/new-feature`, `/new-route`, `/qa`, `/bump-version`,
   `/build-apk`, `/release-notes`, `/print-audit`, `/db`. None of them commit or push.
 
+## Reporting changes
+
+Whenever a turn changes something (code, tests, docs, config, a commit), always end the
+message with a **"What I changed"** section, the last thing in the message:
+
+- What the user sees, before → after, in plain words (a small table works well).
+- Each changed file as a link, with one line on what changed in it.
+- What is not done: not committed, not pushed, not checked on a phone, or needing a
+  server (MDMPI.App) deploy.
+
+Do this without being asked, even when the change was small.
+
 ## Docs map
 
 - Module docs index: `docs/README.md` (per-module docs under `docs/modules/`)

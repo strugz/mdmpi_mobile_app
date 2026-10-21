@@ -95,7 +95,7 @@ class _BankPickerSheetState extends State<BankPickerSheet> {
                   IconButton(
                     tooltip: 'Close',
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Iconsax.close_circle,
+                    icon: Icon(Iconsax.close_circle,
                         color: BCollectionColors.inkMuted),
                   ),
                 ],
@@ -155,7 +155,7 @@ class _BankPickerSheetState extends State<BankPickerSheet> {
                             ),
                           ),
                           trailing: selected
-                              ? const Icon(Iconsax.tick_circle5,
+                              ? Icon(Iconsax.tick_circle5,
                                   color: BCollectionColors.primary, size: 20)
                               : null,
                           onTap: () => Navigator.pop(context, bank),

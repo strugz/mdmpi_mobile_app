@@ -100,7 +100,7 @@ class _CollectorBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Iconsax.arrow_down_1,
+                Icon(Iconsax.arrow_down_1,
                     size: 18, color: BCollectionColors.inkSecondary),
               ],
             ),
@@ -201,7 +201,7 @@ class _CollectorSheetState extends State<_CollectorSheet> {
                         title: const Text('All collectors'),
                         selected: widget.selected == null,
                         trailing: widget.selected == null
-                            ? const Icon(Iconsax.tick_circle,
+                            ? Icon(Iconsax.tick_circle,
                                 color: BCollectionColors.primary)
                             : null,
                         onTap: () => Navigator.of(context).pop(''),
@@ -228,7 +228,7 @@ class _CollectorSheetState extends State<_CollectorSheet> {
                         subtitle: c.name == c.code ? null : Text(c.code),
                         selected: widget.selected == c.code,
                         trailing: widget.selected == c.code
-                            ? const Icon(Iconsax.tick_circle,
+                            ? Icon(Iconsax.tick_circle,
                                 color: BCollectionColors.primary)
                             : null,
                         onTap: () => Navigator.of(context).pop(c.code),
@@ -311,7 +311,7 @@ class _Body extends StatelessWidget {
           ),
         ),
         if (loading) const LinearProgressIndicator(minHeight: 2),
-        const Divider(height: 1, color: BCollectionColors.outline),
+        Divider(height: 1, color: BCollectionColors.outline),
         Expanded(
           child: error != null && controller.engagements.isEmpty
               ? _ErrorState(message: error, onRetry: controller.load)
@@ -471,7 +471,7 @@ class _EmptyDay extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Iconsax.calendar_remove,
+            Icon(Iconsax.calendar_remove,
                 size: 20, color: BCollectionColors.inkMuted),
             const SizedBox(width: BSizes.sm),
             Expanded(
@@ -611,7 +611,7 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Iconsax.cloud_cross,
+            Icon(Iconsax.cloud_cross,
                 size: 40, color: BCollectionColors.inkMuted),
             const SizedBox(height: BSizes.sm),
             Text('Team activity unavailable',
@@ -645,7 +645,7 @@ class _StaleBanner extends StatelessWidget {
       key: const ValueKey('team-stale'),
       backgroundColor: BCollectionColors.surfaceMuted,
       content: Text(message),
-      leading: const Icon(Iconsax.warning_2, color: BCollectionColors.warning),
+      leading: Icon(Iconsax.warning_2, color: BCollectionColors.warning),
       actions: [
         TextButton(onPressed: onRetry, child: const Text('Try again')),
       ],

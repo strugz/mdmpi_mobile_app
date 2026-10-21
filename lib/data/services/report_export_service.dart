@@ -20,7 +20,7 @@ typedef SaveFileFn = Future<String?> Function(
 typedef ShareFileFn = Future<bool> Function(
     {required String fileName, required Uint8List bytes});
 
-/// Gets a report off the phone as CSV: saved where the user picks (Android's
+/// Gets a report off the phone as CSV (or a server-made PDF): saved where the user picks (Android's
 /// "Save as" dialog: Downloads, Drive…, no storage permission needed) or
 /// shared (Viber, email…). Reports hold client names and amounts, so nothing
 /// is written anywhere the user did not choose.
@@ -58,6 +58,35 @@ class ReportExportService extends GetxService {
     }
   }
 
+  /// Shares a ready-made PDF (the Collection Calendar printout): Viber,
+  /// email, or the phone's print service through the share sheet.
+  Future<Result<bool>> sharePdf(Uint8List bytes,
+      {required String fileName}) async {
+    try {
+      return Result.success(await _share(fileName: fileName, bytes: bytes));
+    } catch (e) {
+      logDebug('ReportExportService.sharePdf error: $e');
+      return Result.failure('Could not share the PDF: $e');
+    }
+  }
+
+  /// Success(path) when saved, Success(null) when the user cancelled.
+  Future<Result<String?>> savePdf(Uint8List bytes,
+      {required String fileName}) async {
+    try {
+      return Result.success(await _save(fileName: fileName, bytes: bytes));
+    } catch (e) {
+      logDebug('ReportExportService.savePdf error: $e');
+      return Result.failure('Could not save the PDF: $e');
+    }
+  }
+
+  /// `csv` or `pdf`, from the file name.
+  static String _extensionOf(String fileName) {
+    final ext = p.extension(fileName).replaceFirst('.', '').toLowerCase();
+    return ext.isEmpty ? 'csv' : ext;
+  }
+
   // On Android file_picker writes [bytes] itself through the system dialog;
   // on desktop it only returns the chosen path, so the file is written here.
   static Future<String?> _saveWithPicker(
@@ -66,11 +95,12 @@ class ReportExportService extends GetxService {
       dialogTitle: 'Save report',
       fileName: fileName,
       type: FileType.custom,
-      allowedExtensions: const ['csv'],
+      allowedExtensions: [_extensionOf(fileName)],
       bytes: bytes,
     );
     if (path == null || Platform.isAndroid || Platform.isIOS) return path;
-    final out = path.toLowerCase().endsWith('.csv') ? path : '$path.csv';
+    final ext = '.${_extensionOf(fileName)}';
+    final out = path.toLowerCase().endsWith(ext) ? path : '$path$ext';
     await File(out).writeAsBytes(bytes, flush: true);
     return out;
   }
@@ -83,7 +113,12 @@ class ReportExportService extends GetxService {
     final file = File(p.join(dir.path, fileName));
     await file.writeAsBytes(bytes, flush: true);
     final result = await SharePlus.instance.share(ShareParams(
-      files: [XFile(file.path, mimeType: 'text/csv')],
+      files: [
+        XFile(file.path,
+            mimeType: _extensionOf(fileName) == 'pdf'
+                ? 'application/pdf'
+                : 'text/csv')
+      ],
       subject: fileName,
     ));
     return result.status != ShareResultStatus.dismissed;

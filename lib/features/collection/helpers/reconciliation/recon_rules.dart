@@ -316,6 +316,7 @@ ReconEvaluation evaluateReconCase({
           status: s.status,
           proofPending: s.proofPending,
           proofRequested: s.proofRequested,
+          settledAt: s.status.isSettled ? s.settledAt : null,
         ),
     ],
     flags: flags,

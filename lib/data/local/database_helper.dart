@@ -40,6 +40,7 @@ import 'dao/collection/collection_target_dao.dart';
 import 'dao/collection/collection_actual_dao.dart';
 import 'dao/collection/collection_engagement_dao.dart';
 import 'dao/collection/recon_attachment_dao.dart';
+import 'dao/collection/collection_sms_outbox_dao.dart';
 import 'dao/collection/recon_case_dao.dart';
 import 'db_schema.dart';
 
@@ -80,6 +81,7 @@ class DatabaseHelper {
   CollectionEngagementDao? _collectionEngagementDao;
   ReconCaseDao? _reconCaseDao;
   ReconAttachmentDao? _reconAttachmentDao;
+  CollectionSmsOutboxDao? _collectionSmsOutboxDao;
   VoucherRereadDao? _voucherRereadDao;
 
   Future<Database> get database async {
@@ -93,6 +95,7 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
+      // 22: Users gained HeadKey / HeadName (My Head setting).
       version: 22,
       onCreate: (db, version) async {
         await createAllTables(db);
@@ -191,7 +194,6 @@ class DatabaseHelper {
     'contacts',
     'a_tblRequestReceiverSignature',
     'a_tblRequestImageOutbox',
-    'CLIENT_ALIAS_',
   ];
 
   Future<void> _recreateAllTables(Database db) async {
@@ -434,6 +436,13 @@ class DatabaseHelper {
     final db = await database;
     _reconAttachmentDao = ReconAttachmentDao(db);
     return _reconAttachmentDao!;
+  }
+
+  Future<CollectionSmsOutboxDao> get collectionSmsOutboxDao async {
+    if (_collectionSmsOutboxDao != null) return _collectionSmsOutboxDao!;
+    final db = await database;
+    _collectionSmsOutboxDao = CollectionSmsOutboxDao(db);
+    return _collectionSmsOutboxDao!;
   }
 
   Future<List<String>> getContactPhoneNumbers() async {
@@ -734,6 +743,7 @@ class DatabaseHelper {
     _backLoadDao = null;
     _reconCaseDao = null;
     _reconAttachmentDao = null;
+    _collectionSmsOutboxDao = null;
     _voucherRereadDao = null;
   }
 
@@ -768,6 +778,7 @@ class DatabaseHelper {
       _formCategoryDao = null;
       _reconCaseDao = null;
       _reconAttachmentDao = null;
+      _collectionSmsOutboxDao = null;
       _voucherRereadDao = null;
     } catch (e) {
       // Ignore errors during deletion
