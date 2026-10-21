@@ -5,6 +5,11 @@
 /// group for it at the top (see `.claude/commands/bump-version.md`); the
 /// screen shows the group for the running version, or the newest one when
 /// the running version has no group yet.
+library;
+
+import 'package:flutter/widgets.dart';
+import 'package:iconsax/iconsax.dart';
+
 class WhatsNewGroup {
   const WhatsNewGroup({required this.version, required this.items});
 
@@ -14,13 +19,25 @@ class WhatsNewGroup {
 }
 
 class WhatsNewItem {
-  const WhatsNewItem({required this.title, required this.detail, this.area});
+  const WhatsNewItem({
+    required this.title,
+    required this.detail,
+    this.area,
+    this.icon = Iconsax.tick_circle,
+  });
 
+  /// A few words; the screen shows it bold.
   final String title;
+
+  /// One or two short sentences.
   final String detail;
 
-  /// "Collection", "Logistics", or null when it is for everyone.
+  /// "Collection", "Logistics", or null when it is for everyone. The screen
+  /// groups by it, so it is said once per group, not on every line.
   final String? area;
+
+  /// What the change is about, so the list can be scanned by eye.
+  final IconData icon;
 }
 
 class BWhatsNew {
@@ -30,58 +47,61 @@ class BWhatsNew {
     WhatsNewGroup(version: '1.1.116', items: [
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.chart_2,
           title: 'Actual Collection for your area',
-          detail: 'With a default area set, Home and the Actual Collection page '
-              'show your area\'s entries against its target. Switch to All '
-              'areas for the team\'s figure.'),
+          detail: 'With a default area set, Home shows your area\'s figure '
+              'against its target. Switch to All areas for the team.'),
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.receipt_2,
           title: 'Reconciliation invoices stay in the bucket',
-          detail: 'They keep their Reconciliation badge in the bucket. Pick the '
-              'exact invoices to claim; one collected in full is settled, and '
-              'the case completes when every invoice is. Cases count Cleared '
-              'and Open invoices.'),
+          detail: 'Pick the exact invoices to claim. One collected in full is '
+              'settled, and the case completes once all of them are.'),
       WhatsNewItem(
           area: 'Collection',
-          title: 'Picking invoices on a reconciliation step',
-          detail: 'Select all, and each invoice shows its SI and P.O. number.'),
+          icon: Iconsax.task_square,
+          title: 'Easier invoice picking',
+          detail: 'Select all on a reconciliation step, with the SI and P.O. '
+              'number on every invoice.'),
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.card,
           title: 'Pre-Collection card',
-          detail: 'A card on Home for Pre-Collection. Acquire an account from its '
-              'page; Pre-Collection no longer settles the invoice.'),
+          detail: 'A new card on Home. Acquire an account from its page; '
+              'Pre-Collection no longer settles the invoice.'),
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.routing_2,
           title: 'Routing of Documents',
-          detail: 'A new activity: pick the accounts and add your remarks.'),
+          detail: 'A new activity: pick the accounts, add your remarks.'),
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.bank,
           title: 'Record Deposit',
-          detail: 'Find accounts by search. Remarks are required and list one '
-              'account per line, as Account - Amount. The check number is '
-              'optional.'),
+          detail: 'Search for accounts. Remarks list one per line as '
+              'Account - Amount; the check number is optional.'),
       WhatsNewItem(
           area: 'Collection',
-          title: 'Temporary account for advanced payments',
-          detail: 'Account not in the list? Record the advance under a '
-              'temporary account by name, then link it to the real account '
-              'before applying it. Quick chips fill in the remarks: Machine, '
-              'Reagents, Hold accounts.'),
+          icon: Iconsax.user_add,
+          title: 'Temporary accounts for advances',
+          detail: 'Account not in the list? Record the advance under its name, '
+              'then link it to the real account before applying.'),
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.sms,
           title: 'SMS Outbox',
-          detail: 'Every SMS goes through Settings → SMS Outbox and is sent in '
-              'the background, retried by itself when it fails. The Outbox '
-              'shows the day\'s messages. Each message puts one fact on a '
-              'line, the check date and the bank included.'),
+          detail: 'Texts send in the background and retry on their own. See '
+              'the day\'s messages in Settings → SMS Outbox.'),
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.printer,
           title: 'Calendar printout',
           detail: 'Print the month\'s calendar as a PDF for reimbursement.'),
       WhatsNewItem(
           area: 'Collection',
+          icon: Iconsax.moon,
           title: 'Dark mode',
-          detail: 'Switch between light and dark from the moon icon on Home.'),
+          detail: 'Tap the moon on Home to switch between light and dark.'),
     ]),
     WhatsNewGroup(version: '1.1.110', items: [
       WhatsNewItem(
