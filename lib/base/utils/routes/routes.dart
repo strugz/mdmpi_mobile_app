@@ -65,6 +65,8 @@ class BRoutes{
   static const uploadData = '/upload-data';
   // Logistics requests not yet at a final status (08:00 reminder, Settings)
   static const unfinishedRequests = '/logistics/unfinished-requests';
+  // Quote of the Day: open to everyone, signed in or not.
+  static const quoteOfTheDay = '/quote-of-the-day';
   // Back load routes
   static const backLoad = '/back-load';
 }

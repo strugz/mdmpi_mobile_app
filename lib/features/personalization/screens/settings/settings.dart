@@ -174,6 +174,7 @@ class _LogisticsSettings extends StatelessWidget {
           subTitle: LogisticsThemeScreen.summary(),
           onTap: () => Get.toNamed(BRoutes.logisticsTheme),
         ),
+        const _QuoteOfTheDayTile(),
         const _AboutTile(),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),
@@ -253,12 +254,29 @@ class _CollectionSettings extends StatelessWidget {
           subTitle: 'Local data size, cached pictures, re-download the bucket',
           onTap: () => Get.toNamed(BRoutes.collectionStorage),
         ),
+        const _QuoteOfTheDayTile(),
         const _AboutTile(),
         const BSectionHeading(
             title: 'Developer Tools', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _LocalStorageViewerTile(),
       ],
+    );
+  }
+}
+
+/// Settings → Quote of the Day, for every department.
+class _QuoteOfTheDayTile extends StatelessWidget {
+  const _QuoteOfTheDayTile();
+
+  @override
+  Widget build(BuildContext context) {
+    return BSettingsMenuTile(
+      key: const ValueKey('settings-quote-tile'),
+      icon: Iconsax.quote_up,
+      title: 'Quote of the Day',
+      subTitle: "Today's quote and healthy tips",
+      onTap: () => Get.toNamed(BRoutes.quoteOfTheDay),
     );
   }
 }

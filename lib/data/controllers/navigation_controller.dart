@@ -11,6 +11,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/hom
 import 'package:mdmpi_mobile_app/features/logistics/screens/delivery_location/location_google.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/home.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/daily_quote_prompt_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/whats_new_prompt_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/settings.dart';
 
@@ -23,13 +24,21 @@ class NavigationController extends GetxController {
 
   /// The main navigation is up: if a Collection reminder launched the app,
   /// open its screen now. Then the update's What's new, over Home, until it
-  /// has been read through once.
+  /// has been read through once; then, once a day, the Quote of the Day.
   @override
   void onReady() {
     super.onReady();
     BCollectionNotificationRouter.openPending();
+    _showStartupPrompts();
+  }
+
+  /// One popup at a time: the quote waits for What's new to be closed.
+  Future<void> _showStartupPrompts() async {
     if (Get.isRegistered<WhatsNewPromptController>()) {
-      Get.find<WhatsNewPromptController>().showIfDue();
+      await Get.find<WhatsNewPromptController>().showIfDue();
+    }
+    if (Get.isRegistered<DailyQuotePromptController>()) {
+      await Get.find<DailyQuotePromptController>().showIfDue();
     }
   }
 
