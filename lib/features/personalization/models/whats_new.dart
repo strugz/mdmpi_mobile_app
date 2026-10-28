@@ -60,6 +60,14 @@ class BWhatsNew {
   BWhatsNew._();
 
   static const List<WhatsNewGroup> groups = [
+    WhatsNewGroup(version: '1.1.117', items: [
+      WhatsNewItem(
+          icon: Iconsax.quote_up,
+          title: 'Quote of the Day',
+          detail: 'Each day, a healthy saying and a Bible verse pop up the '
+              'first time you open the app. Tap Healthy tips for six simple '
+              'tips, or open it anytime from Settings or the Login screen.'),
+    ]),
     WhatsNewGroup(version: '1.1.116', items: [
       WhatsNewItem(
           area: 'Collection',
