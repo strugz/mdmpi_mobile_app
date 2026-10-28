@@ -74,7 +74,10 @@ void main() {
         AppBuildInfo(appName: 'MDMPI App', version: newest.version, build: ''),
         department: 'Logistics');
 
-    expect(find.text('LOGISTICS'), findsOneWidget);
+    // A list can be all shared items, with no Logistics heading of its own.
+    final hasLogistics =
+        newest.items.any((i) => i.area?.toLowerCase() == 'logistics');
+    expect(find.text('LOGISTICS'), hasLogistics ? findsOneWidget : findsNothing);
     expect(find.text('COLLECTION'), findsNothing);
     final controller = Get.find<AboutController>();
     expect(controller.whatsNew!.items.map((i) => i.area?.toLowerCase()),

@@ -34,6 +34,7 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/team/tea
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_storage_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/settings/collection_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/about_screen.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/daily_quote/daily_quote_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/settings/logistics_theme_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/unfinished/unfinished_requests_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/add_to_bucket_screen.dart';
@@ -93,6 +94,7 @@ class AppRoutes {
     GetPage(name: BRoutes.collectionTheme, page: () => const CollectionThemeScreen()),
     GetPage(name: BRoutes.logisticsTheme, page: () => const LogisticsThemeScreen()),
     GetPage(name: BRoutes.about, page: () => const AboutScreen()),
+    GetPage(name: BRoutes.quoteOfTheDay, page: () => const DailyQuoteScreen()),
     GetPage(name: BRoutes.addToBucket, page: () => const AddToBucketScreen()),
     // Engagement forms take no arguments; they read the account and invoice
     // selection from CollectionActivityController.

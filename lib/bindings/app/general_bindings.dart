@@ -102,6 +102,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/daily_quote_prompt_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/whats_new_prompt_controller.dart';
 
 import '../../data/repositories/collection/collection_repository.dart';
@@ -377,6 +378,8 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionSettingsController(), fenix: true);
     // The mandatory What's new over Home after an update: GetStorage-backed.
     Get.lazyPut(() => WhatsNewPromptController(), fenix: true);
+    // The once-a-day Quote of the Day popup: GetStorage-backed.
+    Get.lazyPut(() => DailyQuotePromptController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
     // The phone's position, stamped on every queued Collection change.
     // Permanent: it keeps the last fix so a batch asks once.
