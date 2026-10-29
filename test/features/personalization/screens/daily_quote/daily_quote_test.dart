@@ -123,7 +123,7 @@ void main() {
               saying: BDailyQuotes.sayings.first,
               verse: BDailyQuotes.verses.first));
       expect(find.text(BDailyQuotes.sayings.first.text), findsOneWidget);
-      expect(find.text('— John 14:27'), findsOneWidget);
+      expect(find.text('— John 14:27 (WEB)'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('daily-quote-tips')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('open'));
@@ -142,7 +142,7 @@ void main() {
           tester.view.physicalSize = size;
           tester.view.devicePixelRatio = 1;
           addTearDown(tester.view.reset);
-          // The longest verse, at a large text size.
+          // A long verse, at a large text size.
           final longest = DateTime(2026, 1, 8);
           final today = BDailyQuotes.forDate(longest);
           expect(today.verse.reference, 'Isaiah 41:10');
@@ -159,7 +159,7 @@ void main() {
           expect(tester.takeException(), isNull);
           expect(find.text('Thursday, January 8, 2026'), findsOneWidget);
           expect(find.text(today.saying.text), findsOneWidget);
-          expect(find.text('— Isaiah 41:10'), findsOneWidget);
+          expect(find.text('— Isaiah 41:10 (WEB)'), findsOneWidget);
           await tester.scrollUntilVisible(
               find.byKey(const ValueKey('daily-quote-disclaimer')), 200);
           expect(find.text('These are general tips, not medical advice.'),

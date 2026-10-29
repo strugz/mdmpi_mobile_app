@@ -76,7 +76,7 @@ class _DailyQuoteScreenState extends State<DailyQuoteScreen> {
 }
 
 /// One quote (saying or verse), shared by the screen and the daily popup. A verse
-/// carries its reference underneath ("— John 14:27").
+/// carries its reference and translation underneath ("— John 14:27 (WEB)").
 class BDailyQuoteCard extends StatelessWidget {
   const BDailyQuoteCard({super.key, required this.quote, this.large = false});
 
@@ -106,7 +106,7 @@ class BDailyQuoteCard extends StatelessWidget {
           Text(quote.text, style: textStyle),
           if (quote.isVerse) ...[
             const SizedBox(height: BSizes.spaceBtwItemsLight),
-            Text('— ${quote.reference}',
+            Text('— ${quote.reference} (WEB)',
                 key: const ValueKey('daily-quote-reference'),
                 style: theme.textTheme.titleMedium?.copyWith(
                     color: cs.primary, fontWeight: FontWeight.w600)),
