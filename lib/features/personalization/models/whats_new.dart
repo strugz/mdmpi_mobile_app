@@ -60,6 +60,13 @@ class BWhatsNew {
   BWhatsNew._();
 
   static const List<WhatsNewGroup> groups = [
+    WhatsNewGroup(version: '1.1.118', items: [
+      WhatsNewItem(
+          icon: Iconsax.book_1,
+          title: 'Bible verses in modern English',
+          detail: 'The Quote of the Day verses now use the World English '
+              'Bible, so they are easier to read.'),
+    ]),
     WhatsNewGroup(version: '1.1.117', items: [
       WhatsNewItem(
           icon: Iconsax.quote_up,
