@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// One Quote of the Day: a healthy-living saying ([reference] null) or a
-/// King James Version verse with its [reference] ("John 14:27").
+/// World English Bible verse with its [reference] ("John 14:27").
 class DailyQuote {
   const DailyQuote(this.text, {this.reference});
 
@@ -93,73 +93,79 @@ class BDailyQuotes {
     DailyQuote('Start the day with a glass of water and a good stretch.'),
   ];
 
-  /// King James Version, word for word.
+  /// World English Bible (public domain), word for word. Line breaks in the
+  /// poetry are joined with spaces; Matthew 11:28 drops the opening quote
+  /// mark of a speech that runs on to verse 30.
   static const List<DailyQuote> verses = [
     DailyQuote(
-        'Peace I leave with you, my peace I give unto you: not as the world '
-        'giveth, give I unto you. Let not your heart be troubled, neither let '
-        'it be afraid.',
+        'Peace I leave with you. My peace I give to you; not as the world '
+        'gives, give I to you. Don’t let your heart be troubled, neither '
+        'let it be fearful.',
         reference: 'John 14:27'),
     DailyQuote(
-        'Come unto me, all ye that labour and are heavy laden, and I will give '
-        'you rest.',
+        'Come to me, all you who labor and are heavily burdened, and I will '
+        'give you rest.',
         reference: 'Matthew 11:28'),
     DailyQuote(
-        'But they that wait upon the LORD shall renew their strength; they '
-        'shall mount up with wings as eagles; they shall run, and not be '
-        'weary; and they shall walk, and not faint.',
+        'But those who wait for Yahweh will renew their strength. They will '
+        'mount up with wings like eagles. They will run, and not be weary. '
+        'They will walk, and not faint.',
         reference: 'Isaiah 40:31'),
-    DailyQuote('I can do all things through Christ which strengtheneth me.',
+    DailyQuote('I can do all things through Christ, who strengthens me.',
         reference: 'Philippians 4:13'),
     DailyQuote(
-        'Beloved, I wish above all things that thou mayest prosper and be in '
-        'health, even as thy soul prospereth.',
+        'Beloved, I pray that you may prosper in all things and be healthy, '
+        'even as your soul prospers.',
         reference: '3 John 1:2'),
     DailyQuote(
-        'A merry heart doeth good like a medicine: but a broken spirit drieth '
-        'the bones.',
+        'A cheerful heart makes good medicine, but a crushed spirit dries '
+        'up the bones.',
         reference: 'Proverbs 17:22'),
     DailyQuote(
-        'I will both lay me down in peace, and sleep: for thou, LORD, only '
-        'makest me dwell in safety.',
+        'In peace I will both lay myself down and sleep, for you, Yahweh '
+        'alone, make me live in safety.',
         reference: 'Psalm 4:8'),
     DailyQuote(
-        'Fear thou not; for I am with thee: be not dismayed; for I am thy God: '
-        'I will strengthen thee; yea, I will help thee; yea, I will uphold '
-        'thee with the right hand of my righteousness.',
+        'Don’t you be afraid, for I am with you. Don’t be dismayed, for I '
+        'am your God. I will strengthen you. Yes, I will help you. Yes, I '
+        'will uphold you with the right hand of my righteousness.',
         reference: 'Isaiah 41:10'),
     DailyQuote(
-        'What? know ye not that your body is the temple of the Holy Ghost '
-        'which is in you, which ye have of God, and ye are not your own?',
-        reference: '1 Corinthians 6:19'),
+        'Or don’t you know that your body is a temple of the Holy Spirit '
+        'who is in you, whom you have from God? You are not your own, for '
+        'you were bought with a price. Therefore glorify God in your body '
+        'and in your spirit, which are God’s.',
+        reference: '1 Corinthians 6:19-20'),
     DailyQuote(
-        'Be not wise in thine own eyes: fear the LORD, and depart from evil. '
-        'It shall be health to thy navel, and marrow to thy bones.',
+        'Don’t be wise in your own eyes. Fear Yahweh, and depart from evil. '
+        'It will be health to your body, and nourishment to your bones.',
         reference: 'Proverbs 3:7-8'),
     DailyQuote('God is our refuge and strength, a very present help in trouble.',
         reference: 'Psalm 46:1'),
     DailyQuote(
-        'Pleasant words are as an honeycomb, sweet to the soul, and health to '
+        'Pleasant words are a honeycomb, sweet to the soul, and health to '
         'the bones.',
         reference: 'Proverbs 16:24'),
     DailyQuote(
-        'When thou liest down, thou shalt not be afraid: yea, thou shalt lie '
-        'down, and thy sleep shall be sweet.',
+        'When you lie down, you will not be afraid. Yes, you will lie down, '
+        'and your sleep will be sweet.',
         reference: 'Proverbs 3:24'),
     DailyQuote(
-        'Thou wilt keep him in perfect peace, whose mind is stayed on thee: '
-        'because he trusteth in thee.',
+        'You will keep whoever’s mind is steadfast in perfect peace, '
+        'because he trusts in you.',
         reference: 'Isaiah 26:3'),
-    DailyQuote('Casting all your care upon him; for he careth for you.',
-        reference: '1 Peter 5:7'),
-    DailyQuote('He healeth the broken in heart, and bindeth up their wounds.',
+    DailyQuote(
+        'Humble yourselves therefore under the mighty hand of God, that he '
+        'may exalt you in due time; casting all your worries on him, '
+        'because he cares for you.',
+        reference: '1 Peter 5:6-7'),
+    DailyQuote('He heals the broken in heart, and binds up their wounds.',
         reference: 'Psalm 147:3'),
-    DailyQuote('And he said, My presence shall go with thee, and I will give '
-        'thee rest.',
+    DailyQuote('He said, “My presence will go with you, and I will give you rest.”',
         reference: 'Exodus 33:14'),
     DailyQuote(
-        'For God hath not given us the spirit of fear; but of power, and of '
-        'love, and of a sound mind.',
+        'For God didn’t give us a spirit of fear, but of power, love, and '
+        'self-control.',
         reference: '2 Timothy 1:7'),
   ];
 
