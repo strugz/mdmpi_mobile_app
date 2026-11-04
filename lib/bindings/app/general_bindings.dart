@@ -1,5 +1,6 @@
 import 'package:mdmpi_mobile_app/data/services/outbox/voucher_reread_service.dart';
 import 'package:mdmpi_mobile_app/data/services/gemini_document_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/acr_item_scan_service.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/voucher_invoice_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/voucher_scan_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/report_export_service.dart';
@@ -308,6 +309,20 @@ class GeneralBindings extends Bindings {
     // Gemini document reading: the Logistics inventory scanner and the
     // Collection voucher scan. No Firestore, so outside the Firebase guard.
     Get.lazyPut(() => GeminiDocumentService(), fenix: true);
+    // Request Form Add Item scan: on-device ACR first, Gemini only as the
+    // fallback. Registered after ITextRecognitionService and
+    // GeminiDocumentService; the repository is resolved per scan because it
+    // sits inside the Firebase guard.
+    Get.lazyPut(
+        () => AcrItemScanService(
+              textRecognition: Get.find<ITextRecognitionService>(),
+              readWithGemini: (file, {prompt}) =>
+                  (Get.isRegistered<InventoryItemRepository>()
+                          ? Get.find<InventoryItemRepository>()
+                          : InventoryItemRepository())
+                      .analyzeFileWithGemini(file, prompt: prompt),
+            ),
+        fenix: true);
 
     // Standard Delivery one-scan (plan §5 steps 8, 13, 14, 16): on-device
     // OCR only, local SQLite aliases, so outside the Firebase guard. Registered

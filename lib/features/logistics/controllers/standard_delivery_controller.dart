@@ -12,7 +12,6 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
-import 'package:mdmpi_mobile_app/data/repositories/inventory/inventory_item_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
@@ -20,6 +19,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_fi
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/standard_delivery_data_manager.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/inventory_item_merger.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/acr_item_scan_service.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -667,27 +667,30 @@ class StandardDeliveryController extends GetxController
     return false;
   }
 
-  /// Analyze [file] using Google Generative Language (gemini) by sending the
-  /// file bytes and prompt in the `contents` -> `parts` -> `inlineData` + `text`
-  /// request body and extracting the first candidate content text from the
-  /// response. This is a minimal, direct implementation (no retries/fallbacks).
+  /// Reads the item table of [file] for Add Item: on-device ACR first, and
+  /// Gemini (sent only the table's band of the photo) when ACR misses a
+  /// required field or falls under the confidence threshold. See
+  /// [AcrItemScanService]. [prompt] overrides the Gemini prompt.
   Future<void> analyzeFileWithAiToolkit(File file, {String? prompt}) async {
     isAnalyzingFile.value = true;
     analyzeError.value = null;
     try {
-      final repo = Get.find<InventoryItemRepository>();
-      final result = await repo.analyzeFileWithGemini(file, prompt: prompt);
-
-      logDebug(jsonEncode(result.value));
+      final result =
+          await Get.find<AcrItemScanService>().scan(file, prompt: prompt);
 
       if (result.isSuccess) {
-        _mergeScannedItems(result.value);
-        logDebug(
-            'analyzeFileWithAiToolkit: Parsed ${result.value.length} inventory items via repository (merged)');
+        final outcome = result.value;
+        logDebug(jsonEncode(outcome.items));
+        _mergeScannedItems(outcome.items);
+        if (outcome.aiError != null) {
+          analyzeError.value = 'Read on the phone only, please check the '
+              'items (AI unavailable: ${outcome.aiError})';
+        }
+        logDebug('analyzeFileWithAiToolkit: ${outcome.items.length} items '
+            'via ${outcome.source.name} (merged)');
       } else {
         analyzeError.value = result.error;
-        logDebug(
-            'analyzeFileWithAiToolkit: repository error – ${result.error}');
+        logDebug('analyzeFileWithAiToolkit: scan error – ${result.error}');
       }
     } catch (e, st) {
       analyzeError.value = e.toString();

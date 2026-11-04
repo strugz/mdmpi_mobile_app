@@ -94,7 +94,20 @@ class ItemTableParser {
   );
 
   static ItemTableReading parse(List<OcrLine> lines) {
-    final sorted = BOcrOrientation.deskew(lines).where((l) => l.text.trim().isNotEmpty).toList()
+    final straight = BOcrOrientation.deskew(lines);
+    // Deskew keeps the order, so straight[i] is lines[i] moved: the table's
+    // region is reported where OCR read it on the photo, for cropping.
+    final photoBox = Map<OcrLine, Rect>.identity();
+    for (var i = 0; i < straight.length && i < lines.length; i++) {
+      photoBox[straight[i]] = lines[i].box;
+    }
+    Rect? region;
+    void inRegion(OcrLine l) {
+      final box = photoBox[l] ?? l.box;
+      region = region?.expandToInclude(box) ?? box;
+    }
+
+    final sorted = straight.where((l) => l.text.trim().isNotEmpty).toList()
       ..sort((a, b) => a.box.top.compareTo(b.box.top));
     if (sorted.isEmpty) return ItemTableReading.none;
 
@@ -116,6 +129,7 @@ class ItemTableParser {
     if (header == null) return ItemTableReading.none;
 
     header.sort((a, b) => a.left.compareTo(b.left));
+    rows[headerRow].forEach(inRegion);
     final columns = _columns(header);
     // Every item on a table with an Item Code column has a code, so a line
     // without one continues the item above, whatever else lands in its row,
@@ -188,6 +202,7 @@ class ItemTableParser {
         if (headerParts.isNotEmpty || batchParts.isNotEmpty) {
           for (final l in [...headerParts, ...batchParts]) {
             tableTexts.add(l.text);
+            inRegion(l);
           }
           lastBottom = math.max(lastBottom ?? 0,
               [...headerParts, ...batchParts].map((l) => l.box.bottom).reduce(math.max));
@@ -203,6 +218,7 @@ class ItemTableParser {
       var straddled = false;
       for (final line in row) {
         tableTexts.add(line.text);
+        inRegion(line);
         final hit = columns.where((c) => _contains(line.box, c.center)).toList();
         if (hit.length > 1) {
           straddled = true;
@@ -319,6 +335,7 @@ class ItemTableParser {
       unsure: unsure,
       tableTexts: tableTexts,
       dropped: dropped,
+      region: region,
     );
   }
 
