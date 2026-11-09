@@ -61,7 +61,11 @@ void main() {
 
     test('Collection gets the running version until it is marked seen',
         () async {
-      final version = BWhatsNew.groups.first.version;
+      // The newest release that has notes for Collection: a Logistics-only
+      // release (like 1.1.119) has nothing to show a collector.
+      final version = BWhatsNew.groups
+          .firstWhere((g) => g.itemsFor('Collection').isNotEmpty)
+          .version;
       final c = controller(version);
       final due = await c.due(department: 'Collection', userId: 'u1');
       expect(due?.version, version);
@@ -81,6 +85,18 @@ void main() {
       expect(due, isNotNull);
       expect(due!.items.map((i) => i.area?.toLowerCase()).toSet(),
           everyElement(anyOf(isNull, 'logistics')));
+    });
+
+    test('a release with no notes for a department shows it nothing',
+        () async {
+      final logisticsOnly = BWhatsNew.groups
+          .where((g) => g.itemsFor('Collection').isEmpty)
+          .map((g) => g.version);
+      for (final version in logisticsOnly) {
+        expect(
+            await controller(version).due(department: 'Collection', userId: 'u'),
+            isNull);
+      }
     });
 
     test('nothing for unknown or note-less builds', () async {
