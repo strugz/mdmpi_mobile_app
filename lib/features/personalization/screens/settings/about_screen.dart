@@ -103,7 +103,7 @@ class AboutScreen extends StatelessWidget {
                   : info.label,
             ),
             const SizedBox(height: BSizes.spaceBtwSections),
-            if (group != null) ...[
+            if (group != null && group.items.isNotEmpty) ...[
               Text("What's new in ${group.version}",
                   style: theme.textTheme.headlineSmall
                       ?.copyWith(fontWeight: FontWeight.w700)),

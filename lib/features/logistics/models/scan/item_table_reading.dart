@@ -1,3 +1,5 @@
+import 'dart:ui' show Rect;
+
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 
 /// The item table read off a scanned delivery document by on-device OCR
@@ -9,6 +11,7 @@ class ItemTableReading {
     this.unsure = const {},
     this.tableTexts = const [],
     this.dropped = const [],
+    this.region,
   });
 
   static const none = ItemTableReading();
@@ -31,6 +34,11 @@ class ItemTableReading {
 
   /// Description-only rows far from any item (`SR: JRQ`), left out.
   final List<String> dropped;
+
+  /// Where the header row and the table body sit on the photo, in the
+  /// pixels OCR read them in (EXIF orientation applied), or null when no
+  /// table was found. The ACR pass crops to it before falling back to Gemini.
+  final Rect? region;
 
   bool isUnsure(int index) => unsure.contains(index);
 

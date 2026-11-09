@@ -96,7 +96,11 @@ jobs:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'v1.1.106' }}
           name: ${{ github.ref_type == 'tag' && github.ref_name || 'Release v1.1.106' }}
           draft: false
-          prerelease: false
+          # A tag with a "+" suffix (v1.1.118+test) is a QA build: published
+          # as a pre-release and never marked Latest, so staff keep
+          # downloading the real release.
+          prerelease: ${{ contains(github.ref_name, '+') }}
+          make_latest: ${{ !contains(github.ref_name, '+') }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

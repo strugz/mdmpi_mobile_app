@@ -60,6 +60,15 @@ class BWhatsNew {
   BWhatsNew._();
 
   static const List<WhatsNewGroup> groups = [
+    WhatsNewGroup(version: '1.1.119', items: [
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.box_add,
+          title: 'Faster Add Item from a photo',
+          detail: 'Scanned Items → Capture or Attach File: the phone reads the '
+              'item table itself first, so clear lists fill in quicker. Check '
+              'the items before you save.'),
+    ]),
     WhatsNewGroup(version: '1.1.118', items: [
       WhatsNewItem(
           icon: Iconsax.book_1,
