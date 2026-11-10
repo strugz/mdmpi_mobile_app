@@ -8,6 +8,20 @@ Guidance for Claude Code when working in this repository.
 > `.github/copilot-instructions.md` holds the same conventions for Copilot.
 > When conventions change, update AGENTS.md first and keep this file thin.
 
+## Branch: `revision/prod-dev-revision-sms` (never merged into `main`)
+
+This branch is the build for **lower Android versions (Android 11 and below)**. It adds a
+patched copy of `another_telephony` under `packages/another_telephony/` (wired in via
+`dependency_overrides` in `pubspec.yaml`) because the pub.dev package throws
+"Error getting SmsManager" on API ≤ 30.
+
+- **Do not merge this branch into `main`** and do not open a PR from it to `main`.
+- Flow is one way: merge `main` **into** this branch to pick up new work, then release it
+  as a pre-release tag `v<version>+sms` (the `+` suffix makes CI publish a pre-release
+  that is not marked Latest).
+- Keep the `dependency_overrides` block and `packages/another_telephony/` when resolving
+  merge conflicts here.
+
 ## What this project is
 
 `mdmpi_mobile_app` — a multi-department Flutter app (Logistics, Collection, Service,
