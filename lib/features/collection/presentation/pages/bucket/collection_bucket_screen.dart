@@ -1,4 +1,3 @@
-import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -90,8 +89,7 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
   Future<void> _acquireSelected(CollectionActivityController controller) async {
     final summary = controller.selectionSummary;
     await controller.claimSelectedAccounts();
-    // The Acquiring Account SMS follows; its sending view confirms the move.
-    if (CollectionSmsService.smsFollows()) return;
+    // The Acquiring Account SMS goes out in the background (SMS Outbox).
     BLoaders.successSnackBar(
       title: 'Accounts Acquired',
       message:
@@ -292,6 +290,7 @@ class _CollectionBucketScreenState extends State<CollectionBucketScreen> {
             Obx(() => AcquiringOverlay(
                   visible: controller.isAcquiring.value,
                   invoiceCount: controller.acquiringInvoices.value,
+                  doneCount: controller.acquiredInvoices.value,
                   accountCount: controller.acquiringAccounts.value,
                 )),
           ],
@@ -364,7 +363,7 @@ class _GatheredGroupDivider extends StatelessWidget {
             ),
           ),
           const SizedBox(width: BSizes.sm),
-          const Expanded(
+          Expanded(
             child: Divider(
               height: 1,
               thickness: 1,
@@ -398,7 +397,7 @@ class _AcquireBar extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(
             BSizes.defaultSpace, BSizes.md, BSizes.defaultSpace, BSizes.md),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: BCollectionColors.surface,
           border: Border(top: BorderSide(color: BCollectionColors.outline)),
         ),

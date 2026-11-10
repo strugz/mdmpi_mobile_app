@@ -18,6 +18,7 @@ import 'package:mdmpi_mobile_app/base/utils/helpers/network_manager.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/image_strings.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/mappers/pull_out_mapper.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
@@ -28,6 +29,7 @@ import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart'
 import '../../../data/repositories/image/image_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Manager for Pull-Out domain orchestration (save/update flows).
 class PullOutDataManager {
@@ -72,25 +74,6 @@ class PullOutDataManager {
         return;
       }
 
-      final docRefs = stdController.formState.documentReferenceControllers
-          .map((c) => c.text.trim())
-          .toList();
-      if (docRefs.isEmpty || docRefs.any((e) => e.isEmpty)) {
-        controller.errorMessage.value =
-            'Please enter at least one document reference.';
-        BLoaders.errorSnackBar(
-            title: 'Document Reference',
-            message: 'Please enter at least one document reference.');
-        return;
-      }
-
-      if (controller.formState.pullOutDateController.text.trim().isEmpty) {
-        controller.errorMessage.value = 'Please pick a pull out date.';
-        BLoaders.errorSnackBar(
-            title: 'Pull Out Date', message: 'Please pick a pull out date.');
-        return;
-      }
-
       String ensureCategoryId(TextEditingController ctrl, List<dynamic> list) {
         final v = ctrl.text.trim();
         if (v.isEmpty) return '';
@@ -112,6 +95,70 @@ class PullOutDataManager {
           controller.formState.itemCategoryController,
           controller.formState.itemCategories);
 
+      // Stock Receive shares this create path (form category '9') but has no
+      // Add Item UI and treats document references as optional.
+      final selectedCategoryName = controller.formState.formCategories
+              .firstWhereOrNull((c) => c.id == normalizedFormCategory)
+              ?.name ??
+          '';
+      final isStockReceive = normalizedFormCategory ==
+              FormCategoryIds.stockReceive ||
+          FormCategoryConstants.fromCategoryName(selectedCategoryName) ==
+              FormCategoryType.stockReceive;
+
+      final enteredDocRefs = stdController.formState.documentReferenceControllers
+          .map((c) => c.text.trim())
+          .toList();
+      final List<String> docRefs;
+      if (isStockReceive) {
+        docRefs = enteredDocRefs.where((e) => e.isNotEmpty).toList();
+      } else {
+        if (enteredDocRefs.isEmpty || enteredDocRefs.any((e) => e.isEmpty)) {
+          controller.errorMessage.value =
+              'Please enter at least one document reference.';
+          BLoaders.errorSnackBar(
+              title: 'Document Reference',
+              message: 'Please enter at least one document reference.');
+          return;
+        }
+        docRefs = enteredDocRefs;
+      }
+
+      if (controller.formState.pullOutDateController.text.trim().isEmpty) {
+        final label = isStockReceive ? 'stock receive' : 'pull out';
+        controller.errorMessage.value = 'Please pick a $label date.';
+        BLoaders.errorSnackBar(
+            title: isStockReceive ? 'Stock Receive Date' : 'Pull Out Date',
+            message: 'Please pick a $label date.');
+        return;
+      }
+
+      // Stock Receive is dispatched at creation: trip ticket, driver and
+      // vehicle are required so the assigned driver sees it immediately.
+      int? stockReceiveMobileId;
+      if (isStockReceive) {
+        String? missing;
+        if (controller.formState.tripTicketController.text.trim().isEmpty) {
+          missing = 'Please enter Trip Ticket Number';
+        } else if (controller.formState.driverController.text.trim().isEmpty) {
+          missing = 'Please select Driver';
+        } else {
+          stockReceiveMobileId =
+              int.tryParse(controller.formState.mobile.text.trim());
+          // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+          if (stockReceiveMobileId == null &&
+              !BCommuteId.isCommuteId(
+                  controller.formState.tripTicketController.text)) {
+            missing = 'Please select Vehicle';
+          }
+        }
+        if (missing != null) {
+          controller.errorMessage.value = missing;
+          BLoaders.errorSnackBar(title: 'Delivery Info', message: missing);
+          return;
+        }
+      }
+
       final model = PullOutModel(
         clientId: client.id,
         client: client,
@@ -131,28 +178,27 @@ class PullOutDataManager {
         tripTicketNumber: controller.formState.tripTicketController.text,
         driver: controller.formState.driverController.text,
         helper: controller.formState.helperController.text,
+        mobileID: stockReceiveMobileId,
         requestedBy: userCtrl.user.value.initial,
         documentReference: docRefs,
       );
       // Scanned items live on the shared Standard Delivery form state (the
       // Pull Out form reuses its scanner flow, like client and doc refs).
-      // Stock Receive shares this create path but has no Add Item UI.
-      final selectedCategoryName = controller.formState.formCategories
-              .firstWhereOrNull((c) => c.id == normalizedFormCategory)
-              ?.name ??
-          '';
-      final isStockReceive =
-          FormCategoryConstants.fromCategoryName(selectedCategoryName) ==
-              FormCategoryType.stockReceive;
       final items = isStockReceive
           ? <InventoryItemModel>[]
           : stdController.formState.scannedInventoryItems.toList();
 
-      await _repository.insert(model, silent: true, items: items);
+      await _repository.insert(model,
+          silent: true, items: items, withDispatchInfo: isStockReceive);
       await _messageController.sendSmsMessage(BTexts.statusNewRequest, model,
           inventoryItems: items);
 
       await controller.loadPullOuts();
+      // The Stock Receive tab keeps its own list; reload it so the new
+      // request shows without a manual pull-to-refresh.
+      if (isStockReceive && Get.isRegistered<StockReceiveController>()) {
+        await Get.find<StockReceiveController>().loadStockReceives();
+      }
 
       // Mark as success
       controller.errorMessage.value = null;
@@ -529,7 +575,8 @@ class PullOutDataManager {
       );
       return false;
     }
-    if (!hasVehicle) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (!hasVehicle && !BCommuteId.isCommuteId(tripTicket)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

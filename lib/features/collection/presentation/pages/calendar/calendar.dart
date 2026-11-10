@@ -10,6 +10,8 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/day_entry_grouping.
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_calendar_print_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/add_activity/widgets/activity_type_modal.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/widgets/collection_work_header.dart';
@@ -18,6 +20,7 @@ import 'widgets/calendar_day_cell.dart';
 import 'widgets/calendar_day_empty_state.dart';
 import 'widgets/calendar_day_heading.dart';
 import 'widgets/calendar_month_header.dart';
+import 'widgets/calendar_planned_card.dart';
 import 'widgets/calendar_skeleton.dart';
 import 'widgets/calendar_visit_card.dart';
 import 'widgets/day_account_filter_bar.dart';
@@ -61,6 +64,10 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
   /// alive with a throwaway `allRecentHistory.length`, and why every cell was
   /// regrouping the collector's whole history for itself.
   Map<DateTime, List<Map<String, dynamic>>> _byDate = const {};
+
+  /// Reconciliation follow ups planned per day, read at the same point and
+  /// for the same reason as [_byDate]. Empty when the Tracker is not set up.
+  Map<DateTime, List<ReconCaseView>> _planned = const {};
 
   /// Past this much scrolling the month gives way to the selected week; back
   /// under the lower figure it opens again.
@@ -132,6 +139,9 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
   List<Map<String, dynamic>> _eventsFor(DateTime day) =>
       _byDate[DateTime(day.year, day.month, day.day)] ?? const [];
 
+  List<ReconCaseView> _plannedFor(DateTime day) =>
+      _planned[DateTime(day.year, day.month, day.day)] ?? const [];
+
   void _selectDay(DateTime day) {
     if (isSameDay(_selectedDay, day)) return;
     setState(() {
@@ -183,6 +193,9 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
 
   void _addEngagement() => ActivityTypeModal.show(context);
 
+  CollectionCalendarPrintController get _print =>
+      CollectionCalendarPrintController.instance;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -193,11 +206,38 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
             // In the header rather than a full-width button between the grid
             // and the list, where it cost about 56pt of the tightest screen in
             // the module and pushed the day's own engagements below the fold.
-            trailing: IconButton(
-              onPressed: _addEngagement,
-              icon: const Icon(Iconsax.add_circle),
-              color: BCollectionColors.onHeader,
-              tooltip: 'Add field engagement',
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // The month on screen as the printed Collection Calendar,
+                // for reimbursement. Drawn on the server: online only.
+                if (Get.isRegistered<CollectionCalendarPrintController>())
+                  Obx(() {
+                    final busy = _print.isBusy.value;
+                    return IconButton(
+                      key: const Key('calendar-print'),
+                      onPressed:
+                          busy ? null : () => _print.printMonth(_focusedDay),
+                      icon: busy
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: BCollectionColors.onHeader),
+                            )
+                          : const Icon(Iconsax.printer),
+                      color: BCollectionColors.onHeader,
+                      tooltip: 'Print this month',
+                    );
+                  }),
+                IconButton(
+                  onPressed: _addEngagement,
+                  icon: const Icon(Iconsax.add_circle),
+                  color: BCollectionColors.onHeader,
+                  tooltip: 'Add field engagement',
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -209,6 +249,9 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
               // The one read of the grouping, for the whole frame. See
               // [_byDate].
               _byDate = controller.activitiesByDate;
+              _planned = Get.isRegistered<ReconciliationController>()
+                  ? ReconciliationController.instance.plannedFollowUps
+                  : const {};
 
               return _buildContent(context);
             }),
@@ -220,6 +263,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
 
   Widget _buildContent(BuildContext context) {
     final dayEntries = _eventsFor(_selectedDay);
+    final planned = _plannedFor(_selectedDay);
 
     return Column(
       children: [
@@ -257,6 +301,7 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
             prioritizedBuilder: (context, day, focusedDay) => CalendarDayCell(
               day: day,
               hasEngagements: _eventsFor(day).isNotEmpty,
+              hasPlanned: _plannedFor(day).isNotEmpty,
               isToday: isSameDay(day, DateTime.now()),
               isSelected: isSameDay(day, _selectedDay),
               isOutside: day.month != focusedDay.month,
@@ -264,11 +309,11 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
             ),
             // The count rides here because the package discards the semantics
             // of anything a day builder returns. See [CalendarDayMarker].
-            markerBuilder: (context, day, events) =>
-                CalendarDayMarker(count: events.length),
+            markerBuilder: (context, day, events) => CalendarDayMarker(
+                count: events.length, planned: _plannedFor(day).length),
           ),
         ),
-        const Divider(height: 1, color: BCollectionColors.outline),
+        Divider(height: 1, color: BCollectionColors.outline),
         Expanded(
           child: SingleChildScrollView(
             controller: _listController,
@@ -276,10 +321,13 @@ class _CollectionCalendarScreenState extends State<CollectionCalendarScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CalendarDayHeading(day: _selectedDay, count: dayEntries.length),
-                if (dayEntries.isEmpty)
+                // What is planned for the day comes before what was done on
+                // it; a day with only a plan is not an empty day.
+                if (planned.isNotEmpty) CalendarPlannedSection(cases: planned),
+                if (dayEntries.isEmpty && planned.isEmpty)
                   CalendarDayEmptyState(
                       day: _selectedDay, onAdd: _addEngagement)
-                else ...[
+                else if (dayEntries.isNotEmpty) ...[
                   _buildFilterBar(dayEntries),
                   _buildDayList(dayEntries),
                 ],

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_delivery_request_controller.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/b_section_title.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/b_fact_grid.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/widgets/trip_ticket_input.dart';
 
 /// Body content for Standard Delivery modal — the Preparation section and,
 /// for the preparing user, the Trip Ticket No input.
@@ -46,7 +47,11 @@ class RequestModalBody extends StatelessWidget {
             facts: [
               BFact(isPreparing ? 'Preparing by' : 'Prepared by',
                   showPreparedBy ? requestModel.itemPreparedBy : ''),
-              BFact('Trip ticket', requestModel.tripTicketNumber,
+              BFact(
+                  BCommuteId.isCommuteId(requestModel.tripTicketNumber)
+                      ? 'Commute ID'
+                      : 'Trip ticket',
+                  requestModel.tripTicketNumber,
                   copyable: true),
             ],
           ),
@@ -72,16 +77,10 @@ class RequestModalBody extends StatelessWidget {
         // ========== Trip Ticket No Input (for preparing user) ==========
         if (isPreparingUser && requestModel.tripTicketNumber.isEmpty) ...[
           const BSectionTitle('Trip ticket'),
-          TextFormField(
-            controller: requestController.formState.tripTicketNumber,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Trip Ticket No',
-              border: OutlineInputBorder(),
-            ),
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-            ],
+          TripTicketInput(
+            tripTicket: requestController.formState.tripTicketNumber,
+            commute: requestController.formState.commute,
+            vehicle: requestController.formState.mobile,
           ),
         ],
       ],

@@ -47,7 +47,12 @@ class RequestDao {
       if (request.clientId.isNotEmpty) {
         final clientDao = ClientDao(db);
         final client = await clientDao.getById(request.clientId);
-        if (client != null) request.client = client;
+        if (client != null) {
+          // The per-request delivery address (plan §4.4b) beats the master
+          // address, offline too.
+          request.client = StandardDeliveryModel.clientWithDeliveryAddress(
+              client, request.deliveryAddress);
+        }
       }
 
       // Fetch Document References via DocumentReferenceDao
@@ -89,6 +94,7 @@ class RequestDao {
       'TripTicketNumber': requestModel.tripTicketNumber,
       'ItemCategoryID': requestModel.itemCategoryID,
       'FormCategoryID': requestModel.formCategoryID,
+      'RequestDeliveryAddress': requestModel.deliveryAddress,
     };
 
     final int requestId = await db.insert('a_tblRequest', requestData, conflictAlgorithm: ConflictAlgorithm.ignore);
@@ -114,10 +120,12 @@ class RequestDao {
       }
     }
 
-    // Persist client info for this single request as well
+    // Persist client info for this single request as well. Not when the
+    // request has its own delivery address: its client then carries that
+    // address (plan §4.4b) and would overwrite the master ACCMAD.
     try {
       final client = requestModel.client;
-      if (client.id.isNotEmpty) {
+      if (client.id.isNotEmpty && requestModel.deliveryAddress.isEmpty) {
         await db.insert('ACCMST_', client.toJson(), conflictAlgorithm: ConflictAlgorithm.replace);
       }
     } catch (_) {
@@ -198,6 +206,10 @@ class RequestDao {
       'TripTicketNumber': requestModel.tripTicketNumber,
       'ItemCategoryID': requestModel.itemCategoryID,
       'FormCategoryID': requestModel.formCategoryID,
+      // Set once at creation and never changed, so a refresh that does not
+      // carry it (an older backend) must not blank the stored value.
+      if (requestModel.deliveryAddress.isNotEmpty)
+        'RequestDeliveryAddress': requestModel.deliveryAddress,
     };
   }
 

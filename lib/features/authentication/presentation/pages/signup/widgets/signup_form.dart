@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/popups/full_screen_loader.dart';
+import 'package:mdmpi_mobile_app/base/utils/popups/loaders.dart';
 import 'package:mdmpi_mobile_app/base/utils/validators/validation.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dropdown/dropdown.dart';
 import 'package:mdmpi_mobile_app/common/widgets/login_signup/form_divider.dart';
+import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/widgets/department_fields/collection_signup_fields.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/pages/signup/widgets/terms_conditions_checkbox.dart';
 
 import '../../../../../../../base/utils/constants/sizes.dart';
@@ -24,6 +26,23 @@ class SignUpForm extends StatelessWidget {
         key: controller.signupFormKey,
         child: Column(
           children: [
+            /// Department — first, because the roles and the department's own
+            /// fields below follow it.
+            BDropdown(
+                icon: Icons.group,
+                label: 'Department',
+                dropdownList: controller.departments.value
+                    .map((department) => department.department)
+                    .toList(),
+                controller: controller.department,
+                onChanged: controller.onDepartmentChanged,
+                // Make department required. The BDropdown passes the selected
+                // value to the validator; when null or empty we'll show the
+                // standard required error text.
+                validator: (value) => BValidator.validateEmptyText('Department', value?.toString()),
+                ),
+            const SizedBox(height: BSizes.spaceBtwInputFields),
+
             /// firstname & lastname
             Row(
               children: [
@@ -111,21 +130,6 @@ class SignUpForm extends StatelessWidget {
             ),
             const SizedBox(height: BSizes.spaceBtwInputFields),
 
-            /// Department
-            BDropdown(
-                icon: Icons.group,
-                label: 'Department',
-                dropdownList: controller.departments.value
-                    .map((department) => department.department)
-                    .toList(),
-                controller: controller.department,
-                // Make department required. The BDropdown passes the selected
-                // value to the validator; when null or empty we'll show the
-                // standard required error text.
-                validator: (value) => BValidator.validateEmptyText('Department', value?.toString()),
-                ),
-            const SizedBox(height: BSizes.spaceBtwInputFields),
-
             /// Multi select
             TextFormField(
               controller: controller.selectedRole,
@@ -133,6 +137,12 @@ class SignUpForm extends StatelessWidget {
               readOnly: true,
               textInputAction: TextInputAction.next,
               onTap: () {
+                if (controller.selectedDepartment.value.isEmpty) {
+                  BLoaders.warningSnackBar(
+                      title: 'Select a department first',
+                      message: 'The roles depend on your department.');
+                  return;
+                }
                 BFullScreenLoader.showRoleChecklistItem(context, controller);
               },
               onEditingComplete: () =>
@@ -145,6 +155,9 @@ class SignUpForm extends StatelessWidget {
               decoration: InputDecoration(
                   prefixIcon: Icon(Iconsax.document_code),
                   labelText: 'Role',
+                  helperText: controller.selectedDepartment.value.isEmpty
+                      ? 'Select a department first'
+                      : null,
                   // show a red outline when validation fails so the required
                   // state is visually obvious
                   errorBorder: OutlineInputBorder(
@@ -158,6 +171,9 @@ class SignUpForm extends StatelessWidget {
             ),
 
             const SizedBox(height: BSizes.spaceBtwInputFields),
+
+            /// The selected department's own fields, if it has any.
+            ..._departmentFields(controller),
 
             /// Mobile Number
             TextFormField(
@@ -214,5 +230,17 @@ class SignUpForm extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Only Collection has extra fields; Logistics, Service and InHouse differ
+  /// by their role list alone.
+  static List<Widget> _departmentFields(SignupController controller) {
+    if (controller.isCollection) {
+      return const [
+        CollectionSignupFields(),
+        SizedBox(height: BSizes.spaceBtwInputFields),
+      ];
+    }
+    return const [];
   }
 }

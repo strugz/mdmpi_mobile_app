@@ -256,7 +256,7 @@ class InvoiceCard extends StatelessWidget {
                       key: const ValueKey('info'),
                       tooltip: 'Invoice details',
                       onPressed: onInfoTap,
-                      icon: const Icon(Iconsax.info_circle,
+                      icon: Icon(Iconsax.info_circle,
                           size: 20, color: BCollectionColors.inkMuted),
                       padding: EdgeInsets.zero,
                       constraints:
@@ -294,7 +294,7 @@ class InvoiceCard extends StatelessWidget {
         ),
         if (settled) ...[
           const SizedBox(width: BSizes.xs),
-          const Icon(Iconsax.tick_circle5,
+          Icon(Iconsax.tick_circle5,
               color: BCollectionColors.success, size: 18),
         ],
       ],
@@ -309,7 +309,7 @@ class InvoiceCard extends StatelessWidget {
   Widget _poRow(ThemeData theme) {
     return Row(
       children: [
-        const Icon(Iconsax.receipt_item,
+        Icon(Iconsax.receipt_item,
             size: 14, color: BCollectionColors.inkMuted),
         const SizedBox(width: BSizes.xs),
         Flexible(
@@ -346,12 +346,12 @@ class InvoiceCard extends StatelessWidget {
     // The date stays grey even when overdue. The stripe and the badge already
     // say how late it is; a third red element per row was the loudest thing
     // on a list where every row is overdue.
-    const dateColor = BCollectionColors.inkSecondary;
+    final dateColor = BCollectionColors.inkSecondary;
     final badgeColor = _accentColor ?? BCollectionColors.inkMuted;
 
     return Row(
       children: [
-        const Icon(Iconsax.calendar_1,
+        Icon(Iconsax.calendar_1,
             size: 14, color: BCollectionColors.inkMuted),
         const SizedBox(width: BSizes.xs),
         Flexible(

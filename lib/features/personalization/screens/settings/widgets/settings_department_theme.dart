@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
-import 'package:mdmpi_mobile_app/base/utils/theme/theme.dart';
+import 'package:mdmpi_mobile_app/base/utils/theme/logistics_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
 
@@ -24,7 +24,8 @@ class SettingsStatusColors extends ThemeExtension<SettingsStatusColors> {
   /// cool tint of the Logistics blue.
   final Color canvas;
 
-  static const collection = SettingsStatusColors(
+  /// Follows the phone's light/dark palette, so read when the theme is built.
+  static SettingsStatusColors get collection => SettingsStatusColors(
     success: BCollectionColors.success,
     warning: BCollectionColors.warning,
     danger: BCollectionColors.danger,
@@ -36,6 +37,15 @@ class SettingsStatusColors extends ThemeExtension<SettingsStatusColors> {
     warning: BColors.warning,
     danger: BColors.error,
     canvas: Color(0xFFF1F4FA),
+  );
+
+  /// Logistics on Settings → Theme → Dark (or a dark phone): a canvas a
+  /// step off black, so the cards on it still read as cards.
+  static const logisticsDark = SettingsStatusColors(
+    success: BColors.success,
+    warning: BColors.warning,
+    danger: BColors.error,
+    canvas: Color(0xFF121212),
   );
 
   /// The colours in scope, falling back to Logistics outside Settings.
@@ -74,8 +84,9 @@ class SettingsStatusColors extends ThemeExtension<SettingsStatusColors> {
 ///
 /// The app-wide Logistics theme sets no colour scheme, so Material's default
 /// purple leaked into the switch and the Hard Reset card while the icons were
-/// hard-coded blue. [logistics] seeds the scheme from [BColors.primary] so
-/// every accent in Settings is the same blue.
+/// hard-coded blue. [logistics] seeds the scheme from [BColors.primary] (the
+/// colour theme picked in Settings → Theme) so every accent in Settings is
+/// the same colour, light or dark as picked there.
 class SettingsDepartmentTheme extends StatelessWidget {
   const SettingsDepartmentTheme({super.key, required this.child});
 
@@ -84,19 +95,29 @@ class SettingsDepartmentTheme extends StatelessWidget {
   static bool isCollection(String department) =>
       department.trim().toLowerCase() == 'collection';
 
-  static final ThemeData collection = BCollectionTheme.light.copyWith(
-    extensions: const [SettingsStatusColors.collection],
-  );
+  /// The Collection theme for the phone's mode: Settings pinned the light
+  /// one, so a phone in dark mode showed a white Settings page.
+  static ThemeData get collection =>
+      (BCollectionColors.isDark ? BCollectionTheme.dark : BCollectionTheme.light)
+          .copyWith(extensions: [SettingsStatusColors.collection]);
 
-  static final ThemeData logistics = BAppTheme.lightTheme.copyWith(
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: BColors.primary,
-      primary: BColors.primary,
-      onPrimary: Colors.white,
-      surface: Colors.white,
-    ),
-    extensions: const [SettingsStatusColors.logistics],
-  );
+  static ThemeData get logistics {
+    final dark = BLogisticsColors.isDark;
+    return (dark ? BLogisticsTheme.dark : BLogisticsTheme.light).copyWith(
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: BColors.primary,
+        brightness: dark ? Brightness.dark : Brightness.light,
+        primary: BColors.primary,
+        onPrimary: Colors.white,
+        surface: dark ? const Color(0xFF1E1E1E) : Colors.white,
+      ),
+      extensions: [
+        dark
+            ? SettingsStatusColors.logisticsDark
+            : SettingsStatusColors.logistics,
+      ],
+    );
+  }
 
   static ThemeData forDepartment(String department) =>
       isCollection(department) ? collection : logistics;

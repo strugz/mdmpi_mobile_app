@@ -28,6 +28,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_upload_summary.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Manager for Hotline Direct domain orchestration (save/update flows).
 ///
@@ -738,7 +739,8 @@ class HotlineDirectDataManager {
       );
       return false;
     }
-    if (!hasVehicle) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (!hasVehicle && !BCommuteId.isCommuteId(tripTicket)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

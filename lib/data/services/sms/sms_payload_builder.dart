@@ -40,7 +40,8 @@ class SmsPayloadBuilder {
       case PullOutModel model:
         return _buildForPullOut(model, normalizedOverride);
       case AirSeaModel model:
-        return _buildForAirSea(status, model, normalizedOverride);
+        return _buildForAirSea(status, model, normalizedOverride,
+            inventoryItems: inventoryItems);
       default:
         return null;
     }
@@ -131,8 +132,9 @@ class SmsPayloadBuilder {
   SmsRequestPayload _buildForAirSea(
     String status,
     AirSeaModel model,
-    String normalizedOverride,
-  ) {
+    String normalizedOverride, {
+    List<InventoryItemModel>? inventoryItems,
+  }) {
     return SmsRequestPayload(
       requestId: model.id,
       requesterCode: model.createdBy,
@@ -147,7 +149,9 @@ class SmsPayloadBuilder {
           ? normalizedOverride
           : model.cancelRemarks.remarks,
       completionStatusLabel: _resolveAirSeaCompletionStatusLabel(status),
-      inventoryItems: const [],
+      // Only the create passes items; the template prints them on New
+      // Request only, the same as Standard Delivery.
+      inventoryItems: inventoryItems ?? const [],
       dispatchAt: model.dispatchedAt,
       waybillNumber: model.waybillNumber,
     );

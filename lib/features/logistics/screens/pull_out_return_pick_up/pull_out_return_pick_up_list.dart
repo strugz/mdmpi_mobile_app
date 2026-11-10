@@ -78,7 +78,7 @@ class PullOutReturnPickUpList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
                       onTap: () {
                         controller.currentSelectedPullOut.value = item;
-                        _handlePullOutTap(
+                        handlePullOutTap(
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
@@ -157,7 +157,7 @@ class PullOutReturnPickUpList extends StatelessWidget {
 /// Handles tap on PullOut request based on user role.
 /// Uses status-driven role selection to ensure users with multiple roles
 /// can perform ALL available actions at ANY status.
-void _handlePullOutTap(
+void handlePullOutTap(
   BuildContext context,
   PullOutModel request,
   PullOutController controller,

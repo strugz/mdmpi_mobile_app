@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
@@ -144,6 +145,7 @@ class PickUpController extends GetxController {
   Future<void> loadForScope(RequestDateScope dateScope) async {
     await dataManager.fetchPickUps(this, useLocalStorage.value,
         scope: dateScope);
+    UnfinishedRequestsController.changed();
   }
 
   Future<void> hardResetPickUps() async {

@@ -152,7 +152,7 @@ class _CalendarVisitCardState extends State<CalendarVisitCard> {
                         turns: _expanded ? 0.5 : 0,
                         duration: CalendarVisitCard.duration,
                         curve: CalendarVisitCard.curve,
-                        child: const Icon(Iconsax.arrow_down_1,
+                        child: Icon(Iconsax.arrow_down_1,
                             size: 18, color: BCollectionColors.inkMuted),
                       ),
                     ],
@@ -178,7 +178,7 @@ class _CalendarVisitCardState extends State<CalendarVisitCard> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Iconsax.receipt_item,
+                          Icon(Iconsax.receipt_item,
                               size: 14, color: BCollectionColors.inkMuted),
                           const SizedBox(width: BSizes.xs),
                           Flexible(
@@ -287,7 +287,7 @@ class _InvoiceRow extends StatelessWidget {
         decoration: BoxDecoration(
           border: last
               ? null
-              : const Border(
+              : Border(
                   bottom: BorderSide(color: BCollectionColors.outline)),
         ),
         child: Row(

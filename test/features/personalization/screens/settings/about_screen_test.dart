@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
@@ -16,6 +18,20 @@ void main() {
     expect(newest.items, isNotEmpty);
   });
 
+  test('the newest list is the one for the version being built', () {
+    // A phone shows the list for its own version, so a list filed under a
+    // later version than pubspec's would never be seen on this build.
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    final version =
+        RegExp(r'^version:\s*([0-9.]+)', multiLine: true).firstMatch(pubspec)!
+            .group(1);
+    expect(BWhatsNew.groups.first.version, version);
+    expect(BWhatsNew.forVersion(version!), same(BWhatsNew.groups.first));
+    final versions = BWhatsNew.groups.map((g) => g.version).toList();
+    expect(versions.toSet(), hasLength(versions.length),
+        reason: 'one list per version');
+  });
+
   test('the version label hides a build number that repeats the version', () {
     expect(
         const AppBuildInfo(appName: 'a', version: '1.1.110', build: '110').label,
@@ -28,11 +44,12 @@ void main() {
         '1.1.110');
   });
 
-  Future<void> pump(WidgetTester tester, AppBuildInfo info) async {
+  Future<void> pump(WidgetTester tester, AppBuildInfo info,
+      {String? department}) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 2.5;
     addTearDown(tester.view.reset);
-    Get.put(AboutController(load: () async => info));
+    Get.put(AboutController(load: () async => info, department: department));
     await tester.pumpWidget(const GetMaterialApp(home: AboutScreen()));
     await tester.pumpAndSettle();
   }
@@ -45,8 +62,27 @@ void main() {
     expect(find.text('Version ${newest.version} (7)'), findsOneWidget);
     expect(find.text("What's new in ${newest.version}"), findsOneWidget);
     expect(find.byKey(const ValueKey('about-newer-note')), findsNothing);
-    expect(find.textContaining(newest.items.first.title), findsOneWidget);
+    expect(find.textContaining(newest.items.first.title), findsWidgets);
     expect(find.byKey(const ValueKey('about-copy')), findsOneWidget);
+  });
+
+  testWidgets('Logistics reads its own notes and the shared ones',
+      (tester) async {
+    final newest = BWhatsNew.groups.first;
+    await pump(
+        tester,
+        AppBuildInfo(appName: 'MDMPI App', version: newest.version, build: ''),
+        department: 'Logistics');
+
+    // A list can be all shared items, with no Logistics heading of its own.
+    final hasLogistics =
+        newest.items.any((i) => i.area?.toLowerCase() == 'logistics');
+    expect(find.text('LOGISTICS'), hasLogistics ? findsOneWidget : findsNothing);
+    expect(find.text('COLLECTION'), findsNothing);
+    final controller = Get.find<AboutController>();
+    expect(controller.whatsNew!.items.map((i) => i.area?.toLowerCase()),
+        everyElement(anyOf(isNull, 'logistics')));
+    expect(controller.whatsNew!.items, isNotEmpty);
   });
 
   testWidgets('a build with no notes shows the newest list and says so',

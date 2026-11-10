@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/scan/b_scan_first_action.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/colors.dart';
@@ -46,6 +47,7 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   LogisticsHomeHeader(
+                    scanAction: const BScanFirstAction(),
                     quickActions: HomeQuickActionGrid(
                       labels: BTexts.requestFormLabels,
                       pages: AppRoutes.requestFormPages,
@@ -58,7 +60,7 @@ class HomeScreen extends StatelessWidget {
                   Expanded(
                     child: Stack(
                       children: [
-                        const Positioned(
+                        Positioned(
                           top: 0,
                           left: 0,
                           right: 0,

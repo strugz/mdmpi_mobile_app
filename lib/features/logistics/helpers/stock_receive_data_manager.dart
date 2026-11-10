@@ -23,6 +23,7 @@ import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart'
 import '../../../data/repositories/image/image_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Manager for Stock Receive domain orchestration (save/update flows).
 ///
@@ -484,7 +485,8 @@ class StockReceiveDataManager {
       );
       return false;
     }
-    if (!hasVehicle) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (!hasVehicle && !BCommuteId.isCommuteId(tripTicket)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

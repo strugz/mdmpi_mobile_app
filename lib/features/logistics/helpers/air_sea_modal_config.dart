@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/data/models/realtime_location_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/air_sea_form_state.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Configuration resolved from (role, status) that drives the Air/Sea modal.
 ///
@@ -246,7 +247,9 @@ class AirSeaModalConfig {
       );
       return false;
     }
-    if (formState.vehicleController.text.trim().isEmpty) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (formState.vehicleController.text.trim().isEmpty &&
+        !BCommuteId.isCommuteId(formState.tripTicketController.text)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

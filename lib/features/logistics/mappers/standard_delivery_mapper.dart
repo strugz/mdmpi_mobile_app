@@ -14,6 +14,10 @@ import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 
 class StandardDeliveryMapper {
   static StandardDeliveryModel fromDto(StandardDeliveryDto dto) {
+    final deliveryAddress = dto.deliveryAddress?.trim() ?? '';
+    final client = dto.client != null
+        ? _clientDtoToModel(dto.client!)
+        : ClientModel.empty();
     return StandardDeliveryModel(
       id: dto.id ?? '',
       clientId: dto.clientId ?? '',
@@ -31,9 +35,11 @@ class StandardDeliveryMapper {
       deliveredAt: dto.deliveredAt ?? '',
       deliveredEndAt: dto.deliveredEndAt ?? '',
       documentReference: dto.documentReference ?? [],
-      client: dto.client != null
-          ? _clientDtoToModel(dto.client!)
-          : ClientModel.empty(),
+      // A per-request delivery address replaces the master address
+      // (plan §4.4b A4); the backend already does this, so it is a no-op there.
+      client: StandardDeliveryModel.clientWithDeliveryAddress(
+          client, deliveryAddress),
+      deliveryAddress: deliveryAddress,
       createdAt: dto.createdAt ?? '',
       locationStartedAt: dto.locationStartedAt ?? '',
       locationEndAt: dto.locationEndAt ?? '',
@@ -140,6 +146,8 @@ class StandardDeliveryMapper {
       formCategoryID:
           m.formCategoryID.isNotEmpty ? int.tryParse(m.formCategoryID) : null,
       updatedBy: m.createdBy.isNotEmpty ? m.createdBy : null,
+      requestDeliveryAddress:
+          m.deliveryAddress.isNotEmpty ? m.deliveryAddress : null,
     );
   }
 

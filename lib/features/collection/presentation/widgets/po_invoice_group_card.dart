@@ -85,7 +85,7 @@ class PoInvoiceGroupCard extends StatelessWidget {
                   final width = constraints.maxWidth;
                   return Row(
                     children: [
-                      const Icon(Iconsax.receipt_item,
+                      Icon(Iconsax.receipt_item,
                           size: 18, color: BCollectionColors.primary),
                       const SizedBox(width: BSizes.sm),
                       Expanded(
@@ -174,7 +174,7 @@ class PoInvoiceGroupCard extends StatelessWidget {
                         turns: expanded ? 0.5 : 0,
                         duration: _duration,
                         curve: _curve,
-                        child: const Icon(Iconsax.arrow_down_1,
+                        child: Icon(Iconsax.arrow_down_1,
                             size: 18, color: BCollectionColors.inkMuted),
                       ),
                     ],
@@ -198,7 +198,7 @@ class PoInvoiceGroupCard extends StatelessWidget {
                   padding: const EdgeInsets.only(
                       top: BSizes.sm, left: BSizes.spaceBtwItemsLight),
                   child: DecoratedBox(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       border: Border(
                         left: BorderSide(
                             color: BCollectionColors.outline, width: 1.5),
@@ -268,7 +268,7 @@ class PoSectionLabel extends StatelessWidget {
             ),
           ),
           const SizedBox(width: BSizes.sm),
-          const Expanded(
+          Expanded(
             child: Divider(
                 height: 1, thickness: 1, color: BCollectionColors.outline),
           ),

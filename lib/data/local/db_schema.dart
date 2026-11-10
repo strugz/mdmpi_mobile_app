@@ -46,7 +46,8 @@ Future<void> createAllTables(Database db) async {
       RecipientName TEXT,
       TripTicketNumber TEXT,
       ItemCategoryID TEXT,
-      FormCategoryID TEXT
+      FormCategoryID TEXT,
+      RequestDeliveryAddress TEXT
     )
   ''');
 
@@ -115,7 +116,9 @@ Future<void> createAllTables(Database db) async {
       PhoneNumber TEXT,
       Username TEXT,
       ProfilePicture TEXT,
-      Status BOOLEAN
+      Status BOOLEAN,
+      HeadKey TEXT,
+      HeadName TEXT
     )
   ''');
 
@@ -306,6 +309,26 @@ Future<void> createAllTables(Database db) async {
 
   // Collection tables (bucket cache, engagement history, pending upload queue).
   await ensureCollectionTables(db);
+
+  // Standard Delivery one-scan: learned client aliases.
+  await ensureOneScanTables(db);
+}
+
+/// Creates the Standard Delivery one-scan tables idempotently.
+///
+/// `CLIENT_ALIAS_` maps a normalized scanned customer name to the client the
+/// user confirmed for it, so the next scan of that customer ranks it first.
+/// The aliases are learned on this device and exist nowhere else, so the
+/// table is created with `CREATE TABLE IF NOT EXISTS` and kept out of the
+/// destructive `_recreateAllTables` rebuild, like [ensureProofUploadTables].
+Future<void> ensureOneScanTables(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS CLIENT_ALIAS_ (
+      ALIAS TEXT PRIMARY KEY,
+      ACCMID TEXT NOT NULL,
+      UPDATED_AT TEXT
+    )
+  ''');
 }
 
 /// Creates the proof-upload tables idempotently.
@@ -523,6 +546,7 @@ Future<void> ensureCollectionTables(Database db) async {
       collectionDate TEXT,
       amount REAL DEFAULT 0,
       referenceNo TEXT,
+      area TEXT,
       remarks TEXT,
       postedBy TEXT,
       createdAt TEXT,
@@ -533,6 +557,20 @@ Future<void> ensureCollectionTables(Database db) async {
   await db.execute('''
     CREATE INDEX IF NOT EXISTS idx_collection_actual_date
       ON a_tblCollectionActual (collectionDate)
+  ''');
+  // The area an entry counts toward (update checklist item 3); '' = the team.
+  await _addColumnIfMissing(db, 'a_tblCollectionActual', 'area', 'TEXT');
+
+  // Table: a_tblCollectionAreaTarget (the office's targets per month and area;
+  // a_tblCollectionTarget keeps the month's sum). A cache of the server's
+  // list, replaced on each download that carries it.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionAreaTarget (
+      yearMonth TEXT NOT NULL,
+      area TEXT NOT NULL DEFAULT '',
+      amount REAL DEFAULT 0,
+      PRIMARY KEY (yearMonth, area)
+    )
   ''');
 
   // Table: a_tblCollectionEngagement (the collector's own field-work archive)
@@ -599,6 +637,14 @@ Future<void> ensureCollectionTables(Database db) async {
   // explain. They are now refreshed with each download instead.
   await _addColumnIfMissing(
       db, 'a_tblCollectionEngagement', 'source', "TEXT NOT NULL DEFAULT 'LOCAL'");
+  // settled is 1 on the collection that paid its invoice down to zero. The
+  // Settled tile on the Collection home reads it: a settled invoice stops
+  // coming back from the server, so the tile cannot count from the bucket,
+  // and the status alone cannot say it - an Advanced Payment applied in full
+  // is archived as 'Advanced Payment Applied', not 'Collected'. Rows written
+  // before the column existed read as 0 and fall back to the status.
+  await _addColumnIfMissing(
+      db, 'a_tblCollectionEngagement', 'settled', 'INTEGER NOT NULL DEFAULT 0');
   // IF NOT EXISTS on the indexes too: this whole function re-runs on every
   // database open, not just on create and upgrade (see DatabaseHelper._initDB).
   await db.execute('''
@@ -608,6 +654,148 @@ Future<void> ensureCollectionTables(Database db) async {
   await db.execute('''
     CREATE INDEX IF NOT EXISTS idx_collection_engagement_client
       ON a_tblCollectionEngagement (collectorCode, clientId)
+  ''');
+
+  await ensureReconciliationTables(db);
+  await ensureVoucherRereadTables(db);
+}
+
+/// Voucher pages read on the phone (no connection, or Scan with camera),
+/// kept for the AI to read again once online (VoucherRereadService). The
+/// page itself is the file at `pagePath`; `offlineIds` / `foundIds` /
+/// `notFound` are comma lists of invoice numbers; `seen` is 1 once the
+/// collector has selected or dismissed what the re-read found.
+Future<void> ensureVoucherRereadTables(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionVoucherReread (
+      rereadId    TEXT PRIMARY KEY,
+      clientId    TEXT NOT NULL,
+      clientName  TEXT NOT NULL DEFAULT '',
+      pagePath    TEXT NOT NULL,
+      offlineIds  TEXT NOT NULL DEFAULT '',
+      status      TEXT NOT NULL DEFAULT 'Pending',
+      retryCount  INTEGER NOT NULL DEFAULT 0,
+      foundIds    TEXT NOT NULL DEFAULT '',
+      notFound    TEXT NOT NULL DEFAULT '',
+      seen        INTEGER NOT NULL DEFAULT 0,
+      lastError   TEXT,
+      createdAt   TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_voucher_reread_status
+      ON a_tblCollectionVoucherReread (status)
+  ''');
+}
+
+/// The Reconciliation Tracker's tables
+/// (docs/application/COLLECTION_RECONCILIATION_TRACKER_PLAN.md): cases, the
+/// invoices fixed when each opened, the activity log, and its photos.
+///
+/// Like the engagement archive these hold work that exists nowhere else until
+/// it is uploaded, so they are kept out of the destructive rebuild and never
+/// truncated by a download. `source` says where a row came from: 'LOCAL' is a
+/// case or step this device made (never rewritten until the server returns it),
+/// 'SERVER' is the server's copy, replaced by each download that carries cases.
+///
+/// The case's status columns are a cache: the truth is the log, read by
+/// evaluateReconCase. Dates are Manila wall-clock text, as everywhere in
+/// Collection.
+Future<void> ensureReconciliationTables(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconCase (
+      caseId         TEXT PRIMARY KEY,
+      clientCode     TEXT NOT NULL,
+      clientName     TEXT NOT NULL DEFAULT '',
+      collectorCode  TEXT NOT NULL,
+      collectorName  TEXT NOT NULL DEFAULT '',
+      dateOpened     TEXT NOT NULL,
+      caseStatus     TEXT NOT NULL DEFAULT 'WAITING_FOR_COLLECTOR',
+      nextActor      TEXT,
+      lastActivityAt TEXT,
+      dateClosed     TEXT,
+      soaDate        TEXT,
+      soaAmount      REAL,
+      source         TEXT NOT NULL DEFAULT 'LOCAL',
+      updatedAt      TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_recon_case_client
+      ON a_tblCollectionReconCase (clientCode)
+  ''');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconCaseInvoice (
+      caseId         TEXT NOT NULL,
+      invoiceNo      TEXT NOT NULL,
+      amount         REAL NOT NULL DEFAULT 0,
+      currentBalance REAL,
+      clearedAt      TEXT,
+      PRIMARY KEY (caseId, invoiceNo)
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconActivity (
+      activityId        TEXT PRIMARY KEY,
+      caseId            TEXT NOT NULL,
+      dateTime          TEXT NOT NULL,
+      type              TEXT NOT NULL,
+      invoiceNos        TEXT NOT NULL DEFAULT '',
+      remarks           TEXT NOT NULL DEFAULT '',
+      amount            REAL,
+      validationResult  TEXT,
+      nextAction        TEXT NOT NULL DEFAULT '',
+      nextActionDueDate TEXT,
+      attachmentIds     TEXT NOT NULL DEFAULT '',
+      recordedBy        TEXT NOT NULL DEFAULT '',
+      source            TEXT NOT NULL DEFAULT 'LOCAL',
+      createdAt         TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_recon_activity_case
+      ON a_tblCollectionReconActivity (caseId, dateTime)
+  ''');
+  // The photo itself is a file in the app's documents folder; the row says
+  // where, and whether it has reached the server (status Pending / Uploaded /
+  // Failed). A base64 column would copy every photo into the database.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionReconAttachment (
+      attachmentId TEXT PRIMARY KEY,
+      caseId       TEXT NOT NULL,
+      activityId   TEXT NOT NULL,
+      filePath     TEXT NOT NULL,
+      contentType  TEXT NOT NULL DEFAULT 'image/jpeg',
+      status       TEXT NOT NULL DEFAULT 'Pending',
+      retryCount   INTEGER NOT NULL DEFAULT 0,
+      lastError    TEXT,
+      createdAt    TEXT NOT NULL DEFAULT ''
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_recon_attachment_status
+      ON a_tblCollectionReconAttachment (status)
+  ''');
+  // The SMS Outbox: every Collection SMS is saved here and sent from here in
+  // the background (Settings → SMS Outbox). recipients is a JSON list of
+  // {number, result}; sent rows are cleared at midnight, unsent ones stay.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS a_tblCollectionSmsOutbox (
+      id            TEXT PRIMARY KEY,
+      createdAt     TEXT NOT NULL,
+      kind          TEXT NOT NULL DEFAULT '',
+      message       TEXT NOT NULL,
+      headOnly      INTEGER NOT NULL DEFAULT 0,
+      status        TEXT NOT NULL DEFAULT 'Pending',
+      recipients    TEXT NOT NULL DEFAULT '[]',
+      attempts      INTEGER NOT NULL DEFAULT 0,
+      lastError     TEXT,
+      lastAttemptAt TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_collection_sms_outbox_status
+      ON a_tblCollectionSmsOutbox (status, createdAt)
   ''');
 }
 

@@ -4,6 +4,15 @@
 
 The Air / Sea / Land module handles air, sea and land freight logistics requests within the MDMPI Mobile App. It manages the full lifecycle of air/sea shipment requests — from creation through item preparation, guard endorsement, dispatch, drop-off, and receipt.
 
+### Items (2026-10-15)
+
+Air/Sea requests (base and HD) carry an item list. **Add Item** on the form uses the same
+shared scanned-items list as Standard Delivery and Pull Out. After the create returns 201, the
+items are posted to the shared `POST /api4/Item/request/{id}` (as Pull Out does), so the
+Air/Sea create body and the backend are unchanged. **View Items** in the request modal reads
+them back. The New Request SMS lists them. Details:
+[../../application/LOGISTICS_AIR_SEA_ITEMS_PLAN.md](../../application/LOGISTICS_AIR_SEA_ITEMS_PLAN.md).
+
 ### Air / Sea / Land HD variant (2026-09-09)
 
 The **"Air / Sea / Land HD"** form category is the Hotline-Direct (urgent) variant of

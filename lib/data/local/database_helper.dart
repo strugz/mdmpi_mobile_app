@@ -1,3 +1,4 @@
+import 'package:mdmpi_mobile_app/data/local/dao/collection/voucher_reread_dao.dart';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -22,6 +23,7 @@ import 'dao/common/image_outbox_dao.dart';
 import 'dao/common/backload_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
+import 'dao/common/client_alias_dao.dart';
 import 'dao/common/mobile_dao.dart';
 import 'dao/common/user_dao.dart';
 import 'dao/common/cntmst_dao.dart';
@@ -37,6 +39,9 @@ import 'dao/collection/collection_account_history_dao.dart';
 import 'dao/collection/collection_target_dao.dart';
 import 'dao/collection/collection_actual_dao.dart';
 import 'dao/collection/collection_engagement_dao.dart';
+import 'dao/collection/recon_attachment_dao.dart';
+import 'dao/collection/collection_sms_outbox_dao.dart';
+import 'dao/collection/recon_case_dao.dart';
 import 'db_schema.dart';
 
 /// Lightweight DatabaseHelper singleton that initializes the database,
@@ -49,6 +54,7 @@ class DatabaseHelper {
 
   // Cached DAO instances
   RequestDao? _requestDao;
+  ClientAliasDao? _clientAliasDao;
   SignatureDao? _signatureDao;
   ImageOutboxDao? _imageOutboxDao;
   PickUpDao? _pickUpDao;
@@ -73,6 +79,10 @@ class DatabaseHelper {
   CollectionTargetDao? _collectionTargetDao;
   CollectionActualDao? _collectionActualDao;
   CollectionEngagementDao? _collectionEngagementDao;
+  ReconCaseDao? _reconCaseDao;
+  ReconAttachmentDao? _reconAttachmentDao;
+  CollectionSmsOutboxDao? _collectionSmsOutboxDao;
+  VoucherRereadDao? _voucherRereadDao;
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -85,7 +95,8 @@ class DatabaseHelper {
     final path = join(dbPath, fileName);
     return await openDatabase(
       path,
-      version: 21,
+      // 22: Users gained HeadKey / HeadName (My Head setting).
+      version: 22,
       onCreate: (db, version) async {
         await createAllTables(db);
       },
@@ -105,6 +116,7 @@ class DatabaseHelper {
       onOpen: (db) async {
         await ensureProofUploadTables(db);
         await ensureCollectionTables(db);
+        await ensureOneScanTables(db);
       },
     );
   }
@@ -148,7 +160,8 @@ class DatabaseHelper {
   /// - `contacts` — user-entered;
   /// - `a_tblRequestReceiverSignature`, `a_tblRequestImageOutbox` — captured
   ///   signatures and queued proof images awaiting upload;
-  /// - every `a_tblCollection*` table — un-uploaded collector field work.
+  /// - every `a_tblCollection*` table — un-uploaded collector field work;
+  /// - `CLIENT_ALIAS_` — Standard Delivery one-scan aliases learned here.
   /// Tables the destructive rebuild drops. Server-backed cache only.
   ///
   /// Anything holding data that exists nowhere else must stay out of this
@@ -268,6 +281,13 @@ class DatabaseHelper {
     final db = await database;
     _clientDao = ClientDao(db);
     return _clientDao!;
+  }
+
+  Future<ClientAliasDao> get clientAliasDao async {
+    if (_clientAliasDao != null) return _clientAliasDao!;
+    final db = await database;
+    _clientAliasDao = ClientAliasDao(db);
+    return _clientAliasDao!;
   }
 
   Future<MobileDao> get mobileDao async {
@@ -395,6 +415,34 @@ class DatabaseHelper {
     final db = await database;
     _collectionEngagementDao = CollectionEngagementDao(db);
     return _collectionEngagementDao!;
+  }
+
+  Future<ReconCaseDao> get reconCaseDao async {
+    if (_reconCaseDao != null) return _reconCaseDao!;
+    final db = await database;
+    _reconCaseDao = ReconCaseDao(db);
+    return _reconCaseDao!;
+  }
+
+  Future<VoucherRereadDao> get voucherRereadDao async {
+    if (_voucherRereadDao != null) return _voucherRereadDao!;
+    final db = await database;
+    _voucherRereadDao = VoucherRereadDao(db);
+    return _voucherRereadDao!;
+  }
+
+  Future<ReconAttachmentDao> get reconAttachmentDao async {
+    if (_reconAttachmentDao != null) return _reconAttachmentDao!;
+    final db = await database;
+    _reconAttachmentDao = ReconAttachmentDao(db);
+    return _reconAttachmentDao!;
+  }
+
+  Future<CollectionSmsOutboxDao> get collectionSmsOutboxDao async {
+    if (_collectionSmsOutboxDao != null) return _collectionSmsOutboxDao!;
+    final db = await database;
+    _collectionSmsOutboxDao = CollectionSmsOutboxDao(db);
+    return _collectionSmsOutboxDao!;
   }
 
   Future<List<String>> getContactPhoneNumbers() async {
@@ -683,6 +731,7 @@ class DatabaseHelper {
     _database = null;
 
     _requestDao = null;
+    _clientAliasDao = null;
     _signatureDao = null;
     _imageOutboxDao = null;
     _documentReferenceDao = null;
@@ -692,6 +741,10 @@ class DatabaseHelper {
     _userDao = null;
     _cntmstDao = null;
     _backLoadDao = null;
+    _reconCaseDao = null;
+    _reconAttachmentDao = null;
+    _collectionSmsOutboxDao = null;
+    _voucherRereadDao = null;
   }
 
   /// Delete the database file and reset the instance.
@@ -709,6 +762,7 @@ class DatabaseHelper {
 
       // Clear all cached DAOs
       _requestDao = null;
+      _clientAliasDao = null;
       _signatureDao = null;
       _imageOutboxDao = null;
       _pickUpDao = null;
@@ -722,6 +776,10 @@ class DatabaseHelper {
       _backLoadDao = null;
       _itemCategoryDao = null;
       _formCategoryDao = null;
+      _reconCaseDao = null;
+      _reconAttachmentDao = null;
+      _collectionSmsOutboxDao = null;
+      _voucherRereadDao = null;
     } catch (e) {
       // Ignore errors during deletion
     }

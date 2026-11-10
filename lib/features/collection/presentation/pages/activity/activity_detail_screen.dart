@@ -1,4 +1,3 @@
-import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -139,7 +138,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   void _onAmountChanged() {
     final implied = CollectionOutcome.forAmount(_enteredAmount, _balance);
     setState(() {
-      if (!_statusSetByHand && implied != null) selectedStatus = implied;
+      // A Pre-Collection's amount is the next collection's, not a payment:
+      // typing it must not turn the outcome into Collected or Partial.
+      if (!_statusSetByHand &&
+          implied != null &&
+          !CollectionOutcome.isPreCollection(selectedStatus)) {
+        selectedStatus = implied;
+      }
     });
   }
 
@@ -169,7 +174,12 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     }
   }
 
-  void _saveActivity() {
+  /// Set while a save (and the SMS after it) runs, so a second tap does not
+  /// record the payment twice.
+  bool _saving = false;
+
+  Future<void> _saveActivity() async {
+    if (_saving) return;
     final controller = CollectionActivityController.instance;
     final isOthers = selectedStatus == CollectionStatusColors.statusOthers;
     final customRemark = othersRemarkController.text.trim();
@@ -182,7 +192,10 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
 
     final finalStatus = isOthers ? customRemark : selectedStatus;
     final usingCheck = _payingByCheck;
+    _saving = true;
 
+    // The SMS (Collected or Partial) goes out in the background from the
+    // SMS Outbox; the screen does not wait for it.
     controller.saveActivity(
       id: widget.item.id,
       status: finalStatus.isEmpty ? 'Others' : finalStatus,
@@ -205,16 +218,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
     );
 
     Get.back();
-    // With an SMS to follow, the sending view and "Message Sent!" confirm it.
-    if (!CollectionSmsService.smsFollows(
-        status: finalStatus.isEmpty ? 'Others' : finalStatus)) {
-      BLoaders.successSnackBar(title: 'Saved', message: 'Engagement updated');
-    }
+    BLoaders.successSnackBar(title: 'Saved', message: 'Engagement updated');
   }
 
   @override
   Widget build(BuildContext context) {
     final amount = _enteredAmount;
+    final preCollection = CollectionOutcome.isPreCollection(selectedStatus);
     final remaining = (_balance - amount).clamp(0, double.infinity).toDouble();
     final overpaid = amount > _balance;
 
@@ -229,7 +239,7 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             BSizes.defaultSpace,
             BSizes.spaceBtwItemsLight,
           ),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: BCollectionColors.surface,
             border: Border(top: BorderSide(color: BCollectionColors.outline)),
           ),
@@ -262,11 +272,13 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
             _summary(context),
             const SizedBox(height: BSizes.spaceBtwSections),
 
-            _sectionLabel(context, 'Amount collected'),
+            _sectionLabel(context,
+                preCollection ? 'Amount to collect' : 'Amount collected'),
             const SizedBox(height: BSizes.sm),
             _amountField(),
             const SizedBox(height: BSizes.sm),
-            _amountHelpers(context, amount, remaining, overpaid),
+            _amountHelpers(context, amount, remaining, overpaid,
+                preCollection: preCollection),
 
             const SizedBox(height: BSizes.spaceBtwSections),
             _sectionLabel(context, 'Outcome'),
@@ -430,7 +442,8 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
   /// One tap for the whole balance, plus a running total so the collector
   /// never has to do the subtraction in their head.
   Widget _amountHelpers(
-      BuildContext context, double amount, double remaining, bool overpaid) {
+      BuildContext context, double amount, double remaining, bool overpaid,
+      {bool preCollection = false}) {
     final theme = Theme.of(context);
 
     return Column(
@@ -457,7 +470,20 @@ class _ActivityDetailScreenState extends State<ActivityDetailScreen> {
               ),
           ],
         ),
-        if (amount > 0) ...[
+        if (preCollection) ...[
+          const SizedBox(height: BSizes.sm),
+          Text(
+            'Pre-Collection: recorded for the next collection, not settled. '
+            'The balance stays ${BFormatter.formatPesoCurrency(_balance)}; '
+            'the check date is when to collect.',
+            key: const ValueKey('pre-collection-note'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: CollectionStatusColors.colorFor(
+                  CollectionStatusColors.statusPreCollection),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ] else if (amount > 0) ...[
           const SizedBox(height: BSizes.sm),
           Text(
             overpaid

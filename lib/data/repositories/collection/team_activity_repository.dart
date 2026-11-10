@@ -23,6 +23,9 @@ class TeamActivityRepository extends GetxController {
 
   static const String path = '/api4/Collection/team/engagements';
 
+  /// The Collectors summary, counted on the server.
+  static const String summaryPath = '/api4/Collection/team/summary';
+
   final TeamFeedFetcher _fetch;
 
   static Future<http.Response> _httpGet(Uri url) =>
@@ -64,6 +67,48 @@ class TeamActivityRepository extends GetxController {
       return Result.success(TeamActivityFeed.fromJson(decoded));
     } catch (e) {
       logDebug('TeamActivityRepository.load error: $e');
+      return Result.failure(
+          'Could not reach the server. Check your connection and try again.');
+    }
+  }
+
+  /// The Collectors summary for [yearMonth] (`yyyy-MM`).
+  ///
+  /// Success(null) when the server has no such endpoint yet (404): the
+  /// caller falls back to [load]. Any other problem (a server error, no
+  /// connection, an answer it cannot read) is a failure, so a broken server
+  /// is not mistaken for an older one.
+  Future<Result<TeamSummary?>> loadSummary(String yearMonth) async {
+    try {
+      final response = await _fetch(
+          BApiEnvironment.api4Uri(summaryPath, {'month': yearMonth}));
+      if (response.statusCode == 404) {
+        logDebug('TeamActivityRepository.loadSummary: 404, no summary yet');
+        return Result.success(null);
+      }
+      if (response.statusCode != 200) {
+        logDebug('TeamActivityRepository.loadSummary: ${response.statusCode}');
+        return Result.failure(
+            'The server could not load the summary (${response.statusCode}).');
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return Result.failure('The server sent an unexpected answer.');
+      }
+      final summary = TeamSummary.fromJson(decoded);
+      // A summary for another month (a stale cache, a server that ignored
+      // the query) would be shown as this one; one with no Month is taken
+      // as the month asked for.
+      final month = summary.month.trim();
+      if (month.isNotEmpty && month != yearMonth) {
+        logDebug('TeamActivityRepository.loadSummary: asked $yearMonth, '
+            'got $month');
+        return Result.failure(
+            'The server sent the summary for $month, not $yearMonth.');
+      }
+      return Result.success(summary);
+    } catch (e) {
+      logDebug('TeamActivityRepository.loadSummary error: $e');
       return Result.failure(
           'Could not reach the server. Check your connection and try again.');
     }

@@ -30,6 +30,7 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/user_contro
 import 'package:mdmpi_mobile_app/features/logistics/constants/form_category_ids.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_upload_summary.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Manager for Standard Delivery domain orchestration (save/update flows).
 ///
@@ -135,6 +136,7 @@ class StandardDeliveryDataManager {
         formCategoryID: normalizedFormCategory,
         recipientContactDetails: formState.recipientContactDetails.text.trim(),
         recipientName: formState.recipientName.text.trim(),
+        deliveryAddress: formState.deliveryAddressFor(client.id),
       );
 
       // Save to repository - include scanned items from form state
@@ -936,7 +938,8 @@ class StandardDeliveryDataManager {
       );
       return false;
     }
-    if (!hasVehicle) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (!hasVehicle && !BCommuteId.isCommuteId(tripTicket)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',
@@ -1018,7 +1021,8 @@ class StandardDeliveryDataManager {
       return false;
     }
     // Helper is optional for Standard Delivery — no validation required.
-    if (formState.mobile.text.trim().isEmpty) {
+    if (formState.mobile.text.trim().isEmpty &&
+        !BCommuteId.isCommuteId(formState.tripTicketNumber.text)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

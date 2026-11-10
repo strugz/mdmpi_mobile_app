@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.112
+version: 1.1.119
 
 environment:
   sdk: ^3.6.0
@@ -91,6 +91,9 @@ dependencies:
   # notifications
   rxdart: ^0.27.2
   flutter_local_notifications: ^19.2.1
+  # Scheduled reminders fire at a Manila wall-clock time (reconciliation
+  # follow ups), whatever the phone's time zone.
+  timezone: ^0.10.1
 
   # Icons
   iconsax: ^0.0.8
@@ -129,6 +132,8 @@ dependencies:
   #workmanager
   workmanager: ^0.6.0
   table_calendar: ^3.2.0
+  share_plus: ^12.0.2
+  google_mlkit_document_scanner: ^0.5.0
 
 # Vendored copy of another_telephony 0.4.1 with a fix for Android 11 and
 # below: upstream calls getSystemService(SmsManager) which only exists on

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:mdmpi_mobile_app/base/utils/routes/routes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
 import 'package:mdmpi_mobile_app/common/widgets/animations/mirror_carousel.dart';
@@ -9,7 +10,9 @@ import 'package:mdmpi_mobile_app/common/widgets/custom_shapes/containers/primary
 import 'package:mdmpi_mobile_app/common/widgets/texts/section_subheading.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_history_model.dart';
 import 'package:mdmpi_mobile_app/features/collection/models/collection_item_model.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_summary.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_activity_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/activity/widgets/activity_history_list.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/bucket/collection_bucket_screen.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/recent_activities_screen.dart';
@@ -19,8 +22,10 @@ import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/wid
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_sync_bar.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/collection_totals_card.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/home_skeleton.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/pages/home/widgets/theme_mode_toggle.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/total_collected_month/monthly_summary_screen.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/home/widgets/home_appbar.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 class CollectionHomeScreen extends StatelessWidget {
@@ -68,11 +73,13 @@ class CollectionHomeScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         // Header
-                        const BPrimaryHeaderContainer(
+                        BPrimaryHeaderContainer(
                           color: BCollectionColors.headerBackground,
                           child: Column(
                             children: [
-                              BHomeAppBar(),
+                              BHomeAppBar(actions: [
+                                CollectionThemeModeToggle(),
+                              ]),
                               SizedBox(height: BSizes.spaceBtwSections),
                             ],
                           ),
@@ -184,23 +191,8 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                   BCollectionColors
                                                                       .danger),
                                                         ),
-                                                        CollectionSummaryStat(
-                                                          title:
-                                                              'Reconciliation',
-                                                          value: controller
-                                                              .reconciliationItems
-                                                              .length
-                                                              .toString(),
-                                                          icon:
-                                                              Iconsax.status_up,
-                                                          color:
-                                                              BCollectionColors
-                                                                  .reconcile,
-                                                          onTap: () => _openCategory(
-                                                              'Reconciliation',
-                                                              BCollectionColors
-                                                                  .reconcile),
-                                                        ),
+                                                        _reconciliationStat(
+                                                            controller),
                                                         CollectionSummaryStat(
                                                           title:
                                                               'Advanced Payment',
@@ -216,6 +208,29 @@ class CollectionHomeScreen extends StatelessWidget {
                                                               'Advanced Payment',
                                                               BCollectionColors
                                                                   .warning),
+                                                        ),
+                                                        // Fifth, on its own row:
+                                                        // invoices whose last
+                                                        // outcome is Pre-Collection.
+                                                        CollectionSummaryStat(
+                                                          title: CollectionStatusColors
+                                                              .statusPreCollection,
+                                                          value: controller
+                                                              .preCollectionItems
+                                                              .length
+                                                              .toString(),
+                                                          icon: CollectionStatusColors
+                                                              .iconFor(CollectionStatusColors
+                                                                  .statusPreCollection),
+                                                          color: CollectionStatusColors
+                                                              .colorFor(CollectionStatusColors
+                                                                  .statusPreCollection),
+                                                          onTap: () => _openCategory(
+                                                              CollectionStatusColors
+                                                                  .statusPreCollection,
+                                                              CollectionStatusColors.colorFor(
+                                                                  CollectionStatusColors
+                                                                      .statusPreCollection)),
                                                         ),
                                                       ],
                                                     )),
@@ -304,7 +319,7 @@ class CollectionHomeScreen extends StatelessWidget {
                                                                 MainAxisAlignment
                                                                     .center,
                                                             children: [
-                                                              const Icon(
+                                                              Icon(
                                                                   Iconsax.clock,
                                                                   size: 48,
                                                                   color: BCollectionColors
@@ -411,6 +426,42 @@ class CollectionHomeScreen extends StatelessWidget {
       () => CategoryDetailScreen(title: title, color: color),
       transition: _pageTransition,
       duration: _pageDuration,
+    );
+  }
+
+  /// The Tracker's cases (their accounts are acquired from the bucket).
+  /// Follow ups due today and overdue show under the figure, so they are
+  /// seen without opening the list. Read inside the grid's Obx.
+  static CollectionSummaryStat _reconciliationStat(
+      CollectionActivityController controller) {
+    final recon = Get.isRegistered<ReconciliationController>()
+        ? ReconciliationController.instance
+        : null;
+    final due = recon?.myDueCounts ?? (today: 0, overdue: 0);
+    return CollectionSummaryStat(
+      title: 'Reconciliation',
+      // Cases, not invoices, and not limited to the selected area: the
+      // figure is every collector's pending (open) cases, as the last
+      // download brought them, so the whole team sees what is outstanding;
+      // the note under it is this collector's own. It counted reconciliation
+      // invoices in the selected area, so a case outside the Default area
+      // read 0 while the page behind the tile listed it.
+      value: (recon == null
+              ? controller.reconciliationItems.length
+              : recon
+                  .casesIn(ReconScope.team)
+                  .where((c) => !c.evaluation.isClosed)
+                  .length)
+          .toString(),
+      icon: Iconsax.status_up,
+      color: BCollectionColors.reconcile,
+      onTap: () => Get.toNamed(BRoutes.reconciliationCases),
+      note: recon == null
+          ? reconDueNote(due)
+          : reconTileNote(mine: recon.myOpenCases.length, due: due),
+      noteColor: due.overdue > 0
+          ? BCollectionColors.danger
+          : BCollectionColors.primary,
     );
   }
 }

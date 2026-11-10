@@ -27,6 +27,7 @@ class CalendarDayCell extends StatelessWidget {
     super.key,
     required this.day,
     required this.hasEngagements,
+    this.hasPlanned = false,
     this.isToday = false,
     this.isSelected = false,
     this.isOutside = false,
@@ -35,6 +36,9 @@ class CalendarDayCell extends StatelessWidget {
 
   final DateTime day;
   final bool hasEngagements;
+
+  /// A reconciliation follow up is due this day (or overdue, on today).
+  final bool hasPlanned;
   final bool isToday;
   final bool isSelected;
 
@@ -95,21 +99,41 @@ class CalendarDayCell extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
+            // Work done is a filled dot; a planned follow up is a ring beside
+            // it, so a day ahead with only a plan still shows something and
+            // the two never read as each other.
             SizedBox(
               height: 5,
-              width: 5,
-              child: hasEngagements && !isOutside
-                  ? DecoratedBox(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isSelected
-                            ? BCollectionColors.onPrimary
-                            : BCollectionColors.primary,
-                      ),
-                    )
-                  : null,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasEngagements && !isOutside) _mark(filled: true),
+                  if (hasEngagements && hasPlanned && !isOutside)
+                    const SizedBox(width: 2),
+                  if (hasPlanned && !isOutside) _mark(filled: false),
+                  if ((!hasEngagements && !hasPlanned) || isOutside)
+                    const SizedBox(width: 5),
+                ],
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mark({required bool filled}) {
+    final color =
+        isSelected ? BCollectionColors.onPrimary : BCollectionColors.primary;
+    return SizedBox(
+      key: ValueKey(filled ? 'day-mark-work' : 'day-mark-planned'),
+      width: 5,
+      height: 5,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: filled ? color : null,
+          border: filled ? null : Border.all(color: color, width: 1.2),
         ),
       ),
     );
@@ -123,20 +147,28 @@ class CalendarDayCell extends StatelessWidget {
 /// marker layer is a sibling of the cell in the package's Stack, outside that
 /// exclusion, which makes it the one place the count can be heard from.
 class CalendarDayMarker extends StatelessWidget {
-  const CalendarDayMarker({super.key, required this.count});
+  const CalendarDayMarker({super.key, required this.count, this.planned = 0});
 
   final int count;
 
+  /// Reconciliation follow ups planned on the day.
+  final int planned;
+
   @override
   Widget build(BuildContext context) {
-    if (count == 0) return const SizedBox.shrink();
+    if (count == 0 && planned == 0) return const SizedBox.shrink();
+    final label = [
+      if (count > 0) count == 1 ? '1 engagement' : '$count engagements',
+      if (planned > 0)
+        planned == 1 ? '1 planned follow up' : '$planned planned follow ups',
+    ].join(', ');
     // One logical pixel, not SizedBox.shrink: a zero-size node is dropped
     // before it reaches the semantics tree, and the count with it.
     return Semantics(
       // Its own node, not a label merged into the date's: merged, the count
       // is read as part of the day's name rather than as a fact about it.
       container: true,
-      label: count == 1 ? '1 engagement' : '$count engagements',
+      label: label,
       child: const SizedBox(width: 1, height: 1),
     );
   }

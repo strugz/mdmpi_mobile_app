@@ -35,7 +35,8 @@ class ActivityTypeModal extends StatelessWidget {
 
   static const String advancedPayment = 'Advanced Payment';
 
-  static const List<EngagementType> types = [
+  // A getter: the accent below follows the phone's light/dark palette.
+  static List<EngagementType> get types => [
     EngagementType(
       title: CollectionStatusColors.statusDeposit,
       subtitle: 'Bank deposit of collected payments',
@@ -45,6 +46,11 @@ class ActivityTypeModal extends StatelessWidget {
       title: CollectionStatusColors.statusCWTPickup,
       subtitle: 'Withholding tax certificate collected',
       status: CollectionStatusColors.statusCWTPickup,
+    ),
+    EngagementType(
+      title: CollectionStatusColors.statusRoutingDocuments,
+      subtitle: 'Documents taken to or from an account',
+      status: CollectionStatusColors.statusRoutingDocuments,
     ),
     EngagementType(
       title: CollectionStatusColors.statusReconciliation,
@@ -75,6 +81,8 @@ class ActivityTypeModal extends StatelessWidget {
           BRoutes.collectionCwtPickupForm,
         CollectionStatusColors.statusReconciliation =>
           BRoutes.collectionReconciliationForm,
+        CollectionStatusColors.statusRoutingDocuments =>
+          BRoutes.collectionRoutingDocumentsForm,
         _ => BRoutes.collectionAdvancedPaymentForm,
       };
 
@@ -118,7 +126,7 @@ class ActivityTypeModal extends StatelessWidget {
                 tooltip: 'Close',
                 visualDensity: VisualDensity.compact,
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Iconsax.close_circle,
+                icon: Icon(Iconsax.close_circle,
                     color: BCollectionColors.inkMuted),
               ),
             ],
@@ -218,7 +226,7 @@ class _TypeRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: BSizes.sm),
-              const Icon(Iconsax.arrow_right_3,
+              Icon(Iconsax.arrow_right_3,
                   size: 16, color: BCollectionColors.inkMuted),
             ],
           ),

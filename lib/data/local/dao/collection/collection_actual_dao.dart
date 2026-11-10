@@ -13,6 +13,10 @@ class CollectionActualRecord {
   final String collectionDate;
   final double amount;
   final String referenceNo;
+
+  /// The area it counts toward (NLN … OTHERS), or '' for the team as a whole
+  /// (update checklist item 3).
+  final String area;
   final String remarks;
   final String postedBy;
   final String createdAt;
@@ -24,6 +28,7 @@ class CollectionActualRecord {
     required this.collectionDate,
     required this.amount,
     required this.referenceNo,
+    this.area = '',
     this.remarks = '',
     this.postedBy = '',
     this.createdAt = '',
@@ -36,6 +41,7 @@ class CollectionActualRecord {
         'collectionDate': collectionDate,
         'amount': amount,
         'referenceNo': referenceNo,
+        'area': area,
         'remarks': remarks,
         'postedBy': postedBy,
         'createdAt': createdAt,
@@ -50,6 +56,7 @@ class CollectionActualRecord {
       collectionDate: s('collectionDate'),
       amount: (r['amount'] as num?)?.toDouble() ?? 0,
       referenceNo: s('referenceNo'),
+      area: s('area').trim().toUpperCase(),
       remarks: s('remarks'),
       postedBy: s('postedBy'),
       createdAt: s('createdAt'),

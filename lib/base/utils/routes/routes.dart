@@ -33,21 +33,40 @@ class BRoutes{
   // Collection - total collected
   static const totalCollected = '/collection/total-collected';
   static const collectionUploadOutbox = '/collection/upload-outbox';
+  static const collectionSmsOutbox = '/collection/sms-outbox';
   static const myHead = '/settings/my-head';
   static const teamActivity = '/collection/team-activity';
   static const collectionStorage = '/settings/collection-storage';
+  static const collectionTheme = '/settings/collection-theme';
+  static const logisticsTheme = '/settings/logistics-theme';
   static const about = '/settings/about';
   static const addToBucket = '/collection/add-to-bucket';
   // Collection - engagement forms (opened from the activity type sheet)
   static const collectionDepositForm = '/collection/engagement/deposit';
   static const collectionCwtPickupForm = '/collection/engagement/cwt-pickup';
+  static const collectionRoutingDocumentsForm =
+      '/collection/engagement/routing-documents';
   static const collectionReconciliationForm =
       '/collection/engagement/reconciliation';
   static const collectionAdvancedPaymentForm =
       '/collection/engagement/advanced-payment';
+  // Collection - Reconciliation Tracker: the collector's cases, and one case
+  // (argument: the case id).
+  static const reconciliationCases = '/collection/reconciliation';
+  static const reconciliationCase = '/collection/reconciliation/case';
+  static const reconciliationReports = '/collection/reconciliation/reports';
+  // Collection - Settings → Reports (CSV export).
+  static const collectionReports = '/collection/reports';
+  static const collectionReportActivity = '/collection/reports/activity';
+  static const collectionReportCollectors = '/collection/reports/collectors';
+  static const collectionReportRecon = '/collection/reports/reconciliation';
   static const signatureOutbox = '/signature-outbox';
   static const imageOutbox = '/image-outbox';
   static const uploadData = '/upload-data';
+  // Logistics requests not yet at a final status (08:00 reminder, Settings)
+  static const unfinishedRequests = '/logistics/unfinished-requests';
+  // Quote of the Day: open to everyone, signed in or not.
+  static const quoteOfTheDay = '/quote-of-the-day';
   // Back load routes
   static const backLoad = '/back-load';
 }

@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/data/models/cntmst_model.dart';
 import 'package:mdmpi_mobile_app/data/models/contact_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/common/contact_repository.dart';
@@ -38,7 +39,13 @@ class ContactDirectoryController extends GetxController {
 
   Future<void> loadDirectoryOptions() async {
     try {
-      final result = await _contactRepository.getContactDirectoryOptions();
+      var result = await _contactRepository.getContactDirectoryOptions();
+      // Signed in before CNTMST was preloaded for every department (or the
+      // DB was reset): download it now rather than offer an empty search.
+      if (result.isEmpty && Get.isRegistered<UserMdmpiController>()) {
+        await Get.find<UserMdmpiController>().fetchUserMdmpiFromDb();
+        result = await _contactRepository.getContactDirectoryOptions();
+      }
       directoryOptions.assignAll(result);
     } catch (e) {
       logDebug('ContactDirectoryController.loadDirectoryOptions error: $e');

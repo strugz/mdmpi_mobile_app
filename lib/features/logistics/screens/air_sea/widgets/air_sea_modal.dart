@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/text_strings.dart';
+import 'package:mdmpi_mobile_app/common/widgets/buttons/b_view_items_button.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/b_cancel_remarks.dart';
 import 'package:mdmpi_mobile_app/common/widgets/modals/request_modal_scaffold.dart';
@@ -78,6 +79,11 @@ class AirSeaModal extends StatelessWidget {
         statusToTextMapper: (_) => config.buttonLabel,
       ),
       children: [
+        // Items saved with the request (plan LOGISTICS_AIR_SEA_ITEMS_PLAN.md,
+        // A4). Older requests have none and show an empty list.
+        if (requestModel.id.isNotEmpty)
+          BViewItemsButton(requestId: requestModel.id),
+
         // Waybill number (read-only, shown when filled)
         if (requestModel.waybillNumber.isNotEmpty) ...[
           BLabelValueText(

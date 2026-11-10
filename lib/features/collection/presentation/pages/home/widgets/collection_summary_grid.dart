@@ -11,6 +11,8 @@ class CollectionSummaryStat {
     required this.icon,
     required this.color,
     this.onTap,
+    this.note,
+    this.noteColor,
   });
 
   final String title;
@@ -18,9 +20,13 @@ class CollectionSummaryStat {
   final IconData icon;
   final Color color;
   final VoidCallback? onTap;
+
+  /// What needs attention under the figure ("2 due today"), if anything.
+  final String? note;
+  final Color? noteColor;
 }
 
-/// The dashboard's four counts, two by two.
+/// The dashboard's counts, two by two (a fifth sits alone on a third row).
 ///
 /// These were pages of a carousel, one at a time: 118pt of screen — a 104pt
 /// card plus its dots — to show a single integer, with the other three behind
@@ -77,5 +83,7 @@ class CollectionSummaryGrid extends StatelessWidget {
         icon: stat.icon,
         color: stat.color,
         onTap: stat.onTap,
+        note: stat.note,
+        noteColor: stat.noteColor,
       );
 }

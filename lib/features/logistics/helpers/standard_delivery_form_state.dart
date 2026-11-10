@@ -7,6 +7,7 @@ import '../../../features/logistics/models/client_model.dart';
 import '../../../data/models/item_category_model.dart';
 import '../../../data/models/form_category_model.dart';
 import '../../../data/models/inventory_item_model.dart';
+import 'commute_id.dart';
 
 /// Encapsulates all form-related state for Standard Delivery requests.
 ///
@@ -33,6 +34,9 @@ class StandardDeliveryFormState {
   final TextEditingController tripTicketNumber = TextEditingController();
   final TextEditingController remarks = TextEditingController();
 
+  // "Commuting" switch: fills [tripTicketNumber] with a Commute ID.
+  final CommuteTicketToggle commute = CommuteTicketToggle();
+
   // Category fields
   final TextEditingController itemCategory = TextEditingController();
   final TextEditingController formCategory = TextEditingController();
@@ -55,6 +59,20 @@ class StandardDeliveryFormState {
   // The request the entries in [backloadItemRemarks] belong to. The editable
   // section clears stale entries when the courier opens a different request.
   final RxString backloadItemsRequestId = RxString('');
+
+  // Standard Delivery one-scan (plan §4.4a/§4.4b A6): the scanned address the
+  // review sheet put on the client because its saved address was missing.
+  // Saved with the request only while that same client is still selected.
+  final Rx<({String clientId, String address})?> scannedFallbackAddress =
+      Rx<({String clientId, String address})?>(null);
+
+  /// The delivery address to store on the request: the scanned fallback when
+  /// it belongs to the selected client, otherwise empty (today's payload).
+  String deliveryAddressFor(String selectedClientId) {
+    final fallback = scannedFallbackAddress.value;
+    if (fallback == null || fallback.clientId != selectedClientId) return '';
+    return fallback.address;
+  }
 
   // Reactive state
   final Rx<DateTime?> deliveryDate = Rx<DateTime?>(null);
@@ -88,6 +106,7 @@ class StandardDeliveryFormState {
     formKey.currentState?.reset();
     documentReferenceControllers.clear();
     clientInformation.value = ClientModel.empty();
+    scannedFallbackAddress.value = null;
     receiverSignatureBytes.value = null;
     receiverSignatureBase64.value = "";
      selectedDriver.clear();
@@ -97,6 +116,7 @@ class StandardDeliveryFormState {
      recipientName.clear();
      mobile.clear();
     tripTicketNumber.clear();
+    commute.reset();
     remarks.clear();
 
     // Clear dynamic lists

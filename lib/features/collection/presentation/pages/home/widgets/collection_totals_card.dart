@@ -23,8 +23,8 @@ class CollectionTotalsCard extends StatelessWidget {
   final VoidCallback? onActualTap;
   final VoidCallback? onCollectedTap;
 
-  static const Color _actualColor = BCollectionColors.primary;
-  static const Color _collectedColor = BCollectionColors.success;
+  static Color get _actualColor => BCollectionColors.primary;
+  static Color get _collectedColor => BCollectionColors.success;
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +36,13 @@ class CollectionTotalsCard extends StatelessWidget {
     return Obx(() {
       final actual = controller.actualCollectionTotal;
       final target = controller.targetAmount.value;
-      final total = controller.monthlyTotal;
+      final all = controller.allCollectors;
+      final total = controller.scopedTotal;
 
       return CollectionTotalsCardView(
+        // The team's, or with a default area set the collector's area's
+        // (switchable on the Actual Collection page).
+        actualLabel: 'Actual Collection · ${controller.actualScopeLabel}',
         actual: BFormatter.formatPesoCurrency(actual),
         // Same wording as the Actual Collection page's target line.
         actualFootnote: target <= 0
@@ -47,6 +51,17 @@ class CollectionTotalsCard extends StatelessWidget {
                 ? 'Target met'
                 : '${(actual / target * 100).floor()}% of ${BFormatter.formatPesoCurrency(target)}',
         collected: BFormatter.formatPesoCurrency(total),
+        collectedLabel:
+            all ? 'Collected this Month · All' : 'Collected this Month',
+        // All collectors: say when the teammates are missing from the figure,
+        // so a phone-only total is never read as the team's.
+        collectedFootnote: !all
+            ? 'View breakdown'
+            : controller.othersLoading.value
+                ? 'Loading collectors…'
+                : controller.othersError.value != null
+                    ? 'Yours only · team not loaded'
+                    : 'All collectors · breakdown',
         onActualTap: onActualTap,
         onCollectedTap: onCollectedTap,
       );
@@ -62,14 +77,18 @@ class CollectionTotalsCardView extends StatelessWidget {
     required this.actual,
     required this.actualFootnote,
     required this.collected,
+    this.actualLabel = 'Actual Collection · Team',
+    this.collectedLabel = 'Collected this Month',
     this.collectedFootnote = 'View breakdown',
     this.onActualTap,
     this.onCollectedTap,
   });
 
+  final String actualLabel;
   final String actual;
   final String actualFootnote;
   final String collected;
+  final String collectedLabel;
   final String collectedFootnote;
   final VoidCallback? onActualTap;
   final VoidCallback? onCollectedTap;
@@ -94,19 +113,19 @@ class CollectionTotalsCardView extends StatelessWidget {
               child: _TotalsHalf(
                 icon: Iconsax.bank,
                 color: CollectionTotalsCard._actualColor,
-                label: 'Actual Collection · Team',
+                label: actualLabel,
                 value: actual,
                 footnote: actualFootnote,
                 onTap: onActualTap,
               ),
             ),
-            const VerticalDivider(
+            VerticalDivider(
                 width: 1, thickness: 1, color: BCollectionColors.outline),
             Expanded(
               child: _TotalsHalf(
                 icon: Iconsax.money,
                 color: CollectionTotalsCard._collectedColor,
-                label: 'Collected this Month',
+                label: collectedLabel,
                 value: collected,
                 footnote: collectedFootnote,
                 onTap: onCollectedTap,

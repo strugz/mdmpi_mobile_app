@@ -36,7 +36,7 @@
 - [x] 21. Head Admin: a new bottom navigation bar where the Head sees every collector's field activity — `L` (done 2026-09-25, mobile + backend; decided: the Head sees every collector, online only, and also collects; **open:** deploy the backend, give the `CollectionHead` role to the Head's Firestore user)
 - [x] 22. Head Admin: a calendar with a collector picker that shows that collector's activity — `M` (done 2026-09-25 with item 21: the *Team Activity* tab)
 - [x] 23. Collection SMS: six triggers with fixed templates (Acquiring Account, Saving Engagement, Defer Account, Clear Engagement, Adding Deposit, CWT Pick-Up) — `M` (spec received and done 2026-09-25, mobile only; recipients: the Head + Contact Directory "Collection" contacts; replaces item 10's Done Engagement summary)
-- [ ] 24. **Next week (from 2026-09-28):** Save Engagement still does not send its SMS on the phone — `M` (raised 2026-09-25 after the item 23 fixes; investigate on a real device, see below)
+- [x] 24. Save Engagement SMS on the phone — `M` (raised 2026-09-25; cause found and fixed 2026-09-28: `₱` forced UCS-2 and the single-part send was refused; confirmed sending on a real device 2026-10-13)
 
 ---
 
@@ -87,7 +87,7 @@ and showed no warning.
 **Fixed (mobile, 2026-09-28).** Amounts are written `PHP 24,281.25`; every Collection SMS is
 sent multipart (Android splits only when needed). The texts now reach the network. Still to
 confirm: on 2026-09-28 SMART rejected every text from the test SIM (`MODEM_ERR`, error code 21,
-"Not Sent" in Messages), a SIM/load issue outside the app. Tick item 24 once a text arrives.
+"Not Sent" in Messages), a SIM/load issue outside the app. Confirmed 2026-10-13: Collection texts send from the phone; item 24 closed.
 
 **Wording changed (2026-09-28).** The six templates now lead with what happened and end with
 the collector's initials:

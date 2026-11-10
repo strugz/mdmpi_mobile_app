@@ -5,6 +5,7 @@ import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/common/widgets/dividers/text_divider.dart';
 import 'package:mdmpi_mobile_app/common/widgets/texts/label_value_text.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/mobile_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 
 /// Widget to display dispatch information (Trip Ticket, Driver, Helper, Vehicle)
@@ -51,9 +52,10 @@ class AirSeaDispatchInfoSection extends StatelessWidget {
         if (hasTripTicket) ...[
           const SizedBox(height: BSizes.xs),
           BLabelValueText(
-            label: 'Trip Ticket No',
+            label: BCommuteId.label(requestModel.tripTicketNumber),
             value: requestModel.tripTicketNumber,
-            showLabel: false,
+            // Spell out "Commute ID" so it is not read as a trip ticket.
+            showLabel: BCommuteId.isCommuteId(requestModel.tripTicketNumber),
             icon: Iconsax.ticket,
             padding: EdgeInsets.zero,
             copyable: true,

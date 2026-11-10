@@ -34,4 +34,20 @@ class BApiResponse {
 
     return null;
   }
+
+  /// Commute-id keys a `POST /api4/CommuteId` response may use (the backend
+  /// pins `CommuteID`; camelCase is accepted for the same reason as above).
+  static const List<String> commuteIdKeys = <String>['CommuteID', 'commuteID', 'commuteId'];
+
+  /// Returns the issued Commute ID from a decoded response, or null.
+  static String? commuteId(dynamic decoded) {
+    if (decoded is! Map) return null;
+
+    for (final key in commuteIdKeys) {
+      final text = decoded[key]?.toString().trim() ?? '';
+      if (text.isNotEmpty && text != 'null') return text;
+    }
+
+    return null;
+  }
 }

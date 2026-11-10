@@ -66,7 +66,7 @@ class BLoaders {
   static void snackBar({
     required String title,
     String message = '',
-    Color background = BColors.primary,
+    Color? background,
     IconData icon = Iconsax.info_circle,
     int duration = 3,
   }) {
@@ -78,7 +78,7 @@ class BLoaders {
       title,
       message,
       snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: background,
+      backgroundColor: background ?? BColors.primary,
       colorText: BColors.white,
       icon: Icon(icon, color: BColors.white),
       // A pulsing icon on a message that appears dozens of times a day is

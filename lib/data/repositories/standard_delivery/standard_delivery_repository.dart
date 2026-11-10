@@ -231,6 +231,11 @@ class StandardDeliveryRepository extends GetxController {
     }
   }
 
+  /// Standard Delivery and Hotline Direct requests from the local DB only
+  /// (no API call).
+  Future<List<StandardDeliveryModel>> getLocalRequests() =>
+      DatabaseHelper.instance.getRequests();
+
   /// Fetches requests from `/api4/request`.
   ///
   /// [scope] narrows the fetch server-side via `?dateFilter=`. The offline and

@@ -46,4 +46,57 @@ class CollectionTargetDao {
   }
 
   Future<void> clear() => db.delete(table);
+
+  // ---- per area (update checklist items 3 and 5) ----------------------------
+
+  /// The office's targets area by area: (yearMonth, area) -> amount, area ''
+  /// being one set for the team as a whole. [table] keeps the month's sum.
+  static const areaTable = 'a_tblCollectionAreaTarget';
+
+  /// [area]'s target for [yearMonth]; null when none is set.
+  Future<double?> getArea(String yearMonth, String area) async {
+    final rows = await db.query(
+      areaTable,
+      columns: ['amount'],
+      where: 'yearMonth = ? AND area = ?',
+      whereArgs: [yearMonth, area.trim().toUpperCase()],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return (rows.first['amount'] as num?)?.toDouble();
+  }
+
+  /// Replace every area target with the server's (used after a download).
+  Future<void> replaceAreas(List<CollectionAreaTarget> targets) async {
+    await db.transaction((txn) async {
+      await txn.delete(areaTable);
+      final batch = txn.batch();
+      for (final t in targets) {
+        batch.insert(
+          areaTable,
+          {
+            'yearMonth': t.yearMonth,
+            'area': t.area,
+            'amount': t.amount,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+      await batch.commit(noResult: true);
+    });
+  }
+}
+
+/// One month's target for one area ('' = the team as a whole), as the office
+/// set it on the admin web.
+class CollectionAreaTarget {
+  final String yearMonth;
+  final String area;
+  final double amount;
+
+  const CollectionAreaTarget({
+    required this.yearMonth,
+    required this.area,
+    required this.amount,
+  });
 }

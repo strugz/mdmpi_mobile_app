@@ -35,6 +35,8 @@ enum EngagementStatus {
       {CollectionStatusColors.statusCWTPickup}),
   reconciliation('Reconciliation', EngagementStatusGroup.office,
       {CollectionStatusColors.statusReconciliation}),
+  routing('Routing of Documents', EngagementStatusGroup.office,
+      {CollectionStatusColors.statusRoutingDocuments}),
   followUp('Follow Up', EngagementStatusGroup.visits,
       {CollectionStatusColors.statusFollowUp}),
   preCollection('Pre-Collection', EngagementStatusGroup.visits,

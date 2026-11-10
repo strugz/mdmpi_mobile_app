@@ -4,11 +4,13 @@ import 'package:mdmpi_mobile_app/base/utils/result.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
 import 'package:mdmpi_mobile_app/data/models/cntmst_model.dart';
 import 'package:mdmpi_mobile_app/data/models/directory_user.dart';
+import 'package:mdmpi_mobile_app/data/repositories/user/user_mdmpi_repository.dart';
 import 'package:mdmpi_mobile_app/features/personalization/models/user_model.dart';
 
 /// Loads one source of people; throws on failure (the repository catches).
 typedef CntmstLoader = Future<List<CNTMSTModel>> Function();
 typedef FirestoreUsersLoader = Future<List<UserModel>> Function();
+typedef CntmstSaver = Future<void> Function(List<CNTMSTModel> rows);
 
 /// One user directory from CNTMST and Firestore `Users` (Collection TODO
 /// item 14). It feeds the Head picker (item 13) and the Done Engagement SMS
@@ -27,12 +29,23 @@ typedef FirestoreUsersLoader = Future<List<UserModel>> Function();
 /// Read-only, cached in memory after the first load; [load] with
 /// `refresh: true` reads both sources again.
 class UserDirectoryRepository extends GetxController {
-  UserDirectoryRepository({CntmstLoader? cntmst, this.firestoreUsers})
-      : _cntmst = cntmst ?? _cntmstFromDatabase;
+  UserDirectoryRepository({
+    CntmstLoader? cntmst,
+    CntmstLoader? cntmstRemote,
+    CntmstSaver? saveCntmst,
+    this.firestoreUsers,
+  })  : _cntmst = cntmst ?? _cntmstFromDatabase,
+        _cntmstRemote = cntmstRemote ?? _cntmstFromApi,
+        _saveCntmst = saveCntmst ?? _cntmstToDatabase;
 
   static UserDirectoryRepository get instance => Get.find();
 
   final CntmstLoader _cntmst;
+  final CntmstLoader _cntmstRemote;
+  final CntmstSaver _saveCntmst;
+
+  /// Bounds the refill, so a send waiting on [load] cannot hang on the radio.
+  static const Duration cntmstRefillTimeout = Duration(seconds: 15);
 
   /// Null when Firebase is not available: the directory is CNTMST only.
   final FirestoreUsersLoader? firestoreUsers;
@@ -41,6 +54,14 @@ class UserDirectoryRepository extends GetxController {
 
   static Future<List<CNTMSTModel>> _cntmstFromDatabase() async =>
       (await DatabaseHelper.instance.cntmstDao).getAll();
+
+  static Future<List<CNTMSTModel>> _cntmstFromApi() async {
+    if (!Get.isRegistered<UserMDMPIRepository>()) return const [];
+    return Get.find<UserMDMPIRepository>().getAllClientAPI();
+  }
+
+  static Future<void> _cntmstToDatabase(List<CNTMSTModel> rows) =>
+      DatabaseHelper.instance.insertCntmsts(rows);
 
   /// Everyone, by name. A failure only when neither source could be read.
   Future<Result<List<DirectoryUser>>> load({bool refresh = false}) async {
@@ -54,6 +75,15 @@ class UserDirectoryRepository extends GetxController {
     } catch (e) {
       cntmstError = e.toString();
       logDebug('UserDirectoryRepository: CNTMST unavailable: $e');
+    }
+
+    // A Collection sign-in does not download CNTMST (only Logistics needs its
+    // requester list), so after a fresh install or a DB version bump the
+    // table is empty and the Head's number with it: every Collection SMS
+    // then found no recipients. Refill it here, once it is found empty.
+    if (cntmst == null || cntmst.isEmpty) {
+      final refilled = await _refillCntmst();
+      if (refilled.isNotEmpty) cntmst = refilled;
     }
 
     List<UserModel>? firestore;
@@ -74,11 +104,32 @@ class UserDirectoryRepository extends GetxController {
     }
 
     final merged = merge(cntmst ?? const [], firestore ?? const []);
-    _cache = merged;
+    // Without CNTMST the directory lacks most phone numbers; leave it
+    // uncached so the next load tries the refill again (signal may be back).
+    if (cntmst != null && cntmst.isNotEmpty) _cache = merged;
     logDebug('UserDirectoryRepository: ${merged.length} people '
         '(CNTMST ${cntmst?.length ?? 0}, Firestore ${firestore?.length ?? 0}'
         '${loader == null ? ', Firebase not available' : ''})');
     return Result.success(merged);
+  }
+
+  /// Downloads CNTMST and stores it on the phone; empty when it could not.
+  Future<List<CNTMSTModel>> _refillCntmst() async {
+    try {
+      final rows = await _cntmstRemote().timeout(cntmstRefillTimeout);
+      if (rows.isEmpty) return const [];
+      try {
+        await _saveCntmst(rows);
+      } catch (e) {
+        // Still usable for this load; the next one downloads again.
+        logDebug('UserDirectoryRepository: CNTMST not stored: $e');
+      }
+      logDebug('UserDirectoryRepository: CNTMST refilled (${rows.length})');
+      return rows;
+    } catch (e) {
+      logDebug('UserDirectoryRepository: CNTMST refill failed: $e');
+      return const [];
+    }
   }
 
   /// The person with [code], or null. Loads the directory if needed.

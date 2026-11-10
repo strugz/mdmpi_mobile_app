@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reconciliation Case Flow</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  /* Layout: one swimlane figure (Collector · Account · Case status) read top to bottom,
+     then a step table and the three endings. Palette mirrors the app's Collection theme. */
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --fg: #1c1c1e; --muted: #5c5c60; --line: #d9d9d4;
+    --lane: #efefeb;
+    --collector: #3452c7; --account: #c77700; --status: #6d4bb0;
+    --ok: #2e7d4f; --warn: #c77700; --danger: #b93838; --neutral: #6b6b70;
+    --font: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15161a; --surface: #1e2026; --fg: #ecebe6; --muted: #a7a7ad; --line: #353842;
+      --lane: #1b1d22;
+      --collector: #8ea0f0; --account: #e8a243; --status: #b39ae6;
+      --ok: #6cc08b; --warn: #e8a243; --danger: #ef8a8a; --neutral: #9c9ca3;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15161a; --surface: #1e2026; --fg: #ecebe6; --muted: #a7a7ad; --line: #353842;
+    --lane: #1b1d22;
+    --collector: #8ea0f0; --account: #e8a243; --status: #b39ae6;
+    --ok: #6cc08b; --warn: #e8a243; --danger: #ef8a8a; --neutral: #9c9ca3;
+    color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); line-height: 1.5; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 56px; padding-inline: 16px; }
+  header h1 { font-size: 1.7rem; margin: 0 0 4px; font-weight: 700; text-wrap: balance; }
+  header p { margin: 0; color: var(--muted); max-width: 64ch; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  figure { margin: 28px 0 0; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  svg { display: block; min-width: 860px; width: 100%; height: auto; font-family: var(--font); }
+  figcaption { color: var(--muted); font-size: .9rem; margin-top: 10px; max-width: 70ch; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px 22px; margin-top: 14px; font-size: .85rem; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid; }
+  .sw.dash { border-style: dashed; }
+  h2 { font-size: 1.15rem; margin: 40px 0 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  td.who { white-space: nowrap; font-weight: 600; }
+  .c { color: var(--collector); } .a { color: var(--account); } .t { color: var(--neutral); }
+  .endings { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .end { border: 1.5px solid; border-radius: 10px; padding: 14px 16px; background: var(--surface); min-width: 0; }
+  .end h3 { margin: 0 0 6px; font-size: 1rem; }
+  .end p { margin: 0; font-size: .9rem; color: var(--muted); }
+  .end ul { margin: 8px 0 0; padding-left: 18px; font-size: .9rem; }
+  .ok { border-color: var(--ok); } .ok h3 { color: var(--ok); }
+  .nc { border-color: var(--neutral); } .nc h3 { color: var(--neutral); }
+  .es { border-color: var(--danger); } .es h3 { color: var(--danger); }
+  .note { font-size: .9rem; color: var(--muted); max-width: 70ch; }
+  /* SVG parts */
+  .lane-bg { fill: var(--lane); }
+  .lane-title { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; fill: var(--muted); }
+  .box { stroke-width: 1.5; }
+  .box.c { fill: color-mix(in srgb, var(--collector) 10%, var(--surface)); stroke: var(--collector); }
+  .box.a { fill: color-mix(in srgb, var(--account) 12%, var(--surface)); stroke: var(--account); }
+  .box.s { fill: color-mix(in srgb, var(--status) 10%, var(--surface)); stroke: var(--status); }
+  .box.ok { fill: color-mix(in srgb, var(--ok) 12%, var(--surface)); stroke: var(--ok); }
+  .box.warn { fill: color-mix(in srgb, var(--warn) 12%, var(--surface)); stroke: var(--warn); stroke-dasharray: 4 3; }
+  .box.danger { fill: color-mix(in srgb, var(--danger) 12%, var(--surface)); stroke: var(--danger); }
+  .box.nc { fill: color-mix(in srgb, var(--neutral) 12%, var(--surface)); stroke: var(--neutral); }
+  .box.note { fill: var(--surface); stroke: var(--muted); stroke-dasharray: 4 3; }
+  .t1 { font-size: 13px; font-weight: 600; fill: var(--fg); }
+  .t2 { font-size: 11px; fill: var(--muted); }
+  .flow { fill: none; stroke: var(--fg); stroke-width: 1.5; }
+  .flow.dash { stroke-dasharray: 5 4; stroke: var(--muted); }
+  .lbl { font-size: 11px; fill: var(--muted); }
+  .lbl.strong { fill: var(--fg); font-weight: 600; }
+  .lbl-bg { fill: var(--surface); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Collection · Reconciliation Tracker</div>
+    <h1>Reconciliation Case Flow</h1>
+    <p>What happens after the collector presses <strong>Log a step</strong>: every step the sheet can offer, whose turn it creates, and the three ways a case can end.</p>
+  </header>
+
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 930 1290" role="img" aria-label="Swimlane flow of a reconciliation case: the collector sends the SOA, the account replies, claims are proved and validated, and the case ends as Completed, Not completed or Escalated.">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--fg)"/>
+        </marker>
+        <marker id="arrow-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+        </marker>
+      </defs>
+
+      <!-- lanes -->
+      <rect class="lane-bg" x="20" y="20" width="280" height="1250" rx="10"/>
+      <rect class="lane-bg" x="320" y="20" width="280" height="1250" rx="10"/>
+      <rect class="lane-bg" x="620" y="20" width="280" height="1250" rx="10"/>
+      <text class="lane-title" x="160" y="48" text-anchor="middle">COLLECTOR</text>
+      <text class="lane-title" x="460" y="48" text-anchor="middle">ACCOUNT (CLIENT)</text>
+      <text class="lane-title" x="760" y="48" text-anchor="middle">CASE STATUS · SET BY THE APP</text>
+
+      <!-- R1 open the case -->
+      <rect class="box c" x="40" y="80" width="240" height="52" rx="8"/>
+      <text class="t1" x="160" y="101" text-anchor="middle">Open the case</text>
+      <text class="t2" x="160" y="118" text-anchor="middle">Calendar → Reconciliation · invoices fixed</text>
+      <path class="flow" d="M280,106 H640" marker-end="url(#arrow)"/>
+      <rect class="box s" x="640" y="80" width="240" height="52" rx="8"/>
+      <text class="t1" x="760" y="101" text-anchor="middle">Waiting for collector</text>
+      <text class="t2" x="760" y="118" text-anchor="middle">next: send the SOA</text>
+      <path class="flow" d="M160,132 V190" marker-end="url(#arrow)"/>
+
+      <!-- R2 SOA sent -->
+      <rect class="box c" x="40" y="190" width="240" height="52" rx="8"/>
+      <text class="t1" x="160" y="211" text-anchor="middle">SOA sent</text>
+      <text class="t2" x="160" y="228" text-anchor="middle">SOA amount and date</text>
+      <path class="flow" d="M280,216 H640" marker-end="url(#arrow)"/>
+      <rect class="box s" x="640" y="190" width="240" height="52" rx="8"/>
+      <text class="t1" x="760" y="211" text-anchor="middle">Waiting for account</text>
+      <text class="t2" x="760" y="228" text-anchor="middle">7-day no-response clock starts</text>
+
+      <!-- spine from SOA to the account's three replies -->
+      <path class="flow" d="M160,242 V266 H320 V506 H340" marker-end="url(#arrow)"/>
+      <path class="flow" d="M320,326 H340" marker-end="url(#arrow)"/>
+      <path class="flow" d="M320,416 H340" marker-end="url(#arrow)"/>
+      <rect class="lbl-bg" x="214" y="246" width="92" height="14" rx="3"/>
+      <text class="lbl" x="260" y="257" text-anchor="middle">the account…</text>
+
+      <!-- R3a no reply -->
+      <rect class="box a" x="340" y="300" width="240" height="52" rx="8"/>
+      <text class="t1" x="460" y="321" text-anchor="middle">…does not reply</text>
+      <text class="t2" x="460" y="338" text-anchor="middle">7 days or more waiting on them</text>
+      <path class="flow dash" d="M580,326 H640" marker-end="url(#arrow-m)"/>
+      <rect class="box danger" x="640" y="300" width="240" height="52" rx="8"/>
+      <text class="t1" x="760" y="321" text-anchor="middle">Flag: No response</text>
+      <text class="t2" x="760" y="338" text-anchor="middle">follow up (Note / SOA again) or end the case</text>
+
+      <!-- R3b documents -->
+      <rect class="box a" x="340" y="390" width="240" height="52" rx="8"/>
+      <text class="t1" x="460" y="411" text-anchor="middle">…requests documents</text>
+      <text class="t2" x="460" y="428" text-anchor="middle">Documents requested</text>
+      <path class="flow" d="M340,416 H280" marker-end="url(#arrow)"/>
+      <rect class="box c" x="40" y="390" width="240" height="52" rx="8"/>
+      <text class="t1" x="160" y="411" text-anchor="middle">Documents provided</text>
+      <text class="t2" x="160" y="428" text-anchor="middle">back to Waiting for account</text>
+      <path class="flow dash" d="M160,442 V462 H320" marker-end="url(#arrow-m)"/>
+      <rect class="lbl-bg" x="176" y="466" width="104" height="14" rx="3"/>
+      <text class="lbl" x="228" y="477" text-anchor="middle">the account replies again</text>
+
+      <!-- R3c claims paid -->
+      <rect class="box a" x="340" y="480" width="240" height="52" rx="8"/>
+      <text class="t1" x="460" y="501" text-anchor="middle">…claims already paid</text>
+      <text class="t2" x="460" y="518" text-anchor="middle">named invoices → Claimed paid</text>
+      <path class="flow" d="M580,506 H640" marker-end="url(#arrow)"/>
+      <rect class="box s" x="640" y="480" width="240" height="52" rx="8"/>
+      <text class="t1" x="760" y="501" text-anchor="middle">Waiting for collector</text>
+      <text class="t2" x="760" y="518" text-anchor="middle">next: ask for proof</text>
+      <path class="flow" d="M460,532 V556 H160 V590" marker-end="url(#arrow)"/>
+
+      <!-- R4 proof requested -->
+      <rect class="box c" x="40" y="590" width="240" height="52" rx="8"/>
+      <text class="t1" x="160" y="611" text-anchor="middle">Proof requested</text>
+      <text class="t2" x="160" y="628" text-anchor="middle">for the claimed invoices</text>
+      <path class="flow" d="M280,616 H640" marker-end="url(#arrow)"/>
+      <rect class="box s" x="640" y="590" width="240" height="36" rx="8"/>
+      <text class="t1" x="760" y="613" text-anchor="middle">Waiting for account</text>
+      <path class="flow dash" d="M760,626 V640" marker-end="url(#arrow-m)"/>
+      <rect class="box warn" x="640" y="640" width="240" height="36" rx="8"/>
+      <text class="t2" x="760" y="657" text-anchor="middle">if nothing comes: Flag: Claimed paid, no proof yet</text>
+      <path class="flow" d="M160,642 V666 H460 V700" marker-end="url(#arrow)"/>
+
+      <!-- R5 proof sent -->
+      <rect class="box a" x="340" y="700" width="240" height="52" rx="8"/>
+      <text class="t1" x="460" y="721" text-anchor="middle">Proof sent</text>
+      <text class="t2" x="460" y="738" text-anchor="middle">deposit slip, OR, transfer · photos</text>
+      <path class="flow" d="M580,712 H640" marker-end="url(#arrow)"/>
+      <rect class="box s" x="640" y="700" width="240" height="36" rx="8"/>
+      <text class="t1" x="760" y="723" text-anchor="middle">Under validation</text>
+      <path class="flow" d="M460,752 V776 H160 V810" marker-end="url(#arrow)"/>
+
+      <!-- R6 proof valid? -->
+      <polygon class="box c" points="160,810 270,836 160,862 50,836"/>
+      <text class="t1" x="160" y="840" text-anchor="middle">Proof validated: valid?</text>
+      <!-- invalid → account lane -->
+      <path class="flow" d="M270,836 H340" marker-end="url(#arrow)"/>
+      <rect class="lbl-bg" x="282" y="820" width="46" height="14" rx="3"/>
+      <text class="lbl strong" x="305" y="831" text-anchor="middle">Invalid</text>
+      <rect class="box a" x="340" y="810" width="240" height="52" rx="8"/>
+      <text class="t1" x="460" y="831" text-anchor="middle">Invoice: Proof invalid</text>
+      <text class="t2" x="460" y="848" text-anchor="middle">stays open · claim again or send new proof</text>
+      <path class="flow dash" d="M580,836 H600 V744 H580" marker-end="url(#arrow-m)"/>
+      <!-- valid → status lane -->
+      <path class="flow" d="M160,862 V890 H760 V900" marker-end="url(#arrow)"/>
+      <rect class="lbl-bg" x="170" y="868" width="38" height="14" rx="3"/>
+      <text class="lbl strong" x="189" y="879" text-anchor="middle">Valid</text>
+      <rect class="box ok" x="640" y="900" width="240" height="36" rx="8"/>
+      <text class="t1" x="760" y="923" text-anchor="middle">Invoice: Validated paid</text>
+      <path class="flow" d="M760,936 V1040" marker-end="url(#arrow)"/>
+
+      <!-- R7 paid outside the round -->
+      <rect class="box note" x="340" y="940" width="240" height="52" rx="8"/>
+      <text class="t1" x="460" y="961" text-anchor="middle">Paid outside the round</text>
+      <text class="t2" x="460" y="978" text-anchor="middle">payment collected, or balance 0 → Cleared</text>
+      <path class="flow dash" d="M460,992 V1070 H640" marker-end="url(#arrow-m)"/>
+
+      <!-- R8 all settled? -->
+      <polygon class="box s" points="760,1040 880,1070 760,1100 640,1070"/>
+      <text class="t1" x="760" y="1066" text-anchor="middle">Every invoice</text>
+      <text class="t2" x="760" y="1081" text-anchor="middle">Validated paid or Cleared?</text>
+      <path class="flow" d="M760,1100 V1160" marker-end="url(#arrow)"/>
+      <rect class="lbl-bg" x="768" y="1116" width="30" height="14" rx="3"/>
+      <text class="lbl strong" x="783" y="1127" text-anchor="middle">Yes</text>
+      <!-- no → next round -->
+      <path class="flow dash" d="M880,1070 H908 V250 H320 V266" marker-end="url(#arrow-m)"/>
+      <rect class="lbl-bg" x="883" y="1050" width="22" height="14" rx="3"/>
+      <text class="lbl strong" x="894" y="1061" text-anchor="middle">No</text>
+      <rect class="lbl-bg" x="520" y="236" width="150" height="14" rx="3"/>
+      <text class="lbl" x="595" y="247" text-anchor="middle">No: the next round (SOA / follow up)</text>
+
+      <!-- collector ends -->
+      <rect class="box c" x="40" y="1040" width="240" height="52" rx="8"/>
+      <text class="t1" x="160" y="1061" text-anchor="middle">Collector ends the case</text>
+      <text class="t2" x="160" y="1078" text-anchor="middle">allowed at any open step · asks first</text>
+      <path class="flow" d="M160,1092 V1160" marker-end="url(#arrow)"/>
+      <path class="flow" d="M160,1120 H450 V1160" marker-end="url(#arrow)"/>
+      <rect class="lbl-bg" x="52" y="1124" width="110" height="14" rx="3"/>
+      <text class="lbl" x="107" y="1135" text-anchor="middle">Ended: not completed</text>
+      <rect class="lbl-bg" x="300" y="1104" width="56" height="14" rx="3"/>
+      <text class="lbl" x="328" y="1115" text-anchor="middle">Escalated</text>
+
+      <!-- endings -->
+      <rect class="box nc" x="40" y="1160" width="260" height="96" rx="8"/>
+      <text class="t1" x="170" y="1184" text-anchor="middle">NOT COMPLETED</text>
+      <text class="t2" x="170" y="1203" text-anchor="middle">open invoices stay under Reconciliation</text>
+      <text class="t2" x="170" y="1219" text-anchor="middle">no reopen: continue with a new case</text>
+      <text class="t2" x="170" y="1235" text-anchor="middle">nothing more can be logged</text>
+
+      <rect class="box danger" x="320" y="1160" width="260" height="96" rx="8"/>
+      <text class="t1" x="450" y="1184" text-anchor="middle">ESCALATED</text>
+      <text class="t2" x="450" y="1203" text-anchor="middle">SMS to the Collection Head (Android)</text>
+      <text class="t2" x="450" y="1219" text-anchor="middle">the Head takes it on outside the app</text>
+      <text class="t2" x="450" y="1235" text-anchor="middle">nothing more can be logged</text>
+
+      <rect class="box ok" x="620" y="1160" width="260" height="96" rx="8"/>
+      <text class="t1" x="750" y="1184" text-anchor="middle">COMPLETED · automatic</text>
+      <text class="t2" x="750" y="1203" text-anchor="middle">validated invoices sit on the</text>
+      <text class="t2" x="750" y="1219" text-anchor="middle">"Validated, awaiting posting" list</text>
+      <text class="t2" x="750" y="1235" text-anchor="middle">until Accounting posts (balance → 0)</text>
+    </svg>
+    </div>
+    <figcaption>One case from opening to its ending. Solid arrows are the steps the collector logs; dashed arrows are what the app does on its own (flags, loops, the next round). The status column is never typed in: it is worked out from the log after every step.</figcaption>
+    <div class="legend">
+      <span><i class="sw" style="border-color:var(--collector)"></i>Collector logs it</span>
+      <span><i class="sw" style="border-color:var(--account)"></i>Account's step, logged by the collector</span>
+      <span><i class="sw" style="border-color:var(--status)"></i>Case status</span>
+      <span><i class="sw dash" style="border-color:var(--muted)"></i>Set by the app</span>
+    </div>
+  </figure>
+
+  <h2>Each step and what it changes</h2>
+  <table>
+    <thead><tr><th>Step on the sheet</th><th>Done by</th><th>Effect on invoices</th><th>Whose turn next</th></tr></thead>
+    <tbody>
+      <tr><td>SOA sent</td><td class="who c">Collector</td><td>None. Records the SOA date and amount. Completes the <strong>SOA</strong> stage.</td><td>Account</td></tr>
+      <tr><td>Follow up</td><td class="who c">Collector</td><td>None. Completes the <strong>Follow up</strong> stage. Only after an SOA; repeatable.</td><td>Account</td></tr>
+      <tr><td>Collection letter sent</td><td class="who c">Collector</td><td>None. Completes the <strong>Collection letter</strong> stage. Only after a follow up; needs a photo of the letter; repeatable.</td><td>Account</td></tr>
+      <tr><td>Documents requested</td><td class="who a">Account</td><td>None.</td><td>Collector</td></tr>
+      <tr><td>Documents provided</td><td class="who c">Collector</td><td>None.</td><td>Account</td></tr>
+      <tr><td>Claims already paid</td><td class="who a">Account</td><td>Named Open / Proof invalid invoices → <strong>Claimed paid</strong>. Must name at least one.</td><td>Collector</td></tr>
+      <tr><td>Proof requested</td><td class="who c">Collector</td><td>Named (or all claimed without proof) → proof requested. No proof afterwards raises the flag.</td><td>Account</td></tr>
+      <tr><td>Proof sent</td><td class="who a">Account</td><td>Named (or all claimed) → proof pending. Case goes <strong>Under validation</strong>.</td><td>Collector</td></tr>
+      <tr><td>Proof validated</td><td class="who c">Collector</td><td>Valid → <strong>Validated paid</strong>. Invalid → <strong>Proof invalid</strong>, still open.</td><td>Account (if anything is still open)</td></tr>
+      <tr><td>Note</td><td class="who c">Collector</td><td>None. A remark on the timeline.</td><td>Unchanged</td></tr>
+      <tr><td>Ended: not completed</td><td class="who c">Collector</td><td>None. Ends the case.</td><td>Case ended</td></tr>
+      <tr><td>Escalated</td><td class="who c">Collector</td><td>None. Ends the case and texts the Head.</td><td>Case ended</td></tr>
+      <tr><td>Payment collected · Released · Acquired</td><td class="who t">App</td><td>Logged automatically. A collection drops the balance; at 0 the invoice reads <strong>Cleared</strong>.</td><td>Unchanged</td></tr>
+    </tbody>
+  </table>
+  <p class="note">The sheet only offers the steps the rules allow at that moment: no "Proof validated" without proof pending, no "Proof requested" with nothing claimed, nothing at all once the case has ended.</p>
+  <p class="note">Stages run beside the invoice steps, in order: <strong>SOA → Follow up → Collection letter</strong>. A locked stage shows on the sheet as a disabled chip with the reason. Stages never change the case status; the case screen shows them as a three-step track.</p>
+
+  <h2>The three endings</h2>
+  <div class="endings">
+    <div class="end ok">
+      <h3>Completed</h3>
+      <p>Automatic. The moment every invoice in the case is Validated paid or Cleared.</p>
+      <ul>
+        <li>Validated invoices appear under <em>Validated, awaiting posting</em> in Reports.</li>
+        <li>They leave that list by themselves once Accounting posts the payment and the balance reaches zero.</li>
+      </ul>
+    </div>
+    <div class="end nc">
+      <h3>Not completed</h3>
+      <p>The collector logs <em>Ended: not completed</em>, after a confirmation.</p>
+      <ul>
+        <li>Open invoices stay marked Reconciliation and keep out of the regular bucket.</li>
+        <li>There is no reopen. To continue, open a new case on the account.</li>
+      </ul>
+    </div>
+    <div class="end es">
+      <h3>Escalated</h3>
+      <p>The collector logs <em>Escalated</em>, after a confirmation.</p>
+      <ul>
+        <li>The Collection Head gets one SMS with the client, open invoices and amount (Android only; on Windows it is just logged).</li>
+        <li>The Head takes the account on outside the app.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

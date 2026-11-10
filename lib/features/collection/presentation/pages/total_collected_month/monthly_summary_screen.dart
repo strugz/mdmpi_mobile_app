@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
 import 'package:mdmpi_mobile_app/base/utils/devices/device_utility.dart';
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/total_collected_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/collection_area.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 
 /// The month's ledger: what was collected, or posted as Actual Collection,
@@ -46,6 +48,7 @@ class MonthlySummaryScreen extends StatelessWidget {
         children: [
           _MonthHeader(
               controller: controller, isActual: _isActual, swap: _swap),
+          if (!_isActual) _CollectorBreakdown(controller: controller),
           Expanded(
             child: Obx(() {
               final all = _isActual
@@ -132,15 +135,16 @@ class _MonthHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(
           BSizes.sm, 0, BSizes.sm, BSizes.spaceBtwItems),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: BCollectionColors.surface,
         border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
       ),
       child: Obx(() {
         final month = controller.selectedMonth.value;
+        final all = !isActual && controller.allCollectors;
         final total = isActual
             ? controller.actualCollectionTotal
-            : controller.monthlyTotal;
+            : controller.scopedTotal;
         final entries =
             isActual ? controller.postedEntries : controller.monthEntries;
         final target = controller.targetAmount.value;
@@ -175,7 +179,7 @@ class _MonthHeader extends StatelessWidget {
                                 ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(width: BSizes.xs),
-                          const Icon(Iconsax.arrow_down_1,
+                          Icon(Iconsax.arrow_down_1,
                               size: 14, color: BCollectionColors.inkMuted),
                         ],
                       ),
@@ -192,6 +196,10 @@ class _MonthHeader extends StatelessWidget {
                 ),
               ],
             ),
+            // With a default area set: that area's Actual Collection and
+            // target, or every area's (update checklist items 3 and 5).
+            if (isActual && controller.canPickArea)
+              _AreaSwitch(controller: controller),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: BSizes.sm),
               child: AnimatedSwitcher(
@@ -207,7 +215,11 @@ class _MonthHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isActual ? 'Team · posted by the office' : 'Collected',
+                      isActual
+                          ? '${controller.actualScopeLabel} · posted by the office'
+                          : all
+                              ? 'Collected · all collectors'
+                              : 'Collected',
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: BCollectionColors.inkMuted,
                         fontWeight: FontWeight.w600,
@@ -235,7 +247,11 @@ class _MonthHeader extends StatelessWidget {
                       _TargetLine(total: total, target: target)
                     else
                       Text(
-                        _countLine(entries),
+                        // The list below is this collector's own; say so
+                        // when the total above is everyone's.
+                        all
+                            ? 'Yours: ${_countLine(entries)}'
+                            : _countLine(entries),
                         style: theme.textTheme.bodySmall
                             ?.copyWith(color: BCollectionColors.inkMuted),
                       ),
@@ -258,6 +274,168 @@ class _MonthHeader extends StatelessWidget {
   }
 }
 
+/// With Collected this Month on "all collectors": each collector's month,
+/// this phone's own first. The server counts each collector as one total, so
+/// teammates are a line each, not their invoices; the ledger below is
+/// this collector's own. Nothing at all while "me only".
+class _CollectorBreakdown extends StatelessWidget {
+  const _CollectorBreakdown({required this.controller});
+
+  final TotalCollectedController controller;
+
+  /// Tall enough for a handful of collectors; a bigger team scrolls inside.
+  static const double _maxListHeight = 200;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final small =
+        theme.textTheme.bodySmall?.copyWith(color: BCollectionColors.inkMuted);
+    // No setting, nothing to follow: an Obx with no observable would throw.
+    if (!Get.isRegistered<CollectionSettingsController>()) {
+      return const SizedBox.shrink();
+    }
+
+    return Obx(() {
+      if (!controller.allCollectors) return const SizedBox.shrink();
+      final error = controller.othersError.value;
+      final rows = [
+        (name: 'You', amount: controller.monthlyTotal),
+        for (final r in [...controller.otherCollectors]
+          ..sort((a, b) => b.collected.compareTo(a.collected)))
+          (name: r.name.isNotEmpty ? r.name : r.code, amount: r.collected),
+      ];
+
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(
+            BSizes.md, BSizes.sm, BSizes.md, BSizes.sm),
+        decoration: BoxDecoration(
+          color: BCollectionColors.surface,
+          border: Border(bottom: BorderSide(color: BCollectionColors.outline)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'By collector',
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (controller.othersLoading.value)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else
+                  InkWell(
+                    key: const ValueKey('collector-breakdown-reload'),
+                    onTap: controller.reloadOthers,
+                    borderRadius: BorderRadius.circular(BSizes.borderRadiusSm),
+                    child: Padding(
+                      padding: EdgeInsets.all(BSizes.xs),
+                      child: Icon(Iconsax.refresh,
+                          size: 16, color: BCollectionColors.inkMuted),
+                    ),
+                  ),
+              ],
+            ),
+            if (error != null)
+              Padding(
+                padding: const EdgeInsets.only(top: BSizes.xs),
+                child: Text(
+                  'Other collectors not loaded: $error',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: small?.copyWith(color: BCollectionColors.danger),
+                ),
+              ),
+            const SizedBox(height: BSizes.xs),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: _maxListHeight),
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final row in rows)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(row.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium),
+                          ),
+                          const SizedBox(width: BSizes.sm),
+                          Text(
+                            BFormatter.formatPesoCurrency(row.amount),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: row.amount > 0
+                                  ? BCollectionColors.success
+                                  : BCollectionColors.inkMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Text('Teammates: what they have uploaded', style: small),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+/// "All areas" or the collector's default area, for Actual Collection and its
+/// target. Shown only with a default area set (Settings).
+class _AreaSwitch extends StatelessWidget {
+  const _AreaSwitch({required this.controller});
+
+  final TotalCollectedController controller;
+
+  @override
+  Widget build(BuildContext context) => Obx(() {
+        final mine = controller.defaultArea;
+        final selected = controller.actualArea.value;
+        return _chips(mine, selected);
+      });
+
+  Widget _chips(String mine, String selected) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          BSizes.sm, 0, BSizes.sm, BSizes.spaceBtwItemsLight),
+      child: Wrap(
+        spacing: BSizes.sm,
+        children: [
+          ChoiceChip(
+            key: const ValueKey('actual-area-mine'),
+            label: Text(BCollectionArea.labelFor(mine)),
+            selected: selected == mine,
+            onSelected: (_) => controller.setActualArea(mine),
+          ),
+          ChoiceChip(
+            key: const ValueKey('actual-area-all'),
+            label: const Text('All areas'),
+            selected: selected.isEmpty,
+            onSelected: (_) => controller.setActualArea(''),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Actual Collection against the month's target.
 ///
 /// Read-only: the office sets targets on the admin web (the CollectionPoster
@@ -277,7 +455,7 @@ class _TargetLine extends StatelessWidget {
     if (target <= 0) {
       return Row(
         children: [
-          const Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
+          Icon(Iconsax.flag, size: 14, color: BCollectionColors.inkMuted),
           const SizedBox(width: BSizes.xs),
           Expanded(
             child: Text('No team target set yet · the office sets it',
@@ -304,7 +482,7 @@ class _TargetLine extends StatelessWidget {
               value: value,
               minHeight: 6,
               backgroundColor: BCollectionColors.outline,
-              valueColor: const AlwaysStoppedAnimation<Color>(
+              valueColor: AlwaysStoppedAnimation<Color>(
                   BCollectionColors.success),
             ),
           ),
@@ -510,7 +688,7 @@ class _EntryRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: last
             ? null
-            : const Border(
+            : Border(
                 bottom:
                     BorderSide(color: BCollectionColors.outline, width: 0.5)),
       ),
@@ -676,7 +854,7 @@ class _MonthSheet extends StatelessWidget {
                 ),
               ),
               trailing: m == selected
-                  ? const Icon(Iconsax.tick_circle5,
+                  ? Icon(Iconsax.tick_circle5,
                       color: BCollectionColors.primary, size: 20)
                   : null,
               onTap: () => Navigator.pop(context, m),

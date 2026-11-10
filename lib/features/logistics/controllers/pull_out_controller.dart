@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:get/get.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_pull_out_request_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/cancel_remarks_model.dart';
@@ -133,6 +134,7 @@ class PullOutController extends GetxController
   /// year/month counts regardless of what this tab is filtered to.
   Future<void> loadForScope(RequestDateScope scope) async {
     await dataManager.fetchPullOuts(this, useLocalStorage.value, scope);
+    UnfinishedRequestsController.changed();
   }
 
   Future<void> hardResetPullOuts() async {

@@ -108,7 +108,7 @@ class EngagementSummary extends StatelessWidget {
                   value: value,
                   minHeight: 5,
                   backgroundColor: BCollectionColors.outline,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
+                  valueColor: AlwaysStoppedAnimation<Color>(
                       BCollectionColors.success),
                 ),
               ),

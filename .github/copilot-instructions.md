@@ -60,11 +60,11 @@ validators/   # BValidator
 controllers/          # Shared controllers (CameraHandlerController, AutocompleteController)
 services/
   abstracts/          # Interfaces: IPermissionService, INotificationService, ICameraService,
-                      #   ITextRecognitionService, ITextExtractor, IMapsService, IPlacesService,
+                      #   ITextRecognitionService, ITextExtractor, IMapsService,
                       #   ILocationTrackingService, ILocationAlternativeService,
                       #   IDeliveryRequestController (controller interface), IFeatureToggleService, IAiService
   implementations/    # Concrete impls: PermissionService, NotificationService, FlutterCameraService,
-                      #   GoogleMlKitTextRecognizer, MapsService, PlacesService,
+                      #   GoogleMlKitTextRecognizer, MapsService,
                       #   LocationTrackingService, LocationAlternativeService, etc.
 styles/               # Shadows, SpacingStyles
 utils/                # Signature dialog utility

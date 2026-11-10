@@ -20,6 +20,7 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_controll
 import 'package:mdmpi_mobile_app/features/logistics/controllers/air_sea_hd_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/request_transport/widgets/b_drop_off_capture.dart';
+import 'package:mdmpi_mobile_app/features/logistics/widgets/trip_ticket_input.dart';
 
 /// Widget for handling Item Packed status transition to Received.
 ///
@@ -286,12 +287,10 @@ class AirSeaItemPackedSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         /// Trip Ticket Number Field
-        BTextFormField(
-          controller: controller.formState.tripTicketController,
-          label: 'Trip Ticket No',
-          prefixIcon: Iconsax.ticket,
-          keyboardType: TextInputType.number,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        TripTicketInput(
+          tripTicket: controller.formState.tripTicketController,
+          commute: controller.formState.commute,
+          vehicle: controller.formState.vehicleController,
         ),
         const SizedBox(height: BSizes.spaceBtwItems),
 
@@ -338,8 +337,11 @@ class AirSeaItemPackedSection extends StatelessWidget {
         }),
         const SizedBox(height: BSizes.spaceBtwItems),
 
-        /// Vehicle Dropdown
+        /// Vehicle Dropdown (none for a commuting driver)
         Obx(() {
+          if (controller.formState.commute.isOn.value) {
+            return const SizedBox.shrink();
+          }
           final mobiles =
               mobileController.mobile.map((m) => m.toJson()).toList();
           return BDropDownDynamicList(

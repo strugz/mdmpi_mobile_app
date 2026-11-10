@@ -22,8 +22,8 @@ class CalendarSkeleton extends StatelessWidget {
   /// it, and the highlight is the body colour so the sweep reads as light
   /// passing over rather than as a second shape.
   @visibleForTesting
-  static const Color boneBase = BCollectionColors.outline;
-  static const Color _boneHighlight = BCollectionColors.background;
+  static Color get boneBase => BCollectionColors.outline;
+  static Color get _boneHighlight => BCollectionColors.background;
 
   @override
   Widget build(BuildContext context) {

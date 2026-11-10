@@ -21,7 +21,7 @@ class ReceiptPhotoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Iconsax.receipt_2,
+                Icon(Iconsax.receipt_2,
                     color: BCollectionColors.primary, size: 20),
                 const SizedBox(width: BSizes.sm),
                 Text(
@@ -57,7 +57,7 @@ class ReceiptPhotoCard extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Iconsax.camera,
+                          Icon(Iconsax.camera,
                               color: BCollectionColors.inkMuted),
                           const SizedBox(height: BSizes.xs),
                           Text('Add Photo',
@@ -98,7 +98,7 @@ class ReceiptPhotoCard extends StatelessWidget {
         color: BCollectionColors.outline.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(BSizes.borderRadiusMd),
       ),
-      child: const Center(
+      child: Center(
         child: Icon(Iconsax.image, color: BCollectionColors.outline, size: 32),
       ),
     );

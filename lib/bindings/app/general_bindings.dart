@@ -1,3 +1,11 @@
+import 'package:mdmpi_mobile_app/data/services/outbox/voucher_reread_service.dart';
+import 'package:mdmpi_mobile_app/data/services/gemini_document_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/acr_item_scan_service.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/voucher_invoice_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/voucher_scan_controller.dart';
+import 'package:mdmpi_mobile_app/data/services/report_export_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_calendar_print_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_reports_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/upload_data_controller.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -18,7 +26,6 @@ import 'package:mdmpi_mobile_app/common/services/abstracts/i_location_tracking_s
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_maps_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_notification_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
-import 'package:mdmpi_mobile_app/common/services/abstracts/i_places_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_extractor.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/location_alternative_service.dart';
@@ -29,7 +36,6 @@ import 'package:mdmpi_mobile_app/common/services/implementations/location_tracki
 import 'package:mdmpi_mobile_app/common/services/implementations/maps_service.dart';
 import 'package:mdmpi_mobile_app/common/services/implementations/notification_service.dart';
 import 'package:mdmpi_mobile_app/common/services/implementations/permission_service.dart';
-import 'package:mdmpi_mobile_app/common/services/implementations/places_service.dart';
 import 'package:mdmpi_mobile_app/data/controllers/app_data/user_mdmpi_controller.dart';
 import 'package:mdmpi_mobile_app/data/controllers/client_controller.dart';
 import 'package:firebase_core/firebase_core.dart' show Firebase;
@@ -41,6 +47,7 @@ import 'package:mdmpi_mobile_app/data/repositories/pull_out/lose_item_repository
 import 'package:mdmpi_mobile_app/data/repositories/app_data/cancel_remarks_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/department_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/mobile_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/app_data/commute_id_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/role_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/app_data/user_initial_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/client/client_repository.dart';
@@ -55,6 +62,7 @@ import 'package:mdmpi_mobile_app/data/repositories/standard_delivery/standard_de
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_sms_outbox_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/forget_password_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/verify_email_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_onboarding_controller.dart';
@@ -73,6 +81,11 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/request_controll
 import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transport_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/client/client_alias_repository.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_document_scan_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/client_matcher.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/delivery_document_scan_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
@@ -81,6 +94,17 @@ import 'package:mdmpi_mobile_app/features/personalization/controller/contact_dir
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/update_name_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
+import 'package:mdmpi_mobile_app/base/utils/logger.dart';
+import 'package:mdmpi_mobile_app/features/logistics/controllers/unfinished_requests_controller.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/unfinished/unfinished_requests.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/unfinished/unfinished_requests_reminder.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/unfinished/unfinished_request.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/air_sea_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/pick_up_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/pull_out_model.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/standard_delivery_model.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/daily_quote_prompt_controller.dart';
+import 'package:mdmpi_mobile_app/features/personalization/controller/whats_new_prompt_controller.dart';
 
 import '../../data/repositories/collection/collection_repository.dart';
 import '../../features/collection/helpers/sync_manager.dart';
@@ -89,10 +113,17 @@ import 'package:mdmpi_mobile_app/data/repositories/collection/bank_repository.da
 import 'package:mdmpi_mobile_app/data/repositories/collection/client_registry_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/my_head_controller.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/collection_calendar_print_repository.dart';
 import 'package:mdmpi_mobile_app/data/repositories/collection/team_activity_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/team_activity_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_settings_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/outbox/proof_outbox_sync_service.dart';
+import 'package:mdmpi_mobile_app/data/services/outbox/recon_attachment_sync_service.dart';
+import 'package:mdmpi_mobile_app/data/repositories/collection/reconciliation_repository.dart';
+import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/reconciliation_controller.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/reconciliation/recon_reminder_scheduler.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/visit_location.dart';
+import 'package:mdmpi_mobile_app/features/collection/helpers/upload_reminder.dart';
 
 class GeneralBindings extends Bindings {
   @override
@@ -176,6 +207,8 @@ class GeneralBindings extends Bindings {
     // guard to make the long-press flow available on all targets.
     Get.lazyPut(() => BackLoadRepository(), fenix: true);
     Get.lazyPut(() => ContactRepository(), fenix: true);
+    // Commute IDs (trip ticket stand-in for commuting drivers): REST only.
+    Get.lazyPut(() => CommuteIdRepository(), fenix: true);
     // Lost items on Pull Out requests: REST only, no Firebase dependency.
     Get.lazyPut(() => LoseItemRepository(), fenix: true);
     // Backloaded items on delivery requests: REST only, no Firebase dependency.
@@ -222,6 +255,43 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => AirSeaHdController(), fenix: true);
     Get.lazyPut(() => HotlineDirectController(), fenix: true);
     Get.lazyPut(() => StockReceiveController(), fenix: true);
+    // The 08:00 "unfinished requests" reminder (Android) and its list: reads
+    // the request repositories' local tables, refreshed after every list
+    // load. Repositories missing on a desktop without Firebase count as empty.
+    Get.lazyPut(
+        () => BUnfinishedRequestsReminder(
+              notifications: () => Get.isRegistered<INotificationService>()
+                  ? Get.find<INotificationService>()
+                  : null,
+              enabled: UnfinishedRequestsController.reminderOnInStorage,
+            ),
+        fenix: true);
+    Get.lazyPut(
+        () => UnfinishedRequestsController(
+              loader: _loadLocalLogisticsRequests,
+              currentUser: () {
+                final user = UserController.instance.user.value;
+                return (
+                  role: user.role,
+                  initial: user.initial,
+                  department: user.department,
+                );
+              },
+              reminder: () => Get.isRegistered<BUnfinishedRequestsReminder>()
+                  ? Get.find<BUnfinishedRequestsReminder>()
+                  : null,
+              askPermission: () async {
+                if (!GetPlatform.isAndroid ||
+                    !Get.isRegistered<IPermissionService>()) {
+                  return;
+                }
+                await Get.find<IPermissionService>().requireForFeature(
+                    PermissionType.notifications,
+                    featureName: 'Unfinished requests reminder',
+                    openSettingsOnPermanentDenial: false);
+              },
+            ),
+        fenix: true);
     Get.lazyPut(() => RequestController(), fenix: true);
     Get.lazyPut(() => InventoryItemController(), fenix: true);
     Get.lazyPut(
@@ -236,6 +306,51 @@ class GeneralBindings extends Bindings {
         fenix: true);
     Get.lazyPut<ITextExtractor>(() => DocumentReferenceExtractor(),
         fenix: true);
+    // Gemini document reading: the Logistics inventory scanner and the
+    // Collection voucher scan. No Firestore, so outside the Firebase guard.
+    Get.lazyPut(() => GeminiDocumentService(), fenix: true);
+    // Request Form Add Item scan: on-device ACR first, Gemini only as the
+    // fallback. Registered after ITextRecognitionService and
+    // GeminiDocumentService; the repository is resolved per scan because it
+    // sits inside the Firebase guard.
+    Get.lazyPut(
+        () => AcrItemScanService(
+              textRecognition: Get.find<ITextRecognitionService>(),
+              readWithGemini: (file, {prompt}) =>
+                  (Get.isRegistered<InventoryItemRepository>()
+                          ? Get.find<InventoryItemRepository>()
+                          : InventoryItemRepository())
+                      .analyzeFileWithGemini(file, prompt: prompt),
+            ),
+        fenix: true);
+
+    // Standard Delivery one-scan (plan §5 steps 8, 13, 14, 16): on-device
+    // OCR only, local SQLite aliases, so outside the Firebase guard. Registered
+    // after ITextRecognitionService, ITextExtractor and ClientController.
+    // The client list is resolved fresh on every scan, never stored.
+    Get.lazyPut(() => ClientAliasRepository(), fenix: true);
+    Get.lazyPut<IDeliveryDocumentScanService>(
+        () => DeliveryDocumentScanService(
+              textRecognition: Get.find<ITextRecognitionService>(),
+              textExtractor: Get.find<ITextExtractor>(),
+              matcher:
+                  ClientMatcher(aliases: Get.find<ClientAliasRepository>()),
+              clients: () async {
+                final clients = Get.find<ClientController>();
+                if (clients.allClient.isEmpty) {
+                  await clients.fetchClientFromDb(false);
+                }
+                return clients.allClient.toList();
+              },
+            ),
+        fenix: true);
+    Get.lazyPut(
+        () => DeliveryDocumentScanController(
+              service: Get.find<IDeliveryDocumentScanService>(),
+              aliases: Get.find<ClientAliasRepository>(),
+              permissions: Get.find<IPermissionService>(),
+            ),
+        fenix: true);
 
     // ========================================================================
     // Platform Services
@@ -245,7 +360,6 @@ class GeneralBindings extends Bindings {
     Get.lazyPut<ILocationAlternativeService>(() => LocationAlternativeService(),
         fenix: true);
     Get.lazyPut<IMapsService>(() => MapsService(), fenix: true);
-    Get.lazyPut<IPlacesService>(() => PlacesService(), fenix: true);
     Get.lazyPut<ILocationTrackingService>(() => LocationTrackingService(),
         fenix: true);
 
@@ -254,6 +368,12 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => CollectionRepository(), fenix: true);
     Get.lazyPut(() => BankRepository(), fenix: true);
     Get.lazyPut(() => ClientRegistryRepository(), fenix: true);
+    // Scanned Invoices: voucher pages read by Gemini (on-device fallback).
+    Get.lazyPut(() => VoucherInvoiceRepository(), fenix: true);
+    Get.lazyPut(
+        () => VoucherScanController(
+            repository: Get.find<VoucherInvoiceRepository>()),
+        fenix: true);
     // CNTMST always; Firestore Users too when Firebase is up (not on a desktop
     // without FlutterFire). Resolved at load time, so UserRepository need not exist yet.
     Get.lazyPut(
@@ -271,12 +391,131 @@ class GeneralBindings extends Bindings {
     Get.lazyPut(() => TeamActivityController(), fenix: true);
     // Settings → Default area (item 15): GetStorage-backed, no repository.
     Get.lazyPut(() => CollectionSettingsController(), fenix: true);
+    // The mandatory What's new over Home after an update: GetStorage-backed.
+    Get.lazyPut(() => WhatsNewPromptController(), fenix: true);
+    // The once-a-day Quote of the Day popup: GetStorage-backed.
+    Get.lazyPut(() => DailyQuotePromptController(), fenix: true);
     Get.lazyPut(() => SyncManager(), fenix: true);
+    // The phone's position, stamped on every queued Collection change.
+    // Permanent: it keeps the last fix so a batch asks once.
+    GetInstance().lazyPut<BVisitLocation>(() => BVisitLocation(),
+        fenix: true, permanent: true);
+    // The 17:00 "upload your collections" nudge (Android), kept in line
+    // with the queue by SyncManager.
+    Get.lazyPut(
+        () => BUploadReminder(
+              notifications: () => Get.isRegistered<INotificationService>()
+                  ? Get.find<INotificationService>()
+                  : null,
+            ),
+        fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
+    // Settings → SMS Outbox; after the service it reads.
+    Get.lazyPut(
+        () => CollectionSmsOutboxController(
+            sms: Get.find<CollectionSmsService>()),
+        fenix: true);
+    // Reconciliation Tracker: queues through CollectionRepository and
+    // SyncManager (above). SQLite + /api4 only, so outside the Firebase guard.
+    registerReconciliationTracker(
+      repository: () => ReconciliationRepository(
+        // The phone's live balances, so a payment recorded here shows
+        // on its case before the next upload and download.
+        liveBalances: () => Get.isRegistered<CollectionActivityController>()
+            ? {
+                for (final i in CollectionActivityController.instance.allItems)
+                  i.id: i.toBeCollected,
+              }
+            : const {},
+      ),
+      controller: () => ReconciliationController(
+          repository: Get.find<ReconciliationRepository>()),
+      // Morning phone reminders for follow ups that are due (Android).
+      reminders: () => ReconReminderScheduler(
+        notifications: () => Get.isRegistered<INotificationService>()
+            ? Get.find<INotificationService>()
+            : null,
+        enabled: CollectionSettingsController.followUpRemindersOn,
+      ),
+    );
+
+    // Settings → Reports: builds from the archive, the team feed and the
+    // Tracker's cases, so after them. CSV save/share has no backend.
+    Get.lazyPut(() => ReportExportService(), fenix: true);
+    Get.lazyPut(
+        () => CollectionReportsController(exporter: Get.find<ReportExportService>()),
+        fenix: true);
+    // Calendar → Print: the month as a PDF drawn on MDMPI.App (/api4), shared
+    // through the export service above. Online only.
+    Get.lazyPut(() => CollectionCalendarPrintRepository(), fenix: true);
+    Get.lazyPut(() => CollectionCalendarPrintController(), fenix: true);
 
     // Eager, not lazy: it must be alive to hear connectivity and lifecycle
     // events, otherwise nothing drains the proof outboxes automatically.
     // Registered last so NetworkManager and ImageRepository already exist.
     Get.put(ProofOutboxSyncService(), permanent: true);
+    // The same for reconciliation photos (proof of payment, documents).
+    Get.put(ReconAttachmentSyncService(), permanent: true);
+    // Voucher pages read on the phone, read again by the AI once online.
+    Get.put(
+        VoucherRereadService(
+          // Null until the account's invoices are on hand: the page waits.
+          classifierFor: (clientId) {
+            if (!Get.isRegistered<CollectionActivityController>()) return null;
+            final activity = CollectionActivityController.instance;
+            if (activity.allItems.isEmpty) return null;
+            return VoucherScanController.classifierFor(activity, clientId);
+          },
+        ),
+        permanent: true);
   }
+
+  /// The Tracker is app-wide state, so it is created on first use but never
+  /// deleted with a route. Plain `lazyPut` ties it to whichever route first
+  /// used it: the calendar's Reconciliation form replaces itself with the
+  /// case (`Get.offNamed`), GetX then deleted the Tracker, and the case
+  /// screen stayed subscribed to the dead one, so steps logged there never
+  /// showed on its stage track.
+  static void registerReconciliationTracker({
+    required ReconciliationRepository Function() repository,
+    required ReconciliationController Function() controller,
+    ReconReminderScheduler Function()? reminders,
+  }) {
+    if (reminders != null) {
+      GetInstance().lazyPut<ReconReminderScheduler>(reminders,
+          fenix: true, permanent: true);
+    }
+    GetInstance().lazyPut<ReconciliationRepository>(repository,
+        fenix: true, permanent: true);
+    GetInstance().lazyPut<ReconciliationController>(controller,
+        fenix: true, permanent: true);
+  }
+}
+
+/// Every Logistics request in the phone's local tables, as
+/// [UnfinishedRequest]s, for [UnfinishedRequestsController]. A table that
+/// can't be read (repository not registered, DB error) counts as empty.
+Future<List<UnfinishedRequest>> _loadLocalLogisticsRequests() async {
+  Future<List<UnfinishedRequest>> read<R, M>(
+      Future<List<M>> Function(R repo) fetch,
+      UnfinishedRequest Function(M model) map) async {
+    if (!Get.isRegistered<R>()) return const [];
+    try {
+      return (await fetch(Get.find<R>())).map(map).toList();
+    } catch (e) {
+      logDebug('GeneralBindings: could not read local $R: $e');
+      return const [];
+    }
+  }
+
+  return [
+    ...await read<StandardDeliveryRepository, StandardDeliveryModel>(
+        (r) => r.getLocalRequests(), BUnfinishedRequests.fromStandardDelivery),
+    ...await read<PullOutRepository, PullOutModel>(
+        (r) => r.getLocalPullOuts(), BUnfinishedRequests.fromPullOut),
+    ...await read<PickUpRepository, PickUpModel>(
+        (r) => r.getLocalPickUps(), BUnfinishedRequests.fromPickUp),
+    ...await read<AirSeaRepository, AirSeaModel>(
+        (r) => r.getLocalAirSeaRequests(), BUnfinishedRequests.fromAirSea),
+  ];
 }

@@ -100,7 +100,7 @@ class AreaPickerSheet extends StatelessWidget {
                 IconButton(
                   tooltip: 'Close',
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Iconsax.close_circle,
+                  icon: Icon(Iconsax.close_circle,
                       color: BCollectionColors.inkMuted),
                 ),
               ],
@@ -227,7 +227,7 @@ class _AreaTile extends StatelessWidget {
                 child: AnimatedOpacity(
                   duration: _stateDuration,
                   opacity: selected ? 1 : 0,
-                  child: const Align(
+                  child: Align(
                     alignment: Alignment.centerRight,
                     child: Icon(Iconsax.tick_circle5,
                         size: 18, color: BCollectionColors.primary),

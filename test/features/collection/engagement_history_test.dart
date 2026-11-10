@@ -146,6 +146,7 @@ void main() {
         'Deposit',
         'CWT Pick-up',
         'Reconciliation',
+        'Routing of Documents',
         'Follow Up',
         'Pre-Collection',
         'Customer Unavailable',

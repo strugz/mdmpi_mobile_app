@@ -75,7 +75,7 @@ class PickUpList extends StatelessWidget {
                       borderRadius: BorderRadius.circular(BSizes.cardRadiusMd),
                       onTap: () {
                         controller.currentSelectedPickUp.value = item;
-                        _handlePickUpTap(
+                        handlePickUpTap(
                             context, item, controller, userController);
                       },
                       onLongPress: () async {
@@ -154,7 +154,7 @@ class PickUpList extends StatelessWidget {
 /// Handles tap on PickUp request based on user role.
 /// Uses status-driven role selection to ensure users with multiple roles
 /// can perform ALL available actions at ANY status.
-void _handlePickUpTap(
+void handlePickUpTap(
   BuildContext context,
   PickUpModel request,
   PickUpController controller,

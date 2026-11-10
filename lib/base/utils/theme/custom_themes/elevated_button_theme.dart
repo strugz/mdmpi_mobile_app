@@ -10,8 +10,13 @@ class BElevatedButtonTheme {
     backgroundColor: Colors.blue,
     disabledForegroundColor: Colors.grey,
     disabledBackgroundColor: Colors.grey,
-    side: const BorderSide(color: Colors.blue),
-    padding: const EdgeInsets.symmetric(vertical: 18),
+    // No border: a filled button's edge is its fill. A border fixed to blue
+    // showed as a stray outline wherever a theme recolours the fill
+    // (Collection's navy buttons).
+    side: BorderSide.none,
+    // Side padding so a button sized to its label does not run the label
+    // into its edges; full-width buttons are unaffected.
+    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
     textStyle: const TextStyle(
         fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600),
     shape: RoundedRectangleBorder(
@@ -25,8 +30,13 @@ class BElevatedButtonTheme {
     backgroundColor: Colors.blue,
     disabledForegroundColor: Colors.grey,
     disabledBackgroundColor: Colors.grey,
-    side: const BorderSide(color: Colors.blue),
-    padding: const EdgeInsets.symmetric(vertical: 18),
+    // No border: a filled button's edge is its fill. A border fixed to blue
+    // showed as a stray outline wherever a theme recolours the fill
+    // (Collection's navy buttons).
+    side: BorderSide.none,
+    // Side padding so a button sized to its label does not run the label
+    // into its edges; full-width buttons are unaffected.
+    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
     textStyle: const TextStyle(
         fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600),
     shape: RoundedRectangleBorder(

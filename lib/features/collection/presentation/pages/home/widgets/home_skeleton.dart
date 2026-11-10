@@ -33,8 +33,8 @@ class HomeSkeleton extends StatelessWidget {
   /// invisible; the highlight is the body colour itself, so the sweep reads
   /// as light passing over rather than as a second shape.
   @visibleForTesting
-  static const Color boneBase = BCollectionColors.outline;
-  static const Color _boneHighlight = BCollectionColors.background;
+  static Color get boneBase => BCollectionColors.outline;
+  static Color get _boneHighlight => BCollectionColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +74,7 @@ class HomeSkeleton extends StatelessWidget {
           Expanded(
             child: Container(
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: BCollectionColors.surface,
                 borderRadius: BorderRadius.vertical(
                     top: Radius.circular(BSizes.borderRadiusLg)),

@@ -29,6 +29,7 @@ import '../../../base/utils/image_utils/image_conversion_base_64_to_string.dart'
 import '../../../data/models/realtime_location_model.dart';
 import '../../../data/repositories/image/image_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/request_date_scope.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/commute_id.dart';
 
 /// Manages Air/Sea request data operations and orchestrates business logic.
 /// Handles CRUD operations, status updates, form validation, and data synchronization
@@ -247,9 +248,14 @@ class AirSeaDataManager {
         shippingMethod: shippingMethod,
       );
 
-      // Insert via API (also saves to local DB)
-      await _repository.insert(model, silent: true);
-      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model);
+      // Items come from the shared scanned list (Add Item / one-scan), as on
+      // Standard Delivery and Pull Out (plan LOGISTICS_AIR_SEA_ITEMS_PLAN.md).
+      final items = stdController.formState.scannedInventoryItems.toList();
+
+      // Insert via API (also saves to local DB, then posts the items)
+      await _repository.insert(model, silent: true, items: items);
+      await _messageController.sendSmsMessage(BTexts.statusNewRequest, model,
+          inventoryItems: items);
 
       // Force refresh from API to ensure we have the latest data with proper IDs
       final refreshedList = await _repository.refreshFromApi();
@@ -906,7 +912,8 @@ class AirSeaDataManager {
       );
       return false;
     }
-    if (!hasVehicle) {
+    // A commuting driver (Commute ID in the trip ticket) has no vehicle.
+    if (!hasVehicle && !BCommuteId.isCommuteId(tripTicket)) {
       BLoaders.errorSnackBar(
         title: 'Validation Error',
         message: 'Please select Vehicle',

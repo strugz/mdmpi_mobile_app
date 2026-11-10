@@ -100,7 +100,7 @@ class _RouteLoadingOverlayState extends State<RouteLoadingOverlay> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 50,
                   height: 50,
                   child: CircularProgressIndicator(

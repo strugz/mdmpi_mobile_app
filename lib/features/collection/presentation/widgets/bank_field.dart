@@ -72,7 +72,7 @@ class _BBankFieldState extends State<BBankField> {
           hintText: widget.hint,
           prefixIcon: const Icon(Iconsax.bank),
           suffixIcon: hasList
-              ? const Icon(Iconsax.arrow_down_1,
+              ? Icon(Iconsax.arrow_down_1,
                   size: 18, color: BCollectionColors.inkMuted)
               : null,
         ),
