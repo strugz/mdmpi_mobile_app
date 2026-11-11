@@ -73,6 +73,35 @@ class BackLoadController extends GetxController {
 
   final TextEditingController deliveryDateController = TextEditingController();
 
+  /// The request's delivery date when the form was opened, so a submit with
+  /// the same date can be caught (users forget to pick the new date).
+  String _originalDeliveryDate = '';
+
+  /// The request's delivery date when the form was opened.
+  String get originalDeliveryDate => _originalDeliveryDate;
+
+  /// True when a reason has been picked.
+  bool get hasRemarks => (selectedRemarks.value ?? '').isNotEmpty;
+
+  /// True when the delivery date about to be submitted is the same day as
+  /// the request's original one.
+  bool get isDeliveryDateUnchanged =>
+      isSameDeliveryDate(_originalDeliveryDate, deliveryDateController.text);
+
+  /// Compares two delivery dates by calendar day, so `2026-11-10` and
+  /// `2026-11-10T00:00:00` count as the same. Two blanks are the same;
+  /// unparseable values fall back to a trimmed string comparison.
+  static bool isSameDeliveryDate(String a, String b) {
+    final ta = a.trim();
+    final tb = b.trim();
+    final da = DateTime.tryParse(ta);
+    final db = DateTime.tryParse(tb);
+    if (da != null && db != null) {
+      return da.year == db.year && da.month == db.month && da.day == db.day;
+    }
+    return ta == tb;
+  }
+
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
@@ -236,6 +265,7 @@ class BackLoadController extends GetxController {
     selectedRemarks.value = null;
     selectedDeliveryDate.value = null;
     deliveryDateController.clear();
+    _originalDeliveryDate = '';
     errorMessage.value = null;
   }
 
@@ -245,6 +275,7 @@ class BackLoadController extends GetxController {
   /// Call this **before** navigating to `BackLoadTransactionPage`.
   void initForRequest(StandardDeliveryModel request) {
     resetForm();
+    _originalDeliveryDate = request.deliveryDate;
     if (request.deliveryDate.isNotEmpty) {
       deliveryDateController.text = request.deliveryDate;
       try {
