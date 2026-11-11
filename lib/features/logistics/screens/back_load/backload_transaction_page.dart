@@ -309,6 +309,13 @@ class BackLoadTransactionPage extends GetView<BackLoadController> {
                             onPressed: controller.isSaving.value
                                 ? null
                                 : () async {
+                                    // Catch the common slip: submitting with
+                                    // the old delivery date still in place.
+                                    if (controller.hasRemarks &&
+                                        controller.isDeliveryDateUnchanged &&
+                                        !await _confirmUnchangedDate()) {
+                                      return;
+                                    }
                                     final success = await controller
                                         .submitBackLoad(requestModel);
                                     if (success && context.mounted) {
@@ -336,5 +343,29 @@ class BackLoadTransactionPage extends GetView<BackLoadController> {
         }),
       ),
     );
+  }
+
+  /// Warns that the delivery date was not changed. Returns true only when
+  /// the user chooses to submit anyway.
+  Future<bool> _confirmUnchangedDate() async {
+    final original = controller.originalDeliveryDate;
+    final shown =
+        original.isEmpty ? 'not set' : BFormatter.formatDate3(original);
+    final ok = await Get.dialog<bool>(AlertDialog(
+      icon: const Icon(Iconsax.warning_2, color: Colors.orange),
+      title: const Text('Delivery date not changed'),
+      content: Text(
+          'The new delivery date is still $shown, the same as before. '
+          'Did you forget to change it?'),
+      actions: [
+        TextButton(
+            onPressed: () => Get.back(result: false),
+            child: const Text('Change date')),
+        TextButton(
+            onPressed: () => Get.back(result: true),
+            child: const Text('Submit anyway')),
+      ],
+    ));
+    return ok ?? false;
   }
 }
