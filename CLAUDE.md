@@ -104,6 +104,26 @@ Modular config lives in `.claude/` (see `.claude/README.md`):
 - `commands/` — `/check`, `/review`, `/new-feature`, `/new-route`, `/qa`, `/bump-version`,
   `/build-apk`, `/release-notes`, `/print-audit`, `/db`. None of them commit or push.
 
+## Release announcement
+
+After both release builds are published (`v<version>` and `v<version>+sms`), the chat
+announcement is exactly this, with the version filled in. No change list, cards or
+patch notes:
+
+```
+📱 MDMPI App <version> is now released! @all,
+
+✅ Nothing to set up — just update to the latest build.
+
+Download: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version> (download app-release.apk under Assets)
+📲 Android 11 and below: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version>%2Bsms (download app-release.apk under Assets)
+📶 Please download it on the office Wi-Fi so it doesn't use your mobile data.
+```
+
+The `+sms` line points staff on Android 11 and below to the SMS build (see the
+branch section above). `%2B` is the `+` in the tag, as GitHub writes it. Send it only
+once both releases show `app-release.apk` under Assets.
+
 ## Reporting changes
 
 Whenever a turn changes something (code, tests, docs, config, a commit), always end the
