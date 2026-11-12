@@ -253,9 +253,9 @@ stays view-only at these statuses; the footer gains an editing section.
   request is `Item Prepared` or `For Delivery`.
 - [x] New `StandardDeliveryDataManager.updateDriverHelperAssignment`:
   overwrites `deliveredBy`/`helper` via the existing update payload
-  (driver required; an empty helper keeps the current one — the PATCH
-  endpoint ignores empty fields, so clearing is not possible, only
-  replacing), persists to API + local DB, and updates the reactive lists.
+  (driver required; helper optional — choosing "None" sends an empty
+  helper, which the PATCH endpoint stores, so the helper is removed),
+  persists to API + local DB, and updates the reactive lists.
 - [x] Hotline Direct is covered automatically — it shares the footer and the
   Standard Delivery repository. Courier visibility follows the new assignment
   immediately (the courier lists filter on `deliveredBy`/`helper`).

@@ -322,6 +322,7 @@ class AirSeaItemPackedSection extends StatelessWidget {
               Expanded(
                 child: DropdownList<UserModel>(
                   label: 'Helper',
+                  emptyOptionLabel: 'None',
                   dropdownList: users,
                   controller: controller.formState.helperController,
                   getValue: (u) => u.initial,

@@ -87,6 +87,7 @@ class RequestModalFooter extends StatelessWidget {
                 Expanded(
                   child: DropdownList<UserModel>(
                     label: 'Helper',
+                    emptyOptionLabel: 'None',
                     dropdownList: users,
                     controller: requestController.formState.selectedHelper,
                     getValue: (u) => u.initial,
