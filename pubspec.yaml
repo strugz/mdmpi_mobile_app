@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.121
+version: 1.1.122
 
 environment:
   sdk: ^3.6.0
@@ -56,14 +56,12 @@ dependencies:
   smooth_page_indicator: ^1.2.0+3
   permission_handler: ^12.0.0+1
 
-  camera: ^0.11.1
+  camera: ^0.12.2
   path_provider: ^2.0.11
-  device_info_plus: ^11.5.0
 
   # google map dependencies
   google_maps_flutter: ^2.11.0
   geolocator: ^14.0.1
-  location: ^8.0.0
   google_places_flutter: ^2.1.0
   google_mlkit_text_recognition: ^0.15.0
 
@@ -71,11 +69,7 @@ dependencies:
   path_provider_windows: ^2.3.0
   url_launcher_windows: ^3.1.5
 
-  # AI / LLM integration (placeholders) -----------------------------------
-  # NOTE: Replace these placeholders with the concrete package(s) you want to use.
-  # Examples: a local LLM package (llama, llama_cpp_flutter), an OpenAI client, or a
-  # specialized Flutter AI toolkit. Pin exact versions before publishing.
-  flutter_ai_toolkit: any
+  # AI / ML ---------------------------------------------------------------
   # Optional: Firebase model downloader for on-device custom models
   firebase_ml_model_downloader: any
   # End AI dependencies ---------------------------------------------------
@@ -129,11 +123,9 @@ dependencies:
   #sms & email
   another_telephony: ^0.4.1
 
-  #workmanager
-  workmanager: ^0.6.0
   table_calendar: ^3.2.0
   share_plus: ^12.0.2
-  google_mlkit_document_scanner: ^0.5.0
+  google_mlkit_document_scanner: ^0.7.2
 
 # Vendored copy of another_telephony 0.4.1 with a fix for Android 11 and
 # below: upstream calls getSystemService(SmsManager) which only exists on
