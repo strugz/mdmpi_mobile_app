@@ -22,6 +22,9 @@ paths:
   Two more AGP 9 workarounds stay until those plugins catch up:
   `kotlin.jvm.target.validation.mode=warning` (another_telephony's JVM 1.8 Kotlin target) and
   the `aarMetadata.minCompileSdk = 34` hook in `android/build.gradle` (plugins still on compileSdk 34).
+  `android/app/build.gradle` sets `androidResources.ignoreAssetsPattern` without `.*`: AGP 9 otherwise
+  drops `.env` from the APK and the app fails at `dotenv.load`. After a toolchain change, check
+  `unzip -l app-release.apk | grep flutter_assets/.env`.
   The project is pinned to Temurin JDK 21 via `flutter config --jdk-dir`. Set
   `$env:JAVA_TOOL_OPTIONS = "-Djdk.net.unixdomain.tmpdir=C:\Users\Public"` before any Gradle command.
 - Windows build: set `$env:TRACKFILEACCESS = "false"` to avoid MAX_PATH/FileTracker failures.
