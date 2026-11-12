@@ -153,8 +153,12 @@ class StandardDeliveryMapper {
 
   /// Build a typed Update DTO for PATCH operations. Only include fields that
   /// are non-null/non-empty per API contract (the DTO's toJson() will omit nulls).
+  ///
+  /// [clearHelper] sends an empty helper so the server removes it; without it
+  /// an empty helper is omitted and the server keeps the one it has.
   static StandardDeliveryUpdateDto toUpdateDto(
-      StandardDeliveryModel m, String updatedBy) {
+      StandardDeliveryModel m, String updatedBy,
+      {bool clearHelper = false}) {
     // Normalize request ID to numeric when possible for nested objects
     final dynamic nestedRequestId = int.tryParse(m.id) ?? m.id;
 
@@ -187,7 +191,8 @@ class StandardDeliveryMapper {
       requestItemPreparedBy:
           m.itemPreparedBy.isNotEmpty ? m.itemPreparedBy : null,
       requestDeliveredBy: m.deliveredBy.isNotEmpty ? m.deliveredBy : null,
-      requestDriverHelper: m.helper.isNotEmpty ? m.helper : null,
+      requestDriverHelper:
+          m.helper.isNotEmpty ? m.helper : (clearHelper ? '' : null),
       mobileID: m.mobileID,
       receiver: m.receiver.isNotEmpty ? m.receiver : null,
       requestTripTicketNumber:

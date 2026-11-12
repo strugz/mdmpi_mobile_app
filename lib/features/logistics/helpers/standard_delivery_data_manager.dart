@@ -473,6 +473,7 @@ class StandardDeliveryDataManager {
     required StandardDeliveryModel request,
     required String userInitial,
     required bool useLocalStorage,
+    bool clearHelper = false,
   }) async {
     BFullScreenLoader.openLoadingDialog(
       'Please wait saving update...',
@@ -491,6 +492,7 @@ class StandardDeliveryDataManager {
           request,
           userInitial,
           showSuccessSnackBar: false,
+          clearHelper: clearHelper,
         );
         // The server holds the old status, so the device must not pretend
         // otherwise. The repository already reported the failure.
@@ -542,19 +544,20 @@ class StandardDeliveryDataManager {
       return false;
     }
 
-    // An empty helper keeps the current one: the update endpoint ignores
-    // empty fields, so clearing is not possible — only replacing.
+    // Helper is optional: an empty one removes the helper on the server.
     final updated = request.copyWith(
       deliveredBy: newDriver,
-      helper: newHelper.isEmpty ? request.helper : newHelper,
+      helper: newHelper,
     );
 
     try {
-      await _persistUpdatedRequest(
+      final persisted = await _persistUpdatedRequest(
         request: updated,
         userInitial: controller.userController.user.value.initial,
         useLocalStorage: false,
+        clearHelper: newHelper.isEmpty,
       );
+      if (!persisted) return false;
       _applyReactiveRequestUpdate(controller, updated);
       BLoaders.successSnackBar(
         title: 'Assignment Updated',

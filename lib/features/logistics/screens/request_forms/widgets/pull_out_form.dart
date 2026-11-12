@@ -312,6 +312,7 @@ class PullOutForm extends StatelessWidget {
                             Expanded(
                               child: DropdownList<UserModel>(
                                 label: 'Helper',
+                                emptyOptionLabel: 'None',
                                 dropdownList: users,
                                 controller:
                                     controller.formState.helperController,

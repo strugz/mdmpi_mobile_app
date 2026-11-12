@@ -265,6 +265,7 @@ class PullOutModalBody extends StatelessWidget {
                 Expanded(
                   child: DropdownList<UserModel>(
                     label: 'Helper',
+                    emptyOptionLabel: 'None',
                     dropdownList: users,
                     controller: requestController.formState.helperController,
                     getValue: (u) => u.initial,

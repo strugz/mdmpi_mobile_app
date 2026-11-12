@@ -150,6 +150,7 @@ class _ReassignDeliveryCrewSectionState
               Expanded(
                 child: DropdownList<UserModel>(
                   label: 'Helper',
+                  emptyOptionLabel: 'None',
                   dropdownList: users,
                   controller: _helperCtrl,
                   getValue: (u) => u.initial,
