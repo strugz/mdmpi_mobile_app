@@ -43,9 +43,10 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          # Pinned: a newer stable refuses the project's Gradle 8.14.3 (wants
-          # 9.3.1) and failed the v1.1.121 build. 3.47.9 built v1.1.120.
-          flutter-version: '3.47.9'
+          # Pinned so a new stable cannot break a release tag: 3.50.0 raised the
+          # Gradle/AGP/Kotlin minimums and failed the first v1.1.121 build.
+          # Move this together with android/ (Gradle 9.5.0, AGP 9.3.1, KGP 2.4.20).
+          flutter-version: '3.50.0'
           channel: 'stable'
           cache: true
 

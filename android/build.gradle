@@ -5,15 +5,25 @@ allprojects {
     }
 }
 
-rootProject.buildDir = "../build"
+def newBuildDir = rootProject.layout.buildDirectory.dir("../../build").get()
+rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.layout.buildDirectory.value(newBuildDir.dir(project.name))
+}
+// AGP 9 makes every library require its consumers to compile against at least
+// the library's own compileSdk. Plugins still on 34/35 (file_picker) then fail
+// against plugins already on 36 (flutter_plugin_android_lifecycle). Declare 34,
+// the lowest compileSdk among the plugins, so their builds stay as on AGP 8.
+subprojects { sub ->
+    sub.plugins.withId("com.android.library") {
+        sub.android.defaultConfig.aarMetadata.minCompileSdk = 34
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {
-    delete rootProject.buildDir
+    delete rootProject.layout.buildDirectory
 }
 

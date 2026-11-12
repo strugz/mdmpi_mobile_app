@@ -16,9 +16,12 @@ feature modules.
 
 ## Prerequisites
 
-- **Flutter SDK** on a channel providing Dart `^3.6.0`.
-- **JDK 21 (Temurin)** pinned for Gradle. Android Studio's bundled Java 25 breaks
-  Gradle 8.14.3, so point Flutter at Temurin 21 explicitly:
+- **Flutter SDK 3.50.0** (the version CI is pinned to). The Android build uses
+  Gradle 9.5.0, AGP 9.3.1 and Kotlin 2.4.20; older Flutter versions cannot drive
+  AGP 9, and newer ones may raise the minimums again.
+- **JDK 21 (Temurin)** pinned for Gradle. Gradle 9.5.0 also runs on Android
+  Studio's bundled Java 25 (Gradle 8.14.3 did not), but the project stays on
+  Temurin 21 so every machine builds with the same JDK:
 
   ```powershell
   flutter config --jdk-dir "C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot"

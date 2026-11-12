@@ -14,7 +14,8 @@ flutter build apk --release
 ```
 
 Notes:
-- The project is pinned to Temurin JDK 21 via `flutter config --jdk-dir`; if Gradle complains about Java 25, check `flutter config` output and stop rather than changing the JDK.
+- Needs Flutter 3.50.0: the Android build is Gradle 9.5.0 / AGP 9.3.1 / Kotlin 2.4.20. If Flutter reports a Gradle, AGP or Kotlin version error, check `flutter --version` first and stop rather than editing the Gradle files.
+- The project is pinned to Temurin JDK 21 via `flutter config --jdk-dir`; check `flutter config` output before changing the JDK.
 - If `adb` misbehaves, ASUS GlideX may hold port 5037: `adb kill-server` then start the SDK adb.
 - Do not run `flutter build windows` here; it is blocked by pre-existing FileTracker/MAX_PATH issues.
 

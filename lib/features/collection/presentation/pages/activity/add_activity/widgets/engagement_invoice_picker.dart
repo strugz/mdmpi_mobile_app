@@ -97,46 +97,52 @@ class EngagementInvoicePicker extends StatelessWidget {
                     ],
                   ),
                 )
-              : ListView.separated(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: invoices.length,
-                  separatorBuilder: (_, __) => const Divider(
-                      height: 1, indent: BSizes.md, endIndent: BSizes.md),
-                  itemBuilder: (context, i) {
-                    final inv = invoices[i];
-                    final selected = selectedIds.contains(inv.id);
-                    return CheckboxListTile(
-                      value: selected,
-                      onChanged: (v) => onToggle(inv.id, v == true),
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      activeColor: BCollectionColors.primary,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: BSizes.sm),
-                      // SI and PO named, so neither is mistaken for the
-                      // other when the customer quotes one.
-                      title: Text('SI ${inv.id}',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600)),
-                      subtitle: Text(
-                        // The P.O. leads when present: a customer paying "the
-                        // ADC-CHEM-001 invoices" is picking by it, not by date.
-                        inv.hasPoNumber
-                            ? 'PO ${inv.poNumber.trim()}  ·  Due ${inv.dueDate}'
-                            : 'Posted ${inv.postingDate}  ·  Due ${inv.dueDate}',
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: BCollectionColors.inkMuted),
-                      ),
-                      secondary: Text(
-                        BFormatter.formatPesoCurrency(inv.toBeCollected),
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: BCollectionColors.ink,
+              // The tiles paint their ink on the nearest Material; without
+              // this one it sits under the Container's colour (and Flutter
+              // 3.50 asserts on it in debug).
+              : Material(
+                  type: MaterialType.transparency,
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: invoices.length,
+                    separatorBuilder: (_, __) => const Divider(
+                        height: 1, indent: BSizes.md, endIndent: BSizes.md),
+                    itemBuilder: (context, i) {
+                      final inv = invoices[i];
+                      final selected = selectedIds.contains(inv.id);
+                      return CheckboxListTile(
+                        value: selected,
+                        onChanged: (v) => onToggle(inv.id, v == true),
+                        dense: true,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        activeColor: BCollectionColors.primary,
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: BSizes.sm),
+                        // SI and PO named, so neither is mistaken for the
+                        // other when the customer quotes one.
+                        title: Text('SI ${inv.id}',
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                          // The P.O. leads when present: a customer paying "the
+                          // ADC-CHEM-001 invoices" is picking by it, not by date.
+                          inv.hasPoNumber
+                              ? 'PO ${inv.poNumber.trim()}  ·  Due ${inv.dueDate}'
+                              : 'Posted ${inv.postingDate}  ·  Due ${inv.dueDate}',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: BCollectionColors.inkMuted),
                         ),
-                      ),
-                    );
-                  },
+                        secondary: Text(
+                          BFormatter.formatPesoCurrency(inv.toBeCollected),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: BCollectionColors.ink,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
         ),
       ],
