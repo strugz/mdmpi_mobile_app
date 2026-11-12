@@ -8,6 +8,10 @@ class DropdownList<T> extends StatelessWidget {
   final String Function(T) getDisplay;
   final void Function(T?) onChanged;
 
+  /// When set, a first choice with this label clears the field (optional
+  /// fields such as Helper).
+  final String? emptyOptionLabel;
+
   const DropdownList({
     super.key,
     required this.label,
@@ -16,6 +20,7 @@ class DropdownList<T> extends StatelessWidget {
     required this.getValue,
     required this.getDisplay,
     required this.onChanged,
+    this.emptyOptionLabel,
   });
 
   @override
@@ -29,14 +34,18 @@ class DropdownList<T> extends StatelessWidget {
               dropdownList.any((item) => getValue(item) == controller.text)
           ? dropdownList.firstWhere((item) => getValue(item) == controller.text)
           : null,
-      items: dropdownList.map((item) {
-        return DropdownMenuItem<T>(
-          value: item,
-          child: Text(getDisplay(item)),
-        );
-      }).toList(),
+      items: [
+        if (emptyOptionLabel != null)
+          DropdownMenuItem<T>(value: null, child: Text(emptyOptionLabel!)),
+        ...dropdownList.map((item) {
+          return DropdownMenuItem<T>(
+            value: item,
+            child: Text(getDisplay(item)),
+          );
+        }),
+      ],
       onChanged: (value) {
-        controller.text = getValue(value as T);
+        controller.text = value == null ? '' : getValue(value);
         onChanged(value);
       },
     );

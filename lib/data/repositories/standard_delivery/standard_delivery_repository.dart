@@ -74,9 +74,11 @@ class StandardDeliveryRepository extends GetxController {
     StandardDeliveryModel requestData,
     String actionBy, {
     bool showSuccessSnackBar = true,
+    bool clearHelper = false,
     http.Client? client,
   }) async {
-    final outcome = await sendUpdate(requestData, actionBy, client: client);
+    final outcome = await sendUpdate(requestData, actionBy,
+        clearHelper: clearHelper, client: client);
     switch (outcome.status) {
       case DeliveryUpdateStatus.updated:
         if (showSuccessSnackBar) {
@@ -102,11 +104,13 @@ class StandardDeliveryRepository extends GetxController {
   Future<DeliveryUpdateOutcome> sendUpdate(
     StandardDeliveryModel requestData,
     String actionBy, {
+    bool clearHelper = false,
     http.Client? client,
   }) async {
     try {
-      final payload =
-          StandardDeliveryMapper.toUpdateDto(requestData, actionBy).toJson();
+      final payload = StandardDeliveryMapper.toUpdateDto(requestData, actionBy,
+              clearHelper: clearHelper)
+          .toJson();
 
       final response = await (client ?? http.Client())
           .patch(BApiEnvironment.api4Uri('/api4/request'),
