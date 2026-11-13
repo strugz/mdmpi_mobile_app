@@ -60,6 +60,20 @@ class BWhatsNew {
   BWhatsNew._();
 
   static const List<WhatsNewGroup> groups = [
+    WhatsNewGroup(version: '1.1.123', items: [
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.calendar_edit,
+          title: 'Back Load date check',
+          detail: 'Submitting a Back Load with the delivery date unchanged now '
+              'asks first: Change date or Submit anyway.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.user_minus,
+          title: 'Helper can be left blank',
+          detail: 'The Helper list has a None choice. In Re-assign Driver / '
+              'Helper, picking None removes the helper from the request.'),
+    ]),
     WhatsNewGroup(version: '1.1.119', items: [
       WhatsNewItem(
           area: 'Logistics',
