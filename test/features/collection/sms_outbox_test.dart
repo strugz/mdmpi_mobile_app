@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/data/local/dao/collection/collection_sms_outbox_dao.dart';
 import 'package:mdmpi_mobile_app/data/local/db_schema.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
+import 'package:mdmpi_mobile_app/data/services/native_sms_sender.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_theme.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_sms_outbox_controller.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/pages/sms/sms_outbox_screen.dart';
@@ -30,6 +31,7 @@ void main() {
   late List<String> sentTo;
   late Set<String> failFor;
   late Set<String> silentFor;
+  late Set<String> refusedFor;
   late bool granted;
   late DateTime clock;
   late List<String> contacts;
@@ -41,6 +43,7 @@ void main() {
     sentTo = [];
     failFor = {};
     silentFor = {};
+    refusedFor = {};
     granted = true;
     clock = DateTime(2026, 10, 20, 9);
     contacts = [_c1, _c2];
@@ -65,7 +68,12 @@ void main() {
         send: (to, message, onStatus) async {
           if (failFor.contains(to)) throw Exception('no signal');
           sentTo.add(to);
-          if (!silentFor.contains(to)) onStatus(SendStatus.SENT);
+          if (refusedFor.contains(to)) {
+            onStatus(SendStatus.SENT,
+                error: NativeSmsSender.failureReason(1));
+          } else if (!silentFor.contains(to)) {
+            onStatus(SendStatus.SENT);
+          }
         },
         smsAvailable: () => true,
         initials: () => 'MAR',
@@ -137,6 +145,44 @@ void main() {
           reason: 'some went out, one did not');
       expect(m.retryableNumbers, [_c2]);
       expect(sms.needsAttention.value, 1);
+    });
+
+    test('Android reported the send failed: failed, not sent, tried again',
+        () async {
+      refusedFor = {_head};
+      final sms = build();
+      final outcome =
+          await sms.notifyEngagementCleared(clientName: 'Metro Globe');
+      expect(outcome, CollectionSmsOutcome.unconfirmed);
+
+      final m = (await dao.getAll()).single;
+      expect(m.status, isNot(SmsOutboxStatus.sent));
+      expect(m.recipients.first.result, SmsRecipientResult.failed);
+      expect(m.retryableNumbers, [_head],
+          reason: 'the radio said it never went out, so it goes again');
+      expect(m.lastError, NativeSmsSender.failureReason(1));
+    });
+
+    test('a developer test SMS goes to that number only, through the Outbox',
+        () async {
+      final sms = build();
+      final outcome =
+          await sms.sendTest(number: ' 0920 000 0009 ', message: 'Test SMS');
+      expect(outcome, CollectionSmsOutcome.sent);
+      expect(sentTo, ['0920 000 0009'],
+          reason: 'never the Head or the Collection contacts');
+      final m = (await dao.getAll()).single;
+      expect(m.kind, SmsKind.test);
+      expect(m.message, 'Test SMS\n- MAR');
+      expect(m.status, SmsOutboxStatus.sent);
+    });
+
+    test('Android refused every send: failed', () async {
+      refusedFor = {_head, _c1, _c2};
+      final sms = build();
+      expect(await sms.notifyEngagementCleared(clientName: 'X'),
+          CollectionSmsOutcome.failed);
+      expect((await dao.getAll()).single.status, SmsOutboxStatus.failed);
     });
 
     test('nobody went out: failed', () async {

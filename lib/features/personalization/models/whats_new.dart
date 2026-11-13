@@ -62,6 +62,42 @@ class BWhatsNew {
   static const List<WhatsNewGroup> groups = [
     WhatsNewGroup(version: '1.1.123', items: [
       WhatsNewItem(
+          icon: Iconsax.simcard,
+          title: 'See which SIM sends the SMS',
+          detail: 'Settings → SMS SIM shows the SIM slot, network and number '
+              'the app texts from. Tap it to allow phone access the first '
+              'time.'),
+      WhatsNewItem(
+          icon: Iconsax.mobile,
+          title: 'A build for Android 11 and below',
+          detail: 'Phones on Android 11 or older get their own download so '
+              'SMS sends work. The download link says which one to use.'),
+      WhatsNewItem(
+          icon: Iconsax.refresh,
+          title: 'Updated app tools',
+          detail: 'The app is built on newer Android tools. Nothing changes '
+              'in how you use it.'),
+      WhatsNewItem(
+          area: 'Collection',
+          icon: Iconsax.sms,
+          title: 'SMS Outbox tells the truth',
+          detail: 'An SMS the phone could not send (no load, no signal) no '
+              'longer shows as Sent. It shows as not sent with the reason, '
+              'and goes again by itself.'),
+      WhatsNewItem(
+          area: 'Collection',
+          icon: Iconsax.receipt_item,
+          title: 'Invoice list shows your tap',
+          detail: 'Picking an invoice on an engagement now shows the tap, so '
+              'you can see it registered.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.box_add,
+          title: 'Faster Add Item from a photo',
+          detail: 'Scanned Items → Capture or Attach File: the phone reads the '
+              'item table itself first, so clear lists fill in quicker. Check '
+              'the items before you save.'),
+      WhatsNewItem(
           area: 'Logistics',
           icon: Iconsax.calendar_edit,
           title: 'Back Load date check',
