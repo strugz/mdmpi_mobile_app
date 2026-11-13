@@ -1,4 +1,5 @@
 import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/ocr_dump_page.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -17,6 +18,7 @@ import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widge
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/settings_department_theme.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/settings_hard_reset_section.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/sms_sim_tile.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/test_sms_tile.dart';
 
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -263,6 +265,7 @@ class _CollectionSettings extends StatelessWidget {
             title: 'Developer Tools', showActionButton: false),
         const SizedBox(height: BSizes.spaceBtwItems),
         const _LocalStorageViewerTile(),
+        if (kDebugMode && GetPlatform.isAndroid) const TestSmsTile(),
       ],
     );
   }
