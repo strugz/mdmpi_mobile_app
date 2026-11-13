@@ -16,6 +16,7 @@ import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/local_stor
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/contact_directory_screen.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/settings_department_theme.dart';
 import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/settings_hard_reset_section.dart';
+import 'package:mdmpi_mobile_app/features/personalization/screens/settings/widgets/sms_sim_tile.dart';
 
 import 'package:mdmpi_mobile_app/features/personalization/controller/realtime_location_saver_controller.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -174,6 +175,7 @@ class _LogisticsSettings extends StatelessWidget {
           subTitle: LogisticsThemeScreen.summary(),
           onTap: () => Get.toNamed(BRoutes.logisticsTheme),
         ),
+        if (GetPlatform.isAndroid) const SmsSimTile(),
         const _QuoteOfTheDayTile(),
         const _AboutTile(),
         const BSectionHeading(
@@ -248,6 +250,7 @@ class _CollectionSettings extends StatelessWidget {
         const _CollectedScopeTile(),
         if (GetPlatform.isAndroid) const _FollowUpRemindersTile(),
         if (GetPlatform.isAndroid) const _VisitLocationTile(),
+        if (GetPlatform.isAndroid) const SmsSimTile(),
         BSettingsMenuTile(
           icon: Iconsax.folder_2,
           title: 'Storage',
