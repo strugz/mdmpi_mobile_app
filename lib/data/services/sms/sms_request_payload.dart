@@ -25,6 +25,10 @@ class SmsRequestPayload {
   /// through the Received step where the waybill is captured.
   final String waybillNumber;
 
+  /// Air / Sea / Land departure (base and HD), entered with the waybill at Drop Off.
+  /// Empty for every other request.
+  final String departureAt;
+
   const SmsRequestPayload({
     required this.requestId,
     required this.requesterCode,
@@ -40,6 +44,7 @@ class SmsRequestPayload {
     this.inventoryItems = const [],
     this.dispatchAt = '',
     this.waybillNumber = '',
+    this.departureAt = '',
   });
 }
 

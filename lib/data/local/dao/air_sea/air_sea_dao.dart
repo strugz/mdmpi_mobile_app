@@ -122,6 +122,7 @@ class AirSeaDao {
       'Helper': airSeaModel.helper,
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
+      'DepartureAt': airSeaModel.departureAt,
       'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
       'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
       'ProvincialInTransitAt': airSeaModel.provincialInTransitAt,
@@ -230,6 +231,7 @@ class AirSeaDao {
         'Helper': airSeaModel.helper,
         'DispatchedAt': airSeaModel.dispatchedAt,
         'DropOffAt': airSeaModel.dropOffAt,
+        'DepartureAt': airSeaModel.departureAt,
         'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
         'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
         'ProvincialInTransitAt':
@@ -336,6 +338,7 @@ class AirSeaDao {
       'Helper': airSeaModel.helper,
       'DispatchedAt': airSeaModel.dispatchedAt,
       'DropOffAt': airSeaModel.dropOffAt,
+      'DepartureAt': airSeaModel.departureAt,
       'ProvincialPickUpBy': airSeaModel.provincialPickUpBy,
       'ProvincialPickUpAt': airSeaModel.provincialPickUpAt,
       'ProvincialInTransitAt':airSeaModel.provincialInTransitAt,

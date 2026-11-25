@@ -96,6 +96,8 @@ class DatabaseHelper {
     return await openDatabase(
       path,
       // 22: Users gained HeadKey / HeadName (My Head setting).
+      // Air/Sea DepartureAt arrives by ALTER in onOpen (ensureAirSeaColumns),
+      // not by a bump, so updating the app keeps every cached list.
       version: 22,
       onCreate: (db, version) async {
         await createAllTables(db);
@@ -117,6 +119,7 @@ class DatabaseHelper {
         await ensureProofUploadTables(db);
         await ensureCollectionTables(db);
         await ensureOneScanTables(db);
+        await ensureAirSeaColumns(db);
       },
     );
   }

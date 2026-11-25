@@ -24,7 +24,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 class _FakeService implements IDeliveryDocumentScanService {
   _FakeService(this.result);
 
-  final Result<DeliveryDocumentScanResult> result;
+  Result<DeliveryDocumentScanResult> result;
   var cleared = 0;
 
   @override
@@ -144,6 +144,122 @@ void main() {
     expect(form.formState.clientInformation.value!.id, 'C-9');
     expect(form.formState.documentReferenceControllers.map((c) => c.text),
         ['ITRNo.:810003448']);
+  });
+
+  test('a typed reference is added ticked; duplicates and blanks are not',
+      () {
+    expect(scan.addReference('  DRNo.:690014896 '), isTrue);
+    expect(scan.addReference('drno.: 690014896'), isFalse);
+    expect(scan.addReference('sis#:00611'), isFalse,
+        reason: 'already read by the scan');
+    expect(scan.addReference('   '), isFalse);
+    expect(scan.allReferences.last, 'DRNo.:690014896');
+
+    scan.chooseSkipClient();
+    final applied = scan.applyToForm(_form());
+
+    expect(applied.referencesAdded, 3);
+    expect(scan.allReferences, isNotEmpty);
+    scan.discard();
+    expect(scan.addedReferences, isEmpty);
+  });
+
+  test('scanning another page adds only its new references', () async {
+    await scan.confirmClient(_client('C-1', 'GALINATO', ''));
+    service.result = Result.success(DeliveryDocumentScanResult(
+      header: const ScannedClientHeader(name: 'Someone Else'),
+      match: ClientMatchResult.none,
+      references: const ['SIS#:00611', 'PONo.:100108292'],
+      items: const ItemTableReading(headerFound: false, items: []),
+    ));
+
+    expect(await scan.scanReferences(File('page2')), 1);
+
+    expect(scan.allReferences,
+        ['ITRNo.:810003448', 'SIS#:00611', 'PONo.:100108292']);
+    expect(scan.selectedReferences, contains('PONo.:100108292'));
+    expect(scan.confirmedClient.value!.id, 'C-1',
+        reason: 'the client on the sheet is kept');
+    expect(scan.result.value!.items.items.single.itemCode, 'RXH60169',
+        reason: 'the items from the first page are kept');
+
+    service.result = Result.failure('Could not read the document');
+    expect(await scan.scanReferences(File('page3')), isNull);
+    expect(scan.error.value, 'Could not read the document');
+    expect(scan.allReferences, hasLength(3));
+  });
+
+  test('scanning page 2 adds only its items; the same page twice adds none',
+      () async {
+    await scan.confirmClient(_client('C-1', 'GALINATO', ''));
+    final page2 = Result.success(DeliveryDocumentScanResult(
+      header: const ScannedClientHeader(name: 'Someone Else'),
+      match: ClientMatchResult.none,
+      references: const ['PONo.:999'],
+      items: ItemTableReading(headerFound: true, items: [
+        InventoryItemModel(
+            itemCode: 'RXH60169',
+            description: 'Optic Bench / WBC Chamber',
+            qty: 1,
+            unit: 'PIECE'), // same row as page 1
+        InventoryItemModel(
+            itemCode: 'OSRB116', description: 'Reagent', qty: 2, unit: 'BOX'),
+      ], unsure: const {1}),
+    ));
+    service.result = page2;
+
+    expect(await scan.scanItems(File('page2')), 1);
+    expect(await scan.scanItems(File('page2')), 0, reason: 'same page again');
+
+    expect(scan.allItems.map((i) => i.itemCode), ['RXH60169', 'OSRB116']);
+    expect(scan.allUnsureLabels, ['OSRB116']);
+    expect(scan.allReferences, isNot(contains('PONo.:999')),
+        reason: 'only items are taken from the page');
+    expect(scan.confirmedClient.value!.id, 'C-1');
+
+    final form = _form();
+    final applied = scan.applyToForm(form);
+    expect(applied.itemsAdded, 2);
+    expect(form.formState.scannedInventoryItems.map((i) => i.itemCode),
+        containsAll(['RXH60169', 'OSRB116']));
+
+    service.result = Result.failure('Could not read the document');
+    expect(await scan.scanItems(File('page3')), isNull);
+    expect(scan.allItems, hasLength(2), reason: 'a failed read changes nothing');
+
+    scan.discard();
+    expect(scan.reviewItems, isEmpty);
+  });
+
+  test('items can be edited and removed on the sheet before Apply', () {
+    expect(scan.reviewItems.single.unsure, isFalse);
+    final first = scan.reviewItems.single.item;
+
+    scan.updateItem(0, first.copyWith(qty: 3, description: 'Optic Bench'));
+    expect(scan.reviewItems.single.item.qty, 3);
+    expect(scan.reviewItems.single.unsure, isFalse,
+        reason: 'an edited row counts as checked');
+
+    scan.updateItem(5, first); // out of range: ignored, no throw
+    scan.removeItem(5);
+
+    final form = _form();
+    scan.chooseSkipClient();
+    scan.applyToForm(form);
+    expect(form.formState.scannedInventoryItems.single.qty, 3);
+
+    scan.removeItem(0);
+    expect(scan.reviewItems, isEmpty);
+    expect(scan.includeItems.value, isFalse);
+
+    // A typed-in item turns items back on and goes in on Apply.
+    scan.addItem(InventoryItemModel(
+        itemCode: 'NEW1', description: 'Typed in', qty: 1, unit: 'PC'));
+    expect(scan.includeItems.value, isTrue);
+    expect(scan.allUnsureLabels, isEmpty);
+    final form2 = _form();
+    expect(scan.applyToForm(form2).itemsAdded, 1);
+    expect(form2.formState.scannedInventoryItems.single.itemCode, 'NEW1');
   });
 
   test('empty reference fields are filled before new ones are added', () {

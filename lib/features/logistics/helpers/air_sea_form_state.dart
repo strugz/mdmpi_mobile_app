@@ -34,6 +34,10 @@ class AirSeaFormState {
   final CommuteTicketToggle commute = CommuteTicketToggle();
   final TextEditingController dispatchedAtController = TextEditingController();
   final TextEditingController dropOffAtController = TextEditingController();
+
+  /// Drop Off: the departure time picked by the courier. Null means "now",
+  /// taken when Drop Off is saved.
+  final Rxn<TimeOfDay> departureTime = Rxn<TimeOfDay>();
   final TextEditingController provincialDeliveredToController = TextEditingController();
   final TextEditingController provincialRemarksController = TextEditingController();
   final RxList<TextEditingController> documentReferenceControllers =
@@ -70,6 +74,15 @@ class AirSeaFormState {
         : "";
   }
 
+  /// The departure as a stored timestamp: today at the picked time, or [now]
+  /// when nothing was picked.
+  String departureStamp(DateTime now) {
+    final time = departureTime.value;
+    if (time == null) return now.toString();
+    return DateTime(now.year, now.month, now.day, time.hour, time.minute)
+        .toString();
+  }
+
   /// Resets all form fields to their default or empty state.
   /// Maintains category selection with 'reagent' as default if available.
   /// Properly disposes all document reference controllers to prevent memory leaks.
@@ -89,6 +102,7 @@ class AirSeaFormState {
     vehicleController.text = '';
     dispatchedAtController.text = '';
     dropOffAtController.text = '';
+    departureTime.value = null;
     provincialDeliveredToController.text = '';
     provincialRemarksController.text = '';
     receiverSignatureBase64.value = '';

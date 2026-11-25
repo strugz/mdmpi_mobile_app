@@ -424,6 +424,10 @@ class AirSeaDataManager {
             newStatus == BTexts.statusDropOff && request.dropOffAt.isEmpty
                 ? nowString
                 : request.dropOffAt,
+        // Entered with the waybill on the Drop Off form (base and HD).
+        departureAt: newStatus == BTexts.statusDropOff
+            ? formState.departureStamp(DateTime.now())
+            : request.departureAt,
         provincialReceiverName: newStatus == BTexts.statusProvincialDelivered &&
                 formState.provincialDeliveredToController.text.isNotEmpty
             ? formState.provincialDeliveredToController.text.trim()

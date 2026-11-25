@@ -33,6 +33,10 @@ class SmsMessageTemplateService {
     final waybillLine = payload.waybillNumber.trim().isEmpty
         ? ''
         : 'Waybill Number: ${payload.waybillNumber.trim()}\n';
+    // Air / Sea / Land (base and HD): the departure entered with the waybill.
+    final departureLine = payload.departureAt.trim().isEmpty
+        ? ''
+        : 'Departure Time: ${BFormatter.formatTimeAmPm(payload.departureAt.trim())}\n';
 
     final inventoryItemsText = payload.inventoryItems.isEmpty
         ? ''
@@ -102,6 +106,7 @@ class SmsMessageTemplateService {
             'Document References:\n'
             '$documentReferencesText\n'
             '$waybillLine'
+            '$departureLine'
             'Status: $status.'
             '$targetDateLine';
       case BTexts.statusDoneDelivery:

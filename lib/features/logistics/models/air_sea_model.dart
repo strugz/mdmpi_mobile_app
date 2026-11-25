@@ -29,6 +29,9 @@ class AirSeaModel {
   String dispatchedAt;
   String dropOffAt;
 
+  /// When the shipment leaves (base and HD), entered with the waybill at Drop Off.
+  String departureAt;
+
   String provincialPickUpBy;
   String provincialPickUpAt;
   String provincialInTransitAt;
@@ -74,6 +77,7 @@ class AirSeaModel {
     this.helper = '',
     this.dispatchedAt = '',
     this.dropOffAt = '',
+    this.departureAt = '',
     this.provincialPickUpBy = '',
     this.provincialPickUpAt = '',
     this.provincialInTransitAt = '',
@@ -203,6 +207,7 @@ class AirSeaModel {
     String? helper,
     String? dispatchedAt,
     String? dropOffAt,
+    String? departureAt,
 
     String? provincialPickUpBy,
     String? provincialPickUpAt,
@@ -241,6 +246,7 @@ class AirSeaModel {
       helper: helper ?? this.helper,
       dispatchedAt: dispatchedAt ?? this.dispatchedAt,
       dropOffAt: dropOffAt ?? this.dropOffAt,
+      departureAt: departureAt ?? this.departureAt,
       provincialPickUpBy: provincialPickUpBy ?? this.provincialPickUpBy,
       provincialPickUpAt: provincialPickUpAt ?? this.provincialPickUpAt,
       provincialInTransitAt:
@@ -285,6 +291,7 @@ class AirSeaModel {
       'Helper': helper,
       'DispatchedAt': dispatchedAt,
       'DropOffAt': dropOffAt,
+      'DepartureAt': departureAt,
       'ProvincialPickUpBy': provincialPickUpBy,
       'ProvincialPickUpAt': provincialPickUpAt,
       'ProvincialInTransitAt': provincialInTransitAt,
@@ -391,6 +398,8 @@ class AirSeaModel {
           ['DispatchedAt', 'dispatchedAt', 'Dispatchedat', 'dispatchedat']),
       dropOffAt: _firstPresent(
           json, ['DropOffAt', 'dropOffAt', 'Dropoffat', 'dropoffat']),
+      departureAt: _firstPresent(
+          json, ['DepartureAt', 'departureAt', 'departureat']),
       provincialPickUpBy: _firstPresent(json, [
         'ProvincialPickUpBy',
         'provincialPickUpBy',
@@ -488,6 +497,7 @@ class AirSeaModel {
       helper: (lower['helper'] ?? '').toString(),
       dispatchedAt: (lower['dispatchedat'] ?? '').toString(),
       dropOffAt: (lower['dropoffat'] ?? '').toString(),
+      departureAt: (lower['departureat'] ?? '').toString(),
       provincialPickUpBy: (lower['provincialpickupby'] ?? '').toString(),
       provincialPickUpAt: _normalizeDateTimeString(provincialPickUpAtValue),
       provincialInTransitAt:
