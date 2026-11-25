@@ -7,6 +7,7 @@ import 'package:mdmpi_mobile_app/base/utils/b_document_scanner.dart';
 import 'package:mdmpi_mobile_app/base/utils/b_name_normalizer.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/data/repositories/client/client_alias_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/delivery_document_type.dart';
@@ -14,6 +15,9 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/scan_form_targe
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/scan/delivery_document_scan_result.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
+
+/// One row on the review sheet: the item and whether the user should check it.
+typedef ReviewItem = ({InventoryItemModel item, bool unsure});
 
 /// What [DeliveryDocumentScanController.applyToForm] changed.
 class OneScanApplied {
@@ -86,6 +90,53 @@ class DeliveryDocumentScanController extends GetxController {
 
   /// References still ticked on the review sheet.
   final RxSet<String> selectedReferences = <String>{}.obs;
+
+  /// References typed on the review sheet, after the ones the scan read.
+  final RxList<String> addedReferences = <String>[].obs;
+
+  /// True while another page is read for its references only.
+  final RxBool isScanningReferences = false.obs;
+
+  /// Scanned references followed by the ones the user added.
+  List<String> get allReferences =>
+      [...?result.value?.references, ...addedReferences];
+
+  /// The items on the review sheet, editable before Apply: the first page's,
+  /// then any read from more pages with "Scan items". [ReviewItem.unsure]
+  /// marks a row to check; editing a row clears it.
+  final RxList<ReviewItem> reviewItems = <ReviewItem>[].obs;
+
+  /// True while another page is read for its items only.
+  final RxBool isScanningItems = false.obs;
+
+  List<InventoryItemModel> get allItems =>
+      [for (final r in reviewItems) r.item];
+
+  /// The rows still to check, by item code (description when there is none).
+  List<String> get allUnsureLabels =>
+      [for (final r in reviewItems) if (r.unsure) _itemLabel(r.item)];
+
+  static String _itemLabel(InventoryItemModel i) =>
+      i.itemCode.isNotEmpty ? i.itemCode : i.description;
+
+  /// Replaces the row at [index] with the user's edit; it is checked now.
+  void updateItem(int index, InventoryItemModel item) {
+    if (index < 0 || index >= reviewItems.length) return;
+    reviewItems[index] = (item: item, unsure: false);
+  }
+
+  /// Adds an item the user typed in (one the scan missed), ticked to go in.
+  void addItem(InventoryItemModel item) {
+    reviewItems.add((item: item, unsure: false));
+    includeItems.value = true;
+  }
+
+  /// Takes the row at [index] off the scan; nothing else changes.
+  void removeItem(int index) {
+    if (index < 0 || index >= reviewItems.length) return;
+    reviewItems.removeAt(index);
+    if (reviewItems.isEmpty) includeItems.value = false;
+  }
 
   final RxBool includeItems = true.obs;
 
@@ -201,6 +252,11 @@ class DeliveryDocumentScanController extends GetxController {
       selectedReferences
         ..clear()
         ..addAll(value.references);
+      addedReferences.clear();
+      reviewItems.assignAll([
+        for (var i = 0; i < value.items.items.length; i++)
+          (item: value.items.items[i], unsure: value.items.isUnsure(i)),
+      ]);
       includeItems.value = value.items.items.isNotEmpty;
       if (fixedTarget != null) {
         choosesTarget.value = false;
@@ -215,6 +271,59 @@ class DeliveryDocumentScanController extends GetxController {
       return true;
     } finally {
       isScanning.value = false;
+    }
+  }
+
+  /// Reads another page and adds only its references, ticked; the client,
+  /// items and request already on the review sheet stay as they are.
+  /// Returns how many were new, or null when the page could not be read
+  /// ([error] says why).
+  Future<int?> scanReferences(File file) async {
+    isScanningReferences.value = true;
+    error.value = null;
+    try {
+      final scanned = await _service.scan(file);
+      if (scanned.isFailure) {
+        error.value = scanned.error;
+        return null;
+      }
+      final added = scanned.value.references.where(addReference).length;
+      logDebug('[OneScan] references rescan added=$added');
+      return added;
+    } finally {
+      isScanningReferences.value = false;
+    }
+  }
+
+  /// Reads another page (e.g. page 2 of the invoice) and adds only its items;
+  /// client, references and request stay as they are. A row already listed
+  /// with the same code, serial and quantity is skipped, so scanning the
+  /// same page twice does not double the quantities. Returns how many were
+  /// added, or null when the page could not be read ([error] says why).
+  Future<int?> scanItems(File file) async {
+    isScanningItems.value = true;
+    error.value = null;
+    try {
+      final scanned = await _service.scan(file);
+      if (scanned.isFailure) {
+        error.value = scanned.error;
+        return null;
+      }
+      final reading = scanned.value.items;
+      String key(InventoryItemModel i) => '${i.mergeKey}|${i.qty}';
+      final listed = allItems.map(key).toSet();
+      var added = 0;
+      for (var i = 0; i < reading.items.length; i++) {
+        final item = reading.items[i];
+        if (!listed.add(key(item))) continue;
+        reviewItems.add((item: item, unsure: reading.isUnsure(i)));
+        added++;
+      }
+      if (added > 0) includeItems.value = true;
+      logDebug('[OneScan] items rescan added=$added');
+      return added;
+    } finally {
+      isScanningItems.value = false;
     }
   }
 
@@ -259,6 +368,20 @@ class DeliveryDocumentScanController extends GetxController {
     }
   }
 
+  /// Adds a typed reference, ticked. False when it is blank or already
+  /// listed (spaces and case ignored, as the form does).
+  bool addReference(String reference) {
+    final value = reference.trim();
+    String key(String v) => v.replaceAll(' ', '').toUpperCase();
+    if (value.isEmpty ||
+        allReferences.any((r) => key(r) == key(value))) {
+      return false;
+    }
+    addedReferences.add(value);
+    selectedReferences.add(value);
+    return true;
+  }
+
   /// Whether applying would replace a different client already on the form,
   /// so the sheet asks "Replace client X with Y?" first.
   bool replacesClientOn(StandardDeliveryController form) {
@@ -289,7 +412,7 @@ class DeliveryDocumentScanController extends GetxController {
       clientSet = true;
     }
 
-    final refs = scanned.references
+    final refs = allReferences
         .where(selectedReferences.contains)
         .toList(growable: false);
     final referencesAdded = form.appendDocumentReferences(refs);
@@ -297,12 +420,12 @@ class DeliveryDocumentScanController extends GetxController {
     var itemsAdded = 0;
     final takesItems =
         target.value == null || ScanFormTarget.takesItems(target.value!);
-    final itemsSkipped = includeItems.value &&
-        scanned.items.items.isNotEmpty &&
-        !takesItems;
-    if (includeItems.value && scanned.items.items.isNotEmpty && takesItems) {
-      form.mergeScannedItems(scanned.items.items);
-      itemsAdded = scanned.items.items.length;
+    final items = allItems;
+    final itemsSkipped =
+        includeItems.value && items.isNotEmpty && !takesItems;
+    if (includeItems.value && items.isNotEmpty && takesItems) {
+      form.mergeScannedItems(items);
+      itemsAdded = items.length;
     }
 
     logDebug('[OneScan] applied client=${chosen?.id ?? '-'} '
@@ -324,6 +447,8 @@ class DeliveryDocumentScanController extends GetxController {
     addressFromScan.value = false;
     skipClient.value = false;
     selectedReferences.clear();
+    addedReferences.clear();
+    reviewItems.clear();
     target.value = null;
     targetChoices.clear();
     choosesTarget.value = false;

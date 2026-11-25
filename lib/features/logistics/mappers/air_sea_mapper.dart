@@ -11,6 +11,14 @@ class AirSeaMapper {
     return trimmed.isEmpty ? null : trimmed;
   }
 
+  /// DepartureAt only when it is a real date. Anything else is left out:
+  /// the API rejects an unparsable date with 400, which would fail the whole
+  /// Drop Off update over an optional field.
+  static String? _departureOrNull(String value) {
+    final iso = BFormatter.normalizeToIsoDatetime(value);
+    return iso != null && DateTime.tryParse(iso) != null ? iso : null;
+  }
+
   static String? _normalizeDateTimeValue(String? value) {
     return BFormatter.normalizeToIsoDatetime(value, toUtc: true);
   }
@@ -54,6 +62,7 @@ class AirSeaMapper {
       helper: _nonEmptyOrNull(m.helper),
       dispatchedAt: BFormatter.normalizeToIsoDatetime(m.dispatchedAt),
       dropOffAt: BFormatter.normalizeToIsoDatetime(m.dropOffAt),
+      departureAt: _departureOrNull(m.departureAt),
       provincialReceiverName: _nonEmptyOrNull(m.provincialReceiverName),
       provincialPickUpBy: _nonEmptyOrNull(m.provincialPickUpBy),
       provincialPickUpAt: _normalizeDateTimeValue(m.provincialPickUpAt),
@@ -91,6 +100,7 @@ class AirSeaMapper {
     put('Helper', m.helper);
     put('DispatchedAt', BFormatter.normalizeToIsoDatetime(m.dispatchedAt));
     put('DropOffAt', BFormatter.normalizeToIsoDatetime(m.dropOffAt));
+    put('DepartureAt', _departureOrNull(m.departureAt));
     put('ProvincialReceiverName', m.provincialReceiverName);
     put('ProvincialPickUpBy', m.provincialPickUpBy);
     put('ProvincialPickUpAt', _normalizeDateTimeValue(m.provincialPickUpAt));

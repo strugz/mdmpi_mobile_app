@@ -51,6 +51,32 @@ class AirSeaDropOffSection extends StatelessWidget {
           prefixIcon: Iconsax.clipboard_text,
         ),
 
+        /// When the shipment leaves. Now unless the courier picks another
+        /// time; printed in the Drop Off SMS under the waybill.
+        Obx(() {
+          final picked = controller.formState.departureTime.value;
+          return ListTile(
+            key: const Key('airSeaDepartureTime'),
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Iconsax.clock, color: iconColor),
+            title: Text('Departure Time', style: TextStyle(color: textColor)),
+            subtitle: Text(
+              picked == null ? 'Now' : picked.format(context),
+              style: TextStyle(color: textColor),
+            ),
+            trailing: Icon(Iconsax.edit_2, color: iconColor),
+            onTap: () async {
+              final time = await showTimePicker(
+                context: context,
+                initialTime: picked ?? TimeOfDay.now(),
+              );
+              if (time != null) {
+                controller.formState.departureTime.value = time;
+              }
+            },
+          );
+        }),
+
         const SizedBox(height: BSizes.spaceBtwItems),
 
         /// FIELD 2: Proof of Drop Off Image Capture
@@ -166,4 +192,3 @@ class AirSeaDropOffSection extends StatelessWidget {
     );
   }
 }
-

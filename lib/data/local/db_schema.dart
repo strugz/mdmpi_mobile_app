@@ -211,6 +211,7 @@ Future<void> createAllTables(Database db) async {
       Helper TEXT,
       DispatchedAt TEXT,
       DropOffAt TEXT,
+      DepartureAt TEXT,
       ProvincialPickUpBy TEXT DEFAULT '',
       ProvincialPickUpAt TEXT DEFAULT '',
       ProvincialInTransitAt TEXT DEFAULT '',
@@ -318,6 +319,15 @@ Future<void> createAllTables(Database db) async {
 ///
 /// `CLIENT_ALIAS_` maps a normalized scanned customer name to the client the
 /// user confirmed for it, so the next scan of that customer ranks it first.
+/// Air/Sea columns added after the table shipped, by ALTER on every open,
+/// so an app update needs no version bump (which would wipe and re-download
+/// every cached request list). Skips quietly when the table is not there.
+Future<void> ensureAirSeaColumns(Database db) async {
+  final info = await db.rawQuery('PRAGMA table_info(a_tblRequestAirSea)');
+  if (info.isEmpty) return;
+  await _addColumnIfMissing(db, 'a_tblRequestAirSea', 'DepartureAt', 'TEXT');
+}
+
 /// The aliases are learned on this device and exist nowhere else, so the
 /// table is created with `CREATE TABLE IF NOT EXISTS` and kept out of the
 /// destructive `_recreateAllTables` rebuild, like [ensureProofUploadTables].
