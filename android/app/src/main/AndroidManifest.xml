@@ -33,6 +33,10 @@
     <uses-permission android:name="android.permission.SEND_SMS"
         tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
 
+    <!-- Settings → SMS SIM: which SIM and number the SMS go out from. -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+
     <application
         android:label="MDMPI APP"
         android:icon="@mipmap/mdmpi_icon"

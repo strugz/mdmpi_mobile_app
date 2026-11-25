@@ -106,6 +106,39 @@ Modular config lives in `.claude/` (see `.claude/README.md`):
 - `commands/` — `/check`, `/review`, `/new-feature`, `/new-route`, `/qa`, `/bump-version`,
   `/build-apk`, `/release-notes`, `/print-audit`, `/db`. None of them commit or push.
 
+## What's new on every release
+
+Every release also updates Settings → About. In the same change as the version bump, add
+a `WhatsNewGroup` for the new `major.minor.patch` at the **top** of `BWhatsNew.groups` in
+`lib/features/personalization/models/whats_new.dart`:
+
+- One `WhatsNewItem` per change users will notice: a short `title`, a one- or two-sentence
+  `detail`, and `area` set to `'Collection'` or `'Logistics'` (`null` when it is for everyone).
+- Plain words for staff, no file names or code. Leave out internal-only changes (CI,
+  refactors, tests).
+- One group per version. `test/features/personalization/screens/settings/about_screen_test.dart`
+  fails when the top group does not match the `pubspec.yaml` version.
+
+## Release announcement
+
+After both release builds are published (`v<version>` and `v<version>+sms`), the chat
+announcement is exactly this, with the version filled in. No change list, cards or
+patch notes:
+
+```
+📱 MDMPI App <version> is now released! @all,
+
+✅ Nothing to set up — just update to the latest build.
+
+Download: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version> (download app-release.apk under Assets)
+📲 Android 11 and below: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version>%2Bsms (download app-release.apk under Assets)
+📶 Please download it on the office Wi-Fi so it doesn't use your mobile data.
+```
+
+The `+sms` line points staff on Android 11 and below to the SMS build (see the
+branch section above). `%2B` is the `+` in the tag, as GitHub writes it. Send it only
+once both releases show `app-release.apk` under Assets.
+
 ## Reporting changes
 
 Whenever a turn changes something (code, tests, docs, config, a commit), always end the

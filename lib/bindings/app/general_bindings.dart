@@ -62,6 +62,7 @@ import 'package:mdmpi_mobile_app/data/repositories/standard_delivery/standard_de
 import 'package:mdmpi_mobile_app/data/repositories/user/user_repository.dart';
 import 'package:mdmpi_mobile_app/data/services/messaging_controller.dart';
 import 'package:mdmpi_mobile_app/data/services/collection_sms_service.dart';
+import 'package:mdmpi_mobile_app/data/services/sim_info_service.dart';
 import 'package:mdmpi_mobile_app/features/collection/presentation/controllers/collection_sms_outbox_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/forget_password_controller.dart';
 import 'package:mdmpi_mobile_app/features/authentication/presentation/controllers/verify_email_controller.dart';
@@ -410,6 +411,7 @@ class GeneralBindings extends Bindings {
             ),
         fenix: true);
     Get.lazyPut(() => CollectionSmsService(), fenix: true);
+    Get.lazyPut(() => SimInfoService(), fenix: true);
     // Settings → SMS Outbox; after the service it reads.
     Get.lazyPut(
         () => CollectionSmsOutboxController(

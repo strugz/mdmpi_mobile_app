@@ -13,7 +13,11 @@ class ScanSourceSheet {
   ScanSourceSheet._();
 
   static Future<DocumentScanSource?> show(BuildContext context,
-      {bool? scannerAvailable}) {
+      {bool? scannerAvailable,
+      String title = 'Scan a delivery document',
+      String subtitle =
+          'One page of the SI, DR, SIS, GI or slip fills the client, '
+              'references and items. You check everything before it is applied.'}) {
     final scanner = scannerAvailable ?? GetPlatform.isAndroid;
     return showModalBottomSheet<DocumentScanSource>(
       context: context,
@@ -22,12 +26,7 @@ class ScanSourceSheet {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(
-              title: Text('Scan a delivery document'),
-              subtitle: Text(
-                  'One page of the SI, DR, SIS, GI or slip fills the client, '
-                  'references and items. You check everything before it is applied.'),
-            ),
+            ListTile(title: Text(title), subtitle: Text(subtitle)),
             if (scanner)
               ListTile(
                 key: const ValueKey('scan-source-scanner'),

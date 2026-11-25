@@ -154,6 +154,7 @@ class SmsPayloadBuilder {
       inventoryItems: inventoryItems ?? const [],
       dispatchAt: model.dispatchedAt,
       waybillNumber: model.waybillNumber,
+      departureAt: model.departureAt,
     );
   }
 

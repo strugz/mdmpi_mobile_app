@@ -13,6 +13,7 @@ class AirSeaUpdateDto {
   final String? helper;
   final String? dispatchedAt;
   final String? dropOffAt;
+  final String? departureAt;
 
   final String? provincialReceiverName;
   final String? provincialPickUpBy;
@@ -40,6 +41,7 @@ class AirSeaUpdateDto {
     this.helper,
     this.dispatchedAt,
     this.dropOffAt,
+    this.departureAt,
     this.provincialReceiverName,
     this.provincialPickUpBy,
     this.provincialPickUpAt,
@@ -71,6 +73,7 @@ class AirSeaUpdateDto {
     put('Helper', helper);
     put('DispatchedAt', dispatchedAt);
     put('DropOffAt', dropOffAt);
+    put('DepartureAt', departureAt);
     put('ProvincialReceiverName', provincialReceiverName);
     put('ProvincialPickUpBy', provincialPickUpBy);
     put('ProvincialPickUpAt', provincialPickUpAt);

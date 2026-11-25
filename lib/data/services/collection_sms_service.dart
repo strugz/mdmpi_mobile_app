@@ -8,6 +8,7 @@ import 'package:mdmpi_mobile_app/features/collection/helpers/deposit_remarks.dar
 import 'package:mdmpi_mobile_app/base/utils/formatters/formatters.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/data/local/database_helper.dart';
+import 'package:mdmpi_mobile_app/data/services/native_sms_sender.dart';
 import 'package:mdmpi_mobile_app/data/repositories/user/user_directory_repository.dart';
 import 'package:mdmpi_mobile_app/features/collection/helpers/collection_status_colors.dart';
 import 'package:mdmpi_mobile_app/features/personalization/controller/user_controller.dart';
@@ -71,6 +72,7 @@ abstract final class SmsKind {
   static const cwt = 'CWT Pick-Up';
   static const routing = 'Routing of Documents';
   static const escalated = 'Reconciliation Escalated';
+  static const test = 'Test SMS';
 }
 
 /// One invoice in an Engagement Saved message.
@@ -105,8 +107,9 @@ class SmsAccountLine {
 
 typedef HeadContactResolver = Future<HeadContact?> Function();
 typedef ContactNumbersResolver = Future<List<String>> Function();
-typedef SmsSender = Future<void> Function(
-    String to, String message, void Function(SendStatus status) onStatus);
+/// [onStatus] SENT with an `error` means Android reported the send failed.
+typedef SmsSender = Future<void> Function(String to, String message,
+    void Function(SendStatus status, {String? error}) onStatus);
 typedef SmsPermission = Future<bool> Function();
 typedef NetworkIssueChecker = Future<String?> Function();
 typedef SmsOutcomeReporter = void Function(
@@ -627,6 +630,13 @@ class CollectionSmsService extends GetxController with WidgetsBindingObserver {
           headOnly: true,
           kind: SmsKind.escalated);
 
+  /// Developer Tools → Test SMS Outbox: [message] to [number] alone, saved
+  /// to the Outbox and sent like any Collection SMS (same retry and
+  /// statuses), but never to the Head or the Collection contacts.
+  Future<CollectionSmsOutcome> sendTest(
+          {required String number, required String message}) =>
+      send(message, kind: SmsKind.test, onlyTo: [number]);
+
   /// Whether a Head with a number is set, for the one-time Settings hint.
   Future<bool> hasHead() async {
     try {
@@ -684,14 +694,22 @@ class CollectionSmsService extends GetxController with WidgetsBindingObserver {
   /// screen: the collector's screen does not wait for it (callers do not
   /// await it). Resolves to how the first attempt went; a message the phone
   /// could not send is tried again by itself (see [dispatchPending]).
+  ///
+  /// [onlyTo] replaces the Head and Collection contacts (the developer test
+  /// send, so a test never texts them).
   Future<CollectionSmsOutcome> send(String message,
-      {bool headOnly = false, String kind = ''}) async {
+      {bool headOnly = false, String kind = '', List<String>? onlyTo}) async {
     final text = signed(message, _safeInitials());
     if (!_smsAvailable()) {
       _report(const _Delivery(CollectionSmsOutcome.unavailable, null, 0, {}));
       return CollectionSmsOutcome.unavailable;
     }
-    final to = await recipients(headOnly: headOnly);
+    final to = onlyTo == null
+        ? await recipients(headOnly: headOnly)
+        : [
+            for (final n in onlyTo)
+              if (n.trim().isNotEmpty) n.trim(),
+          ];
     final record = await _recordNew(
         kind: kind, message: text, headOnly: headOnly, to: to);
     if (to.isEmpty) {
@@ -928,7 +946,9 @@ class CollectionSmsService extends GetxController with WidgetsBindingObserver {
           final sent = await _sendEach(to, message);
           outcome = sent.outcome;
           results = sent.results;
-          if (outcome == CollectionSmsOutcome.failed) {
+          if (sent.error != null) {
+            reason = sent.error;
+          } else if (outcome == CollectionSmsOutcome.failed) {
             reason = 'The phone did not accept the message for sending.';
           } else if (outcome == CollectionSmsOutcome.unconfirmed) {
             reason = 'The phone did not confirm the SMS as sent within '
@@ -945,14 +965,21 @@ class CollectionSmsService extends GetxController with WidgetsBindingObserver {
     return _Delivery(outcome, reason, to.length, results);
   }
 
-  /// One recipient at a time, each send bounded by a timeout.
-  Future<({CollectionSmsOutcome outcome, Map<String, String> results})>
-      _sendEach(List<String> to, String message) async {
+  /// One recipient at a time, each send bounded by a timeout. [error] is the
+  /// first failure Android reported, if any.
+  Future<
+      ({
+        CollectionSmsOutcome outcome,
+        Map<String, String> results,
+        String? error
+      })> _sendEach(List<String> to, String message) async {
     final results = <String, String>{};
     var confirmed = 0;
     var unconfirmed = 0;
+    String? error;
     for (var i = 0; i < to.length; i++) {
-      switch (await _sendToRecipient(to[i], message)) {
+      final sent = await _sendToRecipient(to[i], message);
+      switch (sent.result) {
         case _RecipientResult.confirmed:
           confirmed++;
           results[to[i]] = SmsRecipientResult.sent;
@@ -961,6 +988,7 @@ class CollectionSmsService extends GetxController with WidgetsBindingObserver {
           results[to[i]] = SmsRecipientResult.unconfirmed;
         case _RecipientResult.failed:
           results[to[i]] = SmsRecipientResult.failed;
+          error ??= sent.error;
       }
       if (i < to.length - 1 && _betweenRecipients > Duration.zero) {
         await Future.delayed(_betweenRecipients);
@@ -973,16 +1001,18 @@ class CollectionSmsService extends GetxController with WidgetsBindingObserver {
         : confirmed + unconfirmed == 0
             ? CollectionSmsOutcome.failed
             : CollectionSmsOutcome.unconfirmed;
-    return (outcome: outcome, results: results);
+    return (outcome: outcome, results: results, error: error);
   }
 
   /// Confirmed when the radio reports SENT within the timeout, unconfirmed
   /// when the phone accepted the send but no report came, failed when the
-  /// send threw.
-  Future<_RecipientResult> _sendToRecipient(String to, String message) async {
-    final sent = Completer<void>();
-    void onStatus(SendStatus status) {
-      if (status == SendStatus.SENT && !sent.isCompleted) sent.complete();
+  /// send threw or Android reported it failed (tried again by itself: the
+  /// radio said it never went out).
+  Future<({_RecipientResult result, String? error})> _sendToRecipient(
+      String to, String message) async {
+    final sent = Completer<String?>();
+    void onStatus(SendStatus status, {String? error}) {
+      if (status == SendStatus.SENT && !sent.isCompleted) sent.complete(error);
     }
 
     try {
@@ -990,32 +1020,32 @@ class CollectionSmsService extends GetxController with WidgetsBindingObserver {
           .timeout(sendCallTimeout);
     } catch (e) {
       logDebug('CollectionSmsService: send to $to failed: $e');
-      return _RecipientResult.failed;
+      return (
+        result: _RecipientResult.failed,
+        error: 'The phone did not accept the message for sending ($e).'
+      );
     }
     try {
-      await sent.future.timeout(_confirmTimeout);
-      return _RecipientResult.confirmed;
+      final error = await sent.future.timeout(_confirmTimeout);
+      if (error != null) {
+        logDebug('CollectionSmsService: send to $to refused: $error');
+        return (result: _RecipientResult.failed, error: error);
+      }
+      return (result: _RecipientResult.confirmed, error: null);
     } on TimeoutException {
       logDebug('CollectionSmsService: no SENT report for $to within '
           '${_confirmTimeout.inSeconds}s');
-      return _RecipientResult.unconfirmed;
+      return (result: _RecipientResult.unconfirmed, error: null);
     }
   }
 
-  /// Always multipart: Android's divideMessage decides how many parts the
-  /// text needs, and a one-part message goes out as a plain SMS. A
-  /// `length > 160` test cannot decide it, because the limit depends on the
-  /// alphabet (70 for UCS-2); a text over one part sent as a single SMS is
-  /// refused by the phone (`getSubmitPdu() returned null`) and never leaves it,
-  /// while the plugin still reports SENT.
-  Future<void> _sendSms(
-          String to, String message, void Function(SendStatus) onStatus) =>
-      _telephonyInstance.sendSms(
-        to: to,
-        message: message,
-        isMultipart: true,
-        statusListener: onStatus,
-      );
+  /// Through [NativeSmsSender], not another_telephony's sendSms: the plugin
+  /// reports SENT even when Android says the send failed. Always multipart:
+  /// Android's divideMessage decides how many parts the text needs, and a
+  /// one-part message goes out as a plain SMS.
+  Future<void> _sendSms(String to, String message,
+          void Function(SendStatus status, {String? error}) onStatus) =>
+      NativeSmsSender.send(to, message, onStatus);
 
   /// Nothing is shown: the outcome goes to the hook (tests) or the log, and
   /// the SMS Outbox carries it for the collector.

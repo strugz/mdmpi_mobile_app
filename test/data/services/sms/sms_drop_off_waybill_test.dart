@@ -97,4 +97,61 @@ void main() {
       );
     });
   });
+
+  group('Air / Sea / Land Drop Off SMS carries the departure time', () {
+    AirSeaModel hd({String departureAt = ''}) => AirSeaModel(
+          id: '3',
+          clientId: 'C1',
+          status: BTexts.statusDropOff,
+          formCategoryID: FormCategoryIds.airSeaHd,
+          waybillNumber: 'WB-HD',
+          departureAt: departureAt,
+        );
+
+    test('prints the time right under the waybill', () async {
+      final payload = await const SmsPayloadBuilder()
+          .build(BTexts.statusDropOff, hd(departureAt: '2026-11-25 15:30:00.000'));
+      final message = service.createMessage(BTexts.statusDropOff, payload!);
+      expect(message,
+          contains('Waybill Number: WB-HD\nDeparture Time: 03:30 PM\nStatus: Drop Off.'));
+    });
+
+    test('base Air / Sea / Land prints it too', () async {
+      final base = AirSeaModel(
+        id: '4',
+        clientId: 'C1',
+        status: BTexts.statusDropOff,
+        waybillNumber: 'WB-BASE',
+        departureAt: '2026-11-25 09:05:00.000',
+      );
+      final payload =
+          await const SmsPayloadBuilder().build(BTexts.statusDropOff, base);
+      expect(service.createMessage(BTexts.statusDropOff, payload!),
+          contains('Waybill Number: WB-BASE\nDeparture Time: 09:05 AM\n'));
+    });
+
+    test('omits the line when no departure was entered', () async {
+      final payload =
+          await const SmsPayloadBuilder().build(BTexts.statusDropOff, hd());
+      expect(service.createMessage(BTexts.statusDropOff, payload!),
+          isNot(contains('Departure')));
+    });
+
+    test('a blank or odd value never breaks the message', () async {
+      for (final value in ['   ', 'N/A']) {
+        final payload = await const SmsPayloadBuilder()
+            .build(BTexts.statusDropOff, hd(departureAt: value));
+        final message = service.createMessage(BTexts.statusDropOff, payload!);
+        expect(message, contains('Waybill Number: WB-HD'), reason: value);
+        expect(message, contains('Status: Drop Off.'), reason: value);
+      }
+    });
+
+    test('other statuses never print it', () async {
+      final payload = await const SmsPayloadBuilder()
+          .build(BTexts.statusDispatch, hd(departureAt: '2026-11-25 15:30:00'));
+      expect(service.createMessage(BTexts.statusDispatch, payload!),
+          isNot(contains('Departure')));
+    });
+  });
 }

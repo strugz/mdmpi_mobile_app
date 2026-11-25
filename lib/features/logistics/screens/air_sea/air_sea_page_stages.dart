@@ -167,6 +167,15 @@ class AirSeaPageStages extends StatelessWidget {
                 copyable: true,
               ),
             ],
+            if (requestModel.departureAt.isNotEmpty)
+              BLabelValueText(
+                label: 'Departure Time',
+                value: BFormatter.formatDateWithAmPm(requestModel.departureAt),
+                showLabel: true,
+                icon: Iconsax.clock,
+                padding: EdgeInsets.zero,
+                mainAlignment: MainAxisAlignment.start,
+              ),
 
             // Waybill Input Section (Release role only, when status is "Endorsed to Guard")
             if (requestModel.status == BTexts.statusEndorsedToGuard &&
