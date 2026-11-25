@@ -60,6 +60,28 @@ class BWhatsNew {
   BWhatsNew._();
 
   static const List<WhatsNewGroup> groups = [
+    WhatsNewGroup(version: '1.1.124', items: [
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.document_text,
+          title: 'Add references to a scan',
+          detail: 'When you check a scanned document, tap Add reference to '
+              'type one in, or Scan references to read another page for '
+              'its references only.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.edit_2,
+          title: 'See and fix scanned items',
+          detail: 'The scan now lists every item. Tap one to fix the code, '
+              'quantity or unit, or remove it. Add item and Scan items add '
+              'the ones the scan missed.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.clock,
+          title: 'Departure time on Air / Sea / Land',
+          detail: 'At Drop Off, enter the departure time with the waybill. '
+              'It is saved on the request and sent in the Drop Off SMS.'),
+    ]),
     WhatsNewGroup(version: '1.1.123', items: [
       WhatsNewItem(
           icon: Iconsax.simcard,
