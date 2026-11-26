@@ -418,6 +418,60 @@ void main() {
       expect(c.error.value, isNull);
     });
 
+    group('Crop & rotate after capture', () {
+      DeliveryDocumentScanController withCrop(
+        Future<List<File>?> Function() documentScan,
+        Future<File?> Function(File page) crop,
+      ) =>
+          DeliveryDocumentScanController(
+            service: service,
+            aliases: ClientAliasRepository(dao: () async => dao),
+            documentScan: documentScan,
+            pickImage: (source) async => File('plain-${source.name}'),
+            cropPage: crop,
+          );
+
+      test('the scanned page opens in the cropper; the crop is read',
+          () async {
+        final cropped = <String>[];
+        final c = withCrop(() async => [File('flat.jpg')], (page) async {
+          cropped.add(page.path);
+          return File('cropped.jpg');
+        });
+        expect((await c.pickPage(DocumentScanSource.scanner))!.path,
+            'cropped.jpg');
+        expect(cropped, ['flat.jpg']);
+      });
+
+      test('backing out of the cropper keeps the page as captured', () async {
+        final c = withCrop(() async => [File('flat.jpg')], (_) async => null);
+        expect((await c.pickPage(DocumentScanSource.scanner))!.path,
+            'flat.jpg');
+      });
+
+      test('the camera fallback is cropped too', () async {
+        final c = withCrop(
+            () async => null, (page) async => File('cropped-${page.path}'));
+        expect((await c.pickPage(DocumentScanSource.scanner))!.path,
+            'cropped-plain-camera');
+      });
+
+      test('cancelling the scanner never opens the cropper', () async {
+        final c = withCrop(
+            () async => const [], (_) async => fail('cropper opened'));
+        expect(await c.pickPage(DocumentScanSource.scanner), isNull);
+      });
+
+      test('camera and gallery pages are not cropped', () async {
+        final c = withCrop(
+            () async => fail('no scanner'), (_) async => fail('cropper opened'));
+        expect((await c.pickPage(DocumentScanSource.camera))!.path,
+            'plain-camera');
+        expect((await c.pickPage(DocumentScanSource.gallery))!.path,
+            'plain-gallery');
+      });
+    });
+
     test('camera and gallery are read as taken', () async {
       final opened = <ImageSource>[];
       final c = withScanner(() async => fail('no scanner'), opened);

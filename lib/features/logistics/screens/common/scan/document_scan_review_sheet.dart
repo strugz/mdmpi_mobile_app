@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:iconsax/iconsax.dart';
@@ -14,7 +15,10 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/scan_form_targe
 import 'package:mdmpi_mobile_app/features/logistics/models/scan/delivery_document_scan_result.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/scan/client_match_picker.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/scan/document_scan_progress_sheet.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/common/scan/scan_batches_editor.dart';
 import 'package:mdmpi_mobile_app/features/logistics/screens/common/scan/scan_source_sheet.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/ocr_read_page.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
 
 /// Review of one scan before anything reaches the form (plan §3): confirm
 /// the client (never pre-selected), untick references, and apply. Items go
@@ -123,6 +127,15 @@ class _Review extends StatelessWidget {
                 if (result.documentType != DeliveryDocumentType.unknown)
                   Text('Document: ${result.documentType.label}',
                       style: theme.textTheme.bodySmall),
+                if (kDebugMode)
+                  TextButton.icon(
+                    key: const Key('scanOcrReadDebug'),
+                    icon: const Icon(Iconsax.document_text, size: BSizes.iconSm),
+                    label: const Text('OCR read (debug)'),
+                    onPressed: () => Get.to(() => OcrReadPage(
+                        lines: Get.find<IDeliveryDocumentScanService>()
+                            .lastLines)),
+                  ),
                 Obx(() {
                   final warning = scan.documentWarning;
                   if (warning == null) return const SizedBox.shrink();
@@ -604,6 +617,16 @@ class _ItemRow extends StatelessWidget {
                   if (item.serialNo.isNotEmpty)
                     Text('S/N ${item.serialNo}',
                         style: theme.textTheme.bodySmall),
+                  for (final b in item.batches)
+                    Text(
+                        [
+                          'Batch ${b.batchSerial.isEmpty ? '—' : b.batchSerial}',
+                          if (b.batchQuantity != 0) '× ${_qtyText(b.batchQuantity)}',
+                          if (b.expiryDate.isNotEmpty) 'exp ${b.expiryDate}',
+                        ].join('  ·  '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall),
                   if (row.unsure)
                     Text('Check code, quantity or text',
                         style: theme.textTheme.bodySmall
@@ -633,8 +656,8 @@ class _ItemEdit {
   final bool remove;
 }
 
-/// Edits one scanned item before Apply: code, description, quantity, unit
-/// and serial. Batches and the other fields are kept as read. Without
+/// Edits one scanned item before Apply: code, description, quantity, unit,
+/// serial and its batches. The other fields are kept as read. Without
 /// [item] it adds a new one (quantity 1, no Remove).
 class _EditItemDialog extends StatefulWidget {
   const _EditItemDialog({this.item});
@@ -654,6 +677,7 @@ class _EditItemDialogState extends State<_EditItemDialog> {
   late final _qty = TextEditingController(text: _qtyText(_base.qty));
   late final _unit = TextEditingController(text: _base.unit);
   late final _serial = TextEditingController(text: _base.serialNo);
+  late final _batches = ScanBatchesDraft(_base.batches);
   bool get _isNew => widget.item == null;
 
   @override
@@ -661,6 +685,7 @@ class _EditItemDialogState extends State<_EditItemDialog> {
     for (final c in [_code, _description, _qty, _unit, _serial]) {
       c.dispose();
     }
+    _batches.dispose();
     super.dispose();
   }
 
@@ -672,6 +697,7 @@ class _EditItemDialogState extends State<_EditItemDialog> {
       qty: double.parse(_qty.text.trim()),
       unit: _unit.text.trim(),
       serialNo: _serial.text.trim(),
+      batches: _batches.batches,
     )));
   }
 
@@ -680,11 +706,15 @@ class _EditItemDialogState extends State<_EditItemDialog> {
     final error = Theme.of(context).colorScheme.error;
     return AlertDialog(
       title: Text(_isNew ? 'Add item' : 'Edit item'),
+      // Wider than the default on a phone, so the batch fields have room.
+      insetPadding: const EdgeInsets.symmetric(
+          horizontal: BSizes.md, vertical: BSizes.lg),
       content: Form(
         key: _form,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
                 key: const Key('scanItemCode'),
@@ -739,8 +769,12 @@ class _EditItemDialogState extends State<_EditItemDialog> {
                 key: const Key('scanItemSerial'),
                 controller: _serial,
                 decoration: const InputDecoration(labelText: 'Serial no.'),
-                onFieldSubmitted: (_) => _save(),
+                textInputAction: TextInputAction.next,
               ),
+              const SizedBox(height: BSizes.md),
+              const Divider(height: 1),
+              const SizedBox(height: BSizes.sm),
+              ScanBatchesEditor(draft: _batches),
             ],
           ),
         ),
