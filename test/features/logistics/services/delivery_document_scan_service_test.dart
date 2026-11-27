@@ -241,4 +241,34 @@ void main() {
     expect(r.value.references, ['GINo.:760006490']);
     expect(r.value.warnings, ['No item table found. Use Add Item for the items.']);
   });
+
+  group('Goods Issue', () {
+    final page = [
+      _l('GOODS ISSUE', 1072, 305, 270),
+      _l('GI No.: 760006490', 913, 375, 200),
+      _l('Comments:', 64, 1490, 107),
+      _l('Galinato Clinic and Hospital - Abg', 64, 1530, 400),
+      _l('ADVANCE ORDER #', 64, 1560, 200),
+      _l('Prepared By:', 64, 1700, 120),
+      _l('Received By:', 1300, 1700, 130),
+    ];
+
+    test('the client is read from the Comments', () async {
+      final r = await service({'photo': page}, []).scan(File('photo'));
+      final v = r.value;
+      expect(v.header.name, 'Galinato Clinic and Hospital');
+      expect(v.match.candidates.first.client.id, '9');
+      expect(v.warnings, isNot(contains(startsWith("Couldn't read the client"))));
+    });
+
+    test('other documents still ignore their Comments', () async {
+      final r = await service({
+        'photo': [
+          for (final l in page)
+            l.text == 'GOODS ISSUE' ? _l('DELIVERY RECEIPT', 1072, 305, 270) : l,
+        ]
+      }, []).scan(File('photo'));
+      expect(r.value.header.hasName, isFalse);
+    });
+  });
 }

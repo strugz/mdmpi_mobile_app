@@ -1,6 +1,7 @@
 import 'package:mdmpi_mobile_app/base/utils/b_ocr_orientation.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_extractor.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/delivery_document_type.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/ocr_rows.dart';
 
 /// Document references the one-scan reads on top of the shared
@@ -124,12 +125,70 @@ class OneScanReferencePatterns {
     return out;
   }
 
+  /// The references a [type] document keeps ([DeliveryDocumentType.keepOwnReferences]
+  /// over [fromLines]), plus, on a Goods Issue, the value under its
+  /// "Reference No.:" ([referenceNoValue]) as `ReferenceNo.:AORF26-66`.
+  /// Used by the scan and by the developer OCR viewer, so both show the
+  /// same.
+  static List<String> forDocument(
+    List<OcrLine> lines,
+    ITextExtractor extractor,
+    DeliveryDocumentType type, {
+    Iterable<String> excludeTexts = const [],
+  }) {
+    final refs = type.keepOwnReferences(
+        fromLines(lines, extractor, excludeTexts: excludeTexts));
+    if (type == DeliveryDocumentType.goodsIssue) {
+      final value = referenceNoValue(lines);
+      if (value != null) {
+        final ref = '$referenceNoLabel$value';
+        if (!refs.any((r) => _sameRef(r, ref))) refs.add(ref);
+      }
+    }
+    return refs;
+  }
+
+  /// The form label of a Goods Issue's "Reference No.:" value.
+  static const String referenceNoLabel = 'ReferenceNo.:';
+
+  /// "Reference No.:" and the value after it, on the same line or the next
+  /// ("AORF26-66" in the Goods Issue capture of 2026-11-26). The value must
+  /// hold a digit, so an empty field followed by another label reads
+  /// nothing.
+  static RegExp get _referenceNo => RegExp(
+      r'\bRef[a-z]*\s*N[oO0a]\.?\s*:?\s*([A-Za-z0-9][A-Za-z0-9#/-]*)',
+      caseSensitive: false);
+
+  /// An `IT` number, which [_patterns] already keeps as `ITNo.:`.
+  static final RegExp _itNumber = RegExp(r'^IT-?\d', caseSensitive: false);
+
+  /// The value of "Reference No.:", or null. Read from the page's reading
+  /// order and ML Kit's block order. An `IT` number is left to the
+  /// `ITNo.:` pattern.
+  static String? referenceNoValue(List<OcrLine> lines) {
+    for (final text in [
+      OcrRows.readingText(lines),
+      lines.map((l) => l.text).join('\n'),
+    ]) {
+      final value = _referenceNo.firstMatch(text)?.group(1);
+      if (value == null || !RegExp(r'\d').hasMatch(value)) continue;
+      if (_itNumber.hasMatch(value)) return null;
+      return value;
+    }
+    return null;
+  }
+
   /// Labels whose number is printed under them, a few lines down, with
   /// other columns' text in between. On the Inventory Transfer Request the
   /// rows between "ITR No.:" and 810003448 hold the client's TIN and phone,
-  /// whose digits stop the text patterns (device run 2026-10-15).
-  static final List<(String, RegExp)> _labelsAbove = [
+  /// whose digits stop the text patterns (device run 2026-10-15). On the
+  /// Goods Issue "GI No.:" sits beside "Posting Date:" and "Document Date",
+  /// whose colon stops the GI text pattern (capture of 2026-11-26).
+  /// This and [_referenceNo] are getters, not static finals, so pattern
+  /// edits take effect on hot reload.
+  static List<(String, RegExp)> get _labelsAbove => [
     ('ITRNo.:', RegExp(r'(?<![A-Za-z])[I|l1]TR\s*N[oO0]\b')),
+    ('GINo.:', RegExp(r'(?<![A-Za-z])G[Il1i]\s*N[oO0a]\b')),
   ];
 
   /// Six or more digits starting the line; OCR reads a bold 8 as B and 0 as

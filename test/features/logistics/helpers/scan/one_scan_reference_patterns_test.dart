@@ -3,6 +3,7 @@ import 'dart:ui' show Rect;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_extractor.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/delivery_document_type.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/one_scan_reference_patterns.dart';
 
 /// The shared extractor first, then the one-scan extras, the way the scan
@@ -75,6 +76,80 @@ void main() {
       l('B10003448', 985, 375, 102),
     ], DocumentReferenceExtractor());
     expect(refs, contains('ITRNo.:810003448'));
+  });
+
+  group('Goods Issue capture 2026-11-26: GI No. beside the date labels', () {
+    OcrLine l(String t, double x, double y, double w) =>
+        OcrLine(t, Rect.fromLTWH(x, y, w, 20));
+
+    test('separate parts: the colon in "Posting Date:" no longer hides it',
+        () {
+      final refs = OneScanReferencePatterns.fromLines([
+        l('GOODS ISSUE', 1072, 300, 270),
+        l('GI No.:', 913, 375, 65),
+        l('Posting Date:', 1150, 375, 120),
+        l('Document Date', 1400, 375, 130),
+        l('760007237', 930, 405, 98),
+        l('11/26/2026', 1150, 405, 100),
+        l('11/26/2026', 1400, 405, 100),
+        l('Reference No.:', 913, 452, 135),
+      ], DocumentReferenceExtractor());
+      expect(refs.where((r) => r.startsWith('GINo.:')), ['GINo.:760007237']);
+    });
+
+    test('Reference No.: the value under it is kept on a Goods Issue', () {
+      final lines = [
+        l('GOODS ISSUE', 1072, 300, 270),
+        l('GI No.', 913, 375, 65),
+        l('Reference No.:', 913, 452, 135),
+        l('760007227', 930, 405, 98),
+        l('Posting Date:', 1150, 375, 120),
+        l('AORF26-66', 913, 483, 90),
+      ];
+      expect(
+          OneScanReferencePatterns.forDocument(lines,
+              DocumentReferenceExtractor(), DeliveryDocumentType.goodsIssue),
+          ['GINo.:760007227', 'ReferenceNo.:AORF26-66']);
+    });
+
+    test('Reference No.: an IT number stays ITNo.:, not added twice', () {
+      final lines = [
+        l('GOODS ISSUE', 1072, 300, 270),
+        l('GI No.: 760006490', 913, 375, 200),
+        l('Reference No.:', 913, 452, 135),
+        l('IT750005302', 913, 483, 115),
+      ];
+      expect(
+          OneScanReferencePatterns.forDocument(lines,
+              DocumentReferenceExtractor(), DeliveryDocumentType.goodsIssue),
+          ['GINo.:760006490', 'ITNo.:750005302']);
+    });
+
+    test('Reference No.: an empty field reads nothing', () {
+      expect(
+          OneScanReferencePatterns.referenceNoValue([
+            l('Reference No.:', 913, 452, 135),
+            l('Details', 80, 520, 70),
+          ]),
+          isNull);
+    });
+
+    test('Reference No.: other documents do not add it', () {
+      expect(
+          OneScanReferencePatterns.forDocument([
+            l('Reference No.:', 913, 452, 135),
+            l('AORF26-66', 913, 483, 90),
+          ], DocumentReferenceExtractor(), DeliveryDocumentType.salesInvoice),
+          isEmpty);
+    });
+
+    test('one OCR line per row, label read with a small i', () {
+      final refs = OneScanReferencePatterns.fromLines([
+        l('Gi No.: Posting Date: Document Date', 913, 375, 620),
+        l('760007237 11/26/2026 11/26/2026', 930, 405, 590),
+      ], DocumentReferenceExtractor());
+      expect(refs, contains('GINo.:760007237'));
+    });
   });
 
   test('S3 IT number and the request it is based on', () {
