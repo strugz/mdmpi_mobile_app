@@ -54,6 +54,7 @@ void main() {
       ('8OTTLE', 'BOTTLE'),
       ('B0X', 'BOX'),
       ('PC5', 'PCS'),
+      ('1.00 8OX', '1.00 BOX'),
       ('1PC', '1PC'),
       ('PIECE', 'PIECE'),
       ('', ''),

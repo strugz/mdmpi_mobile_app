@@ -14,6 +14,8 @@ import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/acr_item_filter.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/item_table_parser.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/scan/acr_verdict.dart';
+import 'package:mdmpi_mobile_app/features/logistics/models/scan/item_table_reading.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/scan_item_correction_service.dart';
 
 /// Reads a document with Gemini and maps the result into items.
 typedef GeminiItemReader = Future<Result<List<InventoryItemModel>>> Function(
@@ -59,7 +61,9 @@ class AcrItemScanService {
     Future<String?> Function(String path, Rect region)? cropToRegion,
     bool? onDevice,
     Map<String, String>? env,
+    ScanItemCorrectionService? itemCorrection,
   })  : _gemini = readWithGemini,
+        _itemCorrection = itemCorrection,
         _readLines = readLines ??
             ((path) => textRecognition!
                 .processImageLines(InputImage.fromFilePath(path))),
@@ -72,6 +76,7 @@ class AcrItemScanService {
   final Future<String?> Function(String path, Rect region) _crop;
   final bool _onDevice;
   final Map<String, String>? _env;
+  final ScanItemCorrectionService? _itemCorrection;
 
   /// Space kept above and below the table when cropping, as a share of the
   /// photo's height (the header row and a wrapped last line stay in).
@@ -114,7 +119,9 @@ class AcrItemScanService {
         'reasons=${verdict.reasons.map((r) => r.name).join(',')}');
     if (verdict.accepted) {
       return Result.success(AcrItemScanOutcome(
-          items: verdict.items, source: AcrItemSource.acr, verdict: verdict));
+          items: await _finish(verdict.items, tidy: false),
+          source: AcrItemSource.acr,
+          verdict: verdict));
     }
 
     Rect? region = reading.region;
@@ -163,18 +170,36 @@ class AcrItemScanService {
 
     if (ai.isSuccess) {
       return Result.success(AcrItemScanOutcome(
-          items: ai.value, source: AcrItemSource.gemini, verdict: verdict));
+          items: await _finish(ai.value, tidy: true),
+          source: AcrItemSource.gemini,
+          verdict: verdict));
     }
     // Offline or AI unavailable: what the phone read is better than nothing.
     if (verdict.items.isNotEmpty) {
       return Result.success(AcrItemScanOutcome(
-        items: verdict.items,
+        items: await _finish(verdict.items, tidy: false),
         source: AcrItemSource.acr,
         verdict: verdict,
         aiError: ai.error,
       ));
     }
     return Result.failure(ai.error);
+  }
+
+  /// Gemini's items get the table parser's clean-up ([ItemTableParser
+  /// .tidyItem]; the phone's own reading already had it), then every item is
+  /// checked against known items when the check is wired in.
+  Future<List<InventoryItemModel>> _finish(List<InventoryItemModel> items,
+      {required bool tidy}) async {
+    var out = tidy
+        ? [for (final i in items) ItemTableParser.tidyItem(i).$1]
+        : items;
+    if (_itemCorrection != null && out.isNotEmpty) {
+      final (reading, _) = await _itemCorrection
+          .correct(ItemTableReading(headerFound: true, items: out));
+      out = reading.items;
+    }
+    return out;
   }
 
   static bool _isPhoto(String path) =>

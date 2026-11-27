@@ -46,8 +46,11 @@ class BOcrWordFixer {
       unit.replaceAllMapped(_token, (m) {
         final token = m.group(0)!;
         if (_letter.allMatches(token).length < 2) return token;
+        // A real quantity is all digits: `8OX` is `8O` + `X` only on paper.
         final number = _numberPart.firstMatch(token);
-        if (number != null && units.contains(number.group(2)!.toLowerCase())) {
+        if (number != null &&
+            RegExp(r'^\d+$').hasMatch(number.group(1)!) &&
+            units.contains(number.group(2)!.toLowerCase())) {
           return token;
         }
         if (_nonLookAlikeDigit.hasMatch(token)) return token;

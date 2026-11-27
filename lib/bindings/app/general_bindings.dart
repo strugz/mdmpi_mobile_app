@@ -324,6 +324,7 @@ class GeneralBindings extends Bindings {
                           ? Get.find<InventoryItemRepository>()
                           : InventoryItemRepository())
                       .analyzeFileWithGemini(file, prompt: prompt),
+              itemCorrection: Get.find<ScanItemCorrectionService>(),
             ),
         fenix: true);
 

@@ -2,6 +2,7 @@ import 'dart:ui' show Rect;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
+import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/item_table_parser.dart';
 
 /// Hand-made OCR lines laid out like the sample photos in plan §1.
@@ -458,6 +459,29 @@ void main() {
           ('0179170', 2.0, '07/18/2027'));
     });
 
+    test('capture 2026-11-27: "1.00 8OX" under Unit is qty 1 and BOX', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('1.00 8OX', 95, 40, 60),
+        _l('Access FT3 Cals', 200, 40, 160),
+      ]);
+      expect((r.items.single.qty, r.items.single.unit), (1.0, 'BOX'));
+    });
+
+    test('a date with a letter in it still ends a batch, flagged', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('1', 10, 40, 10),
+        _l('BOX', 100, 40, 40),
+        _l('Access FT3 Cals 689935 1.00 0t/05/2027', 200, 40, 320),
+      ]);
+      final item = r.items.single;
+      expect(item.description, 'Access FT3 Cals');
+      expect(item.batches.single.batchSerial, '689935');
+      expect(item.batches.single.expiryDate, '0t/05/2027');
+      expect(r.isUnsure(0), isTrue);
+    });
+
     test('a date inside a description is not a batch', () {
       final r = ItemTableParser.parse([
         ...header,
@@ -734,6 +758,53 @@ void main() {
         _l('BOX', 734, 457, 26, 14),
       ]);
       expect(r.items.single.itemCode, 'OSR6122T');
+    });
+  });
+
+  group('tidyItem (Gemini items on Scan items, capture 2026-11-27)', () {
+    test('batch titles and values leave the description; unit split', () {
+      final (item, unsure) = ItemTableParser.tidyItem(InventoryItemModel(
+        itemCode: 'A13430',
+        description: r'Access F3 Cals $O- S$ (PN 33855) Betch/Serial # '
+            'Quantity Expiry Date 689935 1.00 0t/05/2027',
+        qty: 1,
+        unit: '1.00 8OX',
+      ));
+      expect(item.description, r'Access F3 Cals $O- S$ (PN 33855)');
+      expect((item.qty, item.unit), (1.0, 'BOX'));
+      final b = item.batches.single;
+      expect((b.batchSerial, b.batchQuantity, b.expiryDate),
+          ('689935', 1.0, '0t/05/2027'));
+      expect(unsure, isTrue); // the expiry kept a letter
+    });
+
+    test('a clean item is left as it is', () {
+      final clean = InventoryItemModel(
+        itemCode: 'B1',
+        description: 'Lyse Reagent',
+        qty: 2,
+        unit: 'BOX',
+        batches: [
+          InventoryBatchModel(
+              batchSerial: '123', batchQuantity: 2, expiryDate: '01/02/2027'),
+        ],
+      );
+      final (item, unsure) = ItemTableParser.tidyItem(clean);
+      expect(item.description, 'Lyse Reagent');
+      expect((item.qty, item.unit), (2.0, 'BOX'));
+      expect(item.batches.single.batchSerial, '123');
+      expect(unsure, isFalse);
+    });
+
+    test('8atch as the batch title is found', () {
+      final (item, _) = ItemTableParser.tidyItem(InventoryItemModel(
+        itemCode: '',
+        description: 'Cleaner 8atch/Serial # 777123 2.00 01/02/2028',
+        qty: 2,
+        unit: 'BOTTLE',
+      ));
+      expect(item.description, 'Cleaner');
+      expect(item.batches.single.batchSerial, '777123');
     });
   });
 }
