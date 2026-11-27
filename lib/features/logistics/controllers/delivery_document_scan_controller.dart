@@ -16,6 +16,7 @@ import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/scan_form_targe
 import 'package:mdmpi_mobile_app/features/logistics/models/client_model.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/scan/delivery_document_scan_result.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/scan_item_correction_service.dart';
 
 /// One row on the review sheet: the item and whether the user should check it.
 typedef ReviewItem = ({InventoryItemModel item, bool unsure});
@@ -65,7 +66,9 @@ class DeliveryDocumentScanController extends GetxController {
     Future<File?> Function(ImageSource source)? pickImage,
     Future<List<File>?> Function()? documentScan,
     Future<File?> Function(File page)? cropPage,
+    ScanItemCorrectionService? itemCorrection,
   })  : _service = service,
+        _itemCorrection = itemCorrection,
         _aliases = aliases,
         _permissions = permissions,
         _pickImage = pickImage,
@@ -78,6 +81,7 @@ class DeliveryDocumentScanController extends GetxController {
   final Future<File?> Function(ImageSource source)? _pickImage;
   final Future<List<File>?> Function()? _documentScan;
   final Future<File?> Function(File page)? _cropPage;
+  final ScanItemCorrectionService? _itemCorrection;
 
   final RxBool isScanning = false.obs;
   final RxnString error = RxnString();
@@ -438,6 +442,8 @@ class DeliveryDocumentScanController extends GetxController {
     if (includeItems.value && items.isNotEmpty && takesItems) {
       form.mergeScannedItems(items);
       itemsAdded = items.length;
+      // What the user put on the form is what the next scan checks against.
+      _itemCorrection?.learn(items);
     }
 
     logDebug('[OneScan] applied client=${chosen?.id ?? '-'} '

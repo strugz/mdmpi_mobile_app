@@ -83,10 +83,12 @@ import 'package:mdmpi_mobile_app/features/logistics/controllers/request_transpor
 import 'package:mdmpi_mobile_app/features/logistics/controllers/rider_realtime_tracking_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/standard_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/data/repositories/client/client_alias_repository.dart';
+import 'package:mdmpi_mobile_app/data/repositories/inventory/scan_item_vocabulary_repository.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/delivery_document_scan_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/client_matcher.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/delivery_document_scan_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/scan_item_correction_service.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/stock_receive_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_delivery_controller.dart';
 import 'package:mdmpi_mobile_app/features/logistics/controllers/web_socket_dispatcher_controller.dart';
@@ -330,12 +332,20 @@ class GeneralBindings extends Bindings {
     // after ITextRecognitionService, ITextExtractor and ClientController.
     // The client list is resolved fresh on every scan, never stored.
     Get.lazyPut(() => ClientAliasRepository(), fenix: true);
+    // Scanned item descriptions are checked against this phone's
+    // SCAN_ITEM_VOCAB_ first, then /api4/Item/vocabulary (MDMPI.App).
+    Get.lazyPut(() => ScanItemVocabularyRepository(), fenix: true);
+    Get.lazyPut(
+        () => ScanItemCorrectionService(
+            Get.find<ScanItemVocabularyRepository>()),
+        fenix: true);
     Get.lazyPut<IDeliveryDocumentScanService>(
         () => DeliveryDocumentScanService(
               textRecognition: Get.find<ITextRecognitionService>(),
               textExtractor: Get.find<ITextExtractor>(),
               matcher:
                   ClientMatcher(aliases: Get.find<ClientAliasRepository>()),
+              itemCorrection: Get.find<ScanItemCorrectionService>(),
               clients: () async {
                 final clients = Get.find<ClientController>();
                 if (clients.allClient.isEmpty) {
@@ -350,6 +360,7 @@ class GeneralBindings extends Bindings {
               service: Get.find<IDeliveryDocumentScanService>(),
               aliases: Get.find<ClientAliasRepository>(),
               permissions: Get.find<IPermissionService>(),
+              itemCorrection: Get.find<ScanItemCorrectionService>(),
             ),
         fenix: true);
 

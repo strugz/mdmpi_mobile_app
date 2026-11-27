@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' show Rect;
 
 import 'package:mdmpi_mobile_app/base/utils/b_ocr_orientation.dart';
+import 'package:mdmpi_mobile_app/base/utils/b_ocr_word_fixer.dart';
 import 'package:mdmpi_mobile_app/base/utils/b_string_similarity.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
 import 'package:mdmpi_mobile_app/data/models/inventory_item_model.dart';
@@ -285,6 +286,10 @@ class ItemTableParser {
         }
       }
 
+      final split = _splitQtyUnit(qtyText, unit);
+      qtyText = split.qty;
+      unit = split.unit;
+
       final (qty, qtyRead) = _quantity(qtyText);
       last = _Row(
         description: desc,
@@ -294,7 +299,11 @@ class ItemTableParser {
         partNo: cell(_Col.partNo),
         serialNo: cell(_Col.serialNo),
         ptn: cell(_Col.ptn),
-        unsure: !qtyRead || straddled || ranOn || _maybeLostDecimal(qtyText),
+        unsure: !qtyRead ||
+            straddled ||
+            ranOn ||
+            split.conflict ||
+            _maybeLostDecimal(qtyText),
       );
       collected.add(last);
       lastBottom = rowBottom;
@@ -303,6 +312,7 @@ class ItemTableParser {
     final codes = [for (final r in collected) _cleanCode(r.itemCode)];
     for (final (i, r) in collected.indexed) {
       _cutBatchTail(r);
+      _cutTrailingBatch(r);
       if (r.unsure ||
           r.description.length < 3 ||
           _codeLooksMisread(codes[i], codes)) {
@@ -321,9 +331,9 @@ class ItemTableParser {
           : r.batches;
       items.add(InventoryItemModel(
         itemCode: codes[i],
-        description: r.description,
+        description: BOcrWordFixer.fix(r.description),
         qty: r.qty,
-        unit: _cleanUnit(r.unit),
+        unit: BOcrWordFixer.fixUnit(_cleanUnit(r.unit)),
         partNo: r.partNo,
         serialNo: r.serialNo,
         ptn: r.ptn,
@@ -653,6 +663,93 @@ class ItemTableParser {
       .replaceAll(RegExp('[ÜÚÙ]'), 'U')
       .replaceAll(RegExp('[ÉÈË]'), 'E')
       .replaceAll(RegExp('[İÍÌ]'), 'I');
+
+  /// A quantity: digits (OCR `l`, `I`, `O` slips allowed after the first
+  /// digit) with an optional decimal part.
+  static const String _qtyPattern = r'\d[\dlIOo]*(?:[.,][\dlIOo]{1,3})?';
+
+  /// The Unit cell holds only a unit word and the Qty cell only a number,
+  /// but OCR often reads both as one line that lands in one column
+  /// (`1.00 BOX` under Unit, `2 PCS` under Qty). The number goes to the
+  /// quantity, the words to the unit. When both cells have a number and they
+  /// differ, the Qty cell's is kept and the row is flagged ([conflict]).
+  static ({String qty, String unit, bool conflict}) _splitQtyUnit(
+      String qtyText, String unit) {
+    final numberThenWord =
+        RegExp('^\\s*($_qtyPattern)\\s+([A-Za-z][A-Za-z .]*?)\\s*\$');
+    final wordThenNumber =
+        RegExp('^\\s*([A-Za-z][A-Za-z .]*?)\\s+($_qtyPattern)\\s*\$');
+    final bareNumber = RegExp('^\\s*($_qtyPattern)\\s*\$');
+
+    var conflict = false;
+    String? unitNumber;
+    final inUnit = numberThenWord.firstMatch(unit);
+    final inUnitAfter = wordThenNumber.firstMatch(unit);
+    if (inUnit != null) {
+      unitNumber = inUnit.group(1);
+      unit = inUnit.group(2)!;
+    } else if (inUnitAfter != null) {
+      unitNumber = inUnitAfter.group(2);
+      unit = inUnitAfter.group(1)!;
+    } else if (bareNumber.hasMatch(unit) && qtyText.trim().isEmpty) {
+      // Only a number under Unit: it is the quantity.
+      unitNumber = unit.trim();
+      unit = '';
+    }
+    if (unitNumber != null) {
+      final (fromUnit, _) = _quantity(unitNumber);
+      final (fromQty, qtyRead) = _quantity(qtyText);
+      if (!qtyRead) {
+        qtyText = unitNumber;
+      } else if (fromQty != fromUnit) {
+        conflict = true;
+      }
+    }
+
+    final inQty = numberThenWord.firstMatch(qtyText);
+    if (inQty != null) {
+      qtyText = inQty.group(1)!;
+      if (unit.trim().isEmpty) unit = inQty.group(2)!;
+    }
+    return (qty: qtyText, unit: unit.trim(), conflict: conflict);
+  }
+
+  /// A batch ("689935 06/05/2027", "0179170 6.00 07/18/2027") at the end of
+  /// a description: the batch line joined the item's text because its
+  /// titles were not read or it sat in the item's row. It is cut off and
+  /// added to the item's batches when that serial is not there yet.
+  ///
+  /// Only the end is cut, only up to the date (a quantity may follow it),
+  /// and before the date at most a serial and a quantity, so a description
+  /// such as "Reagent 500mL" keeps its words.
+  static void _cutTrailingBatch(_Row r) {
+    final d = r.description;
+    final dates = _date.allMatches(d).toList();
+    if (dates.isEmpty) return;
+    final date = dates.last;
+    if (!RegExp(r'^[\d.,\s]*$').hasMatch(d.substring(date.end))) return;
+
+    final before = RegExp(r'\S+').allMatches(d.substring(0, date.start)).toList();
+    bool isSerial(String t) => _isBatchToken(t) && RegExp(r'\d').hasMatch(t);
+    bool isQty(String t) => RegExp(r'^\d{1,3}(?:[.,]\d{1,3})?$').hasMatch(t);
+    var start = -1;
+    if (before.length >= 2 &&
+        isQty(before.last.group(0)!) &&
+        isSerial(before[before.length - 2].group(0)!)) {
+      start = before[before.length - 2].start;
+    } else if (before.isNotEmpty && isSerial(before.last.group(0)!)) {
+      start = before.last.start;
+    }
+    if (start <= 0) return; // a date alone, or nothing left as description
+
+    final batch = _batch(d.substring(start), dateRequired: true);
+    if (batch == null) return;
+    r.description = d.substring(0, start).trim();
+    final serial = batch.$1.batchSerial;
+    if (r.batches.any((b) => b.batchSerial == serial)) return;
+    r.batches.add(batch.$1);
+    if (!batch.$2) r.unsure = true;
+  }
 
   /// `100` where the paper likely says `1.00`: OCR often drops the point.
   static bool _maybeLostDecimal(String raw) =>

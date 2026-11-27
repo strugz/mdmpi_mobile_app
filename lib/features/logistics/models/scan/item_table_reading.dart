@@ -42,6 +42,16 @@ class ItemTableReading {
 
   bool isUnsure(int index) => unsure.contains(index);
 
+  /// The same reading with [items] in place of the read ones, row for row.
+  ItemTableReading withItems(List<InventoryItemModel> items) => ItemTableReading(
+        headerFound: headerFound,
+        items: List.unmodifiable(items),
+        unsure: unsure,
+        tableTexts: tableTexts,
+        dropped: dropped,
+        region: region,
+      );
+
   /// The items to check, by item code (description when there is none), in
   /// table order, so the review sheet can name them.
   List<String> get unsureLabels => [

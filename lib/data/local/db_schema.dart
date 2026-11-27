@@ -339,6 +339,20 @@ Future<void> ensureOneScanTables(Database db) async {
       UPDATED_AT TEXT
     )
   ''');
+  // Items seen on past requests (from the server) or confirmed on a scan,
+  // the vocabulary scanned item descriptions are corrected against.
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS SCAN_ITEM_VOCAB_ (
+      ITEM_KEY TEXT PRIMARY KEY,
+      ITEM_CODE TEXT,
+      DESCRIPTION TEXT NOT NULL,
+      UNIT TEXT,
+      USES INTEGER NOT NULL DEFAULT 1,
+      UPDATED_AT TEXT
+    )
+  ''');
+  await db.execute('CREATE INDEX IF NOT EXISTS IX_SCAN_ITEM_VOCAB_CODE '
+      'ON SCAN_ITEM_VOCAB_ (ITEM_CODE)');
 }
 
 /// Creates the proof-upload tables idempotently.

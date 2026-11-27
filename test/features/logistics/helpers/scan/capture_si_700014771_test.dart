@@ -179,7 +179,8 @@ void main() {
       ('B36846', 5.0, 'BOTTLE'),
       ('B36868', 6.0, 'BOTTLE'),
     ]);
-    expect(r.items[2].description, 'DxH 5O0 Cleaner 500ml');
+    // OCR read "5O0"; the letter between digits is put back as a zero.
+    expect(r.items[2].description, 'DxH 500 Cleaner 500ml');
     expect([
       for (final i in r.items)
         for (final b in i.batches) (b.batchSerial, b.batchQuantity, b.expiryDate)
