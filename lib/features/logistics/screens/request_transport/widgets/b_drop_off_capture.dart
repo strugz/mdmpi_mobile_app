@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mdmpi_mobile_app/base/utils/constants/sizes.dart';
@@ -9,26 +11,34 @@ import 'package:mdmpi_mobile_app/common/controllers/camera_controller.dart';
 import '../../../../../base/utils/constants/colors.dart';
 import 'b_photo_review_screen.dart';
 
+/// Proof photo capture. The photo is saved the moment the shutter is pressed,
+/// before the review screen, so it survives the app being closed right after
+/// (couriers often capture before an X-ray check and only drop off later).
 class BDropOffCapture extends StatefulWidget {
   const BDropOffCapture({
     super.key,
     this.title = 'Capture',
     this.onCapture,
-    this.onConfirmPath,
-  }) : assert(onCapture != null || onConfirmPath != null,
-            'Provide onCapture or onConfirmPath');
+    this.onSavePhoto,
+    this.onDiscardPhoto,
+  }) : assert(onCapture != null || onSavePhoto != null,
+            'Provide onCapture or onSavePhoto');
 
   final String title;
 
-  /// Legacy confirm handler: called without the reviewed file, typically to
-  /// re-capture via the camera service. Prefer [onConfirmPath] — re-capturing
-  /// while the review screen covers the preview returns a stale frame.
-  final Future<void> Function(CameraHandlerController camera)? onCapture;
+  /// Takes and saves the picture itself (single fixed file per request);
+  /// returns the saved path, or null when nothing was saved. Retake keeps
+  /// the file; the next shot overwrites it.
+  final Future<String?> Function(CameraHandlerController camera)? onCapture;
 
-  /// Confirm handler receiving the reviewed photo's file path, so the caller
-  /// saves exactly what the user approved.
-  final Future<void> Function(CameraHandlerController camera, String imagePath)?
-      onConfirmPath;
+  /// Saves the photo just taken at [imagePath] (a temporary camera file);
+  /// returns the saved path, or null when nothing was saved.
+  final Future<String?> Function(
+      CameraHandlerController camera, String imagePath)? onSavePhoto;
+
+  /// Removes a photo saved by [onSavePhoto] when the user taps Retake.
+  final Future<void> Function(CameraHandlerController camera, String savedPath)?
+      onDiscardPhoto;
 
   @override
   State<BDropOffCapture> createState() => _BDropOffCaptureState();
@@ -38,6 +48,7 @@ class _BDropOffCaptureState extends State<BDropOffCapture> {
   late final CameraHandlerController cameraController;
   final RxBool isReviewingPhoto = false.obs;
   final Rx<String?> capturedImagePath = Rx<String?>(null);
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -58,57 +69,54 @@ class _BDropOffCaptureState extends State<BDropOffCapture> {
     super.dispose();
   }
 
-  /// Handle confirm button in photo review screen
-  Future<void> _confirmPhoto() async {
-    logDebug('✅ Photo confirmed, saving...');
-    try {
-      // Save the reviewed photo (preferred), or fall back to the legacy
-      // re-capture callback.
-      final reviewedPath = capturedImagePath.value;
-      if (widget.onConfirmPath != null && reviewedPath != null) {
-        await widget.onConfirmPath!(cameraController, reviewedPath);
-      } else {
-        await widget.onCapture!(cameraController);
+  /// Confirm: the photo is already saved, so just return to the request.
+  void _confirmPhoto() {
+    isReviewingPhoto.value = false;
+    capturedImagePath.value = null;
+    if (mounted) Get.back();
+  }
+
+  /// Retake: drop the saved photo (where the caller supports it) and go
+  /// back to the camera preview.
+  Future<void> _retakePhoto() async {
+    final savedPath = capturedImagePath.value;
+    isReviewingPhoto.value = false;
+    capturedImagePath.value = null;
+    if (savedPath != null && widget.onDiscardPhoto != null) {
+      try {
+        await widget.onDiscardPhoto!(cameraController, savedPath);
+      } catch (e) {
+        logDebug('Error discarding retaken photo: $e');
       }
-
-      // Reset state
-      isReviewingPhoto.value = false;
-      capturedImagePath.value = null;
-
-      logDebug('✅ Photo saved successfully');
-
-      // Automatically navigate back to request_transport
-      if (mounted) {
-        logDebug('🔙 Navigating back to request transport...');
-        Get.back();
-      }
-    } catch (e) {
-      logDebug('❌ Error saving photo: $e');
     }
   }
 
-  /// Handle retake button - go back to camera
-  void _retakePhoto() {
-    logDebug('🔄 Retaking photo...');
-    isReviewingPhoto.value = false;
-    capturedImagePath.value = null;
-    // Camera preview remains active
-  }
-
-  /// Handle camera button tap - take photo and show review
+  /// Shutter: take the photo, save it right away, then show the review.
   Future<void> _onCameraButtonTap() async {
-    logDebug('📸 Camera button tapped');
+    if (_isSaving) return;
+    _isSaving = true;
+    try {
+      String? savedPath;
+      if (widget.onSavePhoto != null) {
+        final tempPath =
+            await cameraController.takePictureForReviewWithAnimation();
+        if (tempPath == null) return;
+        savedPath = await widget.onSavePhoto!(cameraController, tempPath);
+      } else {
+        savedPath = await widget.onCapture!(cameraController);
+      }
 
-    // Take picture with animation
-    final imagePath =
-        await cameraController.takePictureForReviewWithAnimation();
+      if (savedPath == null || savedPath.isEmpty || !mounted) return;
 
-    if (imagePath != null && mounted) {
-      logDebug('✅ Photo captured, showing review: $imagePath');
-      capturedImagePath.value = imagePath;
+      // A retake can overwrite the same file name; drop the cached image so
+      // the review shows the new photo.
+      await FileImage(File(savedPath)).evict();
+      capturedImagePath.value = savedPath;
       isReviewingPhoto.value = true;
-    } else {
-      logDebug('❌ Failed to capture photo');
+    } catch (e) {
+      logDebug('Error capturing proof photo: $e');
+    } finally {
+      _isSaving = false;
     }
   }
 

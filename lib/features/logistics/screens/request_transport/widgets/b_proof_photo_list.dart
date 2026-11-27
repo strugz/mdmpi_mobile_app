@@ -55,10 +55,15 @@ class _BProofPhotoListState extends State<BProofPhotoList> {
                   : () => Get.to(
                         () => BDropOffCapture(
                           title: 'Proof Picture',
-                          onConfirmPath: (camera, imagePath) async =>
+                          onSavePhoto: (camera, imagePath) =>
                               camera.addProofPictureFromFile(
                             widget.requestId,
                             imagePath,
+                          ),
+                          onDiscardPhoto: (camera, savedPath) =>
+                              camera.discardProofPhoto(
+                            widget.requestId,
+                            savedPath,
                           ),
                         ),
                       ),

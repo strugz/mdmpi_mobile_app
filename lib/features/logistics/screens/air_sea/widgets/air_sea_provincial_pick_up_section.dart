@@ -47,10 +47,12 @@ class AirSeaProvincialPickUpSection extends StatelessWidget {
                 () => BDropOffCapture(
                   title: 'Provincial Pick Up Proof',
                   onCapture: (camera) async {
-                    await camera.takePictureWithAnimation(
+                    final path = await camera.takePictureWithAnimation(
                         '${requestModel.id}_provincial_pick_up');
-                    formState.cameraPickUpPicture.value =
-                        camera.imageProofPath.value;
+                    if (path != null) {
+                      formState.cameraPickUpPicture.value = path;
+                    }
+                    return path;
                   },
                 ),
               ),
