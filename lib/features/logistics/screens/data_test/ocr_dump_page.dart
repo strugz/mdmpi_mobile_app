@@ -10,6 +10,7 @@ import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_text_recognition_service.dart';
 import 'package:mdmpi_mobile_app/common/widgets/appbar/appbar.dart';
 import 'package:mdmpi_mobile_app/features/logistics/helpers/scan/ocr_line_dump.dart';
+import 'package:mdmpi_mobile_app/features/logistics/screens/data_test/ocr_read_page.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -127,6 +128,15 @@ class OcrDumpPage extends StatelessWidget {
                   ElevatedButton(
                     onPressed: busy ? null : controller.dumpLastScan,
                     child: Text(busy ? 'Reading…' : 'Save the last scan'),
+                  ),
+                  const SizedBox(height: BSizes.sm),
+                  OutlinedButton(
+                    onPressed: busy
+                        ? null
+                        : () => Get.to(() => OcrReadPage(
+                            lines: Get.find<IDeliveryDocumentScanService>()
+                                .lastLines)),
+                    child: const Text('View the last scan'),
                   ),
                   const SizedBox(height: BSizes.sm),
                   OutlinedButton(

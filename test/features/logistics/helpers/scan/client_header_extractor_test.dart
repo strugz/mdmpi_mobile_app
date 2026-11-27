@@ -329,4 +329,70 @@ void main() {
       expect(h.rawLines.map((l) => l.text), ['Customer:', 'Clinica Manila']);
     });
   });
+
+  group('commentRows (Goods Issue)', () {
+    /// A Goods Issue laid out like the 2026-11-26 photo: the client is the
+    /// first row under Comments, the signature row below.
+    List<OcrLine> goodsIssue(List<OcrLine> comments) => [
+          ..._systemHeader,
+          _l('GOODS ISSUE', 1072, 305, 270, 40),
+          _l('GI No.:', 913, 375, 65),
+          _l('Item Code', 70, 560, 110),
+          _l('Description', 450, 560, 120),
+          _l('Comments:', 64, 1490, 107),
+          ...comments,
+          _l('Prepared By:', 64, 1700, 120),
+          _l('Loaded/Checked By:', 500, 1700, 180),
+          _l('Approved By:', 900, 1700, 130),
+          _l('Received By:', 1300, 1700, 130),
+          _l('Hospital B', 64, 1760, 200),
+        ];
+
+    test('the rows under Comments, the name without its branch too', () {
+      final rows = ClientHeaderExtractor.commentRows(goodsIssue([
+        _l('Hospital A - Abg', 64, 1530, 330),
+        _l('ADVANCE ORDER #', 64, 1560, 200),
+        _l('MAA', 64, 1590, 50),
+      ]));
+
+      expect(rows, ['Hospital A - Abg', 'Hospital A', 'ADVANCE ORDER #']);
+    });
+
+    test('a Client: label in the comments is removed', () {
+      final rows = ClientHeaderExtractor.commentRows(goodsIssue([
+        _l('Client: Dela Cruz Clinic', 64, 1530, 400),
+      ]));
+
+      expect(rows, ['Dela Cruz Clinic']);
+    });
+
+    test('"Comments:" misread as "Commets:" (capture 2026-11-26)', () {
+      final lines = goodsIssue([_l('Hospital A - Abg', 64, 1530, 330)])
+          .map((l) => l.text == 'Comments:' ? _l('Commets:', 64, 1490, 107) : l)
+          .toList();
+
+      expect(ClientHeaderExtractor.commentRows(lines),
+          ['Hospital A - Abg', 'Hospital A']);
+    });
+
+    test('text after Comments: on the same line is read', () {
+      final rows = ClientHeaderExtractor.commentRows([
+        _l('GOODS ISSUE', 1072, 305, 270, 40),
+        _l('Comments: Hospital A', 64, 1490, 300),
+        _l('Prepared By:', 64, 1700, 120),
+        _l('Received By:', 1300, 1700, 130),
+      ]);
+
+      expect(rows, ['Hospital A']);
+    });
+
+    test('no Comments on the page: nothing', () {
+      expect(
+          ClientHeaderExtractor.commentRows([
+            _l('GOODS ISSUE', 1072, 305, 270, 40),
+            _l('Hospital A', 64, 1530, 330),
+          ]),
+          isEmpty);
+    });
+  });
 }

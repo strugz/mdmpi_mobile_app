@@ -68,9 +68,11 @@ class ItemTableParser {
 
   /// The sub-header under an item on a Sales Invoice:
   /// "Batch/Serial #   Quantity   Expiry Date". OCR misspells "Serial"
-  /// (`Seral`, `Serlal`: capture of 2026-10-21).
-  static final RegExp _batchHeader =
-      RegExp(r'batch\s*/?\s*s[ea]?r[a-z1|]*\s*#?', caseSensitive: false);
+  /// (`Seral`, `Serlal`: capture of 2026-10-21) and "Batch" (`Bstch`: Goods
+  /// Issue capture of 2026-11-26). A getter, not a static final, so edits
+  /// take effect on hot reload.
+  static RegExp get _batchHeader =>
+      RegExp(r'b[aso4]tch\s*/?\s*s[ea]?r[a-z1|]*\s*#?', caseSensitive: false);
 
   /// A date, allowing the OCR slips seen on captures (`D8/06/2027`).
   static final RegExp _date = RegExp(
@@ -543,7 +545,8 @@ class ItemTableParser {
     final t = text.trim();
     if (_date.hasMatch(t)) return true;
     // ".00" too: OCR drops a leading digit at times (capture of 2026-10-15).
-    return RegExp(r'^[A-Za-z0-9.-]*\d[A-Za-z0-9./,-]*$').hasMatch(t);
+    // A slash before the digits too: `AQC/15826` (Goods Issue, 2026-11-26).
+    return RegExp(r'^[A-Za-z0-9./-]*\d[A-Za-z0-9./,-]*$').hasMatch(t);
   }
 
   /// One batch from a row such as "0179170   6.00   07/18/2027": the dated

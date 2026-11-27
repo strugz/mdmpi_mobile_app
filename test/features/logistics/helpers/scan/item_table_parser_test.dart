@@ -487,6 +487,38 @@ void main() {
       expect(r.unsureLabels, ['OSRS116']);
     });
 
+    test('Goods Issue capture 2026-11-26: "Bstch/Serlal" and a serial with a slash',
+        () {
+      OcrLine g(String t, double x, double y, double w) =>
+          OcrLine(t, Rect.fromLTWH(x, y, w, 37));
+      final r = ItemTableParser.parse([
+        g('Item Code', 166, 810, 165),
+        g('Description', 1007, 804, 185),
+        g('Warehouse', 1851, 800, 195),
+        g('Qty', 2252, 797, 60),
+        g('Unit', 2523, 788, 73),
+        g('10310323', 170, 865, 156),
+        g('AQC cartridge', 489, 863, 211),
+        g('MAIN', 1904, 853, 93),
+        g('1.00', 2220, 845, 97),
+        g('BOX', 2521, 844, 78),
+        g('Bstch/Serlal', 637, 914, 173),
+        g('Quantity', 1037, 918, 130),
+        g('Expiry Date', 1250, 919, 171),
+        g('AQC/15826', 453, 974, 162),
+        g('3.00', 1076, 978, 60),
+        g('07/23/2027', 1246, 975, 173),
+        g('Comments:', 113, 2487, 179),
+      ]);
+
+      final item = r.items.single;
+      expect((item.itemCode, item.description, item.qty, item.unit),
+          ('10310323', 'AQC cartridge', 1.0, 'BOX'));
+      expect(
+          item.batches.map((b) => (b.batchSerial, b.batchQuantity, b.expiryDate)),
+          [('AQC/15826', 3.0, '07/23/2027')]);
+    });
+
     test('titles and values read on the description line are cut off', () {
       final r = ItemTableParser.parse([
         ...header,

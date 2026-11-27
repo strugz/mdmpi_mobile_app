@@ -60,6 +60,33 @@ class BWhatsNew {
   BWhatsNew._();
 
   static const List<WhatsNewGroup> groups = [
+    WhatsNewGroup(version: '1.1.125', items: [
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.camera,
+          title: 'Proof photos are kept',
+          detail: 'A proof photo is saved the moment you take it, so it is '
+              'still there if you close the app before Drop Off. Retake '
+              'removes the photo you just took.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.document_text,
+          title: 'Better Goods Issue scans',
+          detail: 'The scan now reads the client from the Comments, the GI '
+              'No. and the Reference No.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.box,
+          title: 'Batches on scanned items',
+          detail: 'Batch and serial numbers are read as the item\'s batch. '
+              'Tap an item to edit, add or remove its batches.'),
+      WhatsNewItem(
+          area: 'Logistics',
+          icon: Iconsax.crop,
+          title: 'Crop the page before reading',
+          detail: 'After you scan a document, you can crop and rotate the '
+              'page before the app reads it.'),
+    ]),
     WhatsNewGroup(version: '1.1.124', items: [
       WhatsNewItem(
           area: 'Logistics',

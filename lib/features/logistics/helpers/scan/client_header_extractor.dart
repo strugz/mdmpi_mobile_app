@@ -14,8 +14,8 @@ import 'package:mdmpi_mobile_app/features/logistics/models/scan/scanned_client_h
 /// the parts to its right on the same row (`DELIVERED TO:   X`), or from the
 /// row below (`Business Partner:` / `DLR-190   X`). Our own header (Marsman
 /// Drysdale, the Makati address) is never read as the customer, and
-/// nothing is read from Comments or Remarks. Pure, so it is tested with
-/// hand-made lines.
+/// [extract] reads nothing from Comments or Remarks ([commentRows] does,
+/// for the Goods Issue). Pure, so it is tested with hand-made lines.
 class ClientHeaderExtractor {
   ClientHeaderExtractor._();
 
@@ -39,10 +39,15 @@ class ClientHeaderExtractor {
   /// Lines that end the customer block. Nothing at or below the first of
   /// these is read: Comments repeat the client with another contact person,
   /// and on a Goods Issue they are the only place the client appears.
-  static final RegExp _blockEnd = RegExp(
-    r'^\s*(comments?|remarks?)(?![A-Za-z])',
-    caseSensitive: false,
-  );
+  /// This and [_commentsLabel] are getters, not static finals, so pattern
+  /// edits take effect on hot reload.
+  static RegExp get _blockEnd => RegExp(_commentsStart, caseSensitive: false);
+
+  /// "Comments" or "Remarks", and OCR slips of "Comments:" when a colon
+  /// follows ("Commets:", Goods Issue capture of 2026-11-26; "Commenta:").
+  static const String _commentsStart =
+      r'^\s*[|!\[\]]?\s*(?:co[mn]{1,2}[a-z]{0,6}\s*:|'
+      r'comments?(?![A-Za-z])|remarks?(?![A-Za-z]))';
 
   /// Labels that are not a value: reaching one stops a name or an address.
   static final RegExp _otherLabel = RegExp(
@@ -126,6 +131,62 @@ class ClientHeaderExtractor {
 
   /// Most rows a fallback offers to the client matcher.
   static const int _maxCandidates = 8;
+
+  /// Most rows read under "Comments:".
+  static const int _maxCommentRows = 4;
+
+  static RegExp get _commentsLabel => RegExp(
+    '$_commentsStart' r'\s*:?\s*(.*)$',
+    caseSensitive: false,
+  );
+
+  /// The rows under "Comments:", as name candidates. A Goods Issue prints
+  /// no customer label: the client is typed into its Comments
+  /// ("Hospital A - Abg", then "ADVANCE ORDER #"). Read from the left half
+  /// of the page, up to the signature row ("Prepared By:") or
+  /// [_maxCommentRows] rows. A leading "Client:" is removed, and a row with
+  /// " - " is also offered without the part after it. The client matcher
+  /// keeps the one that is a client; the user still confirms.
+  static List<String> commentRows(List<OcrLine> lines) {
+    final straight = BOcrOrientation.deskew(lines)
+        .where((l) => l.text.trim().isNotEmpty)
+        .toList();
+    if (straight.isEmpty) return const [];
+    final page = _pageBounds(straight);
+    final rows = OcrRows.group(straight
+        .where((l) => l.box.left < page.center.dx && !_issuer.hasMatch(l.text))
+        .toList());
+    final start = rows.indexWhere((r) => _blockEnd.hasMatch(r.first.text));
+    if (start < 0) return const [];
+
+    final out = <String>[];
+    void add(String text) {
+      final value = _clean(text);
+      if (value == null || out.contains(value)) return;
+      if (RegExp(r'[A-Za-z]').allMatches(value).length < 5) return;
+      out.add(value);
+      final dash = value.indexOf(RegExp(r'\s+-\s+'));
+      if (dash > 0) add(value.substring(0, dash));
+    }
+
+    String rest(List<OcrLine> row, String firstRest) =>
+        [firstRest, ...row.skip(1).map((l) => l.text)].join(' ');
+
+    add(rest(rows[start],
+        _commentsLabel.firstMatch(rows[start].first.text)!.group(1)!));
+    for (final row in rows.skip(start + 1).take(_maxCommentRows)) {
+      final first = row.first.text;
+      final client = _nameLabel.firstMatch(first);
+      if (client != null && client.group(2)!.trim().isNotEmpty) {
+        add(rest(row, client.group(2)!));
+      } else if (_isLabel(first)) {
+        break;
+      } else {
+        add(rest(row, first));
+      }
+    }
+    return out.take(_maxCandidates).toList();
+  }
 
   /// The item table's column titles: the customer block sits above them.
   static final RegExp _tableTitle = RegExp(

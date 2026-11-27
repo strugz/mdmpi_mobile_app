@@ -158,14 +158,28 @@ class DeliveryDocumentScanService implements IDeliveryDocumentScanService {
   }
 
   _Reading _read(List<OcrLine> lines) {
-    final header = ClientHeaderExtractor.extract(lines);
+    var header = ClientHeaderExtractor.extract(lines);
     final items = ItemTableParser.parse(lines);
     final type = DeliveryDocumentType.detect(lines);
-    final references = type.keepOwnReferences(OneScanReferencePatterns.fromLines(
+    if (type == DeliveryDocumentType.goodsIssue && !header.hasName) {
+      // The Goods Issue's client is only in its Comments.
+      header = ScannedClientHeader(
+        label: header.label,
+        prefix: header.prefix,
+        address: header.address,
+        rawLines: header.rawLines,
+        nameCandidates: [
+          ...ClientHeaderExtractor.commentRows(lines),
+          ...header.nameCandidates,
+        ],
+      );
+    }
+    final references = OneScanReferencePatterns.forDocument(
       lines,
       _extractor,
+      type,
       excludeTexts: items.tableTexts,
-    ));
+    );
     return _Reading(header, references, items, type);
   }
 

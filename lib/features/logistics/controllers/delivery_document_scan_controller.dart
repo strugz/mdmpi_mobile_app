@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mdmpi_mobile_app/base/utils/b_client_address.dart';
 import 'package:mdmpi_mobile_app/base/utils/b_document_scanner.dart';
+import 'package:mdmpi_mobile_app/base/utils/b_image_cropper.dart';
 import 'package:mdmpi_mobile_app/base/utils/b_name_normalizer.dart';
 import 'package:mdmpi_mobile_app/base/utils/logger.dart';
 import 'package:mdmpi_mobile_app/common/services/abstracts/i_permission_service.dart';
@@ -63,17 +64,20 @@ class DeliveryDocumentScanController extends GetxController {
     IPermissionService? permissions,
     Future<File?> Function(ImageSource source)? pickImage,
     Future<List<File>?> Function()? documentScan,
+    Future<File?> Function(File page)? cropPage,
   })  : _service = service,
         _aliases = aliases,
         _permissions = permissions,
         _pickImage = pickImage,
-        _documentScan = documentScan;
+        _documentScan = documentScan,
+        _cropPage = cropPage;
 
   final IDeliveryDocumentScanService _service;
   final ClientAliasRepository _aliases;
   final IPermissionService? _permissions;
   final Future<File?> Function(ImageSource source)? _pickImage;
   final Future<List<File>?> Function()? _documentScan;
+  final Future<File?> Function(File page)? _cropPage;
 
   final RxBool isScanning = false.obs;
   final RxnString error = RxnString();
@@ -199,9 +203,10 @@ class DeliveryDocumentScanController extends GetxController {
 
   /// The page from [source]. [DocumentScanSource.scanner] runs Google's
   /// document scanner, which crops, straightens and flattens the page (and
-  /// can import a gallery photo the same way) before it is read; where the
-  /// scanner cannot run, a plain camera photo instead. Null when the user
-  /// cancelled or it failed ([error] says why).
+  /// can import a gallery photo the same way); where the scanner cannot run,
+  /// a plain camera photo instead. Either way the Crop & rotate step opens
+  /// next, before the page is read. Null when the user cancelled or it
+  /// failed ([error] says why).
   Future<File?> pickPage(DocumentScanSource source) async {
     switch (source) {
       case DocumentScanSource.camera:
@@ -213,11 +218,18 @@ class DeliveryDocumentScanController extends GetxController {
         final pages = await (_documentScan ?? _defaultDocumentScan)();
         if (pages == null) {
           logDebug('[OneScan] document scanner unavailable; using the camera');
-          return pickFrom(ImageSource.camera);
+          final photo = await pickFrom(ImageSource.camera);
+          return photo == null ? null : _cropped(photo);
         }
-        return pages.isEmpty ? null : pages.first;
+        return pages.isEmpty ? null : _cropped(pages.first);
     }
   }
+
+  /// [page] after the Crop & rotate step, which opens by itself after a
+  /// capture so the page is trimmed to the paper before it is read. Backing
+  /// out of it keeps the page as captured.
+  Future<File> _cropped(File page) async =>
+      await (_cropPage ?? BImageCropper.crop)(page) ?? page;
 
   static Future<List<File>?> _defaultDocumentScan() =>
       BDocumentScanner.scan(galleryImport: true);
