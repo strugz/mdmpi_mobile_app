@@ -70,18 +70,31 @@ class ItemTableParser {
   /// The sub-header under an item on a Sales Invoice:
   /// "Batch/Serial #   Quantity   Expiry Date". OCR misspells "Serial"
   /// (`Seral`, `Serlal`: capture of 2026-10-21) and "Batch" (`Bstch`: Goods
-  /// Issue capture of 2026-11-26). A getter, not a static final, so edits
-  /// take effect on hot reload.
-  static RegExp get _batchHeader =>
-      RegExp(r'b[aso4]tch\s*/?\s*s[ea]?r[a-z1|]*\s*#?', caseSensitive: false);
+  /// Issue capture of 2026-11-26), `Betch` (capture of 2026-11-27) and the B
+  /// read as 8. A getter, not a static final, so edits take effect on hot
+  /// reload.
+  static RegExp get _batchHeader => RegExp(
+      r'[b8][aeso4]tch\s*/?\s*s[ea]?r[a-z1|]*\s*#?',
+      caseSensitive: false);
 
-  /// A date, allowing the OCR slips seen on captures (`D8/06/2027`).
+  /// A date, allowing the OCR slips seen on captures (`D8/06/2027`). With a
+  /// four-digit year any letter may stand in the day or month
+  /// (`0t/05/2027`, capture of 2026-11-27): the year makes it a date.
   static final RegExp _date = RegExp(
-      r'(?<![A-Za-z0-9])[0-9ODQIl]{1,2}/[0-9ODQIl]{1,2}/[0-9ODQIl]{2,4}(?![A-Za-z0-9])');
+      r'(?<![A-Za-z0-9])(?:[0-9ODQIl]{1,2}/[0-9ODQIl]{1,2}/[0-9ODQIl]{2,4}|'
+      r'(?=[^/\s]{0,2}\d|[^/\s]{1,2}/[^/\s]{0,1}\d)'
+      r'[0-9A-Za-z]{1,2}/[0-9A-Za-z]{1,2}/(?:19|20)\d\d)(?![A-Za-z0-9])');
 
   static String _fixDate(String raw) => raw
-      .replaceAll(RegExp(r'[ODQ]'), '0')
-      .replaceAll(RegExp(r'[Il]'), '1');
+      .replaceAll(RegExp(r'[ODQo]'), '0')
+      .replaceAll(RegExp(r'[Il]'), '1')
+      .replaceAll('G', '6')
+      .replaceAll(RegExp(r'[Ss]'), '5')
+      .replaceAll('B', '8')
+      .replaceAll(RegExp(r'[Zz]'), '2');
+
+  /// An expiry with a letter no rule could turn back into a digit.
+  static bool _dateUnread(String date) => RegExp('[A-Za-z]').hasMatch(date);
   static final RegExp _number = RegExp(r'^\d{1,6}(?:[.,]\d{1,3})?$');
 
   /// A gap this many line heights below the last item ends the table:
@@ -351,6 +364,52 @@ class ItemTableParser {
     );
   }
 
+  /// The same clean-up [parse] gives its rows, for an item read another way
+  /// (Gemini on the Add Item scan): a quantity in the unit (`1.00 8OX`)
+  /// moved to the quantity, batch titles and values at the end of the
+  /// description moved to the batches, and OCR look-alikes fixed. The flag
+  /// is true when the user should check the item.
+  static (InventoryItemModel, bool unsure) tidyItem(InventoryItemModel item) {
+    final split = _splitQtyUnit(
+        item.qty > 0 ? _formatQty(item.qty) : '', _cleanUnit(item.unit));
+    final (qty, qtyRead) = _quantity(split.qty);
+    final row = _Row(
+      description: item.description,
+      qty: qtyRead ? qty : item.qty,
+      unit: split.unit,
+      itemCode: item.itemCode,
+      partNo: item.partNo,
+      serialNo: item.serialNo,
+      ptn: item.ptn,
+      unsure: split.conflict,
+    );
+    row.batches.addAll(item.batches);
+    _cutBatchTail(row);
+    _cutTrailingBatch(row);
+    final batches = row.batches.length == 1 &&
+            row.batches.single.batchQuantity == 0
+        ? [
+            InventoryBatchModel(
+              batchSerial: row.batches.single.batchSerial,
+              batchQuantity: row.qty,
+              expiryDate: row.batches.single.expiryDate,
+            ),
+          ]
+        : row.batches;
+    return (
+      item.copyWith(
+        description: BOcrWordFixer.fix(row.description),
+        qty: row.qty,
+        unit: BOcrWordFixer.fixUnit(row.unit),
+        batches: List.unmodifiable(batches),
+      ),
+      row.unsure,
+    );
+  }
+
+  static String _formatQty(double q) =>
+      q == q.roundToDouble() ? q.toInt().toString() : q.toString();
+
   /// The titles a header line holds, each with its estimated horizontal
   /// span. A line counts only when it is nothing but titles (fewer than
   /// three other letters), so a body row holding the word "Unit" is not
@@ -592,13 +651,15 @@ class ItemTableParser {
       }
     }
     if (serial.isEmpty && quantity == null) return null;
+    final expiry = date == null ? '' : _fixDate(date.group(0)!);
     return (
       InventoryBatchModel(
         batchSerial: serial,
         batchQuantity: quantity ?? 0,
-        expiryDate: date == null ? '' : _fixDate(date.group(0)!),
+        expiryDate: expiry,
       ),
-      quantity != null,
+      // False also when the expiry kept a letter: the user checks it.
+      quantity != null && !_dateUnread(expiry),
     );
   }
 
@@ -675,6 +736,8 @@ class ItemTableParser {
   /// differ, the Qty cell's is kept and the row is flagged ([conflict]).
   static ({String qty, String unit, bool conflict}) _splitQtyUnit(
       String qtyText, String unit) {
+    // `1.00 8OX`: the unit word has to start with a letter to be split off.
+    unit = BOcrWordFixer.fixUnit(unit);
     final numberThenWord =
         RegExp('^\\s*($_qtyPattern)\\s+([A-Za-z][A-Za-z .]*?)\\s*\$');
     final wordThenNumber =
