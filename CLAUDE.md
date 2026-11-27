@@ -127,13 +127,15 @@ patch notes:
 📱 MDMPI App <version> is now released! @all,
 
 ✅ Nothing to set up — just update to the latest build.
+🆕 All the details will appear once you update the app (Settings → About → What's New).
 
 Download: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version> (download app-release.apk under Assets)
 📲 Android 11 and below: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version>%2Bsms (download app-release.apk under Assets)
 📶 Please download it on the office Wi-Fi so it doesn't use your mobile data.
 ```
 
-The `+sms` line points staff on Android 11 and below to the SMS build (see the
+The 🆕 line sends staff to the in-app What's New (see the section above) instead of
+listing changes in chat. The `+sms` line points staff on Android 11 and below to the SMS build (see the
 branch section above). `%2B` is the `+` in the tag, as GitHub writes it. Send it only
 once both releases show `app-release.apk` under Assets.
 

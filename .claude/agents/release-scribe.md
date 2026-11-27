@@ -18,6 +18,7 @@ Steps:
 📱 MDMPI App <version> is now released! @all,
 
 ✅ Nothing to set up — just update to the latest build.
+🆕 All the details will appear once you update the app (Settings → About → What's New).
 
 Download: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version> (download app-release.apk under Assets)
 📲 Android 11 and below: https://github.com/strugz/mdmpi_mobile_app/releases/tag/v<version>%2Bsms (download app-release.apk under Assets)
