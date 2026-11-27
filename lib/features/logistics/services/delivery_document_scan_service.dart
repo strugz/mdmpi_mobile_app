@@ -20,6 +20,7 @@ import 'package:mdmpi_mobile_app/features/logistics/models/scan/delivery_documen
 import 'package:mdmpi_mobile_app/features/logistics/models/scan/item_table_reading.dart';
 import 'package:mdmpi_mobile_app/features/logistics/models/scan/scanned_client_header.dart';
 import 'package:mdmpi_mobile_app/features/logistics/services/i_delivery_document_scan_service.dart';
+import 'package:mdmpi_mobile_app/features/logistics/services/scan_item_correction_service.dart';
 
 /// Plan §4.1: one OCR pass; one retry at the estimated angle, on a smaller
 /// copy, only when the first pass found nothing at all; then the client
@@ -33,7 +34,9 @@ class DeliveryDocumentScanService implements IDeliveryDocumentScanService {
     ITextRecognitionService? textRecognition,
     Future<List<OcrLine>> Function(String path)? readLines,
     Future<String?> Function(String path, int rotation)? rotateForRetry,
-  })  : _extractor = textExtractor,
+    ScanItemCorrectionService? itemCorrection,
+  })  : _itemCorrection = itemCorrection,
+        _extractor = textExtractor,
         _matcher = matcher,
         _clients = clients,
         _readLines = readLines ??
@@ -46,6 +49,7 @@ class DeliveryDocumentScanService implements IDeliveryDocumentScanService {
   final Future<List<ClientModel>> Function() _clients;
   final Future<List<OcrLine>> Function(String path) _readLines;
   final Future<String?> Function(String path, int rotation) _rotate;
+  final ScanItemCorrectionService? _itemCorrection;
 
   List<OcrLine> _lastLines = const [];
 
@@ -93,6 +97,12 @@ class DeliveryDocumentScanService implements IDeliveryDocumentScanService {
       logDebug('[OneScan] ocr pass1=${pass1Ms}ms retry=${retryMs}ms '
           'angle=${retryRotation ?? '-'} lines=${pass1Lines.length}');
 
+      var items = reading.items;
+      var vocabularyMissed = false;
+      if (_itemCorrection != null) {
+        (items, vocabularyMissed) = await _itemCorrection.correct(items);
+      }
+
       final clients = await _clients();
       var header = reading.header;
       var match = await _matcher.match(header, clients);
@@ -107,13 +117,16 @@ class DeliveryDocumentScanService implements IDeliveryDocumentScanService {
           'No item table found. Use Add Item for the items.',
         if (!reading.isEmpty && !header.hasName)
           "Couldn't read the client name. Search for it instead.",
+        if (vocabularyMissed)
+          "Couldn't check the items against past requests (no connection). "
+              'Check the descriptions.',
       ];
 
       return Result.success(DeliveryDocumentScanResult(
         header: header,
         match: match,
         references: reading.references,
-        items: reading.items,
+        items: items,
         warnings: warnings,
         retryRotation: retryRotation,
         documentType: reading.documentType,

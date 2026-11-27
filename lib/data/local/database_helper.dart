@@ -24,6 +24,7 @@ import 'dao/common/backload_dao.dart';
 import 'dao/common/remarks_dao.dart';
 import 'dao/common/client_dao.dart';
 import 'dao/common/client_alias_dao.dart';
+import 'dao/common/scan_item_vocab_dao.dart';
 import 'dao/common/mobile_dao.dart';
 import 'dao/common/user_dao.dart';
 import 'dao/common/cntmst_dao.dart';
@@ -55,6 +56,7 @@ class DatabaseHelper {
   // Cached DAO instances
   RequestDao? _requestDao;
   ClientAliasDao? _clientAliasDao;
+  ScanItemVocabDao? _scanItemVocabDao;
   SignatureDao? _signatureDao;
   ImageOutboxDao? _imageOutboxDao;
   PickUpDao? _pickUpDao;
@@ -164,7 +166,8 @@ class DatabaseHelper {
   /// - `a_tblRequestReceiverSignature`, `a_tblRequestImageOutbox` — captured
   ///   signatures and queued proof images awaiting upload;
   /// - every `a_tblCollection*` table — un-uploaded collector field work;
-  /// - `CLIENT_ALIAS_` — Standard Delivery one-scan aliases learned here.
+  /// - `CLIENT_ALIAS_` — Standard Delivery one-scan aliases learned here;
+  /// - `SCAN_ITEM_VOCAB_` — items confirmed on scans on this device.
   /// Tables the destructive rebuild drops. Server-backed cache only.
   ///
   /// Anything holding data that exists nowhere else must stay out of this
@@ -291,6 +294,13 @@ class DatabaseHelper {
     final db = await database;
     _clientAliasDao = ClientAliasDao(db);
     return _clientAliasDao!;
+  }
+
+  Future<ScanItemVocabDao> get scanItemVocabDao async {
+    if (_scanItemVocabDao != null) return _scanItemVocabDao!;
+    final db = await database;
+    _scanItemVocabDao = ScanItemVocabDao(db);
+    return _scanItemVocabDao!;
   }
 
   Future<MobileDao> get mobileDao async {
@@ -735,6 +745,7 @@ class DatabaseHelper {
 
     _requestDao = null;
     _clientAliasDao = null;
+    _scanItemVocabDao = null;
     _signatureDao = null;
     _imageOutboxDao = null;
     _documentReferenceDao = null;
@@ -766,6 +777,7 @@ class DatabaseHelper {
       // Clear all cached DAOs
       _requestDao = null;
       _clientAliasDao = null;
+      _scanItemVocabDao = null;
       _signatureDao = null;
       _imageOutboxDao = null;
       _pickUpDao = null;

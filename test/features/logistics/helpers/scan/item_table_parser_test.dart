@@ -399,6 +399,77 @@ void main() {
       expect(r.isUnsure(0), isTrue);
     });
 
+    test('a quantity read into the Unit cell goes to Qty (capture 2026-11-27)',
+        () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('1.00 BOX', 95, 40, 60),
+        _l('Access FT3 Cals', 200, 40, 160),
+      ]);
+      final item = r.items.single;
+      expect(item.qty, 1);
+      expect(item.unit, 'BOX');
+      expect(r.isUnsure(0), isFalse);
+    });
+
+    test('Unit cell "BOX 6" and a Qty cell "2 PCS" are split too', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('6', 10, 40, 10),
+        _l('BOX 6', 95, 40, 60),
+        _l('Reagent A', 200, 40, 120),
+        _l('2 PCS', 0, 80, 40),
+        _l('Reagent B', 200, 80, 120),
+      ]);
+      expect([for (final i in r.items) (i.qty, i.unit)],
+          [(6.0, 'BOX'), (2.0, 'PCS')]);
+    });
+
+    test('different numbers under Qty and Unit: Qty kept, row flagged', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('3', 10, 40, 10),
+        _l('1.00 BOX', 95, 40, 60),
+        _l('Reagent A', 200, 40, 120),
+      ]);
+      expect(r.items.single.qty, 3);
+      expect(r.items.single.unit, 'BOX');
+      expect(r.isUnsure(0), isTrue);
+    });
+
+    test('a batch at the end of a description moves to the batches', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('1', 10, 40, 10),
+        _l('BOX', 100, 40, 40),
+        _l('Access FT3 Cals (PN 33855)', 200, 40, 260),
+        _l('689935 06/05/2027', 200, 62, 170),
+        _l('2', 10, 120, 10),
+        _l('BOX', 100, 120, 40),
+        _l('Reagent 500mL 0179170 2.00 07/18/2027', 200, 120, 300),
+      ]);
+      expect(r.items.map((i) => i.description),
+          ['Access FT3 Cals (PN 33855)', 'Reagent 500mL']);
+      final b0 = r.items[0].batches.single;
+      expect((b0.batchSerial, b0.batchQuantity, b0.expiryDate),
+          ('689935', 1.0, '06/05/2027'));
+      final b1 = r.items[1].batches.single;
+      expect((b1.batchSerial, b1.batchQuantity, b1.expiryDate),
+          ('0179170', 2.0, '07/18/2027'));
+    });
+
+    test('a date inside a description is not a batch', () {
+      final r = ItemTableParser.parse([
+        ...header,
+        _l('1', 10, 40, 10),
+        _l('LOT', 100, 40, 40),
+        _l('Calibration done 06/05/2027 by engineer', 200, 40, 300),
+      ]);
+      expect(r.items.single.description,
+          'Calibration done 06/05/2027 by engineer');
+      expect(r.items.single.batches, isEmpty);
+    });
+
     test('one OCR line across several columns is split and flagged', () {
       final r = ItemTableParser.parse([
         ...header,
