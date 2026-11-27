@@ -100,10 +100,12 @@ class AirSeaProvincialDeliverySection extends StatelessWidget {
                 () => BDropOffCapture(
                   title: 'Provincial Delivery Proof',
                   onCapture: (camera) async {
-                    await camera.takePictureWithAnimation(
+                    final path = await camera.takePictureWithAnimation(
                         '${requestModel.id}_provincial_delivery');
-                    formState.cameraDropOffPicture.value =
-                        camera.imageProofPath.value;
+                    if (path != null) {
+                      formState.cameraDropOffPicture.value = path;
+                    }
+                    return path;
                   },
                 ),
               ),

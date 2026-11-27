@@ -247,15 +247,16 @@ class CameraHandlerController extends GetxController
   }
 
   /// --- Take Picture and Save to the device ---
-  Future<void> takePicture(String pictureName) async {
+  /// Returns the saved file path, or null when nothing was saved.
+  Future<String?> takePicture(String pictureName) async {
     if (isProcessing.value) {
-      return;
+      return null;
     }
 
     await ensureCameraReady();
 
     if (!_cameraService.isInitialized) {
-      return;
+      return null;
     }
 
     try {
@@ -264,7 +265,7 @@ class CameraHandlerController extends GetxController
         featureName: 'Proof photo',
       );
       if (!storagePermission.granted) {
-        return;
+        return null;
       }
 
       final XFile? imageFile = await _cameraService.takePicture();
@@ -275,16 +276,19 @@ class CameraHandlerController extends GetxController
       if (imageProofPath.value.isNotEmpty) {
         await _textStorageService.saveText(
             'proofImagePath', imageProofPath.value);
+        return imageProofPath.value;
       }
+      return null;
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+      return null;
     }
   }
 
-  Future<void> takePictureWithAnimation(String requestId) async {
+  Future<String?> takePictureWithAnimation(String requestId) async {
     isFlashing.value = true;
     _flashAnimController.forward(from: 0.0);
-    await takePicture(requestId);
+    return takePicture(requestId);
   }
 
   /// File name (without extension) for a proof photo slot (1-based).
@@ -310,12 +314,12 @@ class CameraHandlerController extends GetxController
     _mirrorFirstProofPhoto();
   }
 
-  /// Save an already-captured photo file (e.g. the one the user just
-  /// confirmed on the review screen) into the next free proof slot
-  /// (max [maxProofPhotos]). Does NOT take a new picture — re-capturing on
-  /// confirm returns a stale camera frame while the review screen covers
-  /// the preview, producing identical photos.
-  Future<void> addProofPictureFromFile(
+  /// Save an already-captured photo file (the one just taken) into the next
+  /// free proof slot (max [maxProofPhotos]). Does NOT take a new picture —
+  /// re-capturing returns a stale camera frame while the review screen
+  /// covers the preview, producing identical photos.
+  /// Returns the saved slot path, or null when nothing was saved.
+  Future<String?> addProofPictureFromFile(
       String requestId, String sourcePath) async {
     if (proofPhotosRequestId != requestId) {
       await syncProofPhotos(requestId);
@@ -325,7 +329,7 @@ class CameraHandlerController extends GetxController
         title: 'Photo Limit',
         message: 'You can attach up to $maxProofPhotos proof photos.',
       );
-      return;
+      return null;
     }
 
     try {
@@ -333,7 +337,7 @@ class CameraHandlerController extends GetxController
         PermissionType.storage,
         featureName: 'Proof photo',
       );
-      if (!storagePermission.granted) return;
+      if (!storagePermission.granted) return null;
 
       final source = File(sourcePath);
       if (!await source.exists()) {
@@ -341,7 +345,7 @@ class CameraHandlerController extends GetxController
           title: 'Error',
           message: 'Captured photo file not found.',
         );
-        return;
+        return null;
       }
 
       final slot = imageProofPaths.length + 1;
@@ -352,9 +356,19 @@ class CameraHandlerController extends GetxController
 
       imageProofPaths.add(targetPath);
       await _mirrorFirstProofPhoto();
+      return targetPath;
     } catch (e) {
       BLoaders.errorSnackBar(title: 'Error', message: e.toString());
+      return null;
     }
+  }
+
+  /// Remove the proof photo saved at [path] (e.g. the one rejected with
+  /// Retake on the review screen). No-op when it is not in the list.
+  Future<void> discardProofPhoto(String requestId, String path) async {
+    final index = imageProofPaths.indexOf(path);
+    if (index < 0) return;
+    await removeProofPhoto(requestId, index);
   }
 
   /// Remove the proof photo at [index] and compact the remaining photos
